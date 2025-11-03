@@ -1,0 +1,22 @@
+{
+  "recognition": {
+    "title": "Logo Recognition",
+    "upload": "Upload Image",
+    "results": "Recognition Results",
+    "export": "Export Results",
+    "clear": "Clear All",
+    "complete": "Recognition complete",
+    "uploadFailed": "Upload failed",
+    "exportFailed": "Export failed",
+    "exported": "Results exported successfully",
+    "uploadProgress": "Upload progress",
+    "dragDrop": "Drag & drop image here or click to browse",
+    "processing": "Processing image...",
+    "noResults": "No results yet"
+  },
+  "connection": {
+    "connected": "Connected",
+    "disconnected": "Disconnected",
+    "reconnecting": "Reconnecting..."
+  }
+}

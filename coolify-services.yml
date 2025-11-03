@@ -1,0 +1,121 @@
+# Coolify Services Configuration
+# Database, Cache, and Storage Services
+
+# PostgreSQL Database
+postgres:
+  name: logo-recognition-postgres
+  type: postgres
+  version: "15"
+
+  database:
+    name: logo_recognition
+    username: postgres
+    password: "${POSTGRES_PASSWORD}"
+
+  configuration:
+    shared_preload_libraries: "pg_stat_statements,vector"
+    max_connections: 200
+    shared_buffers: "256MB"
+    effective_cache_size: "1GB"
+    maintenance_work_mem: "128MB"
+
+  extensions:
+    - pgvector
+    - pg_stat_statements
+
+  backup:
+    enabled: true
+    schedule: "0 2 * * *"  # Daily at 2 AM
+    retention_days: 30
+
+  volume:
+    size: "50GB"
+    backup_volume: "10GB"
+
+# Redis Cache
+redis:
+  name: logo-recognition-redis
+  type: redis
+  version: "7"
+
+  configuration:
+    maxmemory: "512MB"
+    maxmemory_policy: "allkeys-lru"
+    save: "900 1 300 10 60 10000"
+
+  persistence:
+    enabled: true
+    volume_size: "5GB"
+
+# MinIO Object Storage
+minio:
+  name: logo-recognition-minio
+  type: minio
+
+  credentials:
+    access_key: "${MINIO_ACCESS_KEY}"
+    secret_key: "${MINIO_SECRET_KEY}"
+
+  buckets:
+    - name: "images"
+      policy: "private"
+    - name: "models"
+      policy: "private"
+    - name: "backups"
+      policy: "private"
+
+  volume:
+    size: "100GB"
+
+  console:
+    enabled: true
+    port: 9001
+
+# Monitoring Services
+prometheus:
+  name: logo-recognition-prometheus
+  type: docker-service
+  image: "prom/prometheus:latest"
+
+  port: 9090
+
+  volumes:
+    - name: "prometheus_data"
+      mount_path: "/prometheus"
+      size: "20GB"
+    - name: "prometheus_config"
+      mount_path: "/etc/prometheus"
+      type: "config"
+
+  configuration: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+
+    scrape_configs:
+      - job_name: 'logo-backend'
+        static_configs:
+          - targets: ['api.logo-app.yourdomain.com:8000']
+        metrics_path: '/metrics'
+        scrape_interval: 30s
+
+grafana:
+  name: logo-recognition-grafana
+  type: docker-service
+  image: "grafana/grafana:latest"
+
+  port: 3000
+
+  environment:
+    GF_SECURITY_ADMIN_USER: "admin"
+    GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_PASSWORD}"
+    GF_INSTALL_PLUGINS: "redis-datasource"
+
+  volumes:
+    - name: "grafana_data"
+      mount_path: "/var/lib/grafana"
+      size: "5GB"
+
+  domain:
+    name: "monitoring.logo-app.yourdomain.com"
+    ssl: true

@@ -1,0 +1,94 @@
+{
+  "repository_type": "monorepo",
+  "total_parts": 6,
+  "generated_date": "2025-11-03T16:45:00.000Z",
+  "project_root": "/Users/frisovanweelden/Documents/projects/logoRecognition",
+  "parts": [
+    {
+      "part_id": "web",
+      "display_name": "Frontend Web Applicatie",
+      "project_type_id": "web",
+      "root_path": "/apps/web",
+      "primary_language": "TypeScript",
+      "primary_framework": "React",
+      "package_manager": "pnpm"
+    },
+    {
+      "part_id": "api",
+      "display_name": "Node.js API Backend",
+      "project_type_id": "backend",
+      "root_path": "/apps/api",
+      "primary_language": "TypeScript",
+      "primary_framework": "Fastify",
+      "package_manager": "pnpm"
+    },
+    {
+      "part_id": "ml-backend",
+      "display_name": "Python ML Backend",
+      "project_type_id": "backend",
+      "root_path": "/backend",
+      "primary_language": "Python",
+      "primary_framework": "FastAPI",
+      "package_manager": "pip"
+    },
+    {
+      "part_id": "shared",
+      "display_name": "Shared Library",
+      "project_type_id": "library",
+      "root_path": "/packages/shared",
+      "primary_language": "TypeScript",
+      "primary_framework": "None",
+      "package_manager": "pnpm"
+    },
+    {
+      "part_id": "ui",
+      "display_name": "UI Components Library",
+      "project_type_id": "library",
+      "root_path": "/packages/ui",
+      "primary_language": "TypeScript",
+      "primary_framework": "React",
+      "package_manager": "pnpm"
+    },
+    {
+      "part_id": "ml",
+      "display_name": "ML Utilities Library",
+      "project_type_id": "library",
+      "root_path": "/packages/ml",
+      "primary_language": "TypeScript",
+      "primary_framework": "None",
+      "package_manager": "pnpm"
+    }
+  ],
+  "integration_points": [
+    {
+      "from": "web",
+      "to": "api",
+      "type": "REST API + WebSocket",
+      "description": "Frontend communiceert met Node.js API via REST endpoints en real-time updates via WebSocket"
+    },
+    {
+      "from": "api",
+      "to": "ml-backend",
+      "type": "HTTP API",
+      "description": "Node.js API delegeert ML-taken naar Python FastAPI backend"
+    },
+    {
+      "from": "web",
+      "to": "shared",
+      "type": "NPM Package Import",
+      "description": "Frontend gebruikt gedeelde TypeScript types en utilities"
+    },
+    {
+      "from": "api",
+      "to": "shared",
+      "type": "NPM Package Import",
+      "description": "API gebruikt gedeelde TypeScript types en utilities"
+    },
+    {
+      "from": "web",
+      "to": "ui",
+      "type": "NPM Package Import",
+      "description": "Frontend gebruikt herbruikbare UI componenten"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "name": "@logo-recognition/ml",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest"
+  },
+  "dependencies": {
+    "onnxruntime-node": "^1.16.3",
+    "@tensorflow/tfjs-node": "^4.16.0",
+    "sharp": "^0.33.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "jest": "^29.7.0"
+  }
+}

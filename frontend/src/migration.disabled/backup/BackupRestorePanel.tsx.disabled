@@ -1,0 +1,508 @@
+// Backup and Restore UI Component
+// Story: FE-001.0.2
+
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  Card,
+  Button,
+  Progress,
+  Alert,
+  Space,
+  Upload,
+  Typography,
+  List,
+  Modal,
+  Tag,
+  Row,
+  Col,
+  Statistic,
+  Tooltip,
+  message,
+  Badge,
+  Divider
+} from 'antd';
+import {
+  DownloadOutlined,
+  UploadOutlined,
+  SaveOutlined,
+  CloudUploadOutlined,
+  LockOutlined,
+  CheckCircleOutlined,
+  WarningOutlined,
+  DatabaseOutlined,
+  HistoryOutlined,
+  SafetyOutlined,
+  SyncOutlined,
+  FolderOpenOutlined
+} from '@ant-design/icons';
+import { backupService, Backup, RestoreResult } from './BackupService';
+
+const { Title, Text, Paragraph } = Typography;
+const { Dragger } = Upload;
+
+interface BackupHistoryItem {
+  timestamp: number;
+  size: number;
+  checksum: string;
+}
+
+export const BackupRestorePanel: React.FC = () => {
+  const [isBackingUp, setIsBackingUp] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [backupProgress, setBackupProgress] = useState(0);
+  const [restoreProgress, setRestoreProgress] = useState(0);
+  const [lastBackup, setLastBackup] = useState<Backup | null>(null);
+  const [backupHistory, setBackupHistory] = useState<BackupHistoryItem[]>([]);
+  const [showRestoreModal, setShowRestoreModal] = useState(false);
+  const [selectedBackupFile, setSelectedBackupFile] = useState<Backup | null>(null);
+  const [restoreResult, setRestoreResult] = useState<RestoreResult | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    loadBackupHistory();
+  }, []);
+
+  const loadBackupHistory = async () => {
+    const history = await backupService.listAvailableBackups();
+    setBackupHistory(history);
+  };
+
+  const handleBackup = async () => {
+    setIsBackingUp(true);
+    setBackupProgress(0);
+
+    try {
+      // Simulate progress
+      const progressInterval = setInterval(() => {
+        setBackupProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return prev + 10;
+        });
+      }, 200);
+
+      const backup = await backupService.createComprehensiveBackup();
+
+      clearInterval(progressInterval);
+      setBackupProgress(100);
+
+      setLastBackup(backup);
+      await loadBackupHistory();
+
+      // Auto-download the backup
+      await backupService.downloadBackup(backup);
+
+      message.success('Backup created and downloaded successfully!');
+
+      setTimeout(() => {
+        setIsBackingUp(false);
+        setBackupProgress(0);
+      }, 1000);
+    } catch (error) {
+      message.error('Backup failed: ' + (error as Error).message);
+      setIsBackingUp(false);
+      setBackupProgress(0);
+    }
+  };
+
+  const handleRestore = async (backup: Backup) => {
+    setIsRestoring(true);
+    setRestoreProgress(0);
+    setShowRestoreModal(false);
+
+    try {
+      // Simulate progress
+      const progressInterval = setInterval(() => {
+        setRestoreProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return prev + 10;
+        });
+      }, 300);
+
+      const result = await backupService.restoreFromBackup(backup);
+
+      clearInterval(progressInterval);
+      setRestoreProgress(100);
+
+      setRestoreResult(result);
+
+      if (result.success) {
+        message.success(`Restore completed: ${result.restoredItems} items restored`);
+
+        // Reload the page after a delay to apply restored settings
+        setTimeout(() => {
+          Modal.confirm({
+            title: 'Restore Complete',
+            content: 'The application needs to reload to apply all restored settings. Reload now?',
+            onOk: () => window.location.reload(),
+            okText: 'Reload Now',
+            cancelText: 'Later'
+          });
+        }, 1000);
+      } else {
+        message.error('Restore failed: ' + result.errors?.join(', '));
+      }
+
+      setTimeout(() => {
+        setIsRestoring(false);
+        setRestoreProgress(0);
+      }, 1000);
+    } catch (error) {
+      message.error('Restore failed: ' + (error as Error).message);
+      setIsRestoring(false);
+      setRestoreProgress(0);
+    }
+  };
+
+  const handleFileUpload = async (file: File) => {
+    try {
+      const backup = await backupService.uploadBackupFile(file);
+      setSelectedBackupFile(backup);
+      setShowRestoreModal(true);
+      return false; // Prevent default upload behavior
+    } catch (error) {
+      message.error('Invalid backup file: ' + (error as Error).message);
+      return false;
+    }
+  };
+
+  const calculateBackupStats = () => {
+    const totalLocalStorage = localStorage.length;
+    const totalSessionStorage = sessionStorage.length;
+
+    let localStorageSize = 0;
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key) {
+        const value = localStorage.getItem(key);
+        if (value) {
+          localStorageSize += key.length + value.length;
+        }
+      }
+    }
+
+    let sessionStorageSize = 0;
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const key = sessionStorage.key(i);
+      if (key) {
+        const value = sessionStorage.getItem(key);
+        if (value) {
+          sessionStorageSize += key.length + value.length;
+        }
+      }
+    }
+
+    return {
+      localStorageItems: totalLocalStorage,
+      sessionStorageItems: totalSessionStorage,
+      localStorageSize: (localStorageSize / 1024).toFixed(2),
+      sessionStorageSize: (sessionStorageSize / 1024).toFixed(2)
+    };
+  };
+
+  const stats = calculateBackupStats();
+
+  return (
+    <div style={{ padding: '24px' }}>
+      <Card>
+        <Title level={3}>
+          <SafetyOutlined /> Data Backup & Recovery System
+        </Title>
+
+        <Paragraph type="secondary">
+          Comprehensive backup system with encryption, verification, and cross-browser compatibility
+        </Paragraph>
+
+        <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
+          <Col span={6}>
+            <Card>
+              <Statistic
+                title="LocalStorage Items"
+                value={stats.localStorageItems}
+                prefix={<DatabaseOutlined />}
+                suffix={<Text type="secondary">({stats.localStorageSize} KB)</Text>}
+              />
+            </Card>
+          </Col>
+          <Col span={6}>
+            <Card>
+              <Statistic
+                title="SessionStorage Items"
+                value={stats.sessionStorageItems}
+                prefix={<DatabaseOutlined />}
+                suffix={<Text type="secondary">({stats.sessionStorageSize} KB)</Text>}
+              />
+            </Card>
+          </Col>
+          <Col span={6}>
+            <Card>
+              <Statistic
+                title="IndexedDB Databases"
+                value={6}
+                prefix={<FolderOpenOutlined />}
+                valueStyle={{ color: '#52c41a' }}
+              />
+            </Card>
+          </Col>
+          <Col span={6}>
+            <Card>
+              <Statistic
+                title="Backup History"
+                value={backupHistory.length}
+                prefix={<HistoryOutlined />}
+                suffix={`/ 10 max`}
+              />
+            </Card>
+          </Col>
+        </Row>
+
+        <Card title="Create Backup" extra={<LockOutlined /> AES-256 Encrypted}>
+          <Space direction="vertical" style={{ width: '100%' }}>
+            <Alert
+              message="Backup includes all user data, settings, and cached content"
+              type="info"
+              showIcon
+              icon={<SaveOutlined />}
+            />
+
+            <Space>
+              <Button
+                type="primary"
+                size="large"
+                icon={<CloudUploadOutlined />}
+                onClick={handleBackup}
+                loading={isBackingUp}
+              >
+                {isBackingUp ? 'Creating Backup...' : 'Create & Download Backup'}
+              </Button>
+
+              <Tooltip title="Backups are encrypted with AES-256 and include integrity checksums">
+                <Button icon={<LockOutlined />} disabled>
+                  Encryption Enabled
+                </Button>
+              </Tooltip>
+            </Space>
+
+            {isBackingUp && (
+              <Progress
+                percent={backupProgress}
+                status="active"
+                strokeColor={{
+                  '0%': '#108ee9',
+                  '100%': '#87d068',
+                }}
+              />
+            )}
+
+            {lastBackup && !isBackingUp && (
+              <Alert
+                message="Backup Complete"
+                description={
+                  <Space direction="vertical">
+                    <Text>Timestamp: {new Date(lastBackup.manifest.timestamp).toLocaleString()}</Text>
+                    <Text>Checksum: {lastBackup.manifest.checksum.substring(0, 16)}...</Text>
+                    <Text>Size: {(lastBackup.data.length / 1024).toFixed(2)} KB</Text>
+                  </Space>
+                }
+                type="success"
+                showIcon
+                icon={<CheckCircleOutlined />}
+              />
+            )}
+          </Space>
+        </Card>
+
+        <Card title="Restore from Backup" style={{ marginTop: '16px' }}>
+          <Dragger
+            accept=".json"
+            beforeUpload={handleFileUpload}
+            showUploadList={false}
+            disabled={isRestoring}
+          >
+            <p className="ant-upload-drag-icon">
+              <UploadOutlined style={{ fontSize: '48px', color: '#1890ff' }} />
+            </p>
+            <p className="ant-upload-text">Click or drag backup file to this area</p>
+            <p className="ant-upload-hint">
+              Support for encrypted backup files (.json). Files are verified before restoration.
+            </p>
+          </Dragger>
+
+          {isRestoring && (
+            <Progress
+              percent={restoreProgress}
+              status="active"
+              style={{ marginTop: '16px' }}
+              strokeColor={{
+                '0%': '#faad14',
+                '100%': '#52c41a',
+              }}
+            />
+          )}
+
+          {restoreResult && !isRestoring && (
+            <Alert
+              message={restoreResult.success ? 'Restore Successful' : 'Restore Failed'}
+              description={
+                <Space direction="vertical">
+                  <Text>Items Restored: {restoreResult.restoredItems}</Text>
+                  {restoreResult.warnings && restoreResult.warnings.length > 0 && (
+                    <div>
+                      <Text type="warning">Warnings:</Text>
+                      {restoreResult.warnings.map((warning, index) => (
+                        <div key={index}>
+                          <WarningOutlined /> {warning}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {restoreResult.errors && restoreResult.errors.length > 0 && (
+                    <div>
+                      <Text type="danger">Errors:</Text>
+                      {restoreResult.errors.map((error, index) => (
+                        <div key={index}>
+                          <WarningOutlined /> {error}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </Space>
+              }
+              type={restoreResult.success ? 'success' : 'error'}
+              showIcon
+              style={{ marginTop: '16px' }}
+            />
+          )}
+        </Card>
+
+        {backupHistory.length > 0 && (
+          <Card title="Backup History" style={{ marginTop: '16px' }}>
+            <List
+              dataSource={backupHistory}
+              renderItem={(item) => (
+                <List.Item
+                  actions={[
+                    <Tag color="blue">{(item.size / 1024).toFixed(2)} KB</Tag>
+                  ]}
+                >
+                  <List.Item.Meta
+                    avatar={<Badge status="success" />}
+                    title={new Date(item.timestamp).toLocaleString()}
+                    description={`Checksum: ${item.checksum.substring(0, 20)}...`}
+                  />
+                </List.Item>
+              )}
+            />
+          </Card>
+        )}
+
+        <Card title="Backup Features" style={{ marginTop: '16px' }}>
+          <Row gutter={[16, 16]}>
+            <Col span={8}>
+              <Space>
+                <CheckCircleOutlined style={{ color: '#52c41a', fontSize: '20px' }} />
+                <div>
+                  <Text strong>Complete Data Backup</Text>
+                  <br />
+                  <Text type="secondary">LocalStorage, IndexedDB, SessionStorage</Text>
+                </div>
+              </Space>
+            </Col>
+            <Col span={8}>
+              <Space>
+                <LockOutlined style={{ color: '#1890ff', fontSize: '20px' }} />
+                <div>
+                  <Text strong>AES-256 Encryption</Text>
+                  <br />
+                  <Text type="secondary">Military-grade encryption</Text>
+                </div>
+              </Space>
+            </Col>
+            <Col span={8}>
+              <Space>
+                <SafetyOutlined style={{ color: '#faad14', fontSize: '20px' }} />
+                <div>
+                  <Text strong>Integrity Verification</Text>
+                  <br />
+                  <Text type="secondary">SHA-256 checksums</Text>
+                </div>
+              </Space>
+            </Col>
+          </Row>
+
+          <Divider />
+
+          <Row gutter={[16, 16]}>
+            <Col span={8}>
+              <Space>
+                <SyncOutlined style={{ color: '#52c41a', fontSize: '20px' }} />
+                <div>
+                  <Text strong>Point-in-Time Recovery</Text>
+                  <br />
+                  <Text type="secondary">Restore to any backup point</Text>
+                </div>
+              </Space>
+            </Col>
+            <Col span={8}>
+              <Space>
+                <DatabaseOutlined style={{ color: '#1890ff', fontSize: '20px' }} />
+                <div>
+                  <Text strong>Cross-Browser Support</Text>
+                  <br />
+                  <Text type="secondary">Chrome, Firefox, Safari, Edge</Text>
+                </div>
+              </Space>
+            </Col>
+            <Col span={8}>
+              <Space>
+                <HistoryOutlined style={{ color: '#faad14', fontSize: '20px' }} />
+                <div>
+                  <Text strong>Automatic Rollback</Text>
+                  <br />
+                  <Text type="secondary">Safe restore with rollback</Text>
+                </div>
+              </Space>
+            </Col>
+          </Row>
+        </Card>
+      </Card>
+
+      <Modal
+        title="Restore Backup"
+        open={showRestoreModal}
+        onOk={() => selectedBackupFile && handleRestore(selectedBackupFile)}
+        onCancel={() => setShowRestoreModal(false)}
+        okText="Restore Now"
+        cancelText="Cancel"
+      >
+        {selectedBackupFile && (
+          <Space direction="vertical" style={{ width: '100%' }}>
+            <Alert
+              message="Warning"
+              description="Restoring will replace all current data with the backup data. This action cannot be undone."
+              type="warning"
+              showIcon
+            />
+
+            <Card size="small">
+              <Text strong>Backup Details:</Text>
+              <br />
+              <Text>Date: {new Date(selectedBackupFile.manifest.timestamp).toLocaleString()}</Text>
+              <br />
+              <Text>Environment: {selectedBackupFile.manifest.environment}</Text>
+              <br />
+              <Text>Browser: {selectedBackupFile.manifest.browserInfo.userAgent.split(' ')[0]}</Text>
+            </Card>
+          </Space>
+        )}
+      </Modal>
+    </div>
+  );
+};
+
+export default BackupRestorePanel;

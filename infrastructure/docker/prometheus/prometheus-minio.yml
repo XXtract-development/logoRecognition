@@ -1,0 +1,128 @@
+# A++ Prometheus Configuration for MinIO Cluster
+# Enhanced monitoring for 4-node MinIO cluster with CDN
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'logo-recognition-a++'
+    environment: 'production'
+    cluster: 'minio-4node'
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+      timeout: 10s
+
+rule_files:
+  - "alerts-minio.yml"
+
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    metrics_path: /metrics
+
+  # MinIO Cluster - Node 1
+  - job_name: 'minio-node1'
+    metrics_path: /minio/v2/metrics/cluster
+    static_configs:
+      - targets: ['minio1:9000']
+        labels:
+          node: 'minio1'
+          cluster: 'primary'
+    scrape_interval: 10s
+    scrape_timeout: 5s
+
+  # MinIO Cluster - Node 2
+  - job_name: 'minio-node2'
+    metrics_path: /minio/v2/metrics/cluster
+    static_configs:
+      - targets: ['minio2:9000']
+        labels:
+          node: 'minio2'
+          cluster: 'primary'
+    scrape_interval: 10s
+    scrape_timeout: 5s
+
+  # MinIO Cluster - Node 3
+  - job_name: 'minio-node3'
+    metrics_path: /minio/v2/metrics/cluster
+    static_configs:
+      - targets: ['minio3:9000']
+        labels:
+          node: 'minio3'
+          cluster: 'primary'
+    scrape_interval: 10s
+    scrape_timeout: 5s
+
+  # MinIO Cluster - Node 4
+  - job_name: 'minio-node4'
+    metrics_path: /minio/v2/metrics/cluster
+    static_configs:
+      - targets: ['minio4:9000']
+        labels:
+          node: 'minio4'
+          cluster: 'primary'
+    scrape_interval: 10s
+    scrape_timeout: 5s
+
+  # MinIO Exporter for detailed metrics
+  - job_name: 'minio-exporter'
+    static_configs:
+      - targets: ['minio-exporter:9290']
+    metrics_path: /metrics
+    scrape_interval: 10s
+
+  # Nginx Load Balancer monitoring
+  - job_name: 'nginx-minio'
+    static_configs:
+      - targets: ['nginx:9113']
+    metrics_path: /metrics
+
+  # Redis monitoring for cache
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-master:9121']
+    metrics_path: /metrics
+
+  # FastAPI application with storage endpoints
+  - job_name: 'fastapi-storage'
+    static_configs:
+      - targets: ['backend:8000']
+    metrics_path: /metrics
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'storage_.*'
+        action: keep
+
+  # Node exporter for system metrics on each MinIO node
+  - job_name: 'node'
+    static_configs:
+      - targets:
+        - 'node-exporter-minio1:9100'
+        - 'node-exporter-minio2:9100'
+        - 'node-exporter-minio3:9100'
+        - 'node-exporter-minio4:9100'
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: 'node-exporter-(.*):.*'
+        target_label: instance
+        replacement: '$1'
+
+  # K6 Load Testing Metrics (when running)
+  - job_name: 'k6'
+    static_configs:
+      - targets: ['k6:6565']
+    metrics_path: /metrics
+    scrape_interval: 5s
+    honor_timestamps: true
+
+  # CloudFront Log Processor (custom exporter)
+  - job_name: 'cdn-metrics'
+    static_configs:
+      - targets: ['cdn-exporter:9291']
+    metrics_path: /metrics
+    scrape_interval: 30s

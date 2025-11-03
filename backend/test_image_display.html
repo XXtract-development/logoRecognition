@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Image Display</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 10px 5px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .image-display {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            min-height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px dashed #ccc;
+        }
+        .image-display img {
+            max-width: 100%;
+            max-height: 600px;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .success {
+            background: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .error {
+            background: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .info {
+            background: #d1ecf1;
+            border-color: #bee5eb;
+            color: #0c5460;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        pre {
+            background: #f4f4f4;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🖼️ Test Image Display System</h1>
+
+        <div class="info">
+            <strong>Test Steps:</strong>
+            <ol>
+                <li>Upload an image file</li>
+                <li>Check if upload response contains correct URL</li>
+                <li>Test if image loads from backend</li>
+                <li>Verify full flow works</li>
+            </ol>
+        </div>
+
+        <h2>Step 1: Upload Image</h2>
+        <input type="file" id="fileInput" accept="image/*" />
+        <button onclick="uploadAndDisplay()">Upload & Display Image</button>
+
+        <div id="uploadResult"></div>
+
+        <h2>Step 2: Image Display</h2>
+        <div class="image-display" id="imageDisplay">
+            <p>No image uploaded yet</p>
+        </div>
+
+        <h2>Debug Information</h2>
+        <div id="debugInfo"></div>
+    </div>
+
+    <script>
+        async function uploadAndDisplay() {
+            const fileInput = document.getElementById('fileInput');
+            const uploadResult = document.getElementById('uploadResult');
+            const imageDisplay = document.getElementById('imageDisplay');
+            const debugInfo = document.getElementById('debugInfo');
+
+            if (!fileInput.files || fileInput.files.length === 0) {
+                uploadResult.className = 'error';
+                uploadResult.innerHTML = '❌ Please select an image file';
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+
+            uploadResult.innerHTML = '<div class="info">📤 Uploading...</div>';
+
+            try {
+                // Upload the file
+                const response = await fetch('http://localhost:8000/api/v1/logos/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success' && data.results && data.results.length > 0) {
+                    const fileInfo = data.results[0];
+
+                    uploadResult.className = 'success';
+                    uploadResult.innerHTML = `
+                        ✅ Upload Successful!<br>
+                        File ID: ${fileInfo.file_id}<br>
+                        Filename: ${fileInfo.filename}<br>
+                        URL: ${fileInfo.url}
+                    `;
+
+                    // Construct the full image URL
+                    const imageUrl = `http://localhost:8000${fileInfo.url}`;
+
+                    // Display debug info
+                    debugInfo.innerHTML = `
+                        <div class="info">
+                            <strong>Debug Information:</strong>
+                            <pre>Upload Response:
+${JSON.stringify(data, null, 2)}
+
+Image URL: ${imageUrl}
+
+Testing image load...</pre>
+                        </div>
+                    `;
+
+                    // Try to load and display the image
+                    const img = new Image();
+                    img.onload = function() {
+                        imageDisplay.innerHTML = '';
+                        imageDisplay.appendChild(img);
+                        debugInfo.innerHTML += '<div class="success">✅ Image loaded successfully!</div>';
+                    };
+                    img.onerror = function() {
+                        imageDisplay.innerHTML = '<p class="error">❌ Failed to load image</p>';
+                        debugInfo.innerHTML += `<div class="error">❌ Image failed to load from: ${imageUrl}</div>`;
+                    };
+                    img.src = imageUrl;
+
+                    // Also test direct fetch
+                    try {
+                        const imgResponse = await fetch(imageUrl);
+                        if (imgResponse.ok) {
+                            debugInfo.innerHTML += `<div class="success">✅ Direct fetch successful (Status: ${imgResponse.status})</div>`;
+                        } else {
+                            debugInfo.innerHTML += `<div class="error">❌ Direct fetch failed (Status: ${imgResponse.status})</div>`;
+                        }
+                    } catch (fetchError) {
+                        debugInfo.innerHTML += `<div class="error">❌ Fetch error: ${fetchError.message}</div>`;
+                    }
+
+                } else {
+                    uploadResult.className = 'error';
+                    uploadResult.innerHTML = '❌ Upload failed: Invalid response format';
+                    debugInfo.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (error) {
+                uploadResult.className = 'error';
+                uploadResult.innerHTML = `❌ Error: ${error.message}`;
+                debugInfo.innerHTML = `<div class="error">Error details: ${error.stack}</div>`;
+            }
+        }
+    </script>
+</body>
+</html>

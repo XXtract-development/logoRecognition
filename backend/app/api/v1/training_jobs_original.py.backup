@@ -1,0 +1,361 @@
+"""
+US-INT-002: Production API Endpoints for Training Jobs
+REST API endpoints using PostgreSQL database (NO JSON file I/O)
+"""
+
+from datetime import datetime
+from typing import List, Optional
+from uuid import UUID, uuid4
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, update, delete, func, and_, or_
+from sqlalchemy.orm import selectinload
+
+from app.models.base import get_db
+from app.models.training import TrainingJob, ModelRegistry
+from app.middleware.jwt_auth import get_current_active_user, User
+
+
+# Pydantic schemas for request/response
+class TrainingJobCreate(BaseModel):
+    """Request schema for creating a training job"""
+    config: dict = Field(..., description="Training configuration (dataset, hyperparameters, etc.)")
+    total_epochs: Optional[int] = Field(None, description="Total number of epochs")
+    user_id: Optional[str] = Field(None, description="User ID who created the job")
+    notifications: Optional[dict] = Field(None, description="Notification settings (email, slack)")
+
+
+class TrainingJobUpdate(BaseModel):
+    """Request schema for updating a training job"""
+    status: Optional[str] = Field(None, description="Job status")
+    metrics: Optional[dict] = Field(None, description="Training metrics")
+    phase_progress: Optional[dict] = Field(None, description="Phase progress")
+    current_epoch: Optional[int] = Field(None, description="Current epoch")
+    error_message: Optional[str] = Field(None, description="Error message if failed")
+
+
+class TrainingJobResponse(BaseModel):
+    """Response schema for training job"""
+    id: UUID
+    status: str
+    created_at: datetime
+    started_at: Optional[datetime]
+    completed_at: Optional[datetime]
+    config: dict
+    metrics: Optional[dict]
+    phase_progress: Optional[dict]
+    resources: Optional[dict]
+    current_epoch: Optional[int]
+    total_epochs: Optional[int]
+    notifications: Optional[dict]
+    celery_task_id: Optional[str]
+    error_message: Optional[str]
+    model_version: Optional[str]
+    user_id: Optional[str]
+    dataset_info: Optional[dict]
+
+    class Config:
+        from_attributes = True
+
+
+class TrainingJobListResponse(BaseModel):
+    """Response schema for paginated training job list"""
+    total: int
+    page: int
+    page_size: int
+    items: List[TrainingJobResponse]
+
+
+# Router
+router = APIRouter(
+    prefix="/api/v1/training/jobs",
+    tags=["training-jobs"],
+    responses={
+        404: {"description": "Training job not found"},
+        500: {"description": "Internal server error"}
+    }
+)
+
+
+@router.post(
+    "",
+    response_model=TrainingJobResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create new training job",
+    description="Create a new training job in the database (NOT JSON file)"
+)
+async def create_training_job(
+    job_data: TrainingJobCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+) -> TrainingJobResponse:
+    """
+    US-INT-002: Create training job in database
+
+    CRITICAL: This endpoint writes to PostgreSQL, NOT JSON files.
+    """
+
+    # Create new training job
+    new_job = TrainingJob(
+        id=uuid4(),
+        status="pending",
+        created_at=datetime.utcnow(),
+        config=job_data.config,
+        total_epochs=job_data.total_epochs,
+        user_id=job_data.user_id or current_user.user_id,  # Use authenticated user if not specified
+        notifications=job_data.notifications,
+        # Extract dataset info from config if available
+        dataset_info=job_data.config.get('dataset', None)
+    )
+
+    db.add(new_job)
+    await db.commit()
+    await db.refresh(new_job)
+
+    return TrainingJobResponse.model_validate(new_job)
+
+
+@router.get(
+    "/{job_id}",
+    response_model=TrainingJobResponse,
+    summary="Get training job by ID",
+    description="Retrieve a specific training job from the database"
+)
+async def get_training_job(
+    job_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+) -> TrainingJobResponse:
+    """
+    US-INT-002: Get training job from database
+
+    CRITICAL: This endpoint reads from PostgreSQL, NOT JSON files.
+    """
+
+    # Query database
+    result = await db.execute(
+        select(TrainingJob).where(TrainingJob.id == job_id)
+    )
+    job = result.scalar_one_or_none()
+
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Training job {job_id} not found"
+        )
+
+    return TrainingJobResponse.model_validate(job)
+
+
+@router.get(
+    "",
+    response_model=TrainingJobListResponse,
+    summary="List training jobs",
+    description="List all training jobs with pagination and filtering"
+)
+async def list_training_jobs(
+    page: int = Query(1, ge=1, description="Page number (1-indexed)"),
+    page_size: int = Query(20, ge=1, le=100, description="Items per page"),
+    status_filter: Optional[str] = Query(None, description="Filter by status"),
+    user_id: Optional[str] = Query(None, description="Filter by user ID"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+) -> TrainingJobListResponse:
+    """
+    US-INT-002: List training jobs from database with pagination
+
+    CRITICAL: This endpoint reads from PostgreSQL, NOT JSON files.
+    """
+
+    # Build query with filters
+    query = select(TrainingJob)
+
+    filters = []
+    if status_filter:
+        filters.append(TrainingJob.status == status_filter)
+    if user_id:
+        filters.append(TrainingJob.user_id == user_id)
+
+    if filters:
+        query = query.where(and_(*filters))
+
+    # Get total count
+    count_query = select(func.count()).select_from(TrainingJob)
+    if filters:
+        count_query = count_query.where(and_(*filters))
+
+    result = await db.execute(count_query)
+    total = result.scalar_one()
+
+    # Apply pagination
+    query = query.order_by(TrainingJob.created_at.desc())
+    query = query.offset((page - 1) * page_size).limit(page_size)
+
+    # Execute query
+    result = await db.execute(query)
+    jobs = result.scalars().all()
+
+    return TrainingJobListResponse(
+        total=total,
+        page=page,
+        page_size=page_size,
+        items=[TrainingJobResponse.model_validate(job) for job in jobs]
+    )
+
+
+@router.put(
+    "/{job_id}",
+    response_model=TrainingJobResponse,
+    summary="Update training job",
+    description="Update an existing training job in the database"
+)
+async def update_training_job(
+    job_id: UUID,
+    job_update: TrainingJobUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+) -> TrainingJobResponse:
+    """
+    US-INT-002: Update training job in database
+
+    CRITICAL: This endpoint updates PostgreSQL, NOT JSON files.
+    """
+
+    # Check if job exists
+    result = await db.execute(
+        select(TrainingJob).where(TrainingJob.id == job_id)
+    )
+    job = result.scalar_one_or_none()
+
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Training job {job_id} not found"
+        )
+
+    # Update fields
+    update_data = job_update.model_dump(exclude_unset=True)
+
+    # Handle status transitions
+    if 'status' in update_data:
+        if update_data['status'] == 'running' and not job.started_at:
+            job.started_at = datetime.utcnow()
+        elif update_data['status'] in ['completed', 'failed']:
+            job.completed_at = datetime.utcnow()
+
+    # Update job
+    for key, value in update_data.items():
+        setattr(job, key, value)
+
+    await db.commit()
+    await db.refresh(job)
+
+    return TrainingJobResponse.model_validate(job)
+
+
+@router.delete(
+    "/{job_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete training job (soft delete)",
+    description="Soft delete a training job by setting status to 'deleted'"
+)
+async def delete_training_job(
+    job_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+) -> None:
+    """
+    US-INT-002: Soft delete training job
+
+    CRITICAL: This endpoint updates PostgreSQL status, NOT deletes JSON files.
+
+    Note: This is a soft delete (status = 'deleted') to preserve audit trail.
+    For hard delete, use DELETE with ?hard=true parameter.
+    """
+
+    # Check if job exists
+    result = await db.execute(
+        select(TrainingJob).where(TrainingJob.id == job_id)
+    )
+    job = result.scalar_one_or_none()
+
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Training job {job_id} not found"
+        )
+
+    # Soft delete: set status to 'deleted'
+    job.status = 'deleted'
+    job.completed_at = datetime.utcnow()
+
+    await db.commit()
+
+
+@router.delete(
+    "/{job_id}/hard",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Permanently delete training job",
+    description="Permanently delete a training job from the database (CASCADE to model_registry)"
+)
+async def hard_delete_training_job(
+    job_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+) -> None:
+    """
+    US-INT-002: Hard delete training job
+
+    WARNING: This permanently deletes the job and all related model registry entries.
+    Use with caution!
+    """
+
+    # Check if job exists
+    result = await db.execute(
+        select(TrainingJob).where(TrainingJob.id == job_id)
+    )
+    job = result.scalar_one_or_none()
+
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Training job {job_id} not found"
+        )
+
+    # Hard delete (CASCADE will delete related model_registry entries)
+    await db.delete(job)
+    await db.commit()
+
+
+# Health check endpoint
+@router.get(
+    "/health",
+    tags=["health"],
+    summary="Health check",
+    description="Check if training jobs API is healthy"
+)
+async def health_check(db: AsyncSession = Depends(get_db)) -> dict:
+    """Health check endpoint"""
+    try:
+        # Test database connectivity
+        result = await db.execute(select(func.count()).select_from(TrainingJob))
+        count = result.scalar_one()
+
+        return {
+            "status": "healthy",
+            "database": "connected",
+            "total_jobs": count,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={
+                "status": "unhealthy",
+                "error": str(e),
+                "timestamp": datetime.utcnow().isoformat()
+            }
+        )

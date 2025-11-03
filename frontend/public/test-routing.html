@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Routing Test</title>
+    <script>
+        // Test if categories route exists
+        fetch('/categories')
+            .then(r => r.text())
+            .then(html => {
+                console.log('Response received, length:', html.length);
+                document.getElementById('result').innerHTML = 
+                    html.includes('root') ? 
+                    '✅ Route accessible - React will handle it' : 
+                    '❌ Route not found';
+            })
+            .catch(e => {
+                document.getElementById('result').innerHTML = '❌ Error: ' + e.message;
+            });
+    </script>
+</head>
+<body>
+    <h1>Testing /categories Route</h1>
+    <div id="result">Testing...</div>
+    <hr>
+    <p><a href="/">Go to Home</a></p>
+    <p><a href="/categories">Go to Categories</a></p>
+</body>
+</html>

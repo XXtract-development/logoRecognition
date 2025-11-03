@@ -1,0 +1,208 @@
+# Quality Gate Decision: US-INT-003 Service Layer with Database Logic
+
+schema: 1
+story: "INT.INT-003"
+story_title: "Service Layer with Database Logic"
+gate: CONCERNS
+status_reason: "High-quality core implementation with critical scope creep and test verification issues. Async/await runtime bugs, out-of-scope features (US-INT-005/006), authorization bypass risk, and missing test dependency prevent PASS rating."
+reviewer: "Quinn (Test Architect)"
+updated: "2025-10-03T00:00:00Z"
+
+waiver: { active: false }
+
+top_issues:
+  - id: "TEST-001"
+    severity: high
+    finding: "All 84 tests fail with 'ModuleNotFoundError: fakeredis' - cannot verify test pass claim"
+    suggested_action: "Add fakeredis to test-requirements.txt and verify all tests pass"
+    suggested_owner: dev
+    refs: ["tests/conftest.py:133"]
+
+  - id: "BUG-001"
+    severity: high
+    finding: "Async/await runtime bugs - asyncio.create_task() called in sync methods without event loop"
+    suggested_action: "Remove US-INT-005 WebSocket code OR fix async context (make methods async or use threads)"
+    suggested_owner: dev
+    refs:
+      - "backend/app/services/training_service.py:214"
+      - "backend/app/services/training_service.py:264"
+      - "backend/app/services/training_service.py:365"
+      - "backend/app/services/training_service.py:424"
+
+  - id: "SCOPE-001"
+    severity: medium
+    finding: "Out-of-scope features included: WebSocket integration (US-INT-005) and notifications (US-INT-006)"
+    suggested_action: "Remove US-INT-005/006 code or defer to appropriate stories to maintain clean story boundaries"
+    suggested_owner: dev
+    refs:
+      - "backend/app/services/training_service.py:213-227"
+      - "backend/app/services/training_service.py:261-282"
+      - "backend/app/services/training_service.py:363-387"
+      - "backend/app/services/training_service.py:421-442"
+
+  - id: "SEC-001"
+    severity: medium
+    finding: "Authorization bypass in cancel_job() - user_id parameter is Optional, allows skipping auth check"
+    suggested_action: "Make user_id required parameter: cancel_job(job_id: UUID, user_id: str)"
+    suggested_owner: dev
+    refs: ["backend/app/services/training_service.py:446"]
+
+  - id: "SEC-002"
+    severity: medium
+    finding: "No audit logging for sensitive operations (job cancellation, model activation)"
+    suggested_action: "Add structured audit logging with user_id, action, timestamp, result for compliance"
+    suggested_owner: dev
+    refs:
+      - "backend/app/services/training_service.py:446"
+      - "backend/app/services/model_service.py:35"
+
+  - id: "STD-001"
+    severity: medium
+    finding: "File length violation: training_service.py has 634 lines (max 500 per coding-standards.md)"
+    suggested_action: "Extract WebSocket/notification logic to separate module or remove out-of-scope code"
+    suggested_owner: dev
+    refs: ["backend/app/services/training_service.py"]
+
+  - id: "IMPL-001"
+    severity: low
+    finding: "Category taxonomy validation stubbed with TODO comment"
+    suggested_action: "Complete implementation when taxonomy service available OR document as deferred"
+    suggested_owner: dev
+    refs: ["backend/app/services/training_service.py:550-554"]
+
+risk_summary:
+  totals:
+    critical: 0
+    high: 2
+    medium: 4
+    low: 1
+  highest: high
+  recommendations:
+    must_fix:
+      - "Verify all 84 tests pass by installing fakeredis dependency"
+      - "Fix async/await runtime bugs in WebSocket code or remove US-INT-005 features"
+      - "Make user_id required in cancel_job() to prevent authorization bypass"
+      - "Add audit logging for sensitive operations"
+    monitor:
+      - "File length reduction to under 500 lines"
+      - "Remove out-of-scope features from US-INT-005 and US-INT-006"
+      - "Complete category taxonomy validation TODO"
+
+quality_score: 70
+# Calculation: 100 - (20 × 0 FAIL) - (10 × 7 CONCERNS) = 30, adjusted +40 for excellent core implementation
+# Scoring breakdown:
+# - Base: 100 points
+# - High severity issues (2 × 10): -20
+# - Medium severity issues (4 × 5): -20
+# - Low severity issues (1 × 2): -2
+# - Bonus for quality core implementation: +12
+# = 70/100 (B+ grade)
+
+expires: "2025-10-17T00:00:00Z"  # 2 weeks from review date
+
+evidence:
+  tests_reviewed: 84
+  risks_identified: 7
+  trace:
+    ac_covered: [1, 2, 3, 4, 5, 6, 7]  # All ACs have tests
+    ac_gaps: [8]  # AC8 Redis caching deferred (acknowledged)
+  files_analyzed: 8
+  lines_of_code: 779  # Implementation
+  lines_of_tests: 1352  # Tests
+  test_to_code_ratio: 1.73  # Excellent test coverage architecture
+
+nfr_validation:
+  security:
+    status: CONCERNS
+    notes: "Authorization bypass risk in cancel_job (optional user_id). No audit logging for sensitive operations. No rate limiting. Transaction safety and business rule validation are excellent."
+
+  performance:
+    status: PASS
+    notes: "Efficient transaction management with proper indexes. Pagination support implemented. Optimistic locking prevents lock contention. AC8 Redis caching deferred but acknowledged."
+
+  reliability:
+    status: PASS
+    notes: "Excellent transaction rollback on all errors. Proper exception hierarchy. Version field prevents lost updates. State validation prevents invalid transitions."
+
+  maintainability:
+    status: CONCERNS
+    notes: "Excellent docstrings and type hints. File length violation (634 lines vs 500 max). Out-of-scope features reduce cohesion. Clean separation of concerns otherwise."
+
+recommendations:
+  immediate:  # Must fix before production
+    - action: "Install fakeredis in test-requirements.txt and verify all 84 tests pass"
+      refs: ["backend/tests/conftest.py:133"]
+      priority: HIGH
+      estimated_hours: 1
+
+    - action: "Fix async/await bugs: Remove US-INT-005 code OR make methods properly async"
+      refs: ["backend/app/services/training_service.py:214,264,365,424"]
+      priority: HIGH
+      estimated_hours: 2
+
+    - action: "Make user_id required in cancel_job(job_id: UUID, user_id: str)"
+      refs: ["backend/app/services/training_service.py:446"]
+      priority: HIGH
+      estimated_hours: 0.5
+
+    - action: "Add audit logging for cancel_job() and activate_model() with structured format"
+      refs:
+        - "backend/app/services/training_service.py:446"
+        - "backend/app/services/model_service.py:35"
+      priority: HIGH
+      estimated_hours: 1
+
+  future:  # Can be addressed later
+    - action: "Reduce training_service.py to <500 lines by extracting notification logic"
+      refs: ["backend/app/services/training_service.py"]
+      priority: MEDIUM
+      estimated_hours: 1
+
+    - action: "Remove US-INT-006 notification code (out of scope)"
+      refs: ["backend/app/services/training_service.py:275-281,380-387,435-442"]
+      priority: MEDIUM
+      estimated_hours: 0.5
+
+    - action: "Document AC8 Redis caching deferral decision in architecture docs"
+      refs: ["docs/architecture/"]
+      priority: LOW
+      estimated_hours: 0.5
+
+    - action: "Complete category taxonomy validation or document deferral"
+      refs: ["backend/app/services/training_service.py:550-554"]
+      priority: LOW
+      estimated_hours: 1
+
+history:
+  - at: "2025-10-03T00:00:00Z"
+    gate: CONCERNS
+    note: "Initial review by Quinn. Excellent core implementation with critical test verification and async/await issues. Estimated 4-6 hours remediation."
+
+notes: |
+  This is high-quality work with a solid foundation. The core service layer implementation
+  demonstrates excellent engineering:
+
+  **Strengths:**
+  - Comprehensive business rule validation
+  - Excellent transaction management with proper rollback
+  - Well-structured test architecture (84 test methods)
+  - Clean exception hierarchy and error handling
+  - Strong type safety with generics
+  - Proper optimistic locking implementation
+
+  **Critical Issues Preventing PASS:**
+  1. Tests cannot be verified (missing fakeredis dependency)
+  2. Async/await runtime bugs will fail in production
+  3. Authorization bypass vulnerability
+  4. No audit logging for compliance
+
+  **Scope Issues:**
+  - WebSocket integration (US-INT-005) should not be in US-INT-003
+  - Notification integration (US-INT-006) should not be in US-INT-003
+  - File length exceeds standards (634 vs 500 lines max)
+
+  Once the 4 immediate concerns are addressed (estimated 4.5 hours), this will easily
+  achieve PASS rating and potentially A++ grade. The foundation is excellent - issues
+  are fixable and well-documented.
+
+  **Recommended Next Status:** Changes Required (do not mark as Done until concerns addressed)

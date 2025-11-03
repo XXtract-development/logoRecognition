@@ -1,0 +1,115 @@
+.logo-card {
+  transition: all 0.2s ease;
+  cursor: pointer;
+  border: 2px solid transparent;
+}
+
+.logo-card.selected {
+  border-color: #1890ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
+}
+
+.logo-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.logo-card .card-header {
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.logo-card .card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.logo-card .category-tag {
+  margin: 0;
+}
+
+.logo-card .detection-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.logo-card .detail-item {
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* List view styles */
+.logo-card-list {
+  padding: 12px;
+  background: white;
+  border: 1px solid #f0f0f0;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.logo-card-list.selected {
+  background: #e6f7ff;
+  border-color: #1890ff;
+}
+
+.logo-card-list:hover {
+  background: #fafafa;
+  border-color: #40a9ff;
+}
+
+.logo-card-list .card-content {
+  width: 100%;
+  justify-content: space-between;
+}
+
+.logo-card-list .brand-info {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.logo-card-list .detection-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo-card-list .size-info {
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* Compact view styles */
+.logo-card-compact {
+  padding: 6px 8px;
+  background: white;
+  border: 1px solid #f0f0f0;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 4px;
+}
+
+.logo-card-compact.selected {
+  background: #e6f7ff;
+  border-color: #1890ff;
+}
+
+.logo-card-compact:hover {
+  background: #fafafa;
+}
+
+.logo-card-compact .detection-id {
+  font-size: 11px;
+  font-family: 'Courier New', monospace;
+}

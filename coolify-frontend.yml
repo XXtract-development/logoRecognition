@@ -1,0 +1,47 @@
+# Coolify Frontend Application Configuration
+# Static Site Deployment for React Application
+
+name: logo-recognition-frontend
+type: static-site
+
+# Repository Configuration
+repository:
+  url: "https://github.com/your-org/logo-recognition"
+  branch: "main"
+  root_directory: "frontend"
+
+# Build Configuration
+build:
+  command: "pnpm install && pnpm build:web"
+  output_directory: "dist"
+  node_version: "22"
+
+# Environment Variables
+environment:
+  VITE_API_URL: "https://api.logo-app.yourdomain.com"
+  VITE_WS_URL: "wss://api.logo-app.yourdomain.com"
+  VITE_ENVIRONMENT: "production"
+
+# Domain Configuration
+domain:
+  name: "logo-app.yourdomain.com"
+  ssl: true
+  force_https: true
+
+# Advanced Settings
+settings:
+  auto_deploy: true
+  deploy_on_push: true
+  preview_deployments: true
+
+# Caching
+cache:
+  static_files: true
+  max_age: 31536000  # 1 year for static assets
+
+# Security Headers
+headers:
+  X-Frame-Options: "DENY"
+  X-Content-Type-Options: "nosniff"
+  Referrer-Policy: "strict-origin-when-cross-origin"
+  Content-Security-Policy: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'"

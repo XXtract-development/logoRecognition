@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zoom Fix Test Summary</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 15px;
+        }
+        .fix-summary {
+            background: #f8f9fa;
+            border-left: 4px solid #28a745;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 5px;
+        }
+        .fix-item {
+            margin: 15px 0;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
+        .fix-item h3 {
+            color: #495057;
+            margin-bottom: 10px;
+            font-size: 1.2rem;
+        }
+        .code-change {
+            background: #282c34;
+            color: #61dafb;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+        .before {
+            color: #ff6b6b;
+            text-decoration: line-through;
+        }
+        .after {
+            color: #51cf66;
+        }
+        .test-steps {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 5px;
+        }
+        .test-steps ol {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .test-steps li {
+            margin: 10px 0;
+            line-height: 1.6;
+        }
+        .status {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+        .status.fixed {
+            background: #d4edda;
+            color: #155724;
+        }
+        .explanation {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Bounding Box Zoom Fix - Completed</h1>
+
+        <div class="fix-summary">
+            <h2>Problem Resolved ✅</h2>
+            <p><strong>Issue:</strong> When zooming in/out on images, bounding boxes were not visible or incorrectly positioned because coordinates were being transformed multiple times.</p>
+            <p><strong>Solution:</strong> Removed redundant zoom transformations and let Konva's Stage handle all scaling automatically.</p>
+        </div>
+
+        <div class="fix-item">
+            <h3>Fix #1: Bounding Box Rendering</h3>
+            <span class="status fixed">FIXED</span>
+            <p>Removed manual zoom calculation from bounding box coordinates:</p>
+            <div class="code-change">
+                <div class="before">// Before: Double transformation
+const zoomedBox = boundingBoxUtils.calculateZoomedCoordinates(box, zoom);
+x={zoomedBox.x}
+y={zoomedBox.y}</div>
+                <div class="after">// After: Let Stage handle scaling
+x={box.x}
+y={box.y}</div>
+            </div>
+        </div>
+
+        <div class="fix-item">
+            <h3>Fix #2: Drawing Preview</h3>
+            <span class="status fixed">FIXED</span>
+            <p>Fixed drawing preview to use original coordinates:</p>
+            <div class="code-change">
+                <div class="before">// Before: Manual zoom multiplication
+x={drawingBox.x * zoom}
+y={drawingBox.y * zoom}</div>
+                <div class="after">// After: Use original coordinates
+x={drawingBox.x}
+y={drawingBox.y}</div>
+            </div>
+        </div>
+
+        <div class="fix-item">
+            <h3>Fix #3: Drag Handler</h3>
+            <span class="status fixed">FIXED</span>
+            <p>Removed zoom division from drag position updates:</p>
+            <div class="code-change">
+                <div class="before">// Before: Dividing by zoom
+x: pos.x / zoom, y: pos.y / zoom</div>
+                <div class="after">// After: Direct position
+x: pos.x, y: pos.y</div>
+            </div>
+        </div>
+
+        <div class="fix-item">
+            <h3>Fix #4: Resize Calculations</h3>
+            <span class="status fixed">FIXED</span>
+            <p>Adjusted resize delta calculations for proper scaling:</p>
+            <div class="code-change">
+                <div class="before">// Before: Passing zoom to calculateResize
+calculateResize(box, resizeHandle, deltaX, deltaY, zoom)</div>
+                <div class="after">// After: Apply zoom to delta, not to function
+const deltaX = (pos.x - dragState.startPosition.x) / zoom;
+calculateResize(box, resizeHandle, deltaX, deltaY, 1)</div>
+            </div>
+        </div>
+
+        <div class="explanation">
+            <h2>💡 Technical Explanation</h2>
+            <p>The root cause was that Konva's Stage component already applies scaling transformation via <code>scaleX</code> and <code>scaleY</code> properties. When we also manually transformed coordinates, it resulted in double transformation, making bounding boxes appear in wrong positions or disappear when zoomed.</p>
+            <p>The solution is to work with original, untransformed coordinates for all shapes within the Stage, letting Konva handle the zoom transformation uniformly.</p>
+        </div>
+
+        <div class="test-steps">
+            <h2>📋 Testing Instructions</h2>
+            <ol>
+                <li>Open the application at <a href="http://localhost:4001" target="_blank">http://localhost:4001</a></li>
+                <li>Navigate to an image annotation page</li>
+                <li>Use the zoom controls (+ / - buttons or 🔍 icons)</li>
+                <li>Draw a bounding box on the zoomed image - it should appear correctly</li>
+                <li>Verify bounding boxes remain visible at all zoom levels (50% - 400%)</li>
+                <li>Test dragging and resizing boxes while zoomed</li>
+                <li>Confirm the box positions are saved correctly regardless of zoom level</li>
+            </ol>
+        </div>
+
+        <div style="text-align: center; margin-top: 40px; color: #6c757d;">
+            <p>All changes have been applied to: <br><code>/frontend/src/components/InteractiveCanvas.tsx</code></p>
+            <p style="font-size: 2rem; margin-top: 20px;">✨ Fix Complete!</p>
+        </div>
+    </div>
+</body>
+</html>

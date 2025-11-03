@@ -1,0 +1,261 @@
+schema: 1
+story: 'INT.006'
+story_title: 'Database-triggered Notifications'
+gate: CONCERNS
+status_reason: 'Core functionality complete with audit trail and email validation refactoring, but unsubscribe mechanism incomplete and tests failing. Production throttling needs Redis implementation.'
+reviewer: 'Quinn (Test Architect)'
+updated: '2025-01-03T00:00:00Z'
+
+top_issues:
+  - id: "TEST-001"
+    severity: high
+    finding: "Tests failing with configuration/setup errors (EEEE... output)"
+    suggested_action: "Fix test configuration and ensure all tests pass before production"
+    suggested_owner: dev
+    refs:
+      - "tests/services/test_notification_service.py"
+
+  - id: "AC7-001"
+    severity: medium
+    finding: "Unsubscribe mechanism incomplete - link exists in email but no backend endpoint"
+    suggested_action: "Create API endpoint to handle unsubscribe preferences and user notification settings"
+    suggested_owner: dev
+    refs:
+      - "app/services/notification_service.py:243"
+
+  - id: "PROD-001"
+    severity: medium
+    finding: "Throttling uses in-memory defaultdict which will be lost on service restart"
+    suggested_action: "Migrate throttling state to Redis for production resilience"
+    suggested_owner: dev
+    refs:
+      - "app/services/notification_service.py:64"
+
+  - id: "TEST-002"
+    severity: medium
+    finding: "No tests for newly implemented audit trail logging (AC7)"
+    suggested_action: "Add unit tests for _log_notification and NotificationLog model"
+    suggested_owner: dev
+
+  - id: "CONFIG-001"
+    severity: low
+    finding: "No health check for SMTP connectivity in /health endpoint"
+    suggested_action: "Add SMTP connection test to health endpoint for monitoring"
+    suggested_owner: dev
+
+waiver: { active: false }
+
+quality_score: 65
+
+evidence:
+  tests_reviewed: 14
+  files_refactored: 3
+  files_created: 3
+  risks_identified: 5
+  trace:
+    ac_covered: [1, 2, 3, 4, 5, 6, 7]
+    ac_gaps: []
+
+nfr_validation:
+  security:
+    status: PASS
+    notes: |
+      ✅ Webhook URL validation (https://hooks.slack.com/* only)
+      ✅ Email validation added during QA review
+      ✅ No sensitive data in notifications (AC6 verified)
+      ✅ Unsubscribe link present in emails
+      ⚠️  SMTP credentials properly configured via environment variables
+  performance:
+    status: CONCERNS
+    notes: |
+      ✅ Throttling prevents spam (1h email, 5m Slack)
+      ⚠️  In-memory throttling not suitable for multi-instance production
+      ✅ Async notification sending via Celery (non-blocking)
+      ✅ Proper timeout handling (10s SMTP, 10s HTTP)
+  reliability:
+    status: PASS
+    notes: |
+      ✅ Retry logic with exponential backoff (1min, 2min, 4min)
+      ✅ Max 3 retries on network errors
+      ✅ Job completion NOT blocked by notification failure
+      ✅ Error logging for all failure scenarios
+      ✅ Audit trail logging (added during QA review)
+  maintainability:
+    status: PASS
+    notes: |
+      ✅ Clean separation of concerns (service, tasks, models)
+      ✅ Comprehensive docstrings with AC references
+      ✅ Template-based email generation
+      ✅ Proper error handling throughout
+      ✅ Database model for audit trail (added during QA review)
+
+refactoring_performed:
+  - file: "backend/app/models/notification.py"
+    change: "Created NotificationLog model for audit trail"
+    why: "AC7 requires notification_log table for compliance and monitoring"
+    how: "Added SQLAlchemy model with proper indexes and foreign key to training_jobs"
+
+  - file: "backend/app/utils/email_validator.py"
+    change: "Created email validation utility"
+    why: "AC4 requires invalid email rejection (400 status)"
+    how: "RFC 5322 compliant regex validation with proper error messages"
+
+  - file: "backend/app/services/notification_service.py"
+    change: "Added _log_notification method and audit trail logging"
+    why: "AC7 requires all notifications logged to database with status tracking"
+    how: "Created audit logging method called after every notification attempt (sent/throttled/failed)"
+
+  - file: "backend/app/services/notification_service.py"
+    change: "Added email validation in all send methods"
+    why: "AC4 requires email validation before sending"
+    how: "Integrated is_valid_email() check with audit trail logging for invalid emails"
+
+  - file: "backend/alembic/versions/006_add_notification_log_table.py"
+    change: "Created database migration for notification_log table"
+    why: "AC7 requires persistent audit trail in database"
+    how: "Alembic migration with proper indexes for query performance"
+
+recommendations:
+  immediate:
+    - action: "Fix failing tests - resolve configuration/setup errors"
+      priority: CRITICAL
+      refs: ["tests/services/test_notification_service.py"]
+
+    - action: "Implement unsubscribe API endpoint and user preferences storage"
+      priority: HIGH
+      refs: ["app/api/v1/notifications.py (new file)"]
+
+    - action: "Add tests for audit trail logging functionality"
+      priority: HIGH
+      refs: ["tests/services/test_notification_service.py"]
+
+    - action: "Run database migration to create notification_log table"
+      priority: HIGH
+      refs: ["alembic/versions/006_add_notification_log_table.py"]
+
+  future:
+    - action: "Migrate throttling state from memory to Redis"
+      priority: MEDIUM
+      refs: ["app/services/notification_service.py:64"]
+
+    - action: "Add SMTP connectivity health check"
+      priority: MEDIUM
+      refs: ["app/api/health.py"]
+
+    - action: "Implement notification delivery status tracking in frontend"
+      priority: LOW
+      refs: ["frontend/src/components/TrainingDashboard"]
+
+    - action: "Add metrics/monitoring for notification success/failure rates"
+      priority: LOW
+      refs: ["app/services/notification_service.py"]
+
+acceptance_criteria_status:
+  AC1_email_notification:
+    status: PASS
+    notes: "Email sent with database context, HTML template, SMTP configuration via environment"
+
+  AC2_slack_notification:
+    status: PASS
+    notes: "Slack message with rich formatting, blocks, colors, dashboard link"
+
+  AC3_notification_templates:
+    status: PASS
+    notes: "All three templates exist (started, completed, failed) with proper variables"
+
+  AC4_notification_configuration:
+    status: PASS
+    notes: "Notifications stored in database JSON column. Email validation added. Webhook validation exists."
+
+  AC5_notification_retry:
+    status: PASS
+    notes: "Exponential backoff (1min, 2min, 4min), max 3 retries, job not blocked"
+
+  AC6_notification_privacy:
+    status: PASS
+    notes: "No sensitive data included - verified in _build_context_from_db()"
+
+  AC7_notification_throttling_audit:
+    status: CONCERNS
+    notes: |
+      ✅ Throttling implemented (1h email, 5m Slack)
+      ✅ Audit trail logging NOW implemented (added during QA review)
+      ✅ All notifications logged to notification_log table
+      ⚠️  Unsubscribe link present but NO backend endpoint
+      ⚠️  In-memory throttling not production-ready (needs Redis)
+      ⚠️  No tests for audit trail functionality
+
+testing_coverage:
+  unit_tests: 14
+  integration_tests: 0
+  e2e_tests: 0
+  test_status: FAILING
+  coverage_percentage: "~85% (estimated, needs verification after test fixes)"
+  missing_tests:
+    - "Audit trail logging (_log_notification)"
+    - "NotificationLog model database operations"
+    - "Email validation utility (email_validator.py)"
+    - "Integration tests with actual database"
+    - "Unsubscribe endpoint (when implemented)"
+
+production_readiness:
+  blocking_issues:
+    - "Tests must pass before deployment"
+    - "Notification_log table migration must run"
+
+  concerns:
+    - "Unsubscribe mechanism incomplete"
+    - "In-memory throttling will fail in multi-instance deployments"
+    - "No monitoring/alerting configured"
+
+  deployment_checklist:
+    - action: "Configure SMTP credentials in production environment"
+      status: PENDING
+    - action: "Run database migration (006_add_notification_log_table.py)"
+      status: PENDING
+    - action: "Configure Slack webhook URLs securely"
+      status: PENDING
+    - action: "Set up monitoring for notification failure rates"
+      status: PENDING
+    - action: "Implement Redis-based throttling for production"
+      status: PENDING
+    - action: "Add integration tests"
+      status: PENDING
+
+code_quality_assessment: |
+  **Strengths:**
+  - Clean, well-documented code with AC references throughout
+  - Proper separation of concerns (service/tasks/models)
+  - Comprehensive error handling
+  - Security-conscious (webhook validation, no sensitive data)
+  - Privacy-compliant with unsubscribe links
+  - Good use of Jinja2 templates for maintainability
+  - Proper transaction management
+  - Audit trail now implemented for compliance
+
+  **Areas for Improvement:**
+  - Tests are failing (configuration issue)
+  - Production throttling needs Redis backend
+  - Unsubscribe functionality incomplete
+  - Missing health checks for SMTP
+  - No monitoring/metrics
+
+  **Overall Grade:** B+ (would be A++ after addressing CONCERNS items)
+
+next_steps: |
+  1. **IMMEDIATE (Before Merge):**
+     - Fix failing tests and verify 100% pass rate
+     - Add tests for new audit trail functionality
+     - Run database migration
+     - Verify email validation works correctly
+
+  2. **BEFORE PRODUCTION:**
+     - Implement unsubscribe API endpoint
+     - Migrate throttling to Redis
+     - Add SMTP health check
+     - Set up notification monitoring
+
+  3. **POST-DEPLOYMENT:**
+     - Monitor notification success rates
+     - Track audit trail for compliance
+     - Optimize template rendering performance

@@ -1,0 +1,374 @@
+# Quality Gate Decision - US-INT-001: JSON to PostgreSQL Schema Migration
+
+schema: 1
+story: "US-INT-001"
+story_title: "JSON to PostgreSQL Schema Migration"
+gate: "FAIL"
+status_reason: "Critical schema mismatch between model and migration. Migration missing 9 required fields causing runtime failures. Tests cannot execute due to environment issues."
+reviewer: "Quinn (Test Architect)"
+updated: "2025-10-03T00:00:00Z"
+
+waiver:
+  active: false
+
+# Critical Issues Requiring Immediate Fix
+top_issues:
+  - id: "SCHEMA-001"
+    severity: high
+    finding: "Migration schema incomplete - missing 9 critical fields from AC2 requirements"
+    details: |
+      Migration file (b8d46cdab736) is missing these required fields that exist in model:
+      - dataset_version_id (UUID, indexed, required for US-INT-003)
+      - augmentation_factor (Integer, training config)
+      - target_categories (JSONB, training targets)
+      - accuracy_threshold (Float, quality control)
+      - eta_seconds (Integer, progress tracking)
+      - checksum (String(64), duplicate detection)
+      - created_by (String(255), indexed, user tracking)
+      - version (Integer, optimistic locking)
+      - batch_size (Integer, training parameter)
+    suggested_action: "Generate new migration with --autogenerate to capture all model fields, or manually add missing columns"
+    refs:
+      - "backend/alembic/versions/b8d46cdab736_us_int_001_add_training_jobs_and_model_.py:38-58"
+      - "backend/app/models/training.py:32-63"
+
+  - id: "TEST-001"
+    severity: high
+    finding: "All tests failing - cannot verify rollback requirements (AC7)"
+    details: |
+      Test execution failed with:
+      - ModuleNotFoundError: No module named 'fakeredis' (despite being in requirements.txt)
+      - Coverage failure: 0% < 80% required
+      - Cannot verify < 5 second rollback requirement
+      - Cannot verify idempotency
+      - Cannot verify CASCADE delete behavior
+    suggested_action: "Install dependencies with 'pip install -r requirements.txt' and re-run tests"
+    refs:
+      - "backend/tests/test_migration_rollback.py"
+      - "backend/tests/conftest.py:133"
+
+  - id: "STORY-001"
+    severity: high
+    finding: "Story file missing required Dev Agent sections - cannot track implementation"
+    details: |
+      Story file lacks critical tracking sections:
+      - No "Status" field (should be "Ready for Review")
+      - No "Dev Agent Record" section with task checkboxes
+      - No "File List" section documenting changed files
+      - Cannot verify which ACs were actually implemented
+    suggested_action: "Dev agent must update story file with standard sections before QA review"
+    refs:
+      - "docs/sprints/sprint-integration-training/US-INT-001-database-migration.md"
+
+  - id: "SCOPE-001"
+    severity: medium
+    finding: "Migration scope creep - combines US-INT-001 with category tables from different story"
+    details: |
+      Migration b8d46cdab736 creates 3 tables:
+      1. categories (NOT part of US-INT-001)
+      2. training_jobs (US-INT-001 ✓)
+      3. model_registry (US-INT-001 ✓)
+
+      Categories table appears to be from a different story, violating single responsibility.
+    suggested_action: "Split into separate migrations: one for categories, one for US-INT-001 tables"
+    refs:
+      - "backend/alembic/versions/b8d46cdab736_us_int_001_add_training_jobs_and_model_.py:20-36"
+
+# Evidence Collected
+evidence:
+  tests_reviewed: 4
+  tests_passing: 0
+  tests_failing: 4
+  code_files_reviewed: 5
+  migration_files: 1
+  test_files: 1
+  risks_identified: 4
+  trace:
+    ac_covered: [1, 3]  # AC1 (Alembic setup) and AC3 (ModelRegistry) partially complete
+    ac_gaps: [2, 4, 5, 6, 7]  # AC2 (TrainingJob complete schema), AC4-7 (all unverified)
+    ac_incomplete:
+      - ac: 2
+        reason: "TrainingJob table created but missing 9 required fields from spec"
+      - ac: 4
+        reason: "Cannot verify annotation tables - database not running"
+      - ac: 5
+        reason: "Migration script exists but not tested/executed"
+      - ac: 6
+        reason: "Rollback code exists but cannot verify functionality"
+      - ac: 7
+        reason: "Rollback tests exist but fail to execute - 0 passing"
+
+# Non-Functional Requirements Assessment
+nfr_validation:
+  security:
+    status: CONCERNS
+    notes: |
+      - Database credentials hardcoded in multiple files (should use env vars)
+      - No SQL injection testing performed
+      - Migration script lacks input validation
+  performance:
+    status: FAIL
+    notes: |
+      - Cannot verify AC7 requirement: "Rollback completes in < 5 seconds"
+      - Tests failed - performance benchmarks not executed
+      - No baseline metrics established
+  reliability:
+    status: FAIL
+    notes: |
+      - Schema mismatch will cause runtime AttributeErrors when code accesses missing fields
+      - No data integrity verification after migration
+      - Rollback mechanism unverified
+  maintainability:
+    status: CONCERNS
+    notes: |
+      - Migration combines multiple concerns (categories + training)
+      - Good: Well-documented code with clear comments
+      - Good: Comprehensive test coverage written (just not executing)
+      - Concern: Model-migration drift indicates lack of validation process
+
+# Acceptance Criteria Detailed Assessment
+acceptance_criteria_status:
+  ac1_alembic_setup:
+    status: PASS
+    evidence:
+      - "✓ backend/alembic/ directory created"
+      - "✓ alembic.ini configured"
+      - "✓ env.py configured with models"
+      - "✓ Initial migration generated"
+
+  ac2_training_jobs_table:
+    status: FAIL
+    evidence:
+      - "✓ training_jobs table created"
+      - "✓ Base fields present (id, status, timestamps)"
+      - "❌ MISSING 9 required fields (see SCHEMA-001)"
+      - "✓ Indexes created (status, created_at, celery_task)"
+      - "❌ Missing indexes (checksum, created_by, dataset_version)"
+
+  ac3_model_registry_table:
+    status: PASS
+    evidence:
+      - "✓ model_registry table created"
+      - "✓ All required fields present"
+      - "✓ is_active correctly Boolean (not String)"
+      - "✓ Foreign key to training_jobs with CASCADE"
+      - "✓ Unique constraint on version"
+      - "✓ All indexes created correctly"
+
+  ac4_annotation_tables:
+    status: NOT_VERIFIED
+    evidence:
+      - "Database container not running - cannot verify"
+
+  ac5_data_migration:
+    status: NOT_VERIFIED
+    evidence:
+      - "✓ Migration script exists: backend/scripts/migrate_json_to_db.py"
+      - "✓ Good error handling and logging"
+      - "❌ Script not executed - no verification"
+      - "❌ No evidence of JSON backup/archive"
+      - "⚠️ Script uses psycopg2 directly instead of SQLAlchemy ORM"
+
+  ac6_rollback_support:
+    status: NOT_VERIFIED
+    evidence:
+      - "✓ downgrade() function implemented"
+      - "✓ Drops tables in correct order (model_registry → training_jobs)"
+      - "❌ Cannot verify execution - database not accessible"
+
+  ac7_rollback_verification:
+    status: FAIL
+    evidence:
+      - "✓ Comprehensive test file created"
+      - "✓ Tests for speed, idempotency, CASCADE behavior"
+      - "❌ All 4 tests FAILED - cannot execute"
+      - "❌ < 5 second requirement UNVERIFIED"
+      - "❌ Coverage 0% (required 80%)"
+
+# Quality Score Calculation
+# Formula: 100 - (20 × FAIL count) - (10 × CONCERNS count)
+# FAIL issues: 3 (SCHEMA-001, TEST-001, STORY-001)
+# CONCERNS: 1 (SCOPE-001)
+quality_score: 30  # 100 - (20 * 3) - (10 * 1) = 30/100
+
+# Expires in 2 weeks - must be re-reviewed after fixes
+expires: "2025-10-17T00:00:00Z"
+
+# Risk Assessment Summary
+risk_summary:
+  totals:
+    critical: 1  # SCHEMA-001 will cause runtime failures
+    high: 2      # TEST-001, STORY-001
+    medium: 1    # SCOPE-001
+    low: 0
+  highest: critical
+  recommendations:
+    must_fix:
+      - "Fix schema mismatch by adding missing 9 fields to migration"
+      - "Resolve test environment and achieve 100% test pass rate"
+      - "Complete story file with Dev Agent Record sections"
+    monitor:
+      - "Separate categories migration into its own file"
+      - "Move hardcoded credentials to environment variables"
+
+# Actionable Recommendations
+recommendations:
+  immediate:  # Must fix before any production deployment
+    - action: "Generate corrected migration with all model fields"
+      priority: CRITICAL
+      estimated_effort: "30 minutes"
+      refs: ["backend/alembic/versions/"]
+      commands: |
+        cd backend
+        alembic revision --autogenerate -m "US-INT-001: Fix training_jobs schema - add missing fields"
+        # Review generated migration to ensure all 9 fields are added
+        alembic upgrade head
+
+    - action: "Install dependencies and verify 100% test pass"
+      priority: CRITICAL
+      estimated_effort: "15 minutes"
+      refs: ["backend/tests/test_migration_rollback.py"]
+      commands: |
+        cd backend
+        pip install -r requirements.txt
+        python -m pytest tests/test_migration_rollback.py -v
+        # All 4 tests must PASS
+
+    - action: "Update story file with Dev Agent Record sections"
+      priority: HIGH
+      estimated_effort: "10 minutes"
+      refs: ["docs/sprints/sprint-integration-training/US-INT-001-database-migration.md"]
+      sections_needed:
+        - "## Status: Ready for Review"
+        - "## Dev Agent Record"
+        - "## File List"
+        - "## Tasks checkboxes [x] completion"
+
+    - action: "Verify rollback performance < 5 seconds"
+      priority: HIGH
+      estimated_effort: "5 minutes"
+      refs: ["backend/tests/test_migration_rollback.py:45-77"]
+      success_criteria: "test_rollback_speed PASS with time < 5.0s"
+
+  future:  # Can be addressed in subsequent stories
+    - action: "Split categories table into separate migration"
+      priority: MEDIUM
+      estimated_effort: "20 minutes"
+      refs: ["backend/alembic/versions/b8d46cdab736...py"]
+
+    - action: "Externalize database credentials to environment variables"
+      priority: MEDIUM
+      estimated_effort: "10 minutes"
+      refs:
+        - "backend/scripts/migrate_json_to_db.py:243-247"
+        - "backend/tests/test_migration_rollback.py:23"
+
+    - action: "Add data validation tests for migration script"
+      priority: LOW
+      estimated_effort: "1 hour"
+      refs: ["backend/scripts/migrate_json_to_db.py"]
+
+# Definition of Done Assessment
+dod_status:
+  functional_requirements:
+    - item: "All acceptance criteria verified (AC1-AC7)"
+      status: FAIL
+      note: "Only AC1 and AC3 complete; AC2 critical fail"
+    - item: "Alembic initialized and configured"
+      status: PASS
+    - item: "training_jobs and model_registry tables created"
+      status: PARTIAL
+      note: "Created but training_jobs incomplete"
+    - item: "JSON data successfully migrated"
+      status: NOT_VERIFIED
+    - item: "Rollback tested and working (< 5 seconds)"
+      status: FAIL
+      note: "Tests cannot execute"
+    - item: "Edge cases handled"
+      status: NOT_VERIFIED
+
+  technical_requirements:
+    - item: "Code reviewed and approved"
+      status: IN_PROGRESS
+    - item: "Unit tests pass (≥90% coverage)"
+      status: FAIL
+      note: "0% coverage, tests failing"
+    - item: "Integration tests pass"
+      status: FAIL
+    - item: "Migration performance verified (< 30 seconds)"
+      status: NOT_VERIFIED
+    - item: "No SQL injection vulnerabilities"
+      status: NOT_VERIFIED
+    - item: "Database constraints properly enforced"
+      status: PARTIAL
+
+  documentation:
+    - item: "Migration procedure documented"
+      status: PASS
+      note: "Excellent documentation in story file"
+    - item: "Rollback procedure documented"
+      status: PASS
+    - item: "Architecture docs updated"
+      status: NOT_VERIFIED
+    - item: "README updated"
+      status: NOT_VERIFIED
+
+# Code Quality Assessment
+code_quality:
+  strengths:
+    - "Excellent documentation and inline comments"
+    - "Comprehensive test scenarios designed (speed, idempotency, CASCADE)"
+    - "Good error handling in migration script"
+    - "Proper use of transactions and rollback"
+    - "Well-structured migration file with proper upgrade/downgrade"
+    - "Model definition is complete and well-documented"
+
+  weaknesses:
+    - "Critical schema drift between model and migration"
+    - "No validation process to catch model-migration mismatches"
+    - "Hardcoded credentials in multiple files"
+    - "Scope creep (categories table mixed with US-INT-001)"
+    - "Tests written but never executed to verify they work"
+
+# Next Steps for Development Team
+next_steps:
+  required_before_resubmit:
+    - "Fix migration schema (add 9 missing fields)"
+    - "Run and pass all 4 rollback tests"
+    - "Update story file format (Status, Dev Agent Record, File List)"
+    - "Start database container and verify schema"
+    - "Execute data migration script and verify results"
+
+  validation_commands: |
+    # 1. Fix schema
+    cd backend
+    alembic revision --autogenerate -m "Fix training_jobs schema"
+
+    # 2. Run tests
+    pip install -r requirements.txt
+    python -m pytest tests/test_migration_rollback.py -v
+    # Expected: 4/4 PASS
+
+    # 3. Verify database
+    docker-compose up -d postgres
+    docker exec logorecognition-postgres-1 psql -U postgres -d logo_recognition -c "\d training_jobs"
+    # Expected: All 17 columns present including dataset_version_id, checksum, etc.
+
+    # 4. Run migration
+    python scripts/migrate_json_to_db.py
+    # Expected: ✅ Migration completed successfully
+
+    # 5. Verify rollback
+    alembic downgrade -1
+    # Expected: < 5 seconds, all tables dropped
+    alembic upgrade head
+    # Expected: Tables restored
+
+  estimated_fix_time: "1-2 hours"
+
+# Review History
+history:
+  - at: "2025-10-03T00:00:00Z"
+    gate: FAIL
+    reviewer: "Quinn (Test Architect)"
+    note: "Initial A++ grade review - Critical schema mismatch, test failures, story format issues"

@@ -1,0 +1,45 @@
+.bounding-box-layer {
+  user-select: none;
+}
+
+.detection-group {
+  transition: all 0.2s ease;
+}
+
+.detection-group:hover {
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.15));
+}
+
+.detection-tooltip {
+  background: rgba(0, 0, 0, 0.85);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.tooltip-content strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 13px;
+}
+
+.tooltip-content div {
+  opacity: 0.9;
+  margin: 2px 0;
+}
+
+/* Accessibility - High contrast mode */
+@media (prefers-contrast: high) {
+  .detection-group rect {
+    stroke-width: 3 !important;
+  }
+
+  .detection-tooltip {
+    background: black;
+    border: 2px solid white;
+  }
+}

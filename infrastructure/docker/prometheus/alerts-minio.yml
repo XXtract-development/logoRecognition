@@ -1,0 +1,242 @@
+# A++ MinIO Cluster Alert Rules
+# SLA: 99.99% availability, <100ms upload, <50ms CDN
+
+groups:
+  - name: minio_availability
+    interval: 30s
+    rules:
+      # Cluster Health Alerts
+      - alert: MinIOClusterDown
+        expr: up{job=~"minio-node.*"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: minio
+        annotations:
+          summary: "MinIO node {{ $labels.node }} is down"
+          description: "MinIO node {{ $labels.node }} has been down for more than 1 minute. SLA at risk."
+
+      - alert: MinIOClusterDegraded
+        expr: count(up{job=~"minio-node.*"} == 1) < 3
+        for: 2m
+        labels:
+          severity: warning
+          component: minio
+        annotations:
+          summary: "MinIO cluster is degraded"
+          description: "Less than 3 MinIO nodes are healthy. Cluster is running in degraded mode."
+
+      # Performance Alerts
+      - alert: MinIOUploadLatencyHigh
+        expr: histogram_quantile(0.95, rate(minio_s3_requests_duration_seconds_bucket{api="putobject"}[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: minio
+          sla: upload_latency
+        annotations:
+          summary: "MinIO upload latency exceeding 100ms (p95)"
+          description: "95th percentile upload latency is {{ $value | humanizeDuration }}. Target is <100ms."
+
+      - alert: MinIODownloadLatencyHigh
+        expr: histogram_quantile(0.95, rate(minio_s3_requests_duration_seconds_bucket{api="getobject"}[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          component: minio
+          sla: download_latency
+        annotations:
+          summary: "MinIO download latency exceeding 50ms (p95)"
+          description: "95th percentile download latency is {{ $value | humanizeDuration }}. Target is <50ms."
+
+      # Throughput Alerts
+      - alert: MinIOThroughputLow
+        expr: rate(minio_s3_requests_total[5m]) < 100
+        for: 10m
+        labels:
+          severity: info
+          component: minio
+        annotations:
+          summary: "MinIO throughput below expected levels"
+          description: "MinIO is processing {{ $value | humanize }} requests/sec. Expected >100 req/s."
+
+      - alert: MinIOThroughputCritical
+        expr: rate(minio_s3_requests_total[5m]) > 2000
+        for: 5m
+        labels:
+          severity: warning
+          component: minio
+        annotations:
+          summary: "MinIO throughput extremely high"
+          description: "MinIO is processing {{ $value | humanize }} requests/sec. May need scaling."
+
+  - name: minio_storage
+    interval: 60s
+    rules:
+      # Storage Capacity Alerts
+      - alert: MinIOStorageCapacity80
+        expr: minio_cluster_capacity_usable_free_bytes / minio_cluster_capacity_usable_total_bytes < 0.2
+        for: 10m
+        labels:
+          severity: warning
+          component: minio
+        annotations:
+          summary: "MinIO storage at 80% capacity"
+          description: "Only {{ $value | humanizePercentage }} of storage remaining. Auto-scaling should trigger."
+
+      - alert: MinIOStorageCapacity95
+        expr: minio_cluster_capacity_usable_free_bytes / minio_cluster_capacity_usable_total_bytes < 0.05
+        for: 5m
+        labels:
+          severity: critical
+          component: minio
+        annotations:
+          summary: "MinIO storage at 95% capacity"
+          description: "Critical: Only {{ $value | humanizePercentage }} of storage remaining. Immediate action required."
+
+      # Disk Health Alerts
+      - alert: MinIODiskOffline
+        expr: minio_cluster_disk_offline_total > 0
+        for: 1m
+        labels:
+          severity: critical
+          component: minio
+        annotations:
+          summary: "MinIO disk offline"
+          description: "{{ $value }} disk(s) are offline. Data durability at risk."
+
+      - alert: MinIOHealingRequired
+        expr: minio_heal_objects_total > 0
+        for: 5m
+        labels:
+          severity: warning
+          component: minio
+        annotations:
+          summary: "MinIO objects require healing"
+          description: "{{ $value }} objects need healing. Erasure coding recovery in progress."
+
+  - name: minio_errors
+    interval: 30s
+    rules:
+      # Error Rate Alerts
+      - alert: MinIOErrorRateHigh
+        expr: rate(minio_s3_requests_errors_total[5m]) / rate(minio_s3_requests_total[5m]) > 0.001
+        for: 5m
+        labels:
+          severity: warning
+          component: minio
+          sla: error_rate
+        annotations:
+          summary: "MinIO error rate exceeding 0.1%"
+          description: "Error rate is {{ $value | humanizePercentage }}. Target is <0.1%."
+
+      - alert: MinIOErrorRateCritical
+        expr: rate(minio_s3_requests_errors_total[5m]) / rate(minio_s3_requests_total[5m]) > 0.01
+        for: 2m
+        labels:
+          severity: critical
+          component: minio
+        annotations:
+          summary: "MinIO error rate exceeding 1%"
+          description: "Critical: Error rate is {{ $value | humanizePercentage }}. Immediate investigation required."
+
+      # Specific Error Types
+      - alert: MinIO5xxErrors
+        expr: rate(minio_s3_requests_5xx_errors_total[5m]) > 1
+        for: 5m
+        labels:
+          severity: warning
+          component: minio
+        annotations:
+          summary: "MinIO returning 5xx errors"
+          description: "MinIO is returning {{ $value | humanize }} 5xx errors/sec. Server issues detected."
+
+  - name: cache_performance
+    interval: 30s
+    rules:
+      # Cache Performance
+      - alert: CacheHitRateLow
+        expr: |
+          rate(redis_keyspace_hits_total[5m]) /
+          (rate(redis_keyspace_hits_total[5m]) + rate(redis_keyspace_misses_total[5m])) < 0.9
+        for: 10m
+        labels:
+          severity: warning
+          component: cache
+        annotations:
+          summary: "Cache hit rate below 90%"
+          description: "Cache hit rate is {{ $value | humanizePercentage }}. Target is >90%."
+
+      - alert: RedisMemoryHigh
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          component: cache
+        annotations:
+          summary: "Redis memory usage above 90%"
+          description: "Redis is using {{ $value | humanizePercentage }} of available memory."
+
+  - name: cdn_performance
+    interval: 60s
+    rules:
+      # CDN Performance (requires custom CDN exporter)
+      - alert: CDNCacheHitRateLow
+        expr: cdn_cache_hit_rate < 0.85
+        for: 15m
+        labels:
+          severity: warning
+          component: cdn
+        annotations:
+          summary: "CDN cache hit rate below 85%"
+          description: "CDN cache hit rate is {{ $value | humanizePercentage }}. Origin load may be high."
+
+      - alert: CDNLatencyHigh
+        expr: cdn_response_time_p95_ms > 50
+        for: 10m
+        labels:
+          severity: warning
+          component: cdn
+          sla: cdn_latency
+        annotations:
+          summary: "CDN latency exceeding 50ms (p95)"
+          description: "CDN 95th percentile latency is {{ $value }}ms. Target is <50ms."
+
+  - name: sla_monitoring
+    interval: 5m
+    rules:
+      # SLA Monitoring
+      - alert: SLAAvailabilityBreach
+        expr: |
+          (1 - (
+            sum(rate(minio_s3_requests_errors_total[24h])) /
+            sum(rate(minio_s3_requests_total[24h]))
+          )) < 0.9999
+        for: 10m
+        labels:
+          severity: critical
+          component: sla
+        annotations:
+          summary: "SLA availability below 99.99%"
+          description: "24-hour availability is {{ $value | humanizePercentage }}. SLA breach detected."
+
+      - alert: SLAUploadLatencyBreach
+        expr: |
+          histogram_quantile(0.95, rate(minio_s3_requests_duration_seconds_bucket{api="putobject"}[1h])) > 0.1
+        for: 15m
+        labels:
+          severity: critical
+          component: sla
+        annotations:
+          summary: "SLA upload latency breach"
+          description: "1-hour p95 upload latency is {{ $value | humanizeDuration }}. SLA requires <100ms."
+
+      - alert: SLACDNLatencyBreach
+        expr: cdn_response_time_p95_ms > 50
+        for: 15m
+        labels:
+          severity: critical
+          component: sla
+        annotations:
+          summary: "SLA CDN latency breach"
+          description: "CDN p95 latency is {{ $value }}ms. SLA requires <50ms."

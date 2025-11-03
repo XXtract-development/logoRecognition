@@ -1,0 +1,40 @@
+.category-filter-container {
+  padding: 16px 0;
+  border-top: 1px solid #f0f0f0;
+}
+
+.filter-header {
+  margin-bottom: 12px;
+}
+
+.filter-header .filter-description {
+  display: block;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.category-select {
+  width: 100%;
+}
+
+.category-select .ant-select-selector {
+  min-height: 38px !important;
+}
+
+.selected-count {
+  margin-top: 12px;
+  padding: 8px;
+  background: #f5f5f5;
+  border-radius: 4px;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .category-filter-container {
+    border-top-color: #303030;
+  }
+
+  .selected-count {
+    background: #1f1f1f;
+  }
+}

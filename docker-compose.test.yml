@@ -1,0 +1,121 @@
+version: '3.8'
+
+services:
+  backend-test:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: test
+    environment:
+      - NODE_ENV=test
+      - PORT=8000
+      - DATABASE_URL=postgresql://test:test@postgres-test:5432/testdb
+      - REDIS_URL=redis://redis-test:6379
+      - MINIO_ENDPOINT=minio-test:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - ML_SERVICE_URL=http://ml-test:8001
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+      - test-uploads:/app/uploads
+    depends_on:
+      - postgres-test
+      - redis-test
+      - minio-test
+    networks:
+      - test-network
+    command: npm test
+
+  ml-test:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.ml
+      target: test
+    environment:
+      - PYTHONUNBUFFERED=1
+      - ENV=test
+      - MODEL_PATH=/app/models
+      - CACHE_URL=redis://redis-test:6379
+    volumes:
+      - ./backend:/app
+      - test-models:/app/models
+    depends_on:
+      - redis-test
+    networks:
+      - test-network
+    command: pytest -n auto
+
+  frontend-test:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: test
+    environment:
+      - NODE_ENV=test
+      - REACT_APP_API_URL=http://backend-test:8000
+      - CI=true
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend-test
+    networks:
+      - test-network
+    command: npm run test:ci
+
+  postgres-test:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=test
+      - POSTGRES_PASSWORD=test
+      - POSTGRES_DB=testdb
+    volumes:
+      - test-postgres-data:/var/lib/postgresql/data
+    networks:
+      - test-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis-test:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - test-redis-data:/data
+    networks:
+      - test-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  minio-test:
+    image: minio/minio:latest
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    volumes:
+      - test-minio-data:/data
+    networks:
+      - test-network
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+networks:
+  test-network:
+    driver: bridge
+
+volumes:
+  test-postgres-data:
+  test-redis-data:
+  test-minio-data:
+  test-uploads:
+  test-models:

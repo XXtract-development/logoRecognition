@@ -1,0 +1,13 @@
+{
+  "artifact_name": "concurrent_model_4",
+  "version": "v4.0.0",
+  "checksum": "71288fcd2fa4770379ecee1f9a6ceaa123d2f6b5b61cba4a5fc593ec1d7c0875",
+  "local_path": "models/concurrent_model_4/v4.0.0/model.pth",
+  "created_at": "2025-10-04T13:29:21.006511",
+  "size_bytes": 856,
+  "metadata": {
+    "model_type": "detection",
+    "training_params": null,
+    "dataset_id": null
+  }
+}

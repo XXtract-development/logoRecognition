@@ -1,0 +1,101 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: celery-workers
+  namespace: logo-recognition
+  labels:
+    app: celery
+    tier: backend
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: celery
+      tier: backend
+  template:
+    metadata:
+      labels:
+        app: celery
+        tier: backend
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+    spec:
+      containers:
+      - name: celery-worker
+        image: your-registry.com/logo-recognition-api:v1.0.0
+        imagePullPolicy: Always
+        command: ["celery", "-A", "app.celery", "worker", "--loglevel=info", "--concurrency=4"]
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: url
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: redis-credentials
+              key: url
+        - name: S3_ENDPOINT
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: s3_endpoint
+        - name: S3_BUCKET
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: s3_bucket
+        - name: CELERY_BROKER_URL
+          valueFrom:
+            secretKeyRef:
+              name: redis-credentials
+              key: broker_url
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+        livenessProbe:
+          exec:
+            command:
+            - celery
+            - -A
+            - app.celery
+            - inspect
+            - ping
+          initialDelaySeconds: 30
+          periodSeconds: 60
+          timeoutSeconds: 10
+      - name: celery-beat
+        image: your-registry.com/logo-recognition-api:v1.0.0
+        imagePullPolicy: Always
+        command: ["celery", "-A", "app.celery", "beat", "--loglevel=info"]
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: url
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: redis-credentials
+              key: url
+        - name: CELERY_BROKER_URL
+          valueFrom:
+            secretKeyRef:
+              name: redis-credentials
+              key: broker_url
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "200m"
+      imagePullSecrets:
+      - name: registry-secret

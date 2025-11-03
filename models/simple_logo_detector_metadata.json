@@ -1,0 +1,27 @@
+{
+  "name": "simple_logo_detector",
+  "version": "1.0.0",
+  "type": "detection",
+  "input_size": [
+    224,
+    224
+  ],
+  "input_channels": 3,
+  "num_classes": 10,
+  "classes": [
+    "nike",
+    "adidas",
+    "apple",
+    "google",
+    "microsoft",
+    "coca-cola",
+    "pepsi",
+    "mcdonalds",
+    "starbucks",
+    "amazon"
+  ],
+  "output_format": "detections",
+  "confidence_threshold": 0.5,
+  "nms_threshold": 0.5,
+  "created": "2024-01-20"
+}

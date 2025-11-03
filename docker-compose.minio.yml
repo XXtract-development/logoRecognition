@@ -1,0 +1,289 @@
+version: '3.9'
+
+# A++ MinIO 4-node cluster configuration with High Availability
+# Erasure Coding EC:4 for 99.999999% durability
+
+services:
+  # MinIO Node 1
+  minio1:
+    image: minio/minio:latest
+    container_name: minio1
+    hostname: minio1
+    restart: unless-stopped
+    command: server --console-address ":9001" http://minio{1...4}/data{1...2}
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Error: MINIO_ROOT_USER not set}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Error: MINIO_ROOT_PASSWORD not set}
+      MINIO_PROMETHEUS_AUTH_TYPE: "public"
+      MINIO_PROMETHEUS_URL: http://prometheus:9090
+      MINIO_STORAGE_CLASS_STANDARD: "EC:4"
+      MINIO_API_REQUESTS_MAX: "1000"
+      MINIO_API_REQUESTS_DEADLINE: "10s"
+      MINIO_CACHE: "on"
+      MINIO_CACHE_DRIVES: "/cache"
+      MINIO_CACHE_EXCLUDE: "*.pdf"
+      MINIO_CACHE_QUOTA: 80
+      MINIO_CACHE_AFTER: 3
+      MINIO_CACHE_WATERMARK_LOW: 70
+      MINIO_CACHE_WATERMARK_HIGH: 90
+    volumes:
+      - minio1-data1:/data1
+      - minio1-data2:/data2
+      - minio1-cache:/cache
+    networks:
+      - minio-net
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/cluster"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+      start_period: 60s
+
+  # MinIO Node 2
+  minio2:
+    image: minio/minio:latest
+    container_name: minio2
+    hostname: minio2
+    restart: unless-stopped
+    command: server --console-address ":9001" http://minio{1...4}/data{1...2}
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Error: MINIO_ROOT_USER not set}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Error: MINIO_ROOT_PASSWORD not set}
+      MINIO_PROMETHEUS_AUTH_TYPE: "public"
+      MINIO_PROMETHEUS_URL: http://prometheus:9090
+      MINIO_STORAGE_CLASS_STANDARD: "EC:4"
+      MINIO_API_REQUESTS_MAX: "1000"
+      MINIO_API_REQUESTS_DEADLINE: "10s"
+      MINIO_CACHE: "on"
+      MINIO_CACHE_DRIVES: "/cache"
+      MINIO_CACHE_EXCLUDE: "*.pdf"
+      MINIO_CACHE_QUOTA: 80
+      MINIO_CACHE_AFTER: 3
+      MINIO_CACHE_WATERMARK_LOW: 70
+      MINIO_CACHE_WATERMARK_HIGH: 90
+    volumes:
+      - minio2-data1:/data1
+      - minio2-data2:/data2
+      - minio2-cache:/cache
+    networks:
+      - minio-net
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/cluster"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+      start_period: 60s
+
+  # MinIO Node 3
+  minio3:
+    image: minio/minio:latest
+    container_name: minio3
+    hostname: minio3
+    restart: unless-stopped
+    command: server --console-address ":9001" http://minio{1...4}/data{1...2}
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Error: MINIO_ROOT_USER not set}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Error: MINIO_ROOT_PASSWORD not set}
+      MINIO_PROMETHEUS_AUTH_TYPE: "public"
+      MINIO_PROMETHEUS_URL: http://prometheus:9090
+      MINIO_STORAGE_CLASS_STANDARD: "EC:4"
+      MINIO_API_REQUESTS_MAX: "1000"
+      MINIO_API_REQUESTS_DEADLINE: "10s"
+      MINIO_CACHE: "on"
+      MINIO_CACHE_DRIVES: "/cache"
+      MINIO_CACHE_EXCLUDE: "*.pdf"
+      MINIO_CACHE_QUOTA: 80
+      MINIO_CACHE_AFTER: 3
+      MINIO_CACHE_WATERMARK_LOW: 70
+      MINIO_CACHE_WATERMARK_HIGH: 90
+    volumes:
+      - minio3-data1:/data1
+      - minio3-data2:/data2
+      - minio3-cache:/cache
+    networks:
+      - minio-net
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/cluster"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+      start_period: 60s
+
+  # MinIO Node 4
+  minio4:
+    image: minio/minio:latest
+    container_name: minio4
+    hostname: minio4
+    restart: unless-stopped
+    command: server --console-address ":9001" http://minio{1...4}/data{1...2}
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Error: MINIO_ROOT_USER not set}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Error: MINIO_ROOT_PASSWORD not set}
+      MINIO_PROMETHEUS_AUTH_TYPE: "public"
+      MINIO_PROMETHEUS_URL: http://prometheus:9090
+      MINIO_STORAGE_CLASS_STANDARD: "EC:4"
+      MINIO_API_REQUESTS_MAX: "1000"
+      MINIO_API_REQUESTS_DEADLINE: "10s"
+      MINIO_CACHE: "on"
+      MINIO_CACHE_DRIVES: "/cache"
+      MINIO_CACHE_EXCLUDE: "*.pdf"
+      MINIO_CACHE_QUOTA: 80
+      MINIO_CACHE_AFTER: 3
+      MINIO_CACHE_WATERMARK_LOW: 70
+      MINIO_CACHE_WATERMARK_HIGH: 90
+    volumes:
+      - minio4-data1:/data1
+      - minio4-data2:/data2
+      - minio4-cache:/cache
+    networks:
+      - minio-net
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/cluster"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+      start_period: 60s
+
+  # Nginx Load Balancer for MinIO
+  nginx:
+    image: nginx:alpine
+    container_name: minio-nginx
+    restart: unless-stopped
+    ports:
+      - "9000:9000"  # MinIO API
+      - "9001:9001"  # MinIO Console
+    volumes:
+      - ./infrastructure/docker/nginx/nginx-minio.conf:/etc/nginx/nginx.conf:ro
+      - ./infrastructure/docker/nginx/cache:/var/cache/nginx
+    depends_on:
+      - minio1
+      - minio2
+      - minio3
+      - minio4
+    networks:
+      - minio-net
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # MinIO Client for initialization
+  minio-client:
+    image: minio/mc:latest
+    container_name: minio-client
+    entrypoint: >
+      /bin/sh -c "
+      sleep 10;
+      mc alias set myminio http://nginx:9000 $${MINIO_ROOT_USER} $${MINIO_ROOT_PASSWORD};
+      mc mb --ignore-existing myminio/logo-images;
+      mc mb --ignore-existing myminio/logo-embeddings;
+      mc mb --ignore-existing myminio/logo-models;
+      mc mb --ignore-existing myminio/logo-backups;
+      mc versioning enable myminio/logo-images;
+      mc versioning enable myminio/logo-embeddings;
+      mc versioning enable myminio/logo-models;
+      mc versioning enable myminio/logo-backups;
+      mc ilm add --expiry-days 30 myminio/logo-images;
+      mc ilm add --transition-days 90 --transition-tier GLACIER myminio/logo-backups;
+      mc admin policy add myminio readwrite /policies/readwrite.json;
+      mc admin policy add myminio readonly /policies/readonly.json;
+      mc admin user add myminio app-user app-password;
+      mc admin policy set myminio readwrite user=app-user;
+      echo 'MinIO initialization complete';
+      exit 0;
+      "
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Error: MINIO_ROOT_USER not set}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Error: MINIO_ROOT_PASSWORD not set}
+    volumes:
+      - ./infrastructure/docker/minio/policies:/policies:ro
+    depends_on:
+      - nginx
+    networks:
+      - minio-net
+
+  # MinIO Exporter for Prometheus
+  minio-exporter:
+    image: bitnami/minio-exporter:latest
+    container_name: minio-exporter
+    restart: unless-stopped
+    command:
+      - '--minio.server=http://nginx:9000'
+      - '--minio.access-key=${MINIO_ROOT_USER:-minioadmin}'
+      - '--minio.access-secret=${MINIO_ROOT_PASSWORD:-minioadmin123}'
+    ports:
+      - "9290:9290"
+    depends_on:
+      - nginx
+    networks:
+      - minio-net
+
+networks:
+  minio-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+
+volumes:
+  # Node 1 volumes
+  minio1-data1:
+    driver: local
+  minio1-data2:
+    driver: local
+  minio1-cache:
+    driver: local
+  # Node 2 volumes
+  minio2-data1:
+    driver: local
+  minio2-data2:
+    driver: local
+  minio2-cache:
+    driver: local
+  # Node 3 volumes
+  minio3-data1:
+    driver: local
+  minio3-data2:
+    driver: local
+  minio3-cache:
+    driver: local
+  # Node 4 volumes
+  minio4-data1:
+    driver: local
+  minio4-data2:
+    driver: local
+  minio4-cache:
+    driver: local

@@ -1,0 +1,42 @@
+{
+  "name": "efficientdet_lite",
+  "version": "1.0.0",
+  "type": "detection",
+  "architecture": "efficientdet_lite",
+  "input_size": [
+    512,
+    512
+  ],
+  "input_channels": 3,
+  "num_classes": 10,
+  "classes": [
+    "nike",
+    "adidas",
+    "apple",
+    "google",
+    "microsoft",
+    "coca-cola",
+    "pepsi",
+    "mcdonalds",
+    "starbucks",
+    "amazon"
+  ],
+  "anchors": {
+    "sizes": [
+      32,
+      64,
+      128,
+      256,
+      512
+    ],
+    "aspect_ratios": [
+      0.5,
+      1.0,
+      2.0
+    ]
+  },
+  "confidence_threshold": 0.5,
+  "nms_threshold": 0.5,
+  "max_detections": 100,
+  "created": "2024-01-20"
+}

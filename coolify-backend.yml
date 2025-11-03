@@ -1,0 +1,81 @@
+# Coolify Backend Application Configuration
+# Docker Service Deployment for FastAPI Application
+
+name: logo-recognition-backend
+type: docker-service
+
+# Repository Configuration
+repository:
+  url: "https://github.com/your-org/logo-recognition"
+  branch: "main"
+  root_directory: "backend"
+  dockerfile: "Dockerfile"
+
+# Container Configuration
+container:
+  port: 8000
+  restart_policy: "unless-stopped"
+
+# Environment Variables
+environment:
+  DATABASE_URL: "postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/logo_recognition"
+  REDIS_URL: "redis://redis:6379"
+  MINIO_ENDPOINT: "http://minio:9000"
+  MINIO_ACCESS_KEY: "${MINIO_ACCESS_KEY}"
+  MINIO_SECRET_KEY: "${MINIO_SECRET_KEY}"
+  JWT_SECRET_KEY: "${JWT_SECRET_KEY}"
+  ENVIRONMENT: "production"
+  LOG_LEVEL: "INFO"
+  CORS_ORIGINS: "https://logo-app.yourdomain.com"
+
+# Domain Configuration
+domain:
+  name: "api.logo-app.yourdomain.com"
+  ssl: true
+  force_https: true
+
+# Health Checks
+healthcheck:
+  enabled: true
+  path: "/health"
+  interval: 30
+  timeout: 10
+  retries: 3
+  startup_grace_period: 60
+
+# Resource Limits
+resources:
+  memory: "1GB"
+  cpu: "1000m"
+  memory_reservation: "512MB"
+  cpu_reservation: "500m"
+
+# Scaling Configuration
+scaling:
+  enabled: true
+  min_replicas: 1
+  max_replicas: 3
+  cpu_threshold: 70
+  memory_threshold: 80
+
+# Volumes
+volumes:
+  - name: "app_logs"
+    mount_path: "/app/logs"
+    size: "1GB"
+
+# Security
+security:
+  read_only_root_filesystem: false
+  run_as_non_root: true
+  capabilities:
+    drop:
+      - "ALL"
+    add:
+      - "NET_BIND_SERVICE"
+
+# Advanced Settings
+settings:
+  auto_deploy: true
+  deploy_on_push: true
+  zero_downtime_deployment: true

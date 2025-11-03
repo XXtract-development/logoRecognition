@@ -1,0 +1,9 @@
+.results-canvas {
+  display: block;
+  image-rendering: optimizeQuality;
+  touch-action: none;
+}
+
+.results-canvas:active {
+  cursor: grabbing !important;
+}

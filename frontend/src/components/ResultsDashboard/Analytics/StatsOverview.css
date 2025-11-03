@@ -1,0 +1,99 @@
+.stats-overview {
+  margin-bottom: 16px;
+}
+
+.stat-card {
+  height: 100%;
+  transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.stat-card .ant-card-body {
+  padding: 16px;
+}
+
+.confidence-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.stat-title {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+  display: block;
+}
+
+.top-brands {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.brand-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.brand-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  background: #f5f5f5;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.brand-rank {
+  font-weight: 600;
+  color: #1890ff;
+  min-width: 24px;
+}
+
+.brand-name {
+  flex: 1;
+  font-weight: 500;
+}
+
+.brand-count {
+  font-size: 12px;
+}
+
+.no-data {
+  margin-top: 16px;
+  text-align: center;
+  font-style: italic;
+}
+
+/* Mobile responsive */
+@media (max-width: 576px) {
+  .stat-card .ant-statistic-title {
+    font-size: 12px;
+  }
+
+  .stat-card .ant-statistic-content {
+    font-size: 20px;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .stat-card {
+    background: #1f1f1f;
+  }
+
+  .brand-item {
+    background: #303030;
+  }
+}

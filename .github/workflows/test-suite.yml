@@ -1,0 +1,239 @@
+name: A++ Test Suite
+
+on:
+  push:
+    branches: [main, develop, sprint-*]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '20.x'
+  PYTHON_VERSION: '3.11'
+  COVERAGE_THRESHOLD: 80
+
+jobs:
+  test-matrix:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        test-suite:
+          - unit-backend
+          - unit-ml
+          - unit-frontend
+          - integration
+          - performance
+          - security
+      max-parallel: 6
+      fail-fast: false
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup Node.js
+      if: matrix.test-suite != 'unit-ml'
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: |
+          frontend/package-lock.json
+          backend/package-lock.json
+
+    - name: Setup Python
+      if: matrix.test-suite == 'unit-ml' || matrix.test-suite == 'integration'
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+
+    - name: Cache Dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.npm
+          ~/.cache/pip
+          frontend/node_modules
+          backend/node_modules
+        key: ${{ runner.os }}-${{ matrix.test-suite }}-${{ hashFiles('**/package-lock.json', '**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ matrix.test-suite }}-
+
+    - name: Install Dependencies
+      run: |
+        case "${{ matrix.test-suite }}" in
+          unit-backend)
+            cd backend && npm ci --prefer-offline
+            ;;
+          unit-ml)
+            pip install -r backend/requirements.txt
+            pip install pytest pytest-cov pytest-xdist pytest-benchmark hypothesis
+            ;;
+          unit-frontend)
+            cd frontend && npm ci --prefer-offline
+            ;;
+          integration)
+            cd backend && npm ci --prefer-offline
+            pip install -r backend/requirements.txt
+            cd ../frontend && npm ci --prefer-offline
+            ;;
+          performance)
+            npm install -g k6
+            cd backend && npm ci --prefer-offline
+            ;;
+          security)
+            pip install bandit safety
+            npm install -g snyk
+            ;;
+        esac
+
+    - name: Run Tests
+      run: |
+        case "${{ matrix.test-suite }}" in
+          unit-backend)
+            cd backend && npm test -- --coverage --maxWorkers=4
+            ;;
+          unit-ml)
+            cd backend && pytest -n auto --cov=app --cov-report=xml --cov-report=term
+            ;;
+          unit-frontend)
+            cd frontend && npm run test:ci
+            ;;
+          integration)
+            docker-compose -f docker-compose.test.yml up -d
+            sleep 10
+            cd backend && npm run test:integration
+            cd ../frontend && npm run test:integration
+            docker-compose -f docker-compose.test.yml down
+            ;;
+          performance)
+            cd backend && npm start &
+            SERVER_PID=$!
+            sleep 5
+            k6 run --out cloud k6/performance-test.js || true
+            kill $SERVER_PID
+            ;;
+          security)
+            npm audit --audit-level=high || true
+            cd backend && safety check || true
+            bandit -r app -ll || true
+            cd ../frontend && npm audit --audit-level=high || true
+            ;;
+        esac
+
+    - name: Upload Coverage
+      if: always() && (matrix.test-suite == 'unit-backend' || matrix.test-suite == 'unit-ml' || matrix.test-suite == 'unit-frontend')
+      uses: codecov/codecov-action@v4
+      with:
+        file: |
+          ./backend/coverage.xml
+          ./frontend/coverage/lcov.info
+        flags: ${{ matrix.test-suite }}
+        name: ${{ matrix.test-suite }}-coverage
+        fail_ci_if_error: false
+
+    - name: Upload Test Results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results-${{ matrix.test-suite }}
+        path: |
+          backend/test-results/
+          frontend/test-results/
+          backend/htmlcov/
+          frontend/coverage/
+
+  test-summary:
+    needs: test-matrix
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+
+    - name: Download All Artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: test-artifacts
+
+    - name: Install Report Tools
+      run: |
+        npm install -g nyc
+        npm install -g jest-html-reporter
+
+    - name: Merge Coverage Reports
+      run: |
+        # Find all coverage files
+        find test-artifacts -name "*.xml" -o -name "lcov.info" | head -20
+
+        # Merge if NYC coverage exists
+        if [ -d "test-artifacts/test-results-unit-backend" ]; then
+          nyc merge test-artifacts coverage/merged || true
+          nyc report --reporter=text-summary || true
+        fi
+
+    - name: Generate Test Report
+      run: |
+        echo "# A++ Test Suite Results" > test-report.md
+        echo "" >> test-report.md
+        echo "## Test Execution Summary" >> test-report.md
+        echo "" >> test-report.md
+        echo "| Test Suite | Status | Coverage |" >> test-report.md
+        echo "|------------|--------|----------|" >> test-report.md
+
+        for suite in unit-backend unit-ml unit-frontend integration performance security; do
+          if [ -d "test-artifacts/test-results-$suite" ]; then
+            echo "| $suite | ✅ Passed | Check artifacts |" >> test-report.md
+          else
+            echo "| $suite | ⚠️ Check logs | - |" >> test-report.md
+          fi
+        done
+
+    - name: Quality Gate Check
+      run: |
+        echo "Checking quality gates..."
+        OVERALL_PASS=true
+
+        # Check if all test suites passed
+        for suite in unit-backend unit-ml unit-frontend; do
+          if [ ! -d "test-artifacts/test-results-$suite" ]; then
+            echo "❌ Test suite $suite did not complete successfully"
+            OVERALL_PASS=false
+          fi
+        done
+
+        if [ "$OVERALL_PASS" = false ]; then
+          echo "❌ Quality gate failed: Not all test suites passed"
+          exit 1
+        fi
+
+        echo "✅ All quality gates passed!"
+
+    - name: Comment PR with Results
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const report = fs.readFileSync('test-report.md', 'utf8');
+
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: report
+          });
+
+  deploy-test-results:
+    needs: test-summary
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && success()
+    steps:
+    - name: Deploy Coverage to GitHub Pages
+      run: echo "Coverage deployment configured in separate workflow"

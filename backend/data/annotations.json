@@ -1,0 +1,28 @@
+{
+  "test123": [
+    {
+      "id": "1",
+      "category": "brand",
+      "value": "nike",
+      "x": 100,
+      "y": 100,
+      "width": 50,
+      "height": 50
+    }
+  ],
+  "5e423c56ecfa": [
+    {
+      "id": "bbox_1758180345176_bl37ahvds",
+      "x": 93.5,
+      "y": 471.3833312988281,
+      "width": 71,
+      "height": 43,
+      "color": "#1890ff",
+      "imageId": "5e423c56ecfa",
+      "selected": true,
+      "created": "2025-09-18T07:25:45.176Z",
+      "category": "Brand Logo",
+      "value": "343"
+    }
+  ]
+}
