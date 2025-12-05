@@ -2,7 +2,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import { VitePWA } from 'vite-plugin-pwa';
-import { visualizer } from 'vite-bundle-visualizer';
+// import { visualizer } from 'vite-bundle-visualizer'; // COMMENTED OUT: compatibility issue
 
 export default defineConfig({
   plugins: [
@@ -47,12 +47,12 @@ export default defineConfig({
           }
         ]
       }
-    }),
-    visualizer({
-      open: false,
-      gzipSize: true,
-      brotliSize: true,
     })
+    // visualizer({  // COMMENTED OUT: compatibility issue
+    //   open: false,
+    //   gzipSize: true,
+    //   brotliSize: true,
+    // })
   ],
   resolve: {
     alias: {

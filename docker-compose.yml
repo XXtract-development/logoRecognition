@@ -1,61 +1,48 @@
 version: '3.8'
 
 services:
-  postgres:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_DB: logo_recognition
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  api:
-    build: ./apps/api
-    ports:
-      - "8000:8000"
-    environment:
-      NODE_ENV: production
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/logo_recognition
-      REDIS_URL: redis://redis:6379
-    depends_on:
-      - postgres
-      - redis
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
+  # Frontend - React + Vite
   web:
-    build: ./apps/web
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: logo-recognition-web
     ports:
-      - "3000:80"
+      - "3000:3000"
+    volumes:
+      - ./apps/web/src:/app/apps/web/src
+      - ./apps/web/public:/app/apps/web/public
+    environment:
+      - VITE_API_URL=http://api:8000
+      - NODE_ENV=development
     depends_on:
       - api
-    environment:
-      REACT_APP_API_URL: http://api:8000
+    networks:
+      - logo-recognition
+    restart: unless-stopped
 
-volumes:
-  postgres_data:
+  # API - Fastify
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile.dev
+    container_name: logo-recognition-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./apps/api/src:/app/apps/api/src
+    environment:
+      - NODE_ENV=development
+      - PORT=8000
+      - HOST=0.0.0.0
+    networks:
+      - logo-recognition
+    restart: unless-stopped
 
 networks:
-  default:
-    name: logo_recognition_network
+  logo-recognition:
+    driver: bridge
+
+volumes:
+  node_modules_web:
+  node_modules_api:

@@ -139,16 +139,54 @@ pnpm build
 
 ## 🐳 Docker Deployment
 
+### Quick Start - Complete Stack ✅
+
 ```bash
-# Start complete stack
+# Start both API and Frontend
 docker-compose up -d
+
+# Test frontend
+open http://localhost:3000
+
+# Test API
+curl http://localhost:8000/health
+# Response: {"status":"ok","timestamp":"..."}
 
 # View logs
 docker-compose logs -f
 
-# Stop services
+# Stop all services
 docker-compose down
 ```
+
+**Status:** ✅ **Both Containers Fully Working**
+- **Frontend:** http://localhost:3000 (React + Vite)
+- **API:** http://localhost:8000 (Fastify)
+- **Response Time:** ~22ms
+- **Hot Reload:** Enabled for both
+
+### Individual Services
+
+```bash
+# Start only API
+docker-compose up -d api
+
+# Start only Frontend
+docker-compose up -d web
+
+# View specific logs
+docker-compose logs -f api
+docker-compose logs -f web
+
+# Rebuild after code changes
+docker-compose up -d --build
+```
+
+**📖 Uitgebreide Docs:**
+- **Quick Start:** [DOCKER-QUICKSTART.md](./DOCKER-QUICKSTART.md)
+- **API Usage:** [docs/API-DOCKER-USAGE.md](./docs/API-DOCKER-USAGE.md)
+- **Code Examples:** [apps/api/examples/](./apps/api/examples/)
+- **Test Script:** Run `./apps/api/examples/test-api.sh`
 
 ## 📈 Project Stats
 

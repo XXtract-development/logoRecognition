@@ -1,3 +1,0 @@
-"""
-Detection models package.
-"""

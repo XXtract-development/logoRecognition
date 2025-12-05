@@ -4,9 +4,9 @@ import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import websocket from '@fastify/websocket';
-import { setupOpenTelemetry } from './core/telemetry';
-import { setupSentry } from './core/sentry';
-import { setupPrometheus } from './core/prometheus';
+// import { setupOpenTelemetry } from './core/telemetry'; // COMMENTED OUT: module not found
+// import { setupSentry } from './core/sentry'; // COMMENTED OUT: module not found
+// import { setupPrometheus } from './core/prometheus'; // COMMENTED OUT: module not found
 import { errorHandler } from './middleware/errorHandler';
 import { tracingMiddleware } from './middleware/tracing';
 import { recognitionRoutes } from './api/v1/recognition';
@@ -14,8 +14,8 @@ import { healthRoutes } from './api/v1/health';
 import { logger } from './core/logger';
 
 // Setup telemetry before app initialization
-setupOpenTelemetry();
-setupSentry();
+// setupOpenTelemetry(); // COMMENTED OUT: module not found
+// setupSentry(); // COMMENTED OUT: module not found
 
 const app: FastifyInstance = Fastify({
   logger: true,
@@ -42,7 +42,7 @@ async function startServer() {
     await app.register(websocket);
 
     // Prometheus metrics
-    await setupPrometheus(app);
+    // await setupPrometheus(app); // COMMENTED OUT: module not found
 
     // Custom middleware
     app.addHook('onRequest', tracingMiddleware);

@@ -1,14 +1,31 @@
-FROM node:20-alpine AS builder
-WORKDIR /app
-COPY package.json tsconfig.json vite.config.ts ./
-RUN npm install
-COPY src ./src
-COPY public ./public
-COPY index.html ./
-RUN npm run build
+# Frontend Dockerfile - Development
+FROM node:20-alpine
 
-FROM nginx:alpine
-COPY --from=builder /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/nginx.conf
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+# Install pnpm
+RUN npm install -g pnpm
+
+# Set working directory
+WORKDIR /app
+
+# Copy workspace files
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY apps/web/package.json ./apps/web/
+
+# Install dependencies
+RUN pnpm install --frozen-lockfile
+
+# Copy application files
+COPY apps/web/index.html ./apps/web/
+COPY apps/web/public ./apps/web/public
+COPY apps/web/src ./apps/web/src
+COPY apps/web/vite.config.ts ./apps/web/
+COPY apps/web/tsconfig.json ./apps/web/
+
+# Set working directory to web app
+WORKDIR /app/apps/web
+
+# Expose port
+EXPOSE 3000
+
+# Start development server
+CMD ["pnpm", "run", "dev", "--host", "0.0.0.0"]

@@ -35,6 +35,10 @@ pnpm test
 - **[API Specificatie](./02-architecture/api-specification.md)** - REST API en WebSocket specs
 - **[Security](./02-architecture/security.md)** - Security architectuur en best practices
 
+### Brownfield Documentation (AI-Generated)
+- **[Technology Stack Analysis](./technology-stack.md)** - Exhaustive tech stack scan (2025-12-05)
+- **[Source Tree Mapping](./source-tree.md)** - Complete file structure for AI navigation
+
 ### 3. Development (`03-development/`)
 - **[Setup Guide](./03-development/setup.md)** - Development environment setup
 - **[Workflows](./03-development/workflows.md)** - Development workflows en processes

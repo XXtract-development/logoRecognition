@@ -1,0 +1,27 @@
+# API Dockerfile - Development
+FROM node:20-alpine
+
+# Install pnpm
+RUN npm install -g pnpm
+
+# Set working directory
+WORKDIR /app
+
+# Copy workspace files
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY apps/api/package.json ./apps/api/
+
+# Install dependencies
+RUN pnpm install --frozen-lockfile
+
+# Copy application files
+COPY apps/api ./apps/api
+
+# Set working directory to api app
+WORKDIR /app/apps/api
+
+# Expose port
+EXPOSE 8000
+
+# Start with node directly (JavaScript file)
+CMD ["node", "--watch", "src/main-simple.js"]

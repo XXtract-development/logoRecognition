@@ -79,3 +79,4 @@ data/processed/
 *.cert
 secrets/
 credentials/
+.tar.gz
