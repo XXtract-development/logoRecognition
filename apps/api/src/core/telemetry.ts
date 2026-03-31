@@ -1,7 +1,9 @@
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { Resource } from '@opentelemetry/resources';
 import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
+// @ts-ignore - optional dependency, not installed
 import { JaegerExporter } from '@opentelemetry/exporter-jaeger';
+// @ts-ignore - optional dependency, not installed
 import { PrometheusExporter } from '@opentelemetry/exporter-prometheus';
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
 import { TraceIdRatioBasedSampler } from '@opentelemetry/sdk-trace-base';

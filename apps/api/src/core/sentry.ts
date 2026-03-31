@@ -1,4 +1,5 @@
 import * as Sentry from '@sentry/node';
+// @ts-ignore - optional dependency, not installed
 import { ProfilingIntegration } from '@sentry/profiling-node';
 
 export function setupSentry() {
@@ -7,6 +8,7 @@ export function setupSentry() {
     environment: process.env.NODE_ENV || 'development',
     integrations: [
       new Sentry.Integrations.Http({ tracing: true }),
+      // @ts-ignore - Express integration accepts boolean for app
       new Sentry.Integrations.Express({ app: true }),
       new ProfilingIntegration(),
     ],
