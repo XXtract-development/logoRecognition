@@ -2,20 +2,13 @@
  * Model Service
  * API calls for training jobs and model management
  */
-import axios from 'axios';
+import apiClient from './apiClient';
 import type {
   TrainingJob,
   TrainingConfig,
   ModelVersion,
   ModelComparison,
 } from '@/types/training.types';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
-
-const api = axios.create({
-  baseURL: API_BASE,
-  timeout: 30000,
-});
 
 // Demo data (exported for development use, not used as API fallbacks)
 export const generateDemoJobs = (): TrainingJob[] => [
@@ -131,125 +124,73 @@ export const generateDemoModels = (): ModelVersion[] => [
 // ============ Training Jobs API ============
 
 export async function fetchTrainingJobs(): Promise<TrainingJob[]> {
-  try {
-    const response = await api.get('/training/jobs');
-    // API returns { data: [...] }
-    return response.data.data || response.data;
-  } catch (error) {
-    throw error;
-  }
+  const response = await apiClient.get('/training/jobs');
+  // API returns { data: [...] }
+  return response.data.data || response.data;
 }
 
 export async function fetchTrainingJob(id: string): Promise<TrainingJob | null> {
-  try {
-    const response = await api.get(`/training/jobs/${id}`);
-    // API returns { data: {...} }
-    return response.data.data || response.data;
-  } catch (error) {
-    throw error;
-  }
+  const response = await apiClient.get(`/training/jobs/${id}`);
+  // API returns { data: {...} }
+  return response.data.data || response.data;
 }
 
 export async function createTrainingJob(config: TrainingConfig): Promise<TrainingJob> {
-  try {
-    const response = await api.post('/training/start', config);
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+  const response = await apiClient.post('/training/start', config);
+  return response.data;
 }
 
 export async function cancelTrainingJob(id: string): Promise<void> {
-  try {
-    await api.post(`/training/jobs/${id}/cancel`);
-  } catch (error) {
-    throw error;
-  }
+  await apiClient.post(`/training/jobs/${id}/cancel`);
 }
 
 export async function pauseTrainingJob(id: string): Promise<void> {
-  try {
-    await api.post(`/training/jobs/${id}/pause`);
-  } catch (error) {
-    throw error;
-  }
+  await apiClient.post(`/training/jobs/${id}/pause`);
 }
 
 export async function resumeTrainingJob(id: string): Promise<void> {
-  try {
-    await api.post(`/training/jobs/${id}/resume`);
-  } catch (error) {
-    throw error;
-  }
+  await apiClient.post(`/training/jobs/${id}/resume`);
 }
 
 // ============ Models API ============
 
 export async function fetchModels(): Promise<ModelVersion[]> {
-  try {
-    const response = await api.get('/models');
-    // API returns { data: [...] }
-    return response.data.data || response.data;
-  } catch (error) {
-    throw error;
-  }
+  const response = await apiClient.get('/models');
+  // API returns { data: [...] }
+  return response.data.data || response.data;
 }
 
 export async function fetchModel(id: string): Promise<ModelVersion | null> {
-  try {
-    const response = await api.get(`/models/${id}`);
-    // API returns { data: {...} }
-    return response.data.data || response.data;
-  } catch (error) {
-    throw error;
-  }
+  const response = await apiClient.get(`/models/${id}`);
+  // API returns { data: {...} }
+  return response.data.data || response.data;
 }
 
 export async function activateModel(id: string): Promise<void> {
-  try {
-    await api.post(`/models/${id}/activate`);
-  } catch (error) {
-    throw error;
-  }
+  await apiClient.post(`/models/${id}/activate`);
 }
 
 export async function deactivateModel(id: string): Promise<void> {
-  try {
-    await api.post(`/models/${id}/deactivate`);
-  } catch (error) {
-    throw error;
-  }
+  await apiClient.post(`/models/${id}/deactivate`);
 }
 
 export async function deleteModel(id: string): Promise<void> {
-  try {
-    await api.delete(`/models/${id}`);
-  } catch (error) {
-    throw error;
-  }
+  await apiClient.delete(`/models/${id}`);
 }
 
 export async function downloadModel(id: string): Promise<Blob> {
-  try {
-    const response = await api.get(`/models/${id}/download`, {
-      responseType: 'blob',
-    });
-    return response.data;
-  } catch (error) {
-    throw new Error('Download failed');
-  }
+  const response = await apiClient.get(`/models/${id}/download`, {
+    responseType: 'blob',
+  });
+  return response.data;
 }
 
 export async function compareModels(
   model1Id: string,
   model2Id: string
 ): Promise<ModelComparison> {
-  try {
-    const response = await api.post('/models/compare', { model1Id, model2Id });
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+  const response = await apiClient.post('/models/compare', { model1Id, model2Id });
+  return response.data;
 }
 
 // ============ Training Stats API ============
@@ -265,10 +206,6 @@ export interface TrainingDataSummary {
 export async function getTrainingDataSummary(
   categoryIds: string[]
 ): Promise<TrainingDataSummary> {
-  try {
-    const response = await api.post('/training/summary', { categoryIds });
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+  const response = await apiClient.post('/training/summary', { categoryIds });
+  return response.data;
 }

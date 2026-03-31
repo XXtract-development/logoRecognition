@@ -241,37 +241,42 @@ export async function annotationRoutes(fastify: FastifyInstance) {
           });
         }
 
-        // Create all annotations
-        const createdAnnotations = await prisma.$transaction(
-          annotations.map((ann) =>
-            prisma.annotation.create({
-              data: {
-                imageId,
-                batchId,
-                x: ann.x,
-                y: ann.y,
-                width: ann.width,
-                height: ann.height,
-                category: ann.category,
-                value: ann.value,
-                logoId: ann.logoId,
-                createdBy: userId,
-              },
-            })
-          )
-        );
+        // Create all annotations in a single batch insert
+        const batchTimestamp = new Date();
+        await prisma.annotation.createMany({
+          data: annotations.map((ann) => ({
+            imageId,
+            batchId,
+            x: ann.x,
+            y: ann.y,
+            width: ann.width,
+            height: ann.height,
+            category: ann.category,
+            value: ann.value,
+            logoId: ann.logoId,
+            createdBy: userId,
+          })),
+        });
 
-        // Update training samples for logos
+        // Fetch created annotations for response
+        const createdAnnotations = await prisma.annotation.findMany({
+          where: { imageId, batchId, createdBy: userId, createdAt: { gte: batchTimestamp } },
+          orderBy: { createdAt: 'asc' },
+        });
+
+        // Update training samples for logos in parallel
         const logoIds = annotations.filter((a) => a.logoId).map((a) => a.logoId!);
         const uniqueLogoIds = [...new Set(logoIds)];
 
-        for (const logoId of uniqueLogoIds) {
-          const count = logoIds.filter((id) => id === logoId).length;
-          await prisma.logo.update({
-            where: { id: logoId },
-            data: { trainingSamples: { increment: count } },
-          });
-        }
+        await Promise.all(
+          uniqueLogoIds.map((logoId) => {
+            const count = logoIds.filter((id) => id === logoId).length;
+            return prisma.logo.update({
+              where: { id: logoId },
+              data: { trainingSamples: { increment: count } },
+            });
+          })
+        );
 
         logger.info('Bulk annotations created', {
           imageId,

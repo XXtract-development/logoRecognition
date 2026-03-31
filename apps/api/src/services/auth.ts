@@ -5,10 +5,9 @@
 
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import { PrismaClient, UserRole } from '@prisma/client';
+import { UserRole } from '@prisma/client';
+import prisma from '../core/db';
 import { logger } from '../core/logger';
-
-const prisma = new PrismaClient();
 
 // Configuration
 const JWT_SECRET = process.env.JWT_SECRET || (process.env.NODE_ENV === 'production' ? (() => { throw new Error('JWT_SECRET is required in production'); })() : 'dev-secret-change-in-production');
@@ -45,6 +44,16 @@ export interface LoginResult {
 
 // In-memory rate limiting (use Redis in production)
 const loginAttempts = new Map<string, { count: number; firstAttempt: number }>();
+
+// Periodic cleanup of expired login attempt entries
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, data] of loginAttempts.entries()) {
+    if (now - data.firstAttempt > 15 * 60 * 1000) {
+      loginAttempts.delete(ip);
+    }
+  }
+}, 60 * 1000);
 
 /**
  * Hash a password using bcrypt

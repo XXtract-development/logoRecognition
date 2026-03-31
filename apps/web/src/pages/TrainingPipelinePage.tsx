@@ -49,6 +49,7 @@ import {
   getTrainingDataSummary,
 } from '@/services/modelService';
 import { fetchCategories } from '@/services/trainingService';
+import { formatDuration } from '@/utils/format';
 import type { TrainingJob, TrainingConfig } from '@/types/training.types';
 
 const { Title, Text } = Typography;
@@ -107,12 +108,13 @@ const TrainingPipelinePage: React.FC = () => {
   useEffect(() => {
     if (!import.meta.env.DEV) return;
 
-    const runningJob = trainingJobs.find((j) => j.status === 'running');
-    if (!runningJob) return;
-
     const interval = setInterval(() => {
+      const currentJobs = useModelStore.getState().trainingJobs;
+      const hasRunning = currentJobs.some((j) => j.status === 'running');
+      if (!hasRunning) return;
+
       setTrainingJobs(
-        trainingJobs.map((job) => {
+        currentJobs.map((job) => {
           if (job.status !== 'running') return job;
 
           const newProgress = { ...job.progress };
@@ -141,7 +143,7 @@ const TrainingPipelinePage: React.FC = () => {
     }, 2000);
 
     return () => clearInterval(interval);
-  }, [trainingJobs, setTrainingJobs]);
+  }, [setTrainingJobs]);
 
   // Handle category selection change for data summary
   const handleCategoryChange = useCallback(
@@ -244,13 +246,6 @@ const TrainingPipelinePage: React.FC = () => {
     }
   };
 
-  // Format duration
-  const formatDuration = (seconds: number) => {
-    if (seconds < 60) return `${seconds}s`;
-    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
-    return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
-  };
-
   // Table columns
   const columns = [
     {
@@ -313,7 +308,7 @@ const TrainingPipelinePage: React.FC = () => {
       width: 100,
       render: (_: unknown, record: TrainingJob) =>
         record.status === 'running' ? (
-          <Text>{formatDuration(record.progress.etaSeconds)}</Text>
+          <Text>{formatDuration(record.progress.etaSeconds * 1000)}</Text>
         ) : record.status === 'completed' ? (
           <Tag color="green">{t('training.complete', 'Complete')}</Tag>
         ) : (
@@ -414,7 +409,7 @@ const TrainingPipelinePage: React.FC = () => {
                     </Col>
                     <Col>
                       <Text>
-                        ETA: {formatDuration(runningJob.progress.etaSeconds)}
+                        ETA: {formatDuration(runningJob.progress.etaSeconds * 1000)}
                       </Text>
                     </Col>
                   </Row>
@@ -522,7 +517,7 @@ const TrainingPipelinePage: React.FC = () => {
                 <Col span={6}>
                   <Statistic
                     title={t('training.estimatedTime', 'Est. Time')}
-                    value={formatDuration(dataSummary.estimatedDuration)}
+                    value={formatDuration(dataSummary.estimatedDuration * 1000)}
                   />
                 </Col>
               </Row>

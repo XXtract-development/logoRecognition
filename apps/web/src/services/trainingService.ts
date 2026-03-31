@@ -2,7 +2,7 @@
  * Training Service
  * API calls for image management, categories, and annotations
  */
-import axios from 'axios';
+import apiClient from './apiClient';
 import type {
   TrainingImage,
   Category,
@@ -12,13 +12,6 @@ import type {
   SmartDetectionResult,
   ImageFilters,
 } from '@/types/training.types';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
-
-const api = axios.create({
-  baseURL: API_BASE,
-  timeout: 30000,
-});
 
 // Demo data generators (exported for development use, not used as API fallbacks)
 export const generateDemoImages = (count: number): TrainingImage[] => {
@@ -52,26 +45,18 @@ export const demoCategories: Category[] = [
 // ============ Images API ============
 
 export async function fetchImages(filters?: ImageFilters): Promise<TrainingImage[]> {
-  try {
-    const response = await api.get('/training/images', { params: filters });
-    // API returns { data: [...], pagination: {...} }
-    return response.data.data || response.data;
-  } catch (error) {
-    throw error;
-  }
+  const response = await apiClient.get('/training/images', { params: filters });
+  // API returns { data: [...], pagination: {...} }
+  return response.data.data || response.data;
 }
 
 export async function uploadImage(file: File): Promise<TrainingImage> {
-  try {
-    const formData = new FormData();
-    formData.append('image', file);
-    const response = await api.post('/training/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+  const formData = new FormData();
+  formData.append('image', file);
+  const response = await apiClient.post('/training/upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return response.data;
 }
 
 export async function uploadImages(files: File[]): Promise<TrainingImage[]> {
@@ -84,105 +69,65 @@ export async function uploadImages(files: File[]): Promise<TrainingImage[]> {
 }
 
 export async function deleteImage(id: string): Promise<void> {
-  try {
-    await api.delete(`/training/images/${id}`);
-  } catch (error) {
-    throw error;
-  }
+  await apiClient.delete(`/training/images/${id}`);
 }
 
 export async function deleteImages(ids: string[]): Promise<void> {
-  try {
-    await api.post('/training/images/bulk-delete', { ids });
-  } catch (error) {
-    throw error;
-  }
+  await apiClient.post('/training/images/bulk-delete', { ids });
 }
 
 export async function assignImagesToCategory(
   imageIds: string[],
   categoryId: string
 ): Promise<void> {
-  try {
-    await api.post('/training/images/assign-category', { imageIds, categoryId });
-  } catch (error) {
-    throw error;
-  }
+  await apiClient.post('/training/images/assign-category', { imageIds, categoryId });
 }
 
 // ============ Categories API ============
 
 export async function fetchCategories(): Promise<Category[]> {
-  try {
-    const response = await api.get('/training/categories');
-    // API returns { data: [...] }
-    return response.data.data || response.data;
-  } catch (error) {
-    throw error;
-  }
+  const response = await apiClient.get('/training/categories');
+  // API returns { data: [...] }
+  return response.data.data || response.data;
 }
 
 export async function createCategory(data: CategoryFormData): Promise<Category> {
-  try {
-    const response = await api.post('/training/categories', data);
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+  const response = await apiClient.post('/training/categories', data);
+  return response.data;
 }
 
 export async function updateCategory(
   id: string,
   data: Partial<CategoryFormData>
 ): Promise<Category> {
-  try {
-    const response = await api.patch(`/training/categories/${id}`, data);
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+  const response = await apiClient.patch(`/training/categories/${id}`, data);
+  return response.data;
 }
 
 export async function deleteCategory(id: string): Promise<void> {
-  try {
-    await api.delete(`/training/categories/${id}`);
-  } catch (error) {
-    throw error;
-  }
+  await apiClient.delete(`/training/categories/${id}`);
 }
 
 export async function mergeCategories(
   sourceId: string,
   targetId: string
 ): Promise<void> {
-  try {
-    await api.post('/training/categories/merge', { sourceId, targetId });
-  } catch (error) {
-    throw error;
-  }
+  await apiClient.post('/training/categories/merge', { sourceId, targetId });
 }
 
 // ============ Annotations API ============
 
 export async function fetchAnnotations(imageId: string): Promise<Annotation[]> {
-  try {
-    const response = await api.get(`/training/images/${imageId}/annotations`);
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+  const response = await apiClient.get(`/training/images/${imageId}/annotations`);
+  return response.data;
 }
 
 export async function createAnnotation(
   imageId: string,
   data: AnnotationFormData
 ): Promise<Annotation> {
-  try {
-    const response = await api.post(`/training/images/${imageId}/annotations`, data);
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+  const response = await apiClient.post(`/training/images/${imageId}/annotations`, data);
+  return response.data;
 }
 
 export async function updateAnnotation(
@@ -190,26 +135,18 @@ export async function updateAnnotation(
   annotationId: string,
   data: Partial<AnnotationFormData>
 ): Promise<Annotation> {
-  try {
-    const response = await api.patch(
-      `/training/images/${imageId}/annotations/${annotationId}`,
-      data
-    );
-    return response.data;
-  } catch (error) {
-    throw new Error('Failed to update annotation');
-  }
+  const response = await apiClient.patch(
+    `/training/images/${imageId}/annotations/${annotationId}`,
+    data
+  );
+  return response.data;
 }
 
 export async function deleteAnnotation(
   imageId: string,
   annotationId: string
 ): Promise<void> {
-  try {
-    await api.delete(`/training/images/${imageId}/annotations/${annotationId}`);
-  } catch (error) {
-    throw error;
-  }
+  await apiClient.delete(`/training/images/${imageId}/annotations/${annotationId}`);
 }
 
 export async function validateAnnotation(
@@ -217,13 +154,9 @@ export async function validateAnnotation(
   annotationId: string,
   validated: boolean
 ): Promise<void> {
-  try {
-    await api.patch(`/training/images/${imageId}/annotations/${annotationId}/validate`, {
-      validated,
-    });
-  } catch (error) {
-    throw error;
-  }
+  await apiClient.patch(`/training/images/${imageId}/annotations/${annotationId}/validate`, {
+    validated,
+  });
 }
 
 // ============ Smart Detection API ============
@@ -233,41 +166,25 @@ export async function smartDetect(
   clickX: number,
   clickY: number
 ): Promise<SmartDetectionResult> {
-  try {
-    const response = await api.post('/ml/smart-detect', {
-      imageId,
-      clickX,
-      clickY,
-    });
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+  const response = await apiClient.post('/ml/smart-detect', {
+    imageId,
+    clickX,
+    clickY,
+  });
+  return response.data;
 }
 
 // ============ Review API ============
 
 export async function fetchReviewItems(status?: string): Promise<TrainingImage[]> {
-  try {
-    const response = await api.get('/training/review', { params: { status } });
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+  const response = await apiClient.get('/training/review', { params: { status } });
+  return response.data;
 }
 
 export async function approveImage(imageId: string): Promise<void> {
-  try {
-    await api.post(`/training/review/${imageId}/approve`);
-  } catch (error) {
-    throw error;
-  }
+  await apiClient.post(`/training/review/${imageId}/approve`);
 }
 
 export async function rejectImage(imageId: string, notes: string): Promise<void> {
-  try {
-    await api.post(`/training/review/${imageId}/reject`, { notes });
-  } catch (error) {
-    throw error;
-  }
+  await apiClient.post(`/training/review/${imageId}/reject`, { notes });
 }

@@ -188,28 +188,24 @@ export async function feedbackRoutes(fastify: FastifyInstance) {
       const { entries } = request.body;
 
       try {
-        const created = await prisma.$transaction(
-          entries.map((entry) =>
-            prisma.feedbackEntry.create({
-              data: {
-                logId: entry.logId,
-                predictedLogoId: entry.predictedLogoId,
-                correctLogoId: entry.isCorrect ? entry.predictedLogoId : entry.correctLogoId,
-                validatedBy: userId,
-                validatedAt: new Date(),
-              },
-            })
-          )
-        );
+        const result = await prisma.feedbackEntry.createMany({
+          data: entries.map((entry) => ({
+            logId: entry.logId,
+            predictedLogoId: entry.predictedLogoId,
+            correctLogoId: entry.isCorrect ? entry.predictedLogoId : entry.correctLogoId,
+            validatedBy: userId,
+            validatedAt: new Date(),
+          })),
+        });
 
         logger.info('Bulk feedback submitted', {
-          count: created.length,
+          count: result.count,
           userId,
         });
 
         return reply.status(201).send({
           success: true,
-          count: created.length,
+          count: result.count,
         });
       } catch (error) {
         logger.error('Failed to submit bulk feedback', {

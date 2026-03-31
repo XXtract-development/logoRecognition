@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Modal, Select, Button, message } from 'antd';
 import { useTranslation } from 'react-i18next';
 import type { RecognitionResult, UploadedImage } from '@/types/recognition';
+import { downloadBlob } from '@/utils/export';
 
 interface ExportDialogProps {
   visible: boolean;
@@ -91,14 +92,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
 
       // Create download
       const blob = new Blob([content], { type: mimeType });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      downloadBlob(blob, filename);
 
       message.success(t('recognition.exported'));
       onClose();
