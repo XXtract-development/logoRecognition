@@ -1,0 +1,72 @@
+# PROD Environment - Self-contained for Coolify deployment
+# Server: Banana-Prod (10.0.0.2)
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    network_mode: host
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=warn
+      - ENVIRONMENT=prod
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "-o", "/dev/null", "http://localhost:${APP_PORT:-8000}/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '1.0'
+          memory: 1G
+
+  ml-service:
+    build:
+      context: ./apps/ml-service
+      dockerfile: Dockerfile
+    network_mode: host
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=warn
+      - ENVIRONMENT=prod
+      - PORT=8001
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "-o", "/dev/null", "http://localhost:${ML_PORT:-8001}/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 16G
+        reservations:
+          cpus: '2.0'
+          memory: 4G
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]

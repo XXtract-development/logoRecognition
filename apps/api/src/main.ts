@@ -10,6 +10,8 @@ import rateLimit from '@fastify/rate-limit';
 import websocket from '@fastify/websocket';
 import multipart from '@fastify/multipart';
 import cookie from '@fastify/cookie';
+import fastifyStatic from '@fastify/static';
+import path from 'path';
 
 import { errorHandler } from './middleware/errorHandler';
 import { tracingMiddleware, responseLogger } from './middleware/tracing';
@@ -118,6 +120,26 @@ async function startServer() {
     await app.register(annotationRoutes, { prefix: '/api/v1' });
     await app.register(feedbackRoutes, { prefix: '/api/v1' });
     await app.register(statsRoutes, { prefix: '/api/v1' });
+
+    // ==========================================
+    // Static Files (Monolith: serve frontend build)
+    // ==========================================
+    const publicDir = path.join(__dirname, '..', 'public');
+    await app.register(fastifyStatic, {
+      root: publicDir,
+      prefix: '/',
+      wildcard: false,
+      decorateReply: false,
+    });
+
+    // SPA fallback: serve index.html for non-API routes
+    app.setNotFoundHandler((request, reply) => {
+      if (request.url.startsWith('/api/') || request.url.startsWith('/health')) {
+        reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Route not found' } });
+      } else {
+        reply.sendFile('index.html', publicDir);
+      }
+    });
 
     // ==========================================
     // WebSocket Routes

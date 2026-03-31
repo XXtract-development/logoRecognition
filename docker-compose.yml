@@ -1,4 +1,6 @@
-version: '3.8'
+# Logo Recognition - Local Development Only
+# This file is for LOCAL DEVELOPMENT. Do NOT use for Coolify deployments.
+# For deployments use: docker-compose.acc.yml, docker-compose.prod.yml, docker-compose.test.yml
 
 services:
   # Frontend - React + Vite
@@ -12,6 +14,8 @@ services:
     volumes:
       - ./apps/web/src:/app/apps/web/src
       - ./apps/web/public:/app/apps/web/public
+    env_file:
+      - .env
     environment:
       - VITE_API_URL=http://api:8000
       - NODE_ENV=development
@@ -20,6 +24,11 @@ services:
     networks:
       - logo-recognition
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # API - Fastify
   api:
@@ -31,6 +40,8 @@ services:
       - "8000:8000"
     volumes:
       - ./apps/api/src:/app/apps/api/src
+    env_file:
+      - .env
     environment:
       - NODE_ENV=development
       - PORT=8000
@@ -38,11 +49,12 @@ services:
     networks:
       - logo-recognition
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 networks:
   logo-recognition:
     driver: bridge
-
-volumes:
-  node_modules_web:
-  node_modules_api:
