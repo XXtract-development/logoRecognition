@@ -5,6 +5,8 @@ import { VitePWA } from 'vite-plugin-pwa';
 // import { visualizer } from 'vite-bundle-visualizer'; // COMMENTED OUT: compatibility issue
 
 export default defineConfig({
+  // Load .env from this directory
+  envDir: __dirname,
   plugins: [
     react(),
     VitePWA({
@@ -69,9 +71,9 @@ export default defineConfig({
     }
   },
   server: {
-    port: 3000,
+    port: 5173,
     host: true,
-    strictPort: true,
+    strictPort: false,
     proxy: {
       '/api': {
         target: process.env.VITE_API_URL || 'http://localhost:8000',
