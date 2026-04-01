@@ -35,9 +35,7 @@ services:
           memory: 128M
 
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/xxtract-development/logo-recognition-app:acc
     network_mode: host
     env_file:
       - .env
@@ -67,9 +65,7 @@ services:
           memory: 512M
 
   ml-service:
-    build:
-      context: .
-      dockerfile: apps/ml-service/Dockerfile
+    image: ghcr.io/xxtract-development/logo-recognition-ml:acc
     network_mode: host
     env_file:
       - .env
