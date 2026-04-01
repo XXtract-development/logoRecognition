@@ -28,8 +28,8 @@ RUN NODE_ENV=development pnpm install --no-frozen-lockfile
 COPY apps/web/ ./apps/web/
 COPY packages/ ./packages/
 
-# Build frontend
-RUN pnpm --filter @logo-recognition/web build
+# Build frontend (Vite handles TypeScript internally)
+RUN cd apps/web && npx vite build
 
 # ============================================
 # Stage 2: Build Backend (Fastify/TypeScript)
