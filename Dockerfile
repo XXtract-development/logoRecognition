@@ -8,6 +8,9 @@
 # ============================================
 FROM node:20-alpine AS frontend-builder
 
+# Force development mode during build so devDependencies are installed
+ENV NODE_ENV=development
+
 RUN npm install -g pnpm@9.15.0
 
 WORKDIR /app
@@ -35,6 +38,9 @@ RUN pnpm --filter @logo-recognition/web build
 # Stage 2: Build Backend (Fastify/TypeScript)
 # ============================================
 FROM node:20-alpine AS backend-builder
+
+# Force development mode during build so devDependencies are installed
+ENV NODE_ENV=development
 
 RUN npm install -g pnpm@9.15.0
 
@@ -68,6 +74,8 @@ RUN pnpm --filter @logo-recognition/api build
 # Stage 3: Production Runtime
 # ============================================
 FROM node:20-alpine AS runtime
+
+ENV NODE_ENV=production
 
 # Install curl for healthcheck
 RUN apk add --no-cache curl
