@@ -22,7 +22,7 @@ COPY packages/ml/package.json ./packages/ml/
 COPY packages/ui/package.json ./packages/ui/
 
 # Install ALL dependencies including devDependencies (needed for build)
-RUN NODE_ENV=development pnpm install --frozen-lockfile
+RUN NODE_ENV=development pnpm install --no-frozen-lockfile
 
 # Copy source code
 COPY apps/web/ ./apps/web/
@@ -51,7 +51,7 @@ COPY packages/ml/package.json ./packages/ml/
 COPY packages/ui/package.json ./packages/ui/
 
 # Install ALL dependencies including devDependencies (needed for build)
-RUN NODE_ENV=development pnpm install --frozen-lockfile
+RUN NODE_ENV=development pnpm install --no-frozen-lockfile
 
 # Copy source and prisma schema
 COPY apps/api/src/ ./apps/api/src/
