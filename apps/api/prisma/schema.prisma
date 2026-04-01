@@ -1,0 +1,359 @@
+// Prisma Schema for Logo Recognition System
+// Based on infrastructure/docker/postgres/init.sql
+// Run: npx prisma generate && npx prisma db push
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [pgvector(map: "vector", schema: "public"), pg_trgm, btree_gin, btree_gist]
+}
+
+// ============================================
+// CORE MODELS
+// ============================================
+
+/// Logo images with vector embeddings for similarity search
+model LogoImage {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  filename        String    @db.VarChar(255)
+  storagePath     String    @map("storage_path") @db.VarChar(500)
+  embedding       Unsupported("vector(512)")?
+  metadata        Json      @default("{}")
+  brandName       String?   @map("brand_name") @db.VarChar(255)
+  confidenceScore Float?    @map("confidence_score")
+  detectedAt      DateTime? @map("detected_at") @db.Timestamptz
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  trainingData TrainingData[]
+  annotations  Annotation[]
+
+  @@index([brandName])
+  @@index([createdAt(sort: Desc)])
+  @@map("logo_images")
+}
+
+/// Training data for model improvement
+model TrainingData {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  imageId        String    @map("image_id") @db.Uuid
+  label          String    @db.VarChar(255)
+  confidence     Float?
+  validated      Boolean   @default(false)
+  validationDate DateTime? @map("validation_date") @db.Timestamptz
+  validatedBy    String?   @map("validated_by") @db.VarChar(255)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  image LogoImage @relation(fields: [imageId], references: [id], onDelete: Cascade)
+
+  @@index([imageId])
+  @@index([label])
+  @@index([validated])
+  @@map("training_data")
+}
+
+/// ML model version tracking
+model ModelVersion {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  version        String    @unique @db.VarChar(50)
+  modelType      String    @map("model_type") @db.VarChar(100)
+  accuracy       Float?
+  precisionScore Float?    @map("precision_score")
+  recallScore    Float?    @map("recall_score")
+  f1Score        Float?    @map("f1_score")
+  trainingDate   DateTime? @map("training_date") @db.Timestamptz
+  isActive       Boolean   @default(false) @map("is_active")
+  config         Json      @default("{}")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([isActive])
+  @@index([version])
+  @@map("model_versions")
+}
+
+/// Search history for analytics
+model SearchHistory {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  queryVector  Unsupported("vector(512)")? @map("query_vector")
+  resultsCount Int?     @map("results_count")
+  searchTimeMs Float?   @map("search_time_ms")
+  userId       String?  @map("user_id") @db.VarChar(255)
+  sessionId    String?  @map("session_id") @db.VarChar(255)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([userId])
+  @@index([createdAt(sort: Desc)])
+  @@map("search_history")
+}
+
+// ============================================
+// USER & AUTH MODELS
+// ============================================
+
+/// System users
+model User {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email          String   @unique @db.VarChar(255)
+  passwordHash   String   @map("password_hash") @db.VarChar(255)
+  role           UserRole @default(USER)
+  organizationId String?  @map("organization_id") @db.Uuid
+  isActive       Boolean  @default(true) @map("is_active")
+  lastLoginAt    DateTime? @map("last_login_at") @db.Timestamptz
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  trainingBatches TrainingBatch[]
+  annotations     Annotation[]
+  recognitionLogs RecognitionLog[]
+
+  @@index([email])
+  @@index([organizationId])
+  @@map("users")
+}
+
+enum UserRole {
+  ADMIN
+  USER
+  VIEWER
+}
+
+/// Organizations for multi-tenancy
+model Organization {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String   @db.VarChar(255)
+  slug      String   @unique @db.VarChar(100)
+  settings  Json     @default("{}")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  users User[]
+
+  @@map("organizations")
+}
+
+// ============================================
+// TRAINING WORKFLOW MODELS
+// ============================================
+
+/// Training batch - groups uploaded images
+model TrainingBatch {
+  id        String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String           @db.VarChar(255)
+  status    TrainingStatus   @default(UPLOADING)
+  fileCount Int              @default(0) @map("file_count")
+  userId    String           @map("user_id") @db.Uuid
+  createdAt DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime         @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  user        User         @relation(fields: [userId], references: [id])
+  annotations Annotation[]
+
+  @@index([userId])
+  @@index([status])
+  @@map("training_batches")
+}
+
+enum TrainingStatus {
+  UPLOADING
+  PROCESSING
+  ANNOTATING
+  TRAINING
+  COMPLETED
+  FAILED
+}
+
+/// Individual annotations on images
+model Annotation {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  imageId    String   @map("image_id") @db.Uuid
+  batchId    String?  @map("batch_id") @db.Uuid
+  logoId     String?  @map("logo_id") @db.Uuid
+  x          Int
+  y          Int
+  width      Int
+  height     Int
+  category   String?  @db.VarChar(100)
+  value      String?  @db.VarChar(100)
+  confidence Float?
+  createdBy  String   @map("created_by") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  image LogoImage      @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  batch TrainingBatch? @relation(fields: [batchId], references: [id])
+  logo  Logo?          @relation(fields: [logoId], references: [id])
+  user  User           @relation(fields: [createdBy], references: [id])
+
+  @@index([imageId])
+  @@index([batchId])
+  @@index([logoId])
+  @@map("annotations")
+}
+
+/// Logo definitions (category + value)
+model Logo {
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  category            String   @db.VarChar(100)
+  value               String   @db.VarChar(100)
+  confidenceThreshold Float    @default(0.99) @map("confidence_threshold")
+  trainingSamples     Int      @default(0) @map("training_samples")
+  accuracy            Float?
+  isActive            Boolean  @default(true) @map("is_active")
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  annotations      Annotation[]
+  embeddings       LogoEmbedding[]
+  recognitionResults RecognitionResult[]
+
+  @@unique([category, value])
+  @@index([category])
+  @@index([isActive])
+  @@map("logos")
+}
+
+/// Logo embeddings for vector search
+model LogoEmbedding {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  logoId    String   @map("logo_id") @db.Uuid
+  modelId   String   @map("model_id") @db.Uuid
+  embedding Unsupported("vector(512)")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  logo Logo @relation(fields: [logoId], references: [id], onDelete: Cascade)
+
+  @@index([logoId])
+  @@map("logo_embeddings")
+}
+
+// ============================================
+// RECOGNITION & FEEDBACK MODELS
+// ============================================
+
+/// Recognition request logs
+model RecognitionLog {
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  requestId           String   @map("request_id") @db.VarChar(100)
+  userId              String?  @map("user_id") @db.Uuid
+  modelId             String?  @map("model_id") @db.Uuid
+  imageHash           String?  @map("image_hash") @db.VarChar(64)
+  confidenceThreshold Float?   @map("confidence_threshold")
+  processingTimeMs    Int?     @map("processing_time_ms")
+  detectionCount      Int      @default(0) @map("detection_count")
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  user    User?               @relation(fields: [userId], references: [id])
+  results RecognitionResult[]
+  feedback FeedbackEntry[]
+
+  @@index([requestId])
+  @@index([userId])
+  @@index([imageHash])
+  @@index([createdAt(sort: Desc)])
+  @@map("recognition_logs")
+}
+
+/// Individual detection results
+model RecognitionResult {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  logId      String   @map("log_id") @db.Uuid
+  logoId     String?  @map("logo_id") @db.Uuid
+  category   String   @db.VarChar(100)
+  value      String   @db.VarChar(100)
+  confidence Float
+  x          Int
+  y          Int
+  width      Int
+  height     Int
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  log  RecognitionLog @relation(fields: [logId], references: [id], onDelete: Cascade)
+  logo Logo?          @relation(fields: [logoId], references: [id])
+
+  @@index([logId])
+  @@index([logoId])
+  @@map("recognition_results")
+}
+
+/// Feedback for self-learning
+model FeedbackEntry {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  logId           String    @map("log_id") @db.Uuid
+  predictedLogoId String?   @map("predicted_logo_id") @db.Uuid
+  confidence      Float?
+  correctLogoId   String?   @map("correct_logo_id") @db.Uuid
+  validatedBy     String?   @map("validated_by") @db.Uuid
+  validatedAt     DateTime? @map("validated_at") @db.Timestamptz
+  incorporated    Boolean   @default(false)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  log RecognitionLog @relation(fields: [logId], references: [id], onDelete: Cascade)
+
+  @@index([logId])
+  @@index([incorporated])
+  @@map("feedback_queue")
+}
+
+// ============================================
+// MONITORING MODELS
+// ============================================
+
+/// Query performance statistics
+model QueryStats {
+  id             Int      @id @default(autoincrement())
+  queryHash      String   @map("query_hash") @db.VarChar(64)
+  queryText      String?  @map("query_text")
+  executionCount BigInt   @default(0) @map("execution_count")
+  totalTimeMs    Float    @default(0) @map("total_time_ms")
+  meanTimeMs     Float    @default(0) @map("mean_time_ms")
+  maxTimeMs      Float    @default(0) @map("max_time_ms")
+  lastExecuted   DateTime @default(now()) @map("last_executed") @db.Timestamptz
+
+  @@unique([queryHash])
+  @@map("query_stats")
+}
+
+/// Service health checks
+model HealthCheck {
+  id           Int      @id @default(autoincrement())
+  serviceName  String   @map("service_name") @db.VarChar(100)
+  status       String   @db.VarChar(20)
+  responseTimeMs Float? @map("response_time_ms")
+  details      Json     @default("{}")
+  checkedAt    DateTime @default(now()) @map("checked_at") @db.Timestamptz
+
+  @@index([serviceName])
+  @@index([checkedAt(sort: Desc)])
+  @@map("health_checks")
+}
+
+/// Backup history tracking
+model BackupHistory {
+  id              Int      @id @default(autoincrement())
+  backupType      String   @map("backup_type") @db.VarChar(50)
+  backupPath      String   @map("backup_path") @db.VarChar(500)
+  sizeBytes       BigInt?  @map("size_bytes")
+  durationSeconds Float?   @map("duration_seconds")
+  status          String   @db.VarChar(20)
+  errorMessage    String?  @map("error_message")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([createdAt(sort: Desc)])
+  @@map("backup_history")
+}

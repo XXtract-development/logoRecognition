@@ -1,0 +1,22 @@
+{
+  "recognition": {
+    "title": "ロゴ認識",
+    "upload": "画像をアップロード",
+    "results": "認識結果",
+    "export": "結果をエクスポート",
+    "clear": "すべてクリア",
+    "complete": "認識完了",
+    "uploadFailed": "アップロード失敗",
+    "exportFailed": "エクスポート失敗",
+    "exported": "結果が正常にエクスポートされました",
+    "uploadProgress": "アップロード進捗",
+    "dragDrop": "ここに画像をドロップするか、クリックして参照",
+    "processing": "画像を処理中...",
+    "noResults": "まだ結果がありません"
+  },
+  "connection": {
+    "connected": "接続済み",
+    "disconnected": "切断",
+    "reconnecting": "再接続中..."
+  }
+}

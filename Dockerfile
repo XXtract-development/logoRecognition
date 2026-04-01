@@ -83,8 +83,7 @@ COPY --from=backend-builder /app/apps/api/dist ./dist
 COPY --from=backend-builder /app/apps/api/package.json ./
 COPY --from=backend-builder /app/apps/api/prisma ./prisma
 
-# Copy Prisma generated client
-COPY --from=backend-builder /app/apps/api/node_modules/.prisma ./node_modules/.prisma
+# Copy node_modules (includes Prisma generated client)
 COPY --from=backend-builder /app/node_modules ./node_modules
 
 # Copy frontend build output to be served as static files

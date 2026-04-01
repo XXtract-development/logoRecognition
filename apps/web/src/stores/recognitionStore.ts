@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import type { RecognitionResult, UploadedImage } from '@types/recognition';
+import type { RecognitionResult, UploadedImage } from '@/types/recognition';
 
 interface RecognitionState {
   // State

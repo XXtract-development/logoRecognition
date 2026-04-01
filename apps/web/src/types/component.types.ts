@@ -4,7 +4,7 @@
  */
 
 import { ReactNode } from 'react';
-import { RecognitionResult, LogoDetection, BoundingBox } from './logo.types';
+import { RecognitionResult, LogoDetection } from './logo.types';
 
 export interface BaseComponentProps {
   className?: string;

@@ -1,0 +1,22 @@
+{
+  "recognition": {
+    "title": "Reconnaissance de Logos",
+    "upload": "Télécharger l'image",
+    "results": "Résultats de la Reconnaissance",
+    "export": "Exporter les Résultats",
+    "clear": "Tout Effacer",
+    "complete": "Reconnaissance terminée",
+    "uploadFailed": "Échec du téléchargement",
+    "exportFailed": "Échec de l'exportation",
+    "exported": "Résultats exportés avec succès",
+    "uploadProgress": "Progression du téléchargement",
+    "dragDrop": "Glissez-déposez l'image ici ou cliquez pour parcourir",
+    "processing": "Traitement de l'image...",
+    "noResults": "Pas encore de résultats"
+  },
+  "connection": {
+    "connected": "Connecté",
+    "disconnected": "Déconnecté",
+    "reconnecting": "Reconnexion..."
+  }
+}

@@ -11,12 +11,30 @@ import jaTranslations from './locales/ja.json';
 import zhTranslations from './locales/zh.json';
 
 const resources = {
-  en: { translation: enTranslations },
-  es: { translation: esTranslations },
-  fr: { translation: frTranslations },
-  de: { translation: deTranslations },
-  ja: { translation: jaTranslations },
-  zh: { translation: zhTranslations },
+  en: {
+    translation: enTranslations,
+    recognition: enTranslations,  // Also expose as 'recognition' namespace
+  },
+  es: {
+    translation: esTranslations,
+    recognition: esTranslations,
+  },
+  fr: {
+    translation: frTranslations,
+    recognition: frTranslations,
+  },
+  de: {
+    translation: deTranslations,
+    recognition: deTranslations,
+  },
+  ja: {
+    translation: jaTranslations,
+    recognition: jaTranslations,
+  },
+  zh: {
+    translation: zhTranslations,
+    recognition: zhTranslations,
+  },
 };
 
 i18n

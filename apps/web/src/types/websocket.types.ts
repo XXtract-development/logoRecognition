@@ -3,7 +3,7 @@
  * Type definitions for real-time communication
  */
 
-import { RecognitionResult, UploadProgress } from './logo.types';
+// Types used in WebSocket message payloads
 
 export enum WebSocketEvent {
   CONNECT = 'connect',
@@ -11,6 +11,7 @@ export enum WebSocketEvent {
   ERROR = 'error',
   RECONNECT = 'reconnect',
   UPLOAD_PROGRESS = 'upload:progress',
+  RECOGNIZE = 'recognize',
   RECOGNITION_START = 'recognition:start',
   RECOGNITION_PROGRESS = 'recognition:progress',
   RECOGNITION_COMPLETE = 'recognition:complete',

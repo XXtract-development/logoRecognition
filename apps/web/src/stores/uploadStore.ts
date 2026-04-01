@@ -107,9 +107,10 @@ export const useUploadStore = create<UploadStore>()(
         set((state) => {
           const upload = state.uploads.get(fileId);
           if (upload !== undefined) {
+            const wasUploading = upload.status === UploadStatus.UPLOADING;
             upload.status = UploadStatus.CANCELLED;
             state.uploads.set(fileId, upload);
-            if (upload.status === UploadStatus.UPLOADING) {
+            if (wasUploading) {
               state.activeUploads = Math.max(0, state.activeUploads - 1);
             }
           }

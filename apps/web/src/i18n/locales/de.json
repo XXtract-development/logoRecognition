@@ -1,0 +1,22 @@
+{
+  "recognition": {
+    "title": "Logo-Erkennung",
+    "upload": "Bild hochladen",
+    "results": "Erkennungsergebnisse",
+    "export": "Ergebnisse exportieren",
+    "clear": "Alles löschen",
+    "complete": "Erkennung abgeschlossen",
+    "uploadFailed": "Upload fehlgeschlagen",
+    "exportFailed": "Export fehlgeschlagen",
+    "exported": "Ergebnisse erfolgreich exportiert",
+    "uploadProgress": "Upload-Fortschritt",
+    "dragDrop": "Bild hier ablegen oder klicken zum Durchsuchen",
+    "processing": "Bild wird verarbeitet...",
+    "noResults": "Noch keine Ergebnisse"
+  },
+  "connection": {
+    "connected": "Verbunden",
+    "disconnected": "Getrennt",
+    "reconnecting": "Wiederverbinden..."
+  }
+}

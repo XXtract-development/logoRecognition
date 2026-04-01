@@ -1,4 +1,48 @@
 {
+  "title": "Logo Recognition",
+  "description": "Upload an image to detect and recognize logos",
+  "upload": {
+    "title": "Upload Image",
+    "button": "Upload",
+    "supportedFormats": "Supported formats: {{formats}}",
+    "invalidFormat": "Invalid file format",
+    "tooLarge": "File is too large",
+    "readError": "Error reading file",
+    "failed": "Upload failed"
+  },
+  "export": {
+    "button": "Export",
+    "noResults": "No results to export",
+    "title": "Export Results",
+    "format": "Format",
+    "download": "Download"
+  },
+  "visualization": {
+    "title": "Results Visualization",
+    "noImage": "No image uploaded"
+  },
+  "results": {
+    "title": "Detection Results",
+    "noResults": "No logos detected",
+    "confidence": "Confidence",
+    "position": "Position"
+  },
+  "processing": "Processing image...",
+  "page": {
+    "title": "Recognition",
+    "description": "Logo recognition interface"
+  },
+  "aria": {
+    "mainInterface": "Recognition interface",
+    "exportResults": "Export results"
+  },
+  "connection": {
+    "connected": "Connected",
+    "disconnected": "Disconnected",
+    "reconnecting": "Reconnecting...",
+    "backendUnavailable": "Backend services are not available",
+    "websocketUnavailable": "Real-time recognition is not available"
+  },
   "recognition": {
     "title": "Logo Recognition",
     "upload": "Upload Image",
@@ -14,9 +58,372 @@
     "processing": "Processing image...",
     "noResults": "No results yet"
   },
+  "home": {
+    "title": "Logo Recognition System",
+    "subtitle": "Detect and identify logos in images using advanced AI. Train custom models or use pre-trained ones for instant recognition.",
+    "question": "What would you like to do today?",
+    "description": "Upload images and detect logos using advanced AI recognition",
+    "startRecognition": "Start Recognition",
+    "viewDashboard": "View Dashboard",
+    "trainingData": "Training Data",
+    "trainModel": "Train Model",
+    "manageModels": "Manage Models",
+    "quickLinks": "Or go directly to",
+    "paths": {
+      "recognize": {
+        "title": "Recognize Logos",
+        "description": "Upload an image and instantly detect logos using trained AI models.",
+        "button": "Start Recognition",
+        "offline": "Backend offline"
+      },
+      "train": {
+        "title": "Train a Model",
+        "description": "Upload training images, annotate logos, and create custom detection models.",
+        "button": "Start Training"
+      }
+    },
+    "features": {
+      "realtime": "Real-time processing with WebSocket",
+      "highAccuracy": "High-accuracy ML detection",
+      "export": "Export to JSON, CSV, or XML",
+      "batchUpload": "Batch upload training images",
+      "annotate": "Visual annotation tools",
+      "fewShot": "Few-shot learning support"
+    },
+    "links": {
+      "dashboard": "Dashboard",
+      "models": "Model Management",
+      "pipeline": "Training Pipeline"
+    },
+    "stats": {
+      "fast": {
+        "title": "Fast Processing",
+        "description": "Real-time detection with WebSocket streaming for instant results"
+      },
+      "accurate": {
+        "title": "High Accuracy",
+        "description": "Advanced ML models for precise logo identification"
+      },
+      "export": {
+        "title": "Export Results",
+        "description": "Export recognition results in JSON, CSV, or XML format"
+      }
+    }
+  },
+  "features": {
+    "fast": "Fast Processing",
+    "fastDesc": "Real-time logo detection with WebSocket streaming",
+    "accurate": "High Accuracy",
+    "accurateDesc": "Advanced ML models for precise logo identification",
+    "export": "Export Results",
+    "exportDesc": "Export recognition results in JSON, CSV, or XML format"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "actions": "Actions",
+    "loading": "Loading...",
+    "noData": "No data",
+    "confirm": "Confirm",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "search": "Search",
+    "filter": "Filter",
+    "sort": "Sort",
+    "refresh": "Refresh",
+    "export": "Export",
+    "import": "Import"
+  },
+  "training": {
+    "title": "Training Data Management",
+    "description": "Upload and manage images for model training",
+    "tabs": {
+      "library": "Image Library",
+      "upload": "Upload",
+      "categories": "Categories"
+    },
+    "stats": {
+      "total": "Total Images",
+      "complete": "Fully Annotated",
+      "partial": "Partially Annotated",
+      "none": "Not Annotated"
+    },
+    "library": {
+      "title": "Image Library",
+      "search": "Search images...",
+      "filter": "Filter",
+      "sort": "Sort",
+      "gridView": "Grid View",
+      "listView": "List View",
+      "selectAll": "Select All",
+      "clearSelection": "Clear Selection",
+      "selectedCount": "{{count}} selected",
+      "noImages": "No images found",
+      "uploadFirst": "Upload your first images to get started",
+      "annotationStatus": {
+        "complete": "Complete",
+        "partial": "Partial",
+        "none": "None"
+      },
+      "sortBy": {
+        "newest": "Newest First",
+        "oldest": "Oldest First",
+        "name": "Name",
+        "annotations": "Annotations"
+      }
+    },
+    "upload": {
+      "title": "Batch Upload",
+      "dragDrop": "Drag & drop images here",
+      "browse": "or click to browse",
+      "formats": "Supports JPG, PNG, WEBP",
+      "maxSize": "Max 10MB per file",
+      "uploading": "Uploading...",
+      "complete": "Upload complete",
+      "failed": "Upload failed",
+      "retry": "Retry",
+      "queue": "Upload Queue",
+      "clearComplete": "Clear Completed"
+    },
+    "bulk": {
+      "assignCategory": "Assign Category",
+      "deleteSelected": "Delete Selected",
+      "exportSelected": "Export Selected",
+      "assignSuccess": "Category assigned to {{count}} images",
+      "deleteSuccess": "{{count}} images deleted",
+      "selectCategory": "Select a category"
+    }
+  },
+  "categories": {
+    "title": "Categories",
+    "create": "New Category",
+    "edit": "Edit Category",
+    "name": "Name",
+    "description": "Description",
+    "parent": "Parent Category",
+    "color": "Color",
+    "images": "Images",
+    "createSuccess": "Category created successfully",
+    "updateSuccess": "Category updated successfully",
+    "deleteSuccess": "Category deleted successfully",
+    "deleteError": "Failed to delete category",
+    "cannotDelete": "Cannot delete category with assigned images",
+    "merge": "Merge",
+    "mergeCategories": "Merge Categories",
+    "mergeDescription": "Select the category to merge and the target category. All images from the source will be moved to the target.",
+    "sourceCategory": "Source (will be deleted)",
+    "targetCategory": "Target (will receive images)",
+    "selectSource": "Select source category",
+    "selectTarget": "Select target category",
+    "mergeSuccess": "Categories merged successfully",
+    "mergeError": "Failed to merge categories",
+    "selectBoth": "Please select both categories",
+    "cannotMergeSame": "Cannot merge a category with itself",
+    "empty": "No categories yet",
+    "createFirst": "Create First Category",
+    "nameRequired": "Name is required",
+    "nameTooLong": "Name must be less than 50 characters",
+    "descTooLong": "Description must be less than 200 characters",
+    "colorRequired": "Color is required",
+    "namePlaceholder": "e.g., Technology",
+    "descPlaceholder": "Optional description...",
+    "selectParent": "Select parent (optional)",
+    "confirmDelete": "Delete this category?",
+    "confirmDeleteDesc": "This action cannot be undone.",
+    "hasImages": "This category has images assigned."
+  },
+  "annotation": {
+    "title": "Image Annotation",
+    "tools": {
+      "select": "Select",
+      "box": "Bounding Box",
+      "smart": "Smart Click"
+    },
+    "zoom": {
+      "in": "Zoom In",
+      "out": "Zoom Out",
+      "fit": "Fit to Screen"
+    },
+    "actions": {
+      "undo": "Undo",
+      "redo": "Redo",
+      "save": "Save",
+      "clear": "Clear All"
+    },
+    "annotations": "Annotations",
+    "noAnnotations": "No annotations yet",
+    "drawBox": "Draw a box or use smart click",
+    "selectCategory": "Select Category",
+    "categoryRequired": "Please select a category first",
+    "saved": "Annotations saved",
+    "saveError": "Failed to save annotations",
+    "deleted": "Annotation deleted",
+    "navigation": {
+      "previous": "Previous Image",
+      "next": "Next Image",
+      "current": "Image {{current}} of {{total}}"
+    },
+    "shortcuts": {
+      "title": "Keyboard Shortcuts",
+      "selectTool": "V - Select Tool",
+      "boxTool": "B - Bounding Box Tool",
+      "smartTool": "S - Smart Click Tool",
+      "delete": "Delete - Remove Selected",
+      "undo": "Ctrl+Z - Undo",
+      "zoomIn": "] - Zoom In",
+      "zoomOut": "[ - Zoom Out",
+      "prevImage": "← - Previous Image",
+      "nextImage": "→ - Next Image"
+    }
+  },
+  "pipeline": {
+    "title": "Training Pipeline",
+    "description": "Configure and run model training jobs",
+    "create": "New Training Job",
+    "config": {
+      "title": "Training Configuration",
+      "name": "Job Name",
+      "namePlaceholder": "e.g., Logo Detection v2",
+      "nameRequired": "Job name is required",
+      "baseModel": "Base Model",
+      "selectModel": "Select a base model",
+      "epochs": "Epochs",
+      "batchSize": "Batch Size",
+      "learningRate": "Learning Rate",
+      "validationSplit": "Validation Split",
+      "augmentation": "Data Augmentation",
+      "augmentationHelp": "Apply random transformations to training images"
+    },
+    "summary": {
+      "title": "Data Summary",
+      "totalImages": "Total Images",
+      "annotatedImages": "Annotated Images",
+      "totalAnnotations": "Total Annotations",
+      "categories": "Categories"
+    },
+    "jobs": {
+      "title": "Training Jobs",
+      "noJobs": "No training jobs yet",
+      "createFirst": "Create your first training job",
+      "status": {
+        "pending": "Pending",
+        "running": "Running",
+        "completed": "Completed",
+        "failed": "Failed",
+        "cancelled": "Cancelled"
+      },
+      "progress": "Progress",
+      "accuracy": "Accuracy",
+      "duration": "Duration",
+      "startedAt": "Started",
+      "viewDetails": "View Details",
+      "cancel": "Cancel Job"
+    },
+    "start": "Start Training",
+    "started": "Training job started",
+    "startError": "Failed to start training"
+  },
+  "models": {
+    "title": "Model Management",
+    "description": "Manage and deploy trained models",
+    "list": "Model Versions",
+    "noModels": "No models available",
+    "trainFirst": "Train your first model to get started",
+    "version": "Version",
+    "accuracy": "Accuracy",
+    "size": "Size",
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive",
+      "training": "Training",
+      "failed": "Failed"
+    },
+    "activate": "Activate",
+    "deactivate": "Deactivate",
+    "download": "Download ONNX",
+    "compare": "Compare",
+    "activated": "Model activated",
+    "deactivated": "Model deactivated",
+    "activateError": "Failed to activate model",
+    "comparison": {
+      "title": "Model Comparison",
+      "select": "Select models to compare",
+      "model1": "Model 1",
+      "model2": "Model 2",
+      "compareButton": "Compare Models",
+      "metrics": "Metrics Comparison",
+      "accuracy": "Accuracy",
+      "precision": "Precision",
+      "recall": "Recall",
+      "f1Score": "F1 Score",
+      "inferenceTime": "Inference Time",
+      "modelSize": "Model Size",
+      "close": "Close"
+    },
+    "metrics": {
+      "title": "Model Metrics",
+      "lossCurve": "Loss Curve",
+      "epoch": "Epoch",
+      "loss": "Loss"
+    },
+    "details": {
+      "createdAt": "Created",
+      "trainedOn": "Trained on",
+      "images": "images",
+      "annotations": "annotations"
+    }
+  },
+  "nav": {
+    "home": "Home",
+    "recognize": "Recognize",
+    "recognizeSingle": "Single Image",
+    "training": "Training",
+    "imageLibrary": "Image Library",
+    "trainModel": "Train Model",
+    "models": "Models",
+    "dashboard": "Dashboard"
+  },
   "connection": {
+    "online": "Online",
+    "offline": "Offline",
+    "limited": "Limited",
     "connected": "Connected",
     "disconnected": "Disconnected",
-    "reconnecting": "Reconnecting..."
+    "reconnecting": "Reconnecting...",
+    "backendUnavailable": "Backend services are not available",
+    "websocketUnavailable": "Real-time recognition is not available"
+  },
+  "emptyState": {
+    "noImages": {
+      "title": "No images uploaded yet",
+      "description": "Upload your first images to start training your logo recognition model.",
+      "action": "Upload Images",
+      "tip1": "Supported formats: JPG, PNG, WebP",
+      "tip2": "Maximum 10MB per image",
+      "tip3": "You can upload up to 50 images at once"
+    },
+    "noCategories": {
+      "title": "No categories created",
+      "description": "Create categories to organize your logo annotations by brand or type.",
+      "action": "Create Category",
+      "tip1": "Use descriptive names like \"Nike\" or \"Tech Logos\"",
+      "tip2": "Categories can have a hierarchy (parent/child)"
+    },
+    "noModels": {
+      "title": "No models trained yet",
+      "description": "Train your first model using annotated images to enable logo recognition.",
+      "action": "Train First Model",
+      "tip1": "You need at least 10 annotated images per category",
+      "tip2": "Training typically takes 5-30 minutes"
+    },
+    "noResults": {
+      "title": "Ready to recognize logos",
+      "description": "Upload an image to detect and identify logos using your trained models.",
+      "action": "Upload Image"
+    }
   }
 }

@@ -1,0 +1,22 @@
+{
+  "recognition": {
+    "title": "标志识别",
+    "upload": "上传图片",
+    "results": "识别结果",
+    "export": "导出结果",
+    "clear": "清除全部",
+    "complete": "识别完成",
+    "uploadFailed": "上传失败",
+    "exportFailed": "导出失败",
+    "exported": "结果导出成功",
+    "uploadProgress": "上传进度",
+    "dragDrop": "将图片拖放到此处或点击浏览",
+    "processing": "正在处理图片...",
+    "noResults": "暂无结果"
+  },
+  "connection": {
+    "connected": "已连接",
+    "disconnected": "已断开",
+    "reconnecting": "重新连接中..."
+  }
+}

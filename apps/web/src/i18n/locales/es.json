@@ -1,0 +1,22 @@
+{
+  "recognition": {
+    "title": "Reconocimiento de Logotipos",
+    "upload": "Subir Imagen",
+    "results": "Resultados del Reconocimiento",
+    "export": "Exportar Resultados",
+    "clear": "Limpiar Todo",
+    "complete": "Reconocimiento completado",
+    "uploadFailed": "Error al subir",
+    "exportFailed": "Error al exportar",
+    "exported": "Resultados exportados exitosamente",
+    "uploadProgress": "Progreso de subida",
+    "dragDrop": "Arrastra y suelta la imagen aquí o haz clic para buscar",
+    "processing": "Procesando imagen...",
+    "noResults": "Sin resultados aún"
+  },
+  "connection": {
+    "connected": "Conectado",
+    "disconnected": "Desconectado",
+    "reconnecting": "Reconectando..."
+  }
+}
