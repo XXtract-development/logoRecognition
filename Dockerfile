@@ -8,9 +8,6 @@
 # ============================================
 FROM node:20-alpine AS frontend-builder
 
-# Force development mode during build so devDependencies are installed
-ENV NODE_ENV=development
-
 RUN npm install -g pnpm@9.15.0
 
 WORKDIR /app
@@ -24,8 +21,8 @@ COPY packages/shared/package.json ./packages/shared/
 COPY packages/ml/package.json ./packages/ml/
 COPY packages/ui/package.json ./packages/ui/
 
-# Install dependencies (frozen lockfile for reproducible builds)
-RUN pnpm install --frozen-lockfile
+# Install ALL dependencies including devDependencies (needed for build)
+RUN NODE_ENV=development pnpm install --frozen-lockfile
 
 # Copy source code
 COPY apps/web/ ./apps/web/
@@ -38,9 +35,6 @@ RUN pnpm --filter @logo-recognition/web build
 # Stage 2: Build Backend (Fastify/TypeScript)
 # ============================================
 FROM node:20-alpine AS backend-builder
-
-# Force development mode during build so devDependencies are installed
-ENV NODE_ENV=development
 
 RUN npm install -g pnpm@9.15.0
 
@@ -56,8 +50,8 @@ COPY packages/shared/package.json ./packages/shared/
 COPY packages/ml/package.json ./packages/ml/
 COPY packages/ui/package.json ./packages/ui/
 
-# Install dependencies
-RUN pnpm install --frozen-lockfile
+# Install ALL dependencies including devDependencies (needed for build)
+RUN NODE_ENV=development pnpm install --frozen-lockfile
 
 # Copy source and prisma schema
 COPY apps/api/src/ ./apps/api/src/
