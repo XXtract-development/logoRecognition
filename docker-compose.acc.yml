@@ -1,7 +1,39 @@
 # ACC Environment - Self-contained for Coolify deployment
 # Server: Vanilla-ACC (10.0.0.5)
+# Database: PostgreSQL on Cherry (10.0.0.6:5432)
+# Storage: MinIO with Storage Box mount for persistence
 
 services:
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    network_mode: host
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY:-minioadmin}
+    volumes:
+      - /mnt/storagebox-home/acc/logo-recognition/minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "-o", "/dev/null", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+
   app:
     build:
       context: .

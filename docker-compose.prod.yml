@@ -1,7 +1,39 @@
 # PROD Environment - Self-contained for Coolify deployment
 # Server: Banana-Prod (10.0.0.2)
+# Database: PostgreSQL on production-database (10.0.0.8:5432)
+# Storage: MinIO with Storage Box mount for persistence
 
 services:
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    network_mode: host
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY:-minioadmin}
+    volumes:
+      - /mnt/storagebox-home/prod/logo-recognition/minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "-o", "/dev/null", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
   app:
     build:
       context: .
