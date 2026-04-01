@@ -16,7 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for caching
-COPY requirements.txt .
+COPY apps/ml-service/requirements.txt .
 
 # Create virtual environment and install dependencies
 RUN python -m venv /opt/venv
@@ -54,7 +54,7 @@ RUN mkdir -p /app/models /app/logs /app/temp && \
     chown -R mlservice:mlservice /app
 
 # Copy application code
-COPY --chown=mlservice:mlservice app/ /app/app/
+COPY --chown=mlservice:mlservice apps/ml-service/app/ /app/app/
 
 # Switch to non-root user
 USER mlservice

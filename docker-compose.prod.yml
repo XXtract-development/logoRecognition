@@ -68,8 +68,8 @@ services:
 
   ml-service:
     build:
-      context: ./apps/ml-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/ml-service/Dockerfile
     network_mode: host
     env_file:
       - .env
