@@ -7,7 +7,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_PREFIX: ${{ github.repository_owner }}/logo-recognition
+  IMAGE_PREFIX: xxtract-development/logo-recognition
 
 jobs:
   build-app:
