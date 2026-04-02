@@ -18,7 +18,7 @@
     "@fastify/jwt": "^8.0.0",
     "@fastify/multipart": "^8.1.0",
     "@fastify/rate-limit": "^9.1.0",
-    "@fastify/static": "^9.0.0",
+    "@fastify/static": "7",
     "@fastify/websocket": "^8.3.1",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/auto-instrumentations-node": "^0.40.1",
