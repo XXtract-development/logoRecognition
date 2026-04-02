@@ -251,10 +251,10 @@ async function startServer() {
     });
 
     // ==========================================
-    // Root Route
+    // API Info Route (not '/' to avoid conflict with static files)
     // ==========================================
 
-    app.get('/', async () => ({
+    app.get('/api', async () => ({
       service: 'Logo Recognition API Gateway',
       version: process.env.npm_package_version || '1.0.0',
       docs: '/docs',
