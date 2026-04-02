@@ -71,8 +71,8 @@ FROM node:20-alpine AS runtime
 
 ENV NODE_ENV=production
 
-# Install curl for healthcheck
-RUN apk add --no-cache curl
+# Install curl for healthcheck + openssl for Prisma engine
+RUN apk add --no-cache curl openssl
 
 # Create non-root user
 RUN addgroup -g 1001 -S appgroup && \
