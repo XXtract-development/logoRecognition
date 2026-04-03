@@ -47,8 +47,12 @@ async function startServer() {
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          imgSrc: ["'self'", 'data:', 'https:'],
-          scriptSrc: ["'self'"],
+          imgSrc: ["'self'", 'data:', 'https:', 'blob:'],
+          scriptSrc: ["'self'", "'unsafe-inline'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          connectSrc: ["'self'", 'ws:', 'wss:', process.env.CORS_ORIGIN || 'http://localhost:3000'].filter(Boolean),
+          fontSrc: ["'self'", 'data:'],
+          workerSrc: ["'self'", 'blob:'],
         },
       },
     });
