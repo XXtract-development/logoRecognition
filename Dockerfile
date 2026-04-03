@@ -28,8 +28,8 @@ RUN NODE_ENV=development pnpm install --no-frozen-lockfile
 COPY apps/web/ ./apps/web/
 COPY packages/ ./packages/
 
-# Build frontend with correct API URLs (monolith: same origin)
-RUN cd apps/web && VITE_API_BASE_URL='' VITE_WS_BASE_URL='' npx vite build
+# Build frontend (production mode: uses relative URLs for monolith)
+RUN cd apps/web && npx vite build
 
 # ============================================
 # Stage 2: Build Backend (Fastify/TypeScript)

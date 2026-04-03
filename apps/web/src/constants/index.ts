@@ -5,8 +5,8 @@
 export const APP_CONFIG = {
   name: 'Logo Recognition',
   version: '1.0.0',
-  apiBaseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000',
-  wsBaseUrl: import.meta.env.VITE_WS_BASE_URL || 'ws://localhost:8000',
+  apiBaseUrl: import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.PROD ? '' : 'http://localhost:8000'),
+  wsBaseUrl: import.meta.env.VITE_WS_BASE_URL ?? (import.meta.env.PROD ? '' : 'ws://localhost:8000'),
   uploadChunkSize: 1024 * 1024, // 1MB chunks
   maxFileSize: 10 * 1024 * 1024, // 10MB
   maxConcurrentUploads: 3,
