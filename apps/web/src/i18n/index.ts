@@ -9,6 +9,7 @@ import frTranslations from './locales/fr.json';
 import deTranslations from './locales/de.json';
 import jaTranslations from './locales/ja.json';
 import zhTranslations from './locales/zh.json';
+import nlTranslations from './locales/nl.json';
 
 const resources = {
   en: {
@@ -34,6 +35,10 @@ const resources = {
   zh: {
     translation: zhTranslations,
     recognition: zhTranslations,
+  },
+  nl: {
+    translation: nlTranslations,
+    recognition: nlTranslations,
   },
 };
 

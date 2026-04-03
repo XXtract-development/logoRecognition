@@ -25,6 +25,7 @@ export const SUPPORTED_IMAGE_FORMATS = [
 
 export const SUPPORTED_LANGUAGES = [
   { code: 'en', name: 'English', nativeName: 'English', flag: '🇬🇧' },
+  { code: 'nl', name: 'Dutch', nativeName: 'Nederlands', flag: '🇳🇱' },
   { code: 'es', name: 'Spanish', nativeName: 'Español', flag: '🇪🇸' },
   { code: 'fr', name: 'French', nativeName: 'Français', flag: '🇫🇷' },
   { code: 'de', name: 'German', nativeName: 'Deutsch', flag: '🇩🇪' },

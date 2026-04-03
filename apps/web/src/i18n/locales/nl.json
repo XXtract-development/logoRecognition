@@ -1,0 +1,422 @@
+{
+  "title": "Logo Herkenning",
+  "description": "Upload een afbeelding om logo's te detecteren en herkennen",
+  "upload": {
+    "title": "Afbeelding Uploaden",
+    "button": "Uploaden",
+    "supportedFormats": "Ondersteunde formaten: {{formats}}",
+    "invalidFormat": "Ongeldig bestandsformaat",
+    "tooLarge": "Bestand is te groot",
+    "readError": "Fout bij lezen van bestand",
+    "failed": "Upload mislukt"
+  },
+  "export": {
+    "button": "Exporteren",
+    "noResults": "Geen resultaten om te exporteren",
+    "title": "Resultaten Exporteren",
+    "format": "Formaat",
+    "download": "Downloaden"
+  },
+  "visualization": {
+    "title": "Resultaten Visualisatie",
+    "noImage": "Geen afbeelding geüpload"
+  },
+  "results": {
+    "title": "Detectieresultaten",
+    "noResults": "Geen logo's gedetecteerd",
+    "confidence": "Betrouwbaarheid",
+    "position": "Positie"
+  },
+  "processing": "Afbeelding verwerken...",
+  "page": {
+    "title": "Herkenning",
+    "description": "Logo herkenningsinterface"
+  },
+  "aria": {
+    "mainInterface": "Herkenningsinterface",
+    "exportResults": "Resultaten exporteren"
+  },
+  "connection": {
+    "online": "Online",
+    "offline": "Offline",
+    "limited": "Beperkt",
+    "connected": "Verbonden",
+    "disconnected": "Niet verbonden",
+    "reconnecting": "Opnieuw verbinden...",
+    "backendUnavailable": "Backend services zijn niet beschikbaar",
+    "websocketUnavailable": "Realtime herkenning is niet beschikbaar"
+  },
+  "recognition": {
+    "title": "Logo Herkenning",
+    "upload": "Afbeelding Uploaden",
+    "results": "Herkenningsresultaten",
+    "export": "Resultaten Exporteren",
+    "clear": "Alles Wissen",
+    "complete": "Herkenning voltooid",
+    "uploadFailed": "Upload mislukt",
+    "exportFailed": "Export mislukt",
+    "exported": "Resultaten succesvol geëxporteerd",
+    "uploadProgress": "Uploadvoortgang",
+    "dragDrop": "Sleep een afbeelding hierheen of klik om te bladeren",
+    "processing": "Afbeelding verwerken...",
+    "noResults": "Nog geen resultaten"
+  },
+  "home": {
+    "title": "Logo Herkenningssysteem",
+    "subtitle": "Detecteer en identificeer logo's in afbeeldingen met geavanceerde AI. Train aangepaste modellen of gebruik voorgetrainde modellen voor directe herkenning.",
+    "question": "Wat wil je vandaag doen?",
+    "description": "Upload afbeeldingen en detecteer logo's met geavanceerde AI-herkenning",
+    "startRecognition": "Start Herkenning",
+    "viewDashboard": "Bekijk Dashboard",
+    "trainingData": "Trainingsdata",
+    "trainModel": "Model Trainen",
+    "manageModels": "Modellen Beheren",
+    "quickLinks": "Of ga direct naar",
+    "paths": {
+      "recognize": {
+        "title": "Logo's Herkennen",
+        "description": "Upload een afbeelding en detecteer direct logo's met getrainde AI-modellen.",
+        "button": "Start Herkenning",
+        "offline": "Backend offline"
+      },
+      "train": {
+        "title": "Model Trainen",
+        "description": "Upload trainingsafbeeldingen, annoteer logo's en maak aangepaste detectiemodellen.",
+        "button": "Start Training"
+      }
+    },
+    "features": {
+      "realtime": "Realtime verwerking met WebSocket",
+      "highAccuracy": "Hoge nauwkeurigheid ML-detectie",
+      "export": "Exporteren naar JSON, CSV of XML",
+      "batchUpload": "Batch upload trainingsafbeeldingen",
+      "annotate": "Visuele annotatiehulpmiddelen",
+      "fewShot": "Few-shot learning ondersteuning"
+    },
+    "links": {
+      "dashboard": "Dashboard",
+      "models": "Modelbeheer",
+      "pipeline": "Trainingspijplijn"
+    },
+    "stats": {
+      "fast": {
+        "title": "Snelle Verwerking",
+        "description": "Realtime detectie met WebSocket streaming voor directe resultaten"
+      },
+      "accurate": {
+        "title": "Hoge Nauwkeurigheid",
+        "description": "Geavanceerde ML-modellen voor nauwkeurige logo-identificatie"
+      },
+      "export": {
+        "title": "Resultaten Exporteren",
+        "description": "Exporteer herkenningsresultaten in JSON, CSV of XML formaat"
+      }
+    }
+  },
+  "features": {
+    "fast": "Snelle Verwerking",
+    "fastDesc": "Realtime logodetectie met WebSocket streaming",
+    "accurate": "Hoge Nauwkeurigheid",
+    "accurateDesc": "Geavanceerde ML-modellen voor nauwkeurige logo-identificatie",
+    "export": "Resultaten Exporteren",
+    "exportDesc": "Exporteer herkenningsresultaten in JSON, CSV of XML formaat"
+  },
+  "common": {
+    "save": "Opslaan",
+    "cancel": "Annuleren",
+    "delete": "Verwijderen",
+    "edit": "Bewerken",
+    "create": "Aanmaken",
+    "actions": "Acties",
+    "loading": "Laden...",
+    "noData": "Geen gegevens",
+    "confirm": "Bevestigen",
+    "back": "Terug",
+    "next": "Volgende",
+    "previous": "Vorige",
+    "search": "Zoeken",
+    "filter": "Filteren",
+    "sort": "Sorteren",
+    "refresh": "Vernieuwen",
+    "export": "Exporteren",
+    "import": "Importeren"
+  },
+  "training": {
+    "title": "Trainingsdata Beheer",
+    "description": "Upload en beheer afbeeldingen voor modeltraining",
+    "tabs": {
+      "library": "Afbeeldingenbibliotheek",
+      "upload": "Uploaden",
+      "categories": "Categorieën"
+    },
+    "stats": {
+      "total": "Totaal Afbeeldingen",
+      "complete": "Volledig Geannoteerd",
+      "partial": "Gedeeltelijk Geannoteerd",
+      "none": "Niet Geannoteerd"
+    },
+    "library": {
+      "title": "Afbeeldingenbibliotheek",
+      "search": "Afbeeldingen zoeken...",
+      "filter": "Filteren",
+      "sort": "Sorteren",
+      "gridView": "Rasterweergave",
+      "listView": "Lijstweergave",
+      "selectAll": "Alles Selecteren",
+      "clearSelection": "Selectie Wissen",
+      "selectedCount": "{{count}} geselecteerd",
+      "noImages": "Geen afbeeldingen gevonden",
+      "uploadFirst": "Upload je eerste afbeeldingen om te beginnen",
+      "annotationStatus": {
+        "complete": "Compleet",
+        "partial": "Gedeeltelijk",
+        "none": "Geen"
+      },
+      "sortBy": {
+        "newest": "Nieuwste Eerst",
+        "oldest": "Oudste Eerst",
+        "name": "Naam",
+        "annotations": "Annotaties"
+      }
+    },
+    "upload": {
+      "title": "Batch Upload",
+      "dragDrop": "Sleep afbeeldingen hierheen",
+      "browse": "of klik om te bladeren",
+      "formats": "Ondersteunt JPG, PNG, WEBP",
+      "maxSize": "Max 10MB per bestand",
+      "uploading": "Uploaden...",
+      "complete": "Upload voltooid",
+      "failed": "Upload mislukt",
+      "retry": "Opnieuw proberen",
+      "queue": "Uploadwachtrij",
+      "clearComplete": "Voltooide Wissen"
+    },
+    "bulk": {
+      "assignCategory": "Categorie Toewijzen",
+      "deleteSelected": "Geselecteerde Verwijderen",
+      "exportSelected": "Geselecteerde Exporteren",
+      "assignSuccess": "Categorie toegewezen aan {{count}} afbeeldingen",
+      "deleteSuccess": "{{count}} afbeeldingen verwijderd",
+      "selectCategory": "Selecteer een categorie"
+    }
+  },
+  "categories": {
+    "title": "Categorieën",
+    "create": "Nieuwe Categorie",
+    "edit": "Categorie Bewerken",
+    "name": "Naam",
+    "description": "Beschrijving",
+    "parent": "Bovenliggende Categorie",
+    "color": "Kleur",
+    "images": "Afbeeldingen",
+    "createSuccess": "Categorie succesvol aangemaakt",
+    "updateSuccess": "Categorie succesvol bijgewerkt",
+    "deleteSuccess": "Categorie succesvol verwijderd",
+    "deleteError": "Categorie verwijderen mislukt",
+    "cannotDelete": "Kan categorie met toegewezen afbeeldingen niet verwijderen",
+    "merge": "Samenvoegen",
+    "mergeCategories": "Categorieën Samenvoegen",
+    "mergeDescription": "Selecteer de categorie om samen te voegen en de doelcategorie. Alle afbeeldingen van de bron worden verplaatst naar het doel.",
+    "sourceCategory": "Bron (wordt verwijderd)",
+    "targetCategory": "Doel (ontvangt afbeeldingen)",
+    "selectSource": "Selecteer broncategorie",
+    "selectTarget": "Selecteer doelcategorie",
+    "mergeSuccess": "Categorieën succesvol samengevoegd",
+    "mergeError": "Categorieën samenvoegen mislukt",
+    "selectBoth": "Selecteer alstublieft beide categorieën",
+    "cannotMergeSame": "Kan een categorie niet met zichzelf samenvoegen",
+    "empty": "Nog geen categorieën",
+    "createFirst": "Eerste Categorie Aanmaken",
+    "nameRequired": "Naam is verplicht",
+    "nameTooLong": "Naam moet minder dan 50 tekens zijn",
+    "descTooLong": "Beschrijving moet minder dan 200 tekens zijn",
+    "colorRequired": "Kleur is verplicht",
+    "namePlaceholder": "bijv. Technologie",
+    "descPlaceholder": "Optionele beschrijving...",
+    "selectParent": "Selecteer bovenliggend (optioneel)",
+    "confirmDelete": "Deze categorie verwijderen?",
+    "confirmDeleteDesc": "Deze actie kan niet ongedaan worden gemaakt.",
+    "hasImages": "Deze categorie heeft toegewezen afbeeldingen."
+  },
+  "annotation": {
+    "title": "Afbeelding Annotatie",
+    "tools": {
+      "select": "Selecteren",
+      "box": "Selectiekader",
+      "smart": "Slim Klikken"
+    },
+    "zoom": {
+      "in": "Inzoomen",
+      "out": "Uitzoomen",
+      "fit": "Passend op Scherm"
+    },
+    "actions": {
+      "undo": "Ongedaan Maken",
+      "redo": "Opnieuw Uitvoeren",
+      "save": "Opslaan",
+      "clear": "Alles Wissen"
+    },
+    "annotations": "Annotaties",
+    "noAnnotations": "Nog geen annotaties",
+    "drawBox": "Teken een kader of gebruik slim klikken",
+    "selectCategory": "Selecteer Categorie",
+    "categoryRequired": "Selecteer eerst een categorie",
+    "saved": "Annotaties opgeslagen",
+    "saveError": "Annotaties opslaan mislukt",
+    "deleted": "Annotatie verwijderd",
+    "navigation": {
+      "previous": "Vorige Afbeelding",
+      "next": "Volgende Afbeelding",
+      "current": "Afbeelding {{current}} van {{total}}"
+    },
+    "shortcuts": {
+      "title": "Sneltoetsen",
+      "selectTool": "V - Selectiegereedschap",
+      "boxTool": "B - Selectiekader",
+      "smartTool": "S - Slim Klikken",
+      "delete": "Delete - Geselecteerde Verwijderen",
+      "undo": "Ctrl+Z - Ongedaan Maken",
+      "zoomIn": "] - Inzoomen",
+      "zoomOut": "[ - Uitzoomen",
+      "prevImage": "← - Vorige Afbeelding",
+      "nextImage": "→ - Volgende Afbeelding"
+    }
+  },
+  "pipeline": {
+    "title": "Trainingspijplijn",
+    "description": "Configureer en voer modeltrainingsopdrachten uit",
+    "create": "Nieuwe Trainingsopdracht",
+    "config": {
+      "title": "Trainingsconfiguratie",
+      "name": "Opdrachtnaam",
+      "namePlaceholder": "bijv. Logo Detectie v2",
+      "nameRequired": "Opdrachtnaam is verplicht",
+      "baseModel": "Basismodel",
+      "selectModel": "Selecteer een basismodel",
+      "epochs": "Epochs",
+      "batchSize": "Batchgrootte",
+      "learningRate": "Leersnelheid",
+      "validationSplit": "Validatieverdeling",
+      "augmentation": "Data Augmentatie",
+      "augmentationHelp": "Pas willekeurige transformaties toe op trainingsafbeeldingen"
+    },
+    "summary": {
+      "title": "Data Samenvatting",
+      "totalImages": "Totaal Afbeeldingen",
+      "annotatedImages": "Geannoteerde Afbeeldingen",
+      "totalAnnotations": "Totaal Annotaties",
+      "categories": "Categorieën"
+    },
+    "jobs": {
+      "title": "Trainingsopdrachten",
+      "noJobs": "Nog geen trainingsopdrachten",
+      "createFirst": "Maak je eerste trainingsopdracht aan",
+      "status": {
+        "pending": "Wachtend",
+        "running": "Actief",
+        "completed": "Voltooid",
+        "failed": "Mislukt",
+        "cancelled": "Geannuleerd"
+      },
+      "progress": "Voortgang",
+      "accuracy": "Nauwkeurigheid",
+      "duration": "Duur",
+      "startedAt": "Gestart",
+      "viewDetails": "Details Bekijken",
+      "cancel": "Opdracht Annuleren"
+    },
+    "start": "Start Training",
+    "started": "Trainingsopdracht gestart",
+    "startError": "Training starten mislukt"
+  },
+  "models": {
+    "title": "Modelbeheer",
+    "description": "Beheer en implementeer getrainde modellen",
+    "list": "Modelversies",
+    "noModels": "Geen modellen beschikbaar",
+    "trainFirst": "Train je eerste model om te beginnen",
+    "version": "Versie",
+    "accuracy": "Nauwkeurigheid",
+    "size": "Grootte",
+    "status": {
+      "active": "Actief",
+      "inactive": "Inactief",
+      "training": "Aan het trainen",
+      "failed": "Mislukt"
+    },
+    "activate": "Activeren",
+    "deactivate": "Deactiveren",
+    "download": "ONNX Downloaden",
+    "compare": "Vergelijken",
+    "activated": "Model geactiveerd",
+    "deactivated": "Model gedeactiveerd",
+    "activateError": "Model activeren mislukt",
+    "comparison": {
+      "title": "Model Vergelijking",
+      "select": "Selecteer modellen om te vergelijken",
+      "model1": "Model 1",
+      "model2": "Model 2",
+      "compareButton": "Modellen Vergelijken",
+      "metrics": "Metriekenvergelijking",
+      "accuracy": "Nauwkeurigheid",
+      "precision": "Precisie",
+      "recall": "Recall",
+      "f1Score": "F1 Score",
+      "inferenceTime": "Inferentietijd",
+      "modelSize": "Modelgrootte",
+      "close": "Sluiten"
+    },
+    "metrics": {
+      "title": "Model Metrieken",
+      "lossCurve": "Verliesgrafiek",
+      "epoch": "Epoch",
+      "loss": "Verlies"
+    },
+    "details": {
+      "createdAt": "Aangemaakt",
+      "trainedOn": "Getraind op",
+      "images": "afbeeldingen",
+      "annotations": "annotaties"
+    }
+  },
+  "nav": {
+    "home": "Home",
+    "recognize": "Herkennen",
+    "recognizeSingle": "Enkele Afbeelding",
+    "training": "Training",
+    "imageLibrary": "Afbeeldingenbibliotheek",
+    "trainModel": "Model Trainen",
+    "models": "Modellen",
+    "dashboard": "Dashboard"
+  },
+  "emptyState": {
+    "noImages": {
+      "title": "Nog geen afbeeldingen geüpload",
+      "description": "Upload je eerste afbeeldingen om te beginnen met het trainen van je logoherkenningsmodel.",
+      "action": "Afbeeldingen Uploaden",
+      "tip1": "Ondersteunde formaten: JPG, PNG, WebP",
+      "tip2": "Maximaal 10MB per afbeelding",
+      "tip3": "Je kunt tot 50 afbeeldingen tegelijk uploaden"
+    },
+    "noCategories": {
+      "title": "Geen categorieën aangemaakt",
+      "description": "Maak categorieën aan om je logo-annotaties te organiseren per merk of type.",
+      "action": "Categorie Aanmaken",
+      "tip1": "Gebruik beschrijvende namen zoals \"Nike\" of \"Tech Logo's\"",
+      "tip2": "Categorieën kunnen een hiërarchie hebben (hoofd/sub)"
+    },
+    "noModels": {
+      "title": "Nog geen modellen getraind",
+      "description": "Train je eerste model met geannoteerde afbeeldingen om logoherkenning mogelijk te maken.",
+      "action": "Eerste Model Trainen",
+      "tip1": "Je hebt minimaal 10 geannoteerde afbeeldingen per categorie nodig",
+      "tip2": "Training duurt doorgaans 5-30 minuten"
+    },
+    "noResults": {
+      "title": "Klaar om logo's te herkennen",
+      "description": "Upload een afbeelding om logo's te detecteren en identificeren met je getrainde modellen.",
+      "action": "Afbeelding Uploaden"
+    }
+  }
+}
