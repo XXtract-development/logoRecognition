@@ -8,3 +8,4 @@
 
 ### Pagina's laden weer correct
 - Alle pagina's (zoals training, dashboard) worden weer correct weergegeven
+- Categorieën worden correct verwerkt op de trainingpagina

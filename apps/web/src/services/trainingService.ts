@@ -87,8 +87,9 @@ export async function assignImagesToCategory(
 
 export async function fetchCategories(): Promise<Category[]> {
   const response = await apiClient.get('/training/categories');
-  // API returns { data: [...] }
-  return response.data.data || response.data;
+  // API returns { data: { flat: [...], grouped: {...} } }
+  const data = response.data.data;
+  return data?.flat || data || response.data;
 }
 
 export async function createCategory(data: CategoryFormData): Promise<Category> {
