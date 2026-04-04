@@ -4,7 +4,7 @@
  */
 
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { authMiddleware } from '../../middleware/auth';
+import { authMiddleware, optionalAuth } from '../../middleware/auth';
 import { createLogger } from '../../core/logger';
 
 const logger = createLogger('stats');
@@ -119,8 +119,8 @@ function updateRelativeTimes(): void {
 // ============================================
 
 export async function statsRoutes(fastify: FastifyInstance) {
-  // Apply auth middleware to all routes
-  fastify.addHook('preHandler', authMiddleware);
+  // Apply optional auth to all routes (user info available if logged in)
+  fastify.addHook('preHandler', optionalAuth);
 
   /**
    * GET /stats

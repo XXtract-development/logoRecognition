@@ -9,3 +9,5 @@
 ### Pagina's laden weer correct
 - Alle pagina's (zoals training, dashboard) worden weer correct weergegeven
 - Categorieën worden correct verwerkt op de trainingpagina
+- Dashboard statistieken laden nu zonder inlogvereiste
+- Trainings-jobs en modellen geven geen foutmelding meer als de ML-service niet beschikbaar is

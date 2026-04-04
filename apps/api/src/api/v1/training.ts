@@ -157,43 +157,42 @@ export async function trainingRoutes(fastify: FastifyInstance) {
   );
 
   /**
-   * GET /api/v1/training
-   * List training jobs
+   * GET /api/v1/training/jobs
+   * List training jobs (also available at /training for backwards compatibility)
    */
-  fastify.get<{ Querystring: ListTrainingQuery }>(
-    '/training',
-    {
-      schema: {
-        description: 'List training jobs',
-        tags: ['Training'],
-        querystring: {
-          type: 'object',
-          properties: {
-            status: { type: 'string', enum: ['queued', 'running', 'completed', 'failed'] },
-            limit: { type: 'number', minimum: 1, maximum: 100, default: 10 },
-          },
+  const listTrainingJobsHandler = async (request: FastifyRequest<{ Querystring: ListTrainingQuery }>, reply: FastifyReply) => {
+    const { status, limit = 10 } = request.query;
+
+    try {
+      const jobs = await mlClient.listTrainingJobs(status, limit);
+      return reply.send({ jobs, total: jobs.length });
+    } catch (error) {
+      logger.error('Failed to list training jobs', {
+        requestId: request.id,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        });
+
+        // Return empty list when ML service is unavailable
+        return reply.send({ jobs: [], total: 0 });
+      }
+  };
+
+  const listJobsSchema = {
+    schema: {
+      description: 'List training jobs',
+      tags: ['Training'],
+      querystring: {
+        type: 'object',
+        properties: {
+          status: { type: 'string', enum: ['queued', 'running', 'completed', 'failed'] },
+          limit: { type: 'number', minimum: 1, maximum: 100, default: 10 },
         },
       },
     },
-    async (request: FastifyRequest<{ Querystring: ListTrainingQuery }>, reply: FastifyReply) => {
-      const { status, limit = 10 } = request.query;
+  };
 
-      try {
-        const jobs = await mlClient.listTrainingJobs(status, limit);
-        return reply.send({ jobs, total: jobs.length });
-      } catch (error) {
-        logger.error('Failed to list training jobs', {
-          requestId: request.id,
-          error: error instanceof Error ? error.message : 'Unknown error',
-        });
-
-        return reply.status(500).send({
-          error: 'Internal Server Error',
-          message: 'Failed to list training jobs',
-        });
-      }
-    }
-  );
+  fastify.get<{ Querystring: ListTrainingQuery }>('/training/jobs', listJobsSchema, listTrainingJobsHandler);
+  fastify.get<{ Querystring: ListTrainingQuery }>('/training', listJobsSchema, listTrainingJobsHandler);
 
   /**
    * DELETE /api/v1/training/:jobId
@@ -270,10 +269,8 @@ export async function trainingRoutes(fastify: FastifyInstance) {
           error: error instanceof Error ? error.message : 'Unknown error',
         });
 
-        return reply.status(500).send({
-          error: 'Internal Server Error',
-          message: 'Failed to list models',
-        });
+        // Return empty list when ML service is unavailable
+        return reply.send({ models: [], total: 0 });
       }
     }
   );
