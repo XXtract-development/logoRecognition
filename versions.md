@@ -5,3 +5,6 @@
 ### Training pagina laadt correct
 - Categorieën en afbeeldingen worden nu correct geladen op de trainingpagina
 - Inloggen is niet meer nodig om gegevens te bekijken
+
+### Pagina's laden weer correct
+- Alle pagina's (zoals training, dashboard) worden weer correct weergegeven

@@ -133,7 +133,6 @@ async function startServer() {
       root: publicDir,
       prefix: '/',
       wildcard: false,
-      decorateReply: false,
     });
 
     // SPA fallback: serve index.html for non-API routes
