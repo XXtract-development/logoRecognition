@@ -13,6 +13,7 @@ import {
   BUCKETS,
 } from '../../services/storage';
 import { authMiddleware, optionalAuth } from '../../middleware/auth';
+
 import { logger } from '../../core/logger';
 import prisma from '../../core/db';
 
@@ -37,8 +38,8 @@ interface BulkActionBody {
 }
 
 export async function imageRoutes(fastify: FastifyInstance) {
-  // Apply auth middleware to all routes
-  fastify.addHook('preHandler', authMiddleware);
+  // Apply optional auth to all routes (user info available if logged in)
+  fastify.addHook('preHandler', optionalAuth);
 
   /**
    * POST /training/upload
@@ -46,6 +47,7 @@ export async function imageRoutes(fastify: FastifyInstance) {
    */
   fastify.post<{ Querystring: UploadQuerystring }>(
     '/training/upload',
+    { preHandler: [authMiddleware] },
     async (request: FastifyRequest<{ Querystring: UploadQuerystring }>, reply: FastifyReply) => {
       const data = await request.file();
 
@@ -135,6 +137,7 @@ export async function imageRoutes(fastify: FastifyInstance) {
    */
   fastify.post<{ Querystring: UploadQuerystring }>(
     '/training/upload/batch',
+    { preHandler: [authMiddleware] },
     async (request: FastifyRequest<{ Querystring: UploadQuerystring }>, reply: FastifyReply) => {
       const parts = request.files();
       const userId = request.user!.userId;
@@ -394,6 +397,7 @@ export async function imageRoutes(fastify: FastifyInstance) {
    */
   fastify.delete<{ Params: { id: string } }>(
     '/training/images/:id',
+    { preHandler: [authMiddleware] },
     async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
       const { id } = request.params;
 
@@ -448,6 +452,7 @@ export async function imageRoutes(fastify: FastifyInstance) {
   fastify.patch<{ Body: BulkActionBody }>(
     '/training/images/bulk',
     {
+      preHandler: [authMiddleware],
       schema: {
         body: {
           type: 'object',

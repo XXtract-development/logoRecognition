@@ -4,7 +4,7 @@
  */
 
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { authMiddleware, requireRole } from '../../middleware/auth';
+import { authMiddleware, optionalAuth, requireRole } from '../../middleware/auth';
 import { logger } from '../../core/logger';
 import prisma from '../../core/db';
 
@@ -31,15 +31,15 @@ interface ListCategoriesQuery {
 }
 
 export async function categoryRoutes(fastify: FastifyInstance) {
-  // Apply auth middleware to all routes
-  fastify.addHook('preHandler', authMiddleware);
+  // Apply optional auth to all routes (user info available if logged in)
+  fastify.addHook('preHandler', optionalAuth);
 
   /**
    * GET /categories
    * List all categories with optional filtering
    */
   fastify.get<{ Querystring: ListCategoriesQuery }>(
-    '/categories',
+    '/training/categories',
     async (request: FastifyRequest<{ Querystring: ListCategoriesQuery }>, reply: FastifyReply) => {
       const {
         page = 1,
@@ -128,8 +128,9 @@ export async function categoryRoutes(fastify: FastifyInstance) {
    * Create a new category (logo definition)
    */
   fastify.post<{ Body: CreateCategoryBody }>(
-    '/categories',
+    '/training/categories',
     {
+      preHandler: [authMiddleware],
       schema: {
         body: {
           type: 'object',
@@ -194,7 +195,7 @@ export async function categoryRoutes(fastify: FastifyInstance) {
    * Get category details
    */
   fastify.get<{ Params: { id: string } }>(
-    '/categories/:id',
+    '/training/categories/:id',
     async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
       const { id } = request.params;
 
@@ -246,8 +247,9 @@ export async function categoryRoutes(fastify: FastifyInstance) {
    * Update a category
    */
   fastify.patch<{ Params: { id: string }; Body: UpdateCategoryBody }>(
-    '/categories/:id',
+    '/training/categories/:id',
     {
+      preHandler: [authMiddleware],
       schema: {
         body: {
           type: 'object',
@@ -324,7 +326,8 @@ export async function categoryRoutes(fastify: FastifyInstance) {
    * Delete a category (only if no annotations)
    */
   fastify.delete<{ Params: { id: string } }>(
-    '/categories/:id',
+    '/training/categories/:id',
+    { preHandler: [authMiddleware] },
     async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
       const { id } = request.params;
 
@@ -381,7 +384,7 @@ export async function categoryRoutes(fastify: FastifyInstance) {
    * Merge two categories into one
    */
   fastify.post<{ Body: { sourceId: string; targetId: string } }>(
-    '/categories/merge',
+    '/training/categories/merge',
     {
       preHandler: [requireRole('ADMIN')],
       schema: {
