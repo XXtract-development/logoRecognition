@@ -46,6 +46,7 @@ services:
       - NODE_ENV=production
       - LOG_LEVEL=info
       - ENVIRONMENT=acc
+      - PORT=8010
       - ML_SERVICE_URL=http://localhost:8011
     healthcheck:
       test: ["CMD", "curl", "-sf", "-o", "/dev/null", "http://localhost:${APP_PORT:-8010}/health"]
