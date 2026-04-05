@@ -20,3 +20,5 @@
 - In-memory storage adapter voor tests (geen S3/MinIO nodig in CI)
 - 43 nieuwe web component tests (stores, utils, services, pages)
 - 28 P0 acceptatie tests voor kritische paden (auth, uploads, training)
+- 32 API tests voor training, modellen en health endpoints
+- 40 E2E tests voor modellen pagina, training pipeline en health API
