@@ -15,3 +15,8 @@
 ### Testplannen gevalideerd en bijgewerkt
 - Testplannen gevalideerd tegen huidige codebase en bijgewerkt met recente wijzigingen
 - Validatierapport toegevoegd met bevindingen en aanbevelingen
+
+### Test infrastructuur uitgebreid
+- In-memory storage adapter voor tests (geen S3/MinIO nodig in CI)
+- 43 nieuwe web component tests (stores, utils, services, pages)
+- 28 P0 acceptatie tests voor kritische paden (auth, uploads, training)

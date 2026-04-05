@@ -1,6 +1,10 @@
 /**
  * Storage Service
- * MinIO S3-compatible object storage for images and models
+ * S3-compatible object storage for images and models.
+ *
+ * In production / development the service uses MinIO via the official client.
+ * When NODE_ENV=test an in-memory adapter is used so tests need no external
+ * storage service -- resolving CI blocker T-3.
  */
 
 import { Client } from 'minio';
@@ -8,17 +12,79 @@ import { Readable } from 'stream';
 import crypto from 'crypto';
 import sharp from 'sharp';
 import { logger } from '../core/logger';
+import { StorageAdapter } from './storage-adapter';
+import { InMemoryStorageAdapter, inMemoryStorage } from './in-memory-storage-adapter';
 
-// MinIO client configuration
-const minioClient = new Client({
-  endPoint: process.env.MINIO_ENDPOINT || 'localhost',
-  port: parseInt(process.env.MINIO_PORT || '9000', 10),
-  useSSL: process.env.MINIO_USE_SSL === 'true',
-  accessKey: process.env.MINIO_ACCESS_KEY || 'minioadmin',
-  secretKey: process.env.MINIO_SECRET_KEY || 'minioadmin',
-});
+// ---------------------------------------------------------------------------
+// Adapter selection
+// ---------------------------------------------------------------------------
 
+function createMinioAdapter(): StorageAdapter {
+  const client = new Client({
+    endPoint: process.env.MINIO_ENDPOINT || 'localhost',
+    port: parseInt(process.env.MINIO_PORT || '9000', 10),
+    useSSL: process.env.MINIO_USE_SSL === 'true',
+    accessKey: process.env.MINIO_ACCESS_KEY || 'minioadmin',
+    secretKey: process.env.MINIO_SECRET_KEY || 'minioadmin',
+  });
+
+  // Wrap the MinIO Client to conform to StorageAdapter
+  const adapter: StorageAdapter = {
+    bucketExists: (bucket) => client.bucketExists(bucket),
+    makeBucket: (bucket, region) => client.makeBucket(bucket, region || 'us-east-1'),
+    putObject: async (bucket, objectName, data, size, metadata) => {
+      await client.putObject(bucket, objectName, data, size, metadata);
+    },
+    getObject: (bucket, objectName) => client.getObject(bucket, objectName),
+    removeObject: (bucket, objectName) => client.removeObject(bucket, objectName),
+    presignedGetObject: (bucket, objectName, expires) =>
+      client.presignedGetObject(bucket, objectName, expires),
+    listObjects: (bucket, prefix, recursive) =>
+      client.listObjects(bucket, prefix, recursive),
+  };
+
+  return adapter;
+}
+
+/**
+ * Returns the active storage adapter.
+ * In test mode the in-memory adapter is used; otherwise MinIO.
+ */
+function getAdapter(): StorageAdapter {
+  if (process.env.NODE_ENV === 'test') {
+    return inMemoryStorage;
+  }
+  return createMinioAdapter();
+}
+
+// Lazily initialised adapter (created once per process)
+let _adapter: StorageAdapter | null = null;
+
+export function getStorageAdapter(): StorageAdapter {
+  if (!_adapter) {
+    _adapter = getAdapter();
+  }
+  return _adapter;
+}
+
+/**
+ * Replace the active adapter at runtime (for tests).
+ */
+export function setStorageAdapter(adapter: StorageAdapter): void {
+  _adapter = adapter;
+}
+
+/**
+ * Reset the adapter so it will be re-created on next access.
+ */
+export function resetStorageAdapter(): void {
+  _adapter = null;
+}
+
+// ---------------------------------------------------------------------------
 // Bucket names
+// ---------------------------------------------------------------------------
+
 const BUCKETS = {
   TRAINING: 'training-images',
   RECOGNITION: 'recognition-images',
@@ -26,13 +92,19 @@ const BUCKETS = {
   MODELS: 'models',
 } as const;
 
-// Allowed file types
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 const MIN_DIMENSIONS = { width: 100, height: 100 };
 const THUMBNAIL_SIZE = { width: 280, height: 160 };
 
+// ---------------------------------------------------------------------------
 // Types
+// ---------------------------------------------------------------------------
+
 export interface UploadResult {
   success: boolean;
   fileId?: string;
@@ -61,15 +133,20 @@ export interface StoredImage {
   thumbnailUrl?: string;
 }
 
+// ---------------------------------------------------------------------------
+// Public API (unchanged signatures)
+// ---------------------------------------------------------------------------
+
 /**
  * Initialize storage buckets
  */
 export async function initializeBuckets(): Promise<void> {
+  const adapter = getStorageAdapter();
   for (const bucket of Object.values(BUCKETS)) {
     try {
-      const exists = await minioClient.bucketExists(bucket);
+      const exists = await adapter.bucketExists(bucket);
       if (!exists) {
-        await minioClient.makeBucket(bucket, 'us-east-1');
+        await adapter.makeBucket(bucket, 'us-east-1');
         logger.info(`Created bucket: ${bucket}`);
       }
     } catch (error) {
@@ -88,7 +165,6 @@ export async function validateImage(
   mimeType: string,
   filename: string
 ): Promise<{ valid: boolean; error?: string; metadata?: Partial<ImageMetadata> }> {
-  // Check MIME type
   if (!ALLOWED_MIME_TYPES.includes(mimeType)) {
     return {
       valid: false,
@@ -96,7 +172,6 @@ export async function validateImage(
     };
   }
 
-  // Check file size
   if (buffer.length > MAX_FILE_SIZE) {
     return {
       valid: false,
@@ -104,7 +179,6 @@ export async function validateImage(
     };
   }
 
-  // Get image dimensions
   try {
     const image = sharp(buffer);
     const metadata = await image.metadata();
@@ -113,7 +187,6 @@ export async function validateImage(
       return { valid: false, error: 'Could not read image dimensions' };
     }
 
-    // Check minimum dimensions
     if (metadata.width < MIN_DIMENSIONS.width || metadata.height < MIN_DIMENSIONS.height) {
       return {
         valid: false,
@@ -121,7 +194,6 @@ export async function validateImage(
       };
     }
 
-    // Calculate hash for deduplication
     const hash = crypto.createHash('sha256').update(buffer).digest('hex');
 
     return {
@@ -167,7 +239,6 @@ export async function uploadImage(
   bucket: keyof typeof BUCKETS = 'TRAINING'
 ): Promise<UploadResult> {
   try {
-    // Validate image
     const validation = await validateImage(buffer, mimeType, filename);
     if (!validation.valid) {
       return { success: false, error: validation.error };
@@ -179,9 +250,10 @@ export async function uploadImage(
     const storagePath = `${userId}/${fileId}.${extension}`;
     const thumbnailPath = `${userId}/${fileId}_thumb.jpg`;
 
-    // Upload original image
+    const adapter = getStorageAdapter();
     const bucketName = BUCKETS[bucket];
-    await minioClient.putObject(bucketName, storagePath, buffer, buffer.length, {
+
+    await adapter.putObject(bucketName, storagePath, buffer, buffer.length, {
       'Content-Type': mimeType,
       'x-amz-meta-original-name': encodeURIComponent(filename),
       'x-amz-meta-user-id': userId,
@@ -195,9 +267,8 @@ export async function uploadImage(
       size: buffer.length,
     });
 
-    // Generate and upload thumbnail
     const thumbnail = await generateThumbnail(buffer);
-    await minioClient.putObject(
+    await adapter.putObject(
       BUCKETS.THUMBNAILS,
       thumbnailPath,
       thumbnail,
@@ -237,7 +308,8 @@ export async function getSignedUrl(
   try {
     const [bucket, ...pathParts] = storagePath.split('/');
     const objectPath = pathParts.join('/');
-    return await minioClient.presignedGetObject(bucket, objectPath, expiresInSeconds);
+    const adapter = getStorageAdapter();
+    return await adapter.presignedGetObject(bucket, objectPath, expiresInSeconds);
   } catch (error) {
     logger.error('Failed to generate signed URL', {
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -254,7 +326,8 @@ export async function deleteImage(storagePath: string): Promise<boolean> {
   try {
     const [bucket, ...pathParts] = storagePath.split('/');
     const objectPath = pathParts.join('/');
-    await minioClient.removeObject(bucket, objectPath);
+    const adapter = getStorageAdapter();
+    await adapter.removeObject(bucket, objectPath);
     logger.info('Image deleted', { storagePath });
     return true;
   } catch (error) {
@@ -279,10 +352,11 @@ export async function listUserImages(
   const images: string[] = [];
 
   try {
-    const stream = minioClient.listObjects(bucketName, prefix, true);
+    const adapter = getStorageAdapter();
+    const stream = adapter.listObjects(bucketName, prefix, true);
 
     return new Promise((resolve, reject) => {
-      stream.on('data', (obj) => {
+      stream.on('data', (obj: any) => {
         if (obj.name && images.length < limit) {
           images.push(`${bucketName}/${obj.name}`);
         }
@@ -306,8 +380,9 @@ export async function downloadImage(storagePath: string): Promise<Buffer | null>
   try {
     const [bucket, ...pathParts] = storagePath.split('/');
     const objectPath = pathParts.join('/');
+    const adapter = getStorageAdapter();
 
-    const dataStream = await minioClient.getObject(bucket, objectPath);
+    const dataStream = await adapter.getObject(bucket, objectPath);
     const chunks: Buffer[] = [];
 
     return new Promise((resolve, reject) => {
