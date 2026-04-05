@@ -11,3 +11,7 @@
 - Categorieën worden correct verwerkt op de trainingpagina
 - Dashboard statistieken laden nu zonder inlogvereiste
 - Trainings-jobs en modellen geven geen foutmelding meer als de ML-service niet beschikbaar is
+
+### Testplannen gevalideerd en bijgewerkt
+- Testplannen gevalideerd tegen huidige codebase en bijgewerkt met recente wijzigingen
+- Validatierapport toegevoegd met bevindingen en aanbevelingen
