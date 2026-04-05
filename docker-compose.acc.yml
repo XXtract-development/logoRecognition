@@ -55,6 +55,17 @@ services:
       retries: 3
       start_period: 40s
     restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.logo-acc.rule=Host(`logo-detection.acc.xxtract.com`)"
+      - "traefik.http.routers.logo-acc.entryPoints=https"
+      - "traefik.http.routers.logo-acc.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.logo-acc.tls=true"
+      - "traefik.http.services.logo-acc.loadbalancer.server.port=8010"
+      - "traefik.http.routers.logo-acc-http.rule=Host(`logo-detection.acc.xxtract.com`)"
+      - "traefik.http.routers.logo-acc-http.entryPoints=http"
+      - "traefik.http.routers.logo-acc-http.middlewares=redirect-to-https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
     logging:
       driver: json-file
       options:
