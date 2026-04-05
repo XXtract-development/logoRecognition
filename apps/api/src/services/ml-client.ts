@@ -107,7 +107,7 @@ export class MLClient {
   private baseUrl: string;
 
   constructor(baseUrl?: string) {
-    this.baseUrl = baseUrl || process.env.ML_SERVICE_URL || 'http://localhost:8001';
+    this.baseUrl = baseUrl || process.env.ML_SERVICE_URL || 'http://localhost:8011';
 
     this.client = axios.create({
       baseURL: this.baseUrl,
