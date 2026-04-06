@@ -26,3 +26,8 @@
 ### ML Service configuratie gefixt
 - ML service poort uitgelijnd op 8011 (was mismatch tussen 8001 en 8011)
 - API verbindt nu correct met de ML service
+
+### Authenticatie geïmplementeerd
+- Inloggen met bestaande xxtract-portal inloggegevens
+- Login pagina toegevoegd
+- 40 API unit tests en 14 E2E tests voor authenticatie

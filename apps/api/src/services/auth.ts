@@ -1,27 +1,50 @@
 /**
  * Authentication Service
  * JWT token generation and validation with bcrypt password hashing
+ * Authenticates against xxtractdb03 MySQL users table (xxtract-portal credentials)
  */
 
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import { UserRole } from '@prisma/client';
-import prisma from '../core/db';
+import { RowDataPacket } from 'mysql2/promise';
+import { authQuery } from '../core/auth-db';
 import { logger } from '../core/logger';
 
 // Configuration
 const JWT_SECRET = process.env.JWT_SECRET || (process.env.NODE_ENV === 'production' ? (() => { throw new Error('JWT_SECRET is required in production'); })() : 'dev-secret-change-in-production');
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
-const BCRYPT_ROUNDS = 12;
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOGIN_WINDOW_MS = 60 * 1000; // 1 minute
+
+// Role mapping: MySQL int -> string
+const ROLE_MAP: Record<number, string> = {
+  1: 'CUSTOMER',
+  2: 'EMPLOYEE',
+  4: 'ADMIN',
+};
+
+function mapRole(roleInt: number): string {
+  return ROLE_MAP[roleInt] || 'CUSTOMER';
+}
+
+// MySQL user row type
+interface UserRow extends RowDataPacket {
+  id: number;
+  email: string;
+  password: string;
+  name: string;
+  role: number;
+  active: number;
+  company: string | null;
+}
 
 // Types
 export interface TokenPayload {
   userId: string;
   email: string;
-  role: UserRole;
-  organizationId?: string;
+  role: string;
+  name?: string;
+  company?: string;
 }
 
 export interface AuthTokens {
@@ -36,8 +59,9 @@ export interface LoginResult {
   user?: {
     id: string;
     email: string;
-    role: UserRole;
-    organizationId?: string;
+    role: string;
+    name?: string;
+    company?: string;
   };
   error?: string;
 }
@@ -56,14 +80,7 @@ setInterval(() => {
 }, 60 * 1000);
 
 /**
- * Hash a password using bcrypt
- */
-export async function hashPassword(password: string): Promise<string> {
-  return bcrypt.hash(password, BCRYPT_ROUNDS);
-}
-
-/**
- * Verify a password against a hash
+ * Verify a password against a bcrypt hash
  */
 export async function verifyPassword(password: string, hash: string): Promise<boolean> {
   return bcrypt.compare(password, hash);
@@ -149,6 +166,7 @@ function clearLoginAttempts(ip: string): void {
 
 /**
  * Login user with email and password
+ * Queries xxtractdb03.users table directly
  */
 export async function login(
   email: string,
@@ -166,11 +184,13 @@ export async function login(
   }
 
   try {
-    // Find user by email
-    const user = await prisma.user.findUnique({
-      where: { email: email.toLowerCase() },
-      include: { organization: true },
-    });
+    // Find user by email in xxtractdb03.users
+    const rows = await authQuery<UserRow[]>(
+      'SELECT id, email, password, name, role, active, company FROM users WHERE email = ? LIMIT 1',
+      [email.toLowerCase()]
+    );
+
+    const user = rows[0];
 
     if (!user) {
       recordLoginAttempt(ip);
@@ -178,31 +198,28 @@ export async function login(
       return { success: false, error: 'Invalid email or password' };
     }
 
-    if (!user.isActive) {
+    if (!user.active) {
       logger.warn('Login failed - user inactive', { email, ip });
       return { success: false, error: 'Account is disabled' };
     }
 
-    // Verify password
-    const validPassword = await verifyPassword(password, user.passwordHash);
+    // Verify password (bcrypt hash in xxtractdb03)
+    const validPassword = await verifyPassword(password, user.password);
     if (!validPassword) {
       recordLoginAttempt(ip);
       logger.warn('Login failed - invalid password', { email, ip });
       return { success: false, error: 'Invalid email or password' };
     }
 
+    const roleStr = mapRole(user.role);
+
     // Generate tokens
     const tokens = generateTokens({
-      userId: user.id,
+      userId: String(user.id),
       email: user.email,
-      role: user.role,
-      organizationId: user.organizationId || undefined,
-    });
-
-    // Update last login
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { lastLoginAt: new Date() },
+      role: roleStr,
+      name: user.name || undefined,
+      company: user.company || undefined,
     });
 
     // Clear rate limiting on success
@@ -214,10 +231,11 @@ export async function login(
       success: true,
       tokens,
       user: {
-        id: user.id,
+        id: String(user.id),
         email: user.email,
-        role: user.role,
-        organizationId: user.organizationId || undefined,
+        role: roleStr,
+        name: user.name || undefined,
+        company: user.company || undefined,
       },
     };
   } catch (error) {
@@ -230,109 +248,31 @@ export async function login(
 }
 
 /**
- * Register a new user
- */
-export async function register(
-  email: string,
-  password: string,
-  role: UserRole = 'USER',
-  organizationId?: string
-): Promise<{ success: boolean; userId?: string; error?: string }> {
-  try {
-    // Check if user exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email: email.toLowerCase() },
-    });
-
-    if (existingUser) {
-      return { success: false, error: 'Email already registered' };
-    }
-
-    // Validate password strength
-    if (password.length < 8) {
-      return { success: false, error: 'Password must be at least 8 characters' };
-    }
-
-    // Hash password
-    const passwordHash = await hashPassword(password);
-
-    // Create user
-    const user = await prisma.user.create({
-      data: {
-        email: email.toLowerCase(),
-        passwordHash,
-        role,
-        organizationId,
-      },
-    });
-
-    logger.info('User registered successfully', { userId: user.id, email });
-
-    return { success: true, userId: user.id };
-  } catch (error) {
-    logger.error('Registration error', {
-      error: error instanceof Error ? error.message : 'Unknown error',
-    });
-    return { success: false, error: 'An error occurred during registration' };
-  }
-}
-
-/**
- * Refresh access token using refresh token
- */
-export async function refreshAccessToken(
-  refreshToken: string
-): Promise<{ success: boolean; tokens?: AuthTokens; error?: string }> {
-  try {
-    const decoded = jwt.verify(refreshToken, JWT_SECRET) as {
-      userId: string;
-      type: string;
-    };
-
-    if (decoded.type !== 'refresh') {
-      return { success: false, error: 'Invalid refresh token' };
-    }
-
-    // Get user
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.userId },
-    });
-
-    if (!user || !user.isActive) {
-      return { success: false, error: 'User not found or inactive' };
-    }
-
-    // Generate new tokens
-    const tokens = generateTokens({
-      userId: user.id,
-      email: user.email,
-      role: user.role,
-      organizationId: user.organizationId || undefined,
-    });
-
-    return { success: true, tokens };
-  } catch (error) {
-    logger.warn('Token refresh failed', {
-      error: error instanceof Error ? error.message : 'Unknown error',
-    });
-    return { success: false, error: 'Invalid or expired refresh token' };
-  }
-}
-
-/**
- * Get user by ID
+ * Get user by ID from xxtractdb03.users
  */
 export async function getUserById(userId: string) {
-  return prisma.user.findUnique({
-    where: { id: userId },
-    select: {
-      id: true,
-      email: true,
-      role: true,
-      organizationId: true,
-      isActive: true,
-      lastLoginAt: true,
-      createdAt: true,
-    },
-  });
+  try {
+    const rows = await authQuery<UserRow[]>(
+      'SELECT id, email, name, role, active, company FROM users WHERE id = ? LIMIT 1',
+      [userId]
+    );
+
+    const user = rows[0];
+    if (!user) return null;
+
+    return {
+      id: String(user.id),
+      email: user.email,
+      name: user.name,
+      role: mapRole(user.role),
+      isActive: user.active === 1,
+      company: user.company,
+    };
+  } catch (error) {
+    logger.error('getUserById error', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      userId,
+    });
+    return null;
+  }
 }

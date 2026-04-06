@@ -19,6 +19,7 @@ const TrainingPage = React.lazy(() => import('@/pages/TrainingPage'));
 const AnnotationPage = React.lazy(() => import('@/pages/AnnotationPage'));
 const TrainingPipelinePage = React.lazy(() => import('@/pages/TrainingPipelinePage'));
 const ModelsPage = React.lazy(() => import('@/pages/ModelsPage'));
+const LoginPage = React.lazy(() => import('@/pages/LoginPage'));
 
 /**
  * Root Layout Component
@@ -115,6 +116,11 @@ const router = createBrowserRouter(
               element: <ModelsPage />,
             },
           ],
+        },
+        // Login page without header
+        {
+          path: 'login',
+          element: <LoginPage />,
         },
         // Annotation page without header (full-screen canvas mode)
         {
