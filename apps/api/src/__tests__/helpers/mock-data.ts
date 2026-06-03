@@ -122,6 +122,30 @@ export const mockFeedback = {
   createdAt: new Date(),
 };
 
+// Model-version fixture incl. holdout metrics block (Epic 7, Story 7.2).
+export const mockModelVersion = {
+  id: 'test-model-version-id',
+  version: 'v20260603_120000',
+  modelType: 'EfficientNet-B0',
+  accuracy: 0.96,
+  precisionScore: 0.95,
+  recallScore: 0.94,
+  f1Score: 0.945,
+  isActive: true,
+  config: {},
+  metrics: {
+    holdout: {
+      accuracy: 0.93,
+      precision: 0.92,
+      recall: 0.91,
+      f1: 0.915,
+      holdout_size: 250,
+      holdout_hash: 'sha256:abc123',
+    },
+  },
+  createdAt: new Date(),
+};
+
 export const mockTrainingJob = {
   id: 'test-job-id',
   batchId: 'test-batch-id',

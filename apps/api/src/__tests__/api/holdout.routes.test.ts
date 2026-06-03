@@ -193,7 +193,7 @@ describe('Holdout Routes (ATDD RED — Story 7.1 & 7.2)', () => {
 
   describe('GET /models/:modelId — holdout metrics', () => {
     // TODO ATDD: remove .skip when implemented (Story 7.2)
-    it.skip('should expose holdout metrics separately from train/val metrics', async () => {
+    it('should expose holdout metrics separately from train/val metrics', async () => {
       (mockPrisma.modelVersion.findUnique as vi.Mock).mockResolvedValue({
         id: 'a1b2c3d4-0000-0000-0000-00000000000c',
         version: 'v20260603_120000',
@@ -228,7 +228,7 @@ describe('Holdout Routes (ATDD RED — Story 7.1 & 7.2)', () => {
 
   describe('GET /feedback/model-comparison — holdout metrics per versie', () => {
     // TODO ATDD: remove .skip when implemented (Story 7.2)
-    it.skip('should include holdout metrics for each compared model version', async () => {
+    it('should include holdout metrics for each compared model version', async () => {
       // Aparte app met feedback-routes (zelfde patroon als feedback.routes.test.ts)
       const feedbackApp = Fastify({ logger: false });
       await feedbackApp.register(cookie, { secret: 'test-secret' });

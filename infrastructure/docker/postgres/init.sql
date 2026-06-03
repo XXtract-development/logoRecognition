@@ -66,6 +66,7 @@ CREATE TABLE IF NOT EXISTS logos.model_versions (
     training_date TIMESTAMP WITH TIME ZONE,
     is_active BOOLEAN DEFAULT FALSE,
     config JSONB DEFAULT '{}',
+    metrics JSONB DEFAULT '{}',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 

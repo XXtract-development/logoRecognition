@@ -15,6 +15,35 @@ const logger = createLogger('training');
 // may start (NFR3). Configurable via env; defaults to 25.
 const HOLDOUT_MINIMUM = parseInt(process.env.HOLDOUT_MINIMUM || '25', 10);
 
+/**
+ * Map the persisted `metrics.holdout` block (snake_case as written by the
+ * ML-service) to the camelCase `holdoutMetrics` API shape (Story 7.2).
+ * Accepts both snake_case and camelCase inner keys defensively.
+ */
+function mapHoldoutMetrics(metrics: unknown): {
+  accuracy: number;
+  precision: number;
+  recall: number;
+  f1: number;
+  holdoutSize: number;
+  holdoutHash: string | null;
+} | null {
+  if (!metrics || typeof metrics !== 'object') return null;
+  const holdout = (metrics as { holdout?: Record<string, unknown> }).holdout;
+  if (!holdout || typeof holdout !== 'object') return null;
+
+  const num = (v: unknown): number => (typeof v === 'number' ? v : 0);
+
+  return {
+    accuracy: num(holdout.accuracy),
+    precision: num(holdout.precision),
+    recall: num(holdout.recall),
+    f1: num(holdout.f1),
+    holdoutSize: num(holdout.holdoutSize ?? holdout.holdout_size),
+    holdoutHash: (holdout.holdoutHash ?? holdout.holdout_hash ?? null) as string | null,
+  };
+}
+
 // ============================================
 // Types
 // ============================================
@@ -421,6 +450,54 @@ export async function trainingRoutes(fastify: FastifyInstance) {
 
         // Return empty list when ML service is unavailable
         return reply.send({ models: [], total: 0 });
+      }
+    }
+  );
+
+  /**
+   * GET /api/v1/models/:modelId
+   * Get a model version incl. its holdout-evaluation metrics (Story 7.2).
+   */
+  fastify.get<{ Params: { modelId: string } }>(
+    '/models/:modelId',
+    {
+      schema: {
+        description: 'Get a model version with holdout metrics',
+        tags: ['Models'],
+        params: {
+          type: 'object',
+          required: ['modelId'],
+          properties: {
+            modelId: { type: 'string' },
+          },
+        },
+      },
+    },
+    async (request: FastifyRequest<{ Params: { modelId: string } }>, reply: FastifyReply) => {
+      const { modelId } = request.params;
+
+      try {
+        const model = await prisma.modelVersion.findUnique({ where: { id: modelId } });
+
+        if (!model) {
+          return reply.status(404).send({
+            error: 'Not Found',
+            message: 'Model version not found',
+          });
+        }
+
+        return reply.send({ ...model, holdoutMetrics: mapHoldoutMetrics(model.metrics) });
+      } catch (error) {
+        logger.error('Failed to get model version', {
+          requestId: request.id,
+          modelId,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+
+        return reply.status(500).send({
+          error: 'Internal Server Error',
+          message: 'Failed to get model version',
+        });
       }
     }
   );
