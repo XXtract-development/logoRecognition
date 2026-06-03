@@ -70,6 +70,23 @@ CREATE TABLE IF NOT EXISTS logos.model_versions (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Reference keurmerk library (Epic 7, Story 7.3)
+-- Curated official keurmerk artwork + variants; soft delete via active flag.
+CREATE TABLE IF NOT EXISTS logos.reference_logos (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    t3777_code VARCHAR(100) NOT NULL,
+    variant_label VARCHAR(100) NOT NULL,
+    source TEXT,
+    storage_path VARCHAR(500) NOT NULL,
+    active BOOLEAN NOT NULL DEFAULT TRUE,
+    logo_id UUID,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE (t3777_code, variant_label)
+);
+
+-- Index for per-code lookups in the reference library
+CREATE INDEX IF NOT EXISTS idx_reference_logos_t3777_code ON logos.reference_logos (t3777_code);
+
 -- Create search history table for analytics
 CREATE TABLE IF NOT EXISTS logos.search_history (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

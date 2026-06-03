@@ -299,6 +299,51 @@ export async function uploadImage(
 }
 
 /**
+ * Upload a reference keurmerk logo (Epic 7, Story 7.3).
+ *
+ * Stored in the TRAINING bucket under the `reference-logos/` prefix so the
+ * full storagePath stays `reference-logos/{t3777Code}/{variantLabel}.{ext}`
+ * — the path contract consumed by Epic 8. Unlike `uploadImage`, this accepts
+ * SVG and skips thumbnailing (reference artwork is used as-is).
+ */
+export async function uploadReferenceLogo(
+  buffer: Buffer,
+  storagePath: string,
+  mimeType: string
+): Promise<void> {
+  const adapter = getStorageAdapter();
+  await adapter.putObject(BUCKETS.TRAINING, storagePath, buffer, buffer.length, {
+    'Content-Type': mimeType,
+  });
+  logger.info('Reference logo stored', {
+    bucket: BUCKETS.TRAINING,
+    path: storagePath,
+    size: buffer.length,
+  });
+}
+
+/**
+ * Signed preview URL for a reference logo. The stored `storagePath` is the
+ * `reference-logos/...` object key inside the TRAINING bucket (not a
+ * bucket-prefixed path), so it is signed against TRAINING directly.
+ */
+export async function getReferenceLogoUrl(
+  storagePath: string,
+  expiresInSeconds: number = 3600
+): Promise<string | null> {
+  try {
+    const adapter = getStorageAdapter();
+    return await adapter.presignedGetObject(BUCKETS.TRAINING, storagePath, expiresInSeconds);
+  } catch (error) {
+    logger.error('Failed to generate reference logo URL', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      storagePath,
+    });
+    return null;
+  }
+}
+
+/**
  * Get signed URL for image access
  */
 export async function getSignedUrl(
