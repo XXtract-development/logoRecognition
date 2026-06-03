@@ -41,6 +41,16 @@ vi.mock('@prisma/client', () => {
       findMany: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
+      upsert: vi.fn(),
+      delete: vi.fn(),
+      count: vi.fn(),
+    },
+    referenceLogo: {
+      findUnique: vi.fn(),
+      findFirst: vi.fn(),
+      findMany: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
       delete: vi.fn(),
       count: vi.fn(),
     },
@@ -156,7 +166,9 @@ vi.mock('../core/logger', () => ({
 // Mock storage service
 vi.mock('../services/storage', () => ({
   uploadImage: vi.fn(),
+  uploadReferenceLogo: vi.fn(),
   getSignedUrl: vi.fn(),
+  getReferenceLogoUrl: vi.fn(),
   deleteImage: vi.fn(),
   validateImage: vi.fn(),
   generateThumbnail: vi.fn(),

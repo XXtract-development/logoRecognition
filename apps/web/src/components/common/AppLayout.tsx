@@ -62,6 +62,11 @@ const getNavigationItems = (t: TFunction) => [
     label: t('nav.models', { defaultValue: 'Models' }),
   },
   {
+    key: '/reference-library',
+    icon: <PictureOutlined />,
+    label: t('nav.referenceLibrary', { defaultValue: 'Referenties' }),
+  },
+  {
     key: '/dashboard',
     icon: <DashboardOutlined />,
     label: t('nav.dashboard', { defaultValue: 'Dashboard' }),
@@ -83,6 +88,7 @@ export const AppLayout: React.FC = () => {
     if (path.startsWith('/training')) return '/training';
     if (path.startsWith('/recognize')) return '/recognize';
     if (path.startsWith('/models')) return '/models';
+    if (path.startsWith('/reference-library')) return '/reference-library';
     if (path.startsWith('/dashboard')) return '/dashboard';
     return '/';
   };

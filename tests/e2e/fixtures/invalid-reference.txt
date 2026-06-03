@@ -1,0 +1,2 @@
+This is not an image. Used by the reference-library e2e test to assert that
+unsupported file types (non-PNG/SVG) are rejected with a clear error message.

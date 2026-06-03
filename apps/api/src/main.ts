@@ -24,6 +24,7 @@ import { categoryRoutes } from './api/v1/categories';
 import { annotationRoutes } from './api/v1/annotations';
 import { feedbackRoutes } from './api/v1/feedback';
 import { statsRoutes } from './api/v1/stats';
+import { referenceLogosRoutes } from './api/v1/reference-logos';
 import { logger } from './core/logger';
 import { wsManager } from './services/websocket-manager';
 import { socketIOManager } from './services/socket-io-manager';
@@ -124,6 +125,7 @@ async function startServer() {
     await app.register(annotationRoutes, { prefix: '/api/v1' });
     await app.register(feedbackRoutes, { prefix: '/api/v1' });
     await app.register(statsRoutes, { prefix: '/api/v1' });
+    await app.register(referenceLogosRoutes, { prefix: '/api/v1' });
 
     // ==========================================
     // Static Files (Monolith: serve frontend build)

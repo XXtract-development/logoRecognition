@@ -22,6 +22,18 @@ export const mockAdminUser = {
   role: 'ADMIN' as const,
 };
 
+// Reference keurmerk logo fixture (Epic 7, Story 7.3)
+export const mockReferenceLogo = {
+  id: 'b1b2c3d4-0000-0000-0000-000000000001',
+  t3777Code: 'EU_ORGANIC_FARMING',
+  variantLabel: 'kleur-nl',
+  source: 'https://agriculture.ec.europa.eu/farming/organic-farming/organic-logo_en',
+  storagePath: 'reference-logos/EU_ORGANIC_FARMING/kleur-nl.png',
+  active: true,
+  logoId: null,
+  createdAt: new Date('2026-06-03T10:00:00Z'),
+};
+
 export const mockImage = {
   id: 'test-image-id',
   filename: 'test-logo.jpg',
