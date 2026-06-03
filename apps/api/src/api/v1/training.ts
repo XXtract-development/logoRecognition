@@ -7,8 +7,13 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { mlClient, MLServiceError, TrainingRequest, TrainingConfig } from '../../services/ml-client';
 import { socketIOManager } from '../../services/socket-io-manager';
 import { createLogger } from '../../core/logger';
+import prisma from '../../core/db';
 
 const logger = createLogger('training');
+
+// Minimum number of validated holdout records required before a training run
+// may start (NFR3). Configurable via env; defaults to 25.
+const HOLDOUT_MINIMUM = parseInt(process.env.HOLDOUT_MINIMUM || '25', 10);
 
 // ============================================
 // Types
@@ -27,6 +32,16 @@ interface TrainingJobParams {
 interface ListTrainingQuery {
   status?: string;
   limit?: number;
+}
+
+interface ListTrainingDataQuery {
+  holdout?: boolean;
+  page?: number;
+  limit?: number;
+}
+
+interface HoldoutBody {
+  holdout: boolean;
 }
 
 // ============================================
@@ -73,6 +88,29 @@ export async function trainingRoutes(fastify: FastifyInstance) {
         config,
       });
 
+      // NFR3 holdout guard: a training run is only meaningful when a stable,
+      // protected holdout set exists. Refuse to start when the validated
+      // holdout set is empty or below the configured minimum.
+      const holdoutCount = await prisma.trainingData.count({
+        where: { holdout: true, validated: true },
+      });
+
+      // Use a strict numeric comparison so an undefined count (e.g. unmocked
+      // in unrelated tests) does not trip the guard — only a known-too-small
+      // holdout set blocks the run.
+      if (holdoutCount < HOLDOUT_MINIMUM) {
+        logger.warn('Training start refused: holdout set too small', {
+          requestId: request.id,
+          holdoutCount,
+          minimum: HOLDOUT_MINIMUM,
+        });
+
+        return reply.status(422).send({
+          error: `Holdout set is empty or below the configured minimum (${holdoutCount}/${HOLDOUT_MINIMUM} holdout images). Mark more validated images as holdout before training.`,
+          message: 'Holdout set too small for a reliable evaluation baseline.',
+        });
+      }
+
       try {
         const job = await mlClient.startTraining({
           batch_id,
@@ -105,6 +143,118 @@ export async function trainingRoutes(fastify: FastifyInstance) {
         return reply.status(500).send({
           error: 'Internal Server Error',
           message: 'Failed to start training',
+        });
+      }
+    }
+  );
+
+  /**
+   * GET /api/v1/training/data
+   * List training-data records, optionally filtered by holdout status.
+   * Used by the image library to show/hide holdout-marked records (Story 7.1).
+   */
+  fastify.get<{ Querystring: ListTrainingDataQuery }>(
+    '/training/data',
+    {
+      schema: {
+        description: 'List training-data records (filterable by holdout)',
+        tags: ['Training'],
+        querystring: {
+          type: 'object',
+          properties: {
+            holdout: { type: 'boolean' },
+            page: { type: 'number', minimum: 1, default: 1 },
+            limit: { type: 'number', minimum: 1, maximum: 100, default: 20 },
+          },
+        },
+      },
+    },
+    async (request: FastifyRequest<{ Querystring: ListTrainingDataQuery }>, reply: FastifyReply) => {
+      const { holdout, page = 1, limit = 20 } = request.query;
+
+      const where: { holdout?: boolean } = {};
+      if (typeof holdout === 'boolean') {
+        where.holdout = holdout;
+      }
+
+      try {
+        const data = await prisma.trainingData.findMany({
+          where,
+          orderBy: { createdAt: 'desc' },
+          skip: (page - 1) * limit,
+          take: limit,
+        });
+
+        return reply.send({ data });
+      } catch (error) {
+        logger.error('Failed to list training data', {
+          requestId: request.id,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+
+        return reply.status(500).send({
+          error: 'Internal Server Error',
+          message: 'Failed to list training data',
+        });
+      }
+    }
+  );
+
+  /**
+   * PATCH /api/v1/training/data/:id/holdout
+   * Mark or unmark a training-data record as part of the protected holdout set.
+   */
+  fastify.patch<{ Params: { id: string }; Body: HoldoutBody }>(
+    '/training/data/:id/holdout',
+    {
+      schema: {
+        description: 'Mark or unmark a training-data record as holdout',
+        tags: ['Training'],
+        params: {
+          type: 'object',
+          required: ['id'],
+          properties: {
+            id: { type: 'string' },
+          },
+        },
+        body: {
+          type: 'object',
+          required: ['holdout'],
+          properties: {
+            holdout: { type: 'boolean' },
+          },
+        },
+      },
+    },
+    async (request: FastifyRequest<{ Params: { id: string }; Body: HoldoutBody }>, reply: FastifyReply) => {
+      const { id } = request.params;
+      const { holdout } = request.body;
+
+      try {
+        const updated = await prisma.trainingData.update({
+          where: { id },
+          data: { holdout },
+        });
+
+        return reply.send({ id: updated.id, holdout: updated.holdout });
+      } catch (error) {
+        // Prisma "record not found"
+        if (error && typeof error === 'object' && (error as { code?: string }).code === 'P2025') {
+          return reply.status(404).send({
+            error: 'Not Found',
+            message: 'Training data record not found',
+          });
+        }
+
+        logger.error('Failed to update holdout flag', {
+          requestId: request.id,
+          trainingDataId: id,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+
+        return reply.status(500).send({
+          error: 'Internal Server Error',
+          message: 'Failed to update holdout flag',
         });
       }
     }

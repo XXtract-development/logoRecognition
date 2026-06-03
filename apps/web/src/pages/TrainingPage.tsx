@@ -45,6 +45,7 @@ const TrainingPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('library');
   const [assignModalVisible, setAssignModalVisible] = useState(false);
   const [selectedCategoryForAssign, setSelectedCategoryForAssign] = useState<string>('');
+  const [batchPickerVisible, setBatchPickerVisible] = useState(false);
 
   const {
     images,
@@ -167,6 +168,9 @@ const TrainingPage: React.FC = () => {
                 </Text>
               </div>
               <Space>
+                <Button onClick={() => setBatchPickerVisible(true)}>
+                  {t('training.startTraining', 'Start Training')}
+                </Button>
                 <Button
                   type="primary"
                   icon={<UploadOutlined />}
@@ -330,6 +334,47 @@ const TrainingPage: React.FC = () => {
               </Select.Option>
             ))}
           </Select>
+        </div>
+      </Modal>
+
+      {/* Batch Image Picker — holdout images are excluded (Epic 7, Story 7.1) */}
+      <Modal
+        title={t('training.composeBatch', 'Compose training batch')}
+        open={batchPickerVisible}
+        onCancel={() => setBatchPickerVisible(false)}
+        footer={null}
+      >
+        <div data-testid="batch-image-picker" className="py-2">
+          <Text type="secondary" className="block mb-3">
+            {t(
+              'training.batchPickerHint',
+              'Holdout images are excluded from training batches.'
+            )}
+          </Text>
+          {images.filter((img) => !img.holdout).length === 0 ? (
+            <Text type="secondary">
+              {t('training.noTrainableImages', 'No trainable images available.')}
+            </Text>
+          ) : (
+            <div className="grid grid-cols-3 gap-2">
+              {images
+                .filter((img) => !img.holdout)
+                .map((img) => (
+                  <div
+                    key={img.id}
+                    data-image-id={img.id}
+                    className="border rounded p-1 text-xs truncate"
+                  >
+                    <img
+                      src={img.thumbnailUrl}
+                      alt={img.originalName}
+                      className="w-full h-16 object-cover rounded mb-1"
+                    />
+                    {img.originalName}
+                  </div>
+                ))}
+            </div>
+          )}
         </div>
       </Modal>
     </div>

@@ -45,10 +45,14 @@ CREATE TABLE IF NOT EXISTS logos.training_data (
     label VARCHAR(255) NOT NULL,
     confidence FLOAT,
     validated BOOLEAN DEFAULT FALSE,
+    holdout BOOLEAN DEFAULT FALSE,
     validation_date TIMESTAMP WITH TIME ZONE,
     validated_by VARCHAR(255),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Index for holdout filtering (Epic 7: protected evaluation set)
+CREATE INDEX IF NOT EXISTS idx_training_data_holdout ON logos.training_data (holdout);
 
 -- Create model versions table
 CREATE TABLE IF NOT EXISTS logos.model_versions (

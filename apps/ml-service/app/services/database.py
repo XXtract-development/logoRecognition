@@ -341,37 +341,78 @@ class DatabaseService:
     # Training Data Operations
     # ============================================
 
+    async def _execute_query(self, query: str, *args) -> List[Dict[str, Any]]:
+        """Execute a read query and return rows as dicts.
+
+        Centralises the fetch path so training/holdout selection always runs
+        through a single, testable entry point (Epic 7, NFR3).
+        """
+        async with self.get_connection() as conn:
+            rows = await conn.fetch(query, *args)
+            return [dict(row) for row in rows]
+
     async def get_training_images(
         self,
         batch_id: Optional[str] = None,
         validated_only: bool = True,
     ) -> List[Dict[str, Any]]:
-        """Get training images with their labels."""
+        """Get training images with their labels.
+
+        Holdout-marked records are excluded at QUERY level (NFR3): they must
+        never reach the training selection, not even before Python filtering.
+        """
+        if validated_only:
+            query = """
+                SELECT
+                    li.id, li.filename, li.storage_path, li.brand_name,
+                    td.label, td.confidence
+                FROM logo_images li
+                JOIN training_data td ON td.image_id = li.id
+                WHERE td.validated = true
+                  AND td.holdout = false
+                ORDER BY li.created_at DESC
+            """
+        else:
+            query = """
+                SELECT
+                    li.id, li.filename, li.storage_path, li.brand_name,
+                    td.label, td.confidence
+                FROM logo_images li
+                LEFT JOIN training_data td ON td.image_id = li.id
+                WHERE td.holdout IS NOT TRUE
+                ORDER BY li.created_at DESC
+            """
+        return await self._execute_query(query)
+
+    async def get_holdout_images(self) -> List[Dict[str, Any]]:
+        """Return ONLY the protected holdout records (validated holdout set).
+
+        Used for the fixed-set evaluation in Story 7.2. Selects td.holdout so
+        every returned dict carries holdout=True.
+        """
+        query = """
+            SELECT
+                li.id, li.filename, li.storage_path, li.brand_name,
+                td.label, td.confidence, td.holdout
+            FROM logo_images li
+            JOIN training_data td ON td.image_id = li.id
+            WHERE td.validated = true
+              AND td.holdout = true
+            ORDER BY li.created_at DESC
+        """
+        return await self._execute_query(query)
+
+    async def count_holdout_images(self) -> int:
+        """Count the validated holdout records (NFR3 minimum-size guard)."""
         async with self.get_connection() as conn:
-            if validated_only:
-                rows = await conn.fetch(
-                    """
-                    SELECT
-                        li.id, li.filename, li.storage_path, li.brand_name,
-                        td.label, td.confidence
-                    FROM logo_images li
-                    JOIN training_data td ON td.image_id = li.id
-                    WHERE td.validated = true
-                    ORDER BY li.created_at DESC
-                    """
-                )
-            else:
-                rows = await conn.fetch(
-                    """
-                    SELECT
-                        li.id, li.filename, li.storage_path, li.brand_name,
-                        td.label, td.confidence
-                    FROM logo_images li
-                    LEFT JOIN training_data td ON td.image_id = li.id
-                    ORDER BY li.created_at DESC
-                    """
-                )
-            return [dict(row) for row in rows]
+            row = await conn.fetchrow(
+                """
+                SELECT COUNT(*) AS count
+                FROM training_data
+                WHERE validated = true AND holdout = true
+                """
+            )
+            return int(row["count"]) if row else 0
 
     # ============================================
     # Health Check

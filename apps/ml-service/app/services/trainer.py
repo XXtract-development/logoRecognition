@@ -6,6 +6,7 @@ Implements actual training pipeline with PyTorch/TensorFlow.
 import os
 import uuid
 import asyncio
+import hashlib
 from typing import Optional, List, Dict, Any, Callable
 from datetime import datetime
 from pathlib import Path
@@ -15,6 +16,31 @@ from app.core.config import settings
 from app.core.logging import logger
 from app.services.database import db_service
 from app.services.storage import storage_service
+
+
+# Minimum number of validated holdout records required before a training run
+# may start (NFR3). Configurable via env; defaults to 25.
+HOLDOUT_MINIMUM = int(os.environ.get("HOLDOUT_MINIMUM", "25"))
+
+
+class HoldoutSetTooSmallError(Exception):
+    """Raised when the protected holdout set is empty or below the minimum.
+
+    Training without a stable, protected evaluation baseline is meaningless,
+    so the trainer refuses to start (NFR3).
+    """
+
+
+def compute_holdout_hash(ids: List[str]) -> str:
+    """Order-independent fingerprint of a holdout id-set.
+
+    The same set of ids always yields the same hash (proving two model
+    versions were evaluated on the exact same holdout set); a different set
+    yields a different hash. Format: ``sha256:<hexdigest>``.
+    """
+    joined = ",".join(sorted(str(i) for i in ids))
+    digest = hashlib.sha256(joined.encode("utf-8")).hexdigest()
+    return f"sha256:{digest}"
 
 
 class TrainingConfig:
@@ -118,6 +144,18 @@ class TrainerService:
         self._models_dir = Path(settings.MODEL_PATH)
         self._models_dir.mkdir(parents=True, exist_ok=True)
 
+    def build_augmented_dataset(
+        self, images: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """Return the trainable subset eligible for augmentation (NFR3).
+
+        Holdout-marked records are filtered out here as a defence-in-depth
+        guarantee: augmentation/duplication may never touch the protected
+        evaluation set, even if a holdout record were to slip past the
+        query-level filter.
+        """
+        return [img for img in images if not img.get("holdout", False)]
+
     async def start_training(
         self,
         batch_id: str,
@@ -126,6 +164,21 @@ class TrainerService:
     ) -> TrainingProgress:
         """Start a training job."""
         config = config or TrainingConfig()
+
+        # NFR3 holdout guard: refuse to start when the protected holdout set is
+        # empty or below the configured minimum. This runs BEFORE any job record
+        # or background task is created, so a too-small set never spawns a run.
+        holdout_count = await db_service.count_holdout_images()
+        if holdout_count < HOLDOUT_MINIMUM:
+            logger.error(
+                "Refusing to start training: holdout set too small "
+                f"({holdout_count}/{HOLDOUT_MINIMUM})"
+            )
+            raise HoldoutSetTooSmallError(
+                f"Holdout set too small: {holdout_count} validated holdout "
+                f"images, minimum is {HOLDOUT_MINIMUM}."
+            )
+
         job_id = f"train_{uuid.uuid4().hex[:8]}"
 
         # Create progress tracker
@@ -171,6 +224,13 @@ class TrainerService:
 
             if not training_images:
                 raise ValueError("No training images found")
+
+            # Defence-in-depth: ensure holdout records never reach augmentation,
+            # even though get_training_images already excludes them at query level.
+            training_images = self.build_augmented_dataset(training_images)
+            assert all(
+                not img.get("holdout", False) for img in training_images
+            ), "Holdout records must never enter the training/augmentation set"
 
             logger.info(f"Loaded {len(training_images)} training images")
 
