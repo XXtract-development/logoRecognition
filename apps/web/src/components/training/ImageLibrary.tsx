@@ -26,6 +26,7 @@ import {
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useTrainingStore } from '@/stores/trainingStore';
+import { setImageHoldout } from '@/services/trainingService';
 import type { TrainingImage, ImageFilters, ImageSort } from '@/types/training.types';
 
 const { Search } = Input;
@@ -54,7 +55,24 @@ export const ImageLibrary: React.FC<ImageLibraryProps> = ({
     sort,
     setSort,
     categories,
+    updateImage,
   } = useTrainingStore();
+
+  // Toggle holdout status for an image (Epic 7, Story 7.1).
+  const handleToggleHoldout = useCallback(
+    async (image: TrainingImage) => {
+      const next = !image.holdout;
+      // Optimistic update so the badge reflects the new state immediately.
+      updateImage(image.id, { holdout: next });
+      try {
+        await setImageHoldout(image.id, next);
+      } catch {
+        // Revert on failure.
+        updateImage(image.id, { holdout: !next });
+      }
+    },
+    [updateImage]
+  );
 
   const [currentPage, setCurrentPage] = React.useState(1);
   const pageSize = viewMode === 'grid' ? 24 : 10;
@@ -171,6 +189,8 @@ export const ImageLibrary: React.FC<ImageLibraryProps> = ({
       <Col xs={12} sm={8} md={6} lg={4} key={image.id}>
         <Card
           hoverable
+          data-testid="image-card"
+          data-image-id={image.id}
           className={`image-card ${isSelected ? 'selected ring-2 ring-blue-500' : ''}`}
           cover={
             <div className="relative aspect-video overflow-hidden bg-neutral-100">
@@ -192,6 +212,15 @@ export const ImageLibrary: React.FC<ImageLibraryProps> = ({
               >
                 {image.annotationCount > 0 ? image.annotationCount : '-'}
               </Tag>
+              {image.holdout && (
+                <Tag
+                  data-testid="holdout-badge"
+                  color="#2F5A7A"
+                  className="absolute bottom-2 left-2"
+                >
+                  {t('training.holdout', 'Holdout')}
+                </Tag>
+              )}
             </div>
           }
           onClick={() => onImageClick?.(image)}
@@ -208,6 +237,20 @@ export const ImageLibrary: React.FC<ImageLibraryProps> = ({
               {image.categoryName}
             </Tag>
           )}
+          <Button
+            data-testid="holdout-toggle"
+            size="small"
+            className="mt-2"
+            type={image.holdout ? 'primary' : 'default'}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleToggleHoldout(image);
+            }}
+          >
+            {image.holdout
+              ? t('training.removeFromHoldout', 'Remove from holdout')
+              : t('training.markAsHoldout', 'Mark as holdout')}
+          </Button>
         </Card>
       </Col>
     );

@@ -19,6 +19,8 @@ export interface TrainingImage {
   categoryId?: string;
   categoryName?: string;
   annotationCount: number;
+  /** Part of the protected holdout evaluation set (Epic 7, Story 7.1). */
+  holdout?: boolean;
 }
 
 export interface ImageUploadResult {
