@@ -1,5 +1,21 @@
 # Versiegeschiedenis
 
+## 2026-06-03
+
+### Keurmerk-referentiebibliotheek
+- Nieuw scherm "Referenties" om officiële keurmerk-beeldmerken te beheren
+- Per keurmerk (T3777-code) meerdere varianten uploaden (taal, mono, kleur) met bronvermelding
+- Alleen PNG- en SVG-bestanden toegestaan; te kleine afbeeldingen worden geweigerd met een duidelijke melding
+- Varianten worden overzichtelijk per keurmerk gegroepeerd met een voorbeeldweergave
+- Een variant kan worden gedeactiveerd zonder te verwijderen, zodat de historie behouden blijft
+
+### Betrouwbaar evaluatiefundament voor modeltraining
+- Trainingsafbeeldingen kunnen als "holdout" gemarkeerd worden: een vaste, beschermde set die nooit voor training wordt gebruikt
+- Holdout-afbeeldingen worden automatisch uitgesloten bij het samenstellen van een trainingsbatch
+- Elk getraind model wordt automatisch beoordeeld op dezelfde holdout-set, zodat modellen eerlijk met elkaar te vergelijken zijn
+- Op het modelscherm zijn de holdout-resultaten (accuraatheid, precisie, recall, F1) zichtbaar, los van de trainingsresultaten
+- De modelvergelijking toont beide modellen beoordeeld op dezelfde holdout-set
+
 ## 2026-04-04
 
 ### Training pagina laadt correct
