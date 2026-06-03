@@ -74,6 +74,7 @@ model ModelVersion {
   trainingDate   DateTime? @map("training_date") @db.Timestamptz
   isActive       Boolean   @default(false) @map("is_active")
   config         Json      @default("{}")
+  metrics        Json      @default("{}")
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
   @@index([isActive])

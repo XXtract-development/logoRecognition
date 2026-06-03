@@ -459,6 +459,10 @@ const ModelsPage: React.FC = () => {
                 columns={columns}
                 rowKey="id"
                 pagination={{ pageSize: 10 }}
+                onRow={(record) => ({
+                  'data-testid': 'model-row',
+                  onClick: () => handleViewDetails(record),
+                })}
               />
             )}
           </Card>
@@ -516,6 +520,55 @@ const ModelsPage: React.FC = () => {
                         />
                       </Col>
                     </Row>
+
+                    {/* Holdout-evaluation metrics — fixed, protected set (Story 7.2) */}
+                    {selectedModelForDetails.holdoutMetrics && (
+                      <Card
+                        size="small"
+                        data-testid="holdout-metrics-panel"
+                        title={t('models.holdoutMetrics', 'Holdout metrics')}
+                      >
+                        <Row gutter={16}>
+                          <Col span={6}>
+                            <Statistic
+                              title={t('models.holdoutAccuracy', 'Holdout accuracy')}
+                              value={selectedModelForDetails.holdoutMetrics.accuracy * 100}
+                              precision={1}
+                              suffix="%"
+                            />
+                          </Col>
+                          <Col span={6}>
+                            <Statistic
+                              title={t('models.holdoutPrecision', 'Precision')}
+                              value={selectedModelForDetails.holdoutMetrics.precision * 100}
+                              precision={1}
+                              suffix="%"
+                            />
+                          </Col>
+                          <Col span={6}>
+                            <Statistic
+                              title={t('models.holdoutRecall', 'Recall')}
+                              value={selectedModelForDetails.holdoutMetrics.recall * 100}
+                              precision={1}
+                              suffix="%"
+                            />
+                          </Col>
+                          <Col span={6}>
+                            <Statistic
+                              title={t('models.holdoutF1', 'F1')}
+                              value={selectedModelForDetails.holdoutMetrics.f1 * 100}
+                              precision={1}
+                              suffix="%"
+                            />
+                          </Col>
+                        </Row>
+                        <div className="mt-2 text-sm text-gray-500">
+                          {t('models.evaluatedOn', 'Evaluated on')}{' '}
+                          {selectedModelForDetails.holdoutMetrics.holdoutSize}{' '}
+                          {t('models.items', 'items')}
+                        </div>
+                      </Card>
+                    )}
                   </div>
                 ),
               },
@@ -667,6 +720,39 @@ const ModelsPage: React.FC = () => {
               <Paragraph className="mt-4 text-center text-gray-500">
                 {comparison.reason}
               </Paragraph>
+
+              {/* Holdout comparison — both models on the SAME protected set (Story 7.2) */}
+              <table
+                data-testid="model-comparison-table"
+                className="w-full mt-4 text-sm border-collapse"
+              >
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left p-2">{t('models.model', 'Model')}</th>
+                    <th className="text-left p-2">{t('models.holdout', 'Holdout')}</th>
+                    <th className="text-left p-2">{t('models.holdoutSet', 'Holdout set')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[comparison.model1, comparison.model2].map((m) => (
+                    <tr key={m.id} className="border-b">
+                      <td className="p-2">{m.name}</td>
+                      <td className="p-2">
+                        {m.holdoutMetrics
+                          ? `${(m.holdoutMetrics.accuracy * 100).toFixed(1)}%`
+                          : '—'}
+                      </td>
+                      <td className="p-2" data-testid="holdout-set-id">
+                        {m.holdoutMetrics
+                          ? `${m.holdoutMetrics.holdoutSize} • ${
+                              m.holdoutMetrics.holdoutHash ?? '—'
+                            }`
+                          : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </Card>
           )}
         </div>

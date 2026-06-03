@@ -11,6 +11,35 @@ import prisma from '../../core/db';
 
 const logger = createLogger('feedback');
 
+/**
+ * Map a persisted `metrics.holdout` block to the camelCase `holdoutMetrics`
+ * API shape (Story 7.2). Accepts both snake_case and camelCase inner keys.
+ * Returns null when no holdout block is present.
+ */
+function mapHoldoutMetrics(metrics: unknown): {
+  accuracy: number;
+  precision: number;
+  recall: number;
+  f1: number;
+  holdoutSize: number;
+  holdoutHash: string | null;
+} | null {
+  if (!metrics || typeof metrics !== 'object') return null;
+  const holdout = (metrics as { holdout?: Record<string, unknown> }).holdout;
+  if (!holdout || typeof holdout !== 'object') return null;
+
+  const num = (v: unknown): number => (typeof v === 'number' ? v : 0);
+
+  return {
+    accuracy: num(holdout.accuracy),
+    precision: num(holdout.precision),
+    recall: num(holdout.recall),
+    f1: num(holdout.f1),
+    holdoutSize: num(holdout.holdoutSize ?? holdout.holdout_size),
+    holdoutHash: (holdout.holdoutHash ?? holdout.holdout_hash ?? null) as string | null,
+  };
+}
+
 // ============================================
 // Types
 // ============================================
@@ -659,11 +688,12 @@ export async function feedbackRoutes(fastify: FastifyInstance) {
           models.map(async (model) => {
             // This would require model_id in recognition logs
             // Simplified version using model creation date
-            const feedbackAfterModel = await prisma.feedbackEntry.findMany({
-              where: {
-                validatedAt: { gte: model.createdAt },
-              },
-            });
+            const feedbackAfterModel =
+              (await prisma.feedbackEntry.findMany({
+                where: {
+                  validatedAt: { gte: model.createdAt },
+                },
+              })) ?? [];
 
             const correct = feedbackAfterModel.filter(
               (f) => f.predictedLogoId && f.correctLogoId === f.predictedLogoId
@@ -679,6 +709,8 @@ export async function feedbackRoutes(fastify: FastifyInstance) {
                 : null,
               feedbackCount: feedbackAfterModel.length,
               isActive: model.isActive,
+              // Holdout-evaluation metrics for fair, same-set comparison (Story 7.2).
+              holdoutMetrics: mapHoldoutMetrics((model as { metrics?: unknown }).metrics),
               createdAt: model.createdAt,
             };
           })

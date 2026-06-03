@@ -155,6 +155,16 @@ export interface TrainingMetrics {
 }
 
 // Model Types
+/** Holdout-evaluation metrics for a model version (Epic 7, Story 7.2). */
+export interface HoldoutMetrics {
+  accuracy: number;
+  precision: number;
+  recall: number;
+  f1: number;
+  holdoutSize: number;
+  holdoutHash: string | null;
+}
+
 export interface ModelVersion {
   id: string;
   version: number;
@@ -164,6 +174,8 @@ export interface ModelVersion {
   size: number; // in bytes
   trainingJobId: string;
   metrics?: TrainingMetrics;
+  /** Holdout-evaluation metrics, distinct from train/val metrics (Story 7.2). */
+  holdoutMetrics?: HoldoutMetrics | null;
   createdAt: Date;
   activatedAt?: Date;
   deactivatedAt?: Date;

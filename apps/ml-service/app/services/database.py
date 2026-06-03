@@ -4,6 +4,7 @@ Handles PostgreSQL connection and queries for training jobs, models, and embeddi
 """
 
 import os
+import json
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 import asyncpg
@@ -154,19 +155,27 @@ class DatabaseService:
         recall_score: Optional[float] = None,
         f1_score: Optional[float] = None,
         config: Optional[Dict] = None,
+        metrics: Optional[Dict] = None,
     ) -> Dict[str, Any]:
-        """Create a new model version record."""
+        """Create a new model version record.
+
+        ``metrics`` (Story 7.2) carries the holdout-evaluation block, kept
+        distinct from the scalar train/val metric columns. It is serialised as
+        proper JSON (``json.dumps``) so it round-trips as JSONB — unlike the
+        legacy ``config`` column which uses ``str()`` (a known pre-existing
+        quirk we deliberately do not propagate to ``metrics``).
+        """
         async with self.get_connection() as conn:
             row = await conn.fetchrow(
                 """
                 INSERT INTO model_versions
                 (version, model_type, accuracy, precision_score, recall_score, f1_score,
-                 training_date, is_active, config, created_at)
-                VALUES ($1, $2, $3, $4, $5, $6, NOW(), false, $7, NOW())
+                 training_date, is_active, config, metrics, created_at)
+                VALUES ($1, $2, $3, $4, $5, $6, NOW(), false, $7, $8, NOW())
                 RETURNING id, version, model_type, accuracy, is_active, created_at
                 """,
                 version, model_type, accuracy, precision_score, recall_score, f1_score,
-                str(config or {})
+                str(config or {}), json.dumps(metrics or {})
             )
             return dict(row) if row else {}
 

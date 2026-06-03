@@ -86,7 +86,6 @@ async def test_augmentation_never_touches_holdout_records():
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skip(reason="ATDD red phase — implementeer Story 7.2 en verwijder deze marker")
 @pytest.mark.asyncio
 async def test_completed_training_registers_holdout_metrics():
     """Elke modelversie krijgt holdout-metrics, onderscheiden van train/val."""
@@ -107,7 +106,6 @@ async def test_completed_training_registers_holdout_metrics():
         assert str(holdout["holdout_hash"]).startswith("sha256:")
 
 
-@pytest.mark.skip(reason="ATDD red phase — implementeer Story 7.2 en verwijder deze marker")
 @pytest.mark.asyncio
 async def test_holdout_hash_is_stable_for_same_holdout_set():
     """Zelfde holdout-set ⇒ zelfde hash: het bewijs dat vergelijkingen eerlijk zijn."""
