@@ -1,5 +1,15 @@
 # Versiegeschiedenis
 
+## 2026-06-04
+
+### Stabiliteits- en kwaliteitsverbeteringen modeltraining
+- Het opslaan van een getraind model is robuuster gemaakt (technische fout in de registratie verholpen)
+- Bij het opnieuw uploaden van een bestaande keurmerk-variant verschijnt nu een duidelijke melding in plaats van een serverfout
+- Keurmerken met heel weinig voorbeelden blijven volledig beschikbaar voor training (worden niet meer in de holdout-set geplaatst)
+- Een te kleine holdout-set geeft nu ook bij de trainingsservice een nette foutmelding
+- De zoekfunctie op gelijkenis blijft alle keurmerken vinden, ook als hun voorbeelden in de holdout-set zitten
+- Het referentie-overzicht laadt sneller bij veel (historische) varianten
+
 ## 2026-06-03
 
 ### Keurmerk-referentiebibliotheek

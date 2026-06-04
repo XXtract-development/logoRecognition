@@ -48,10 +48,26 @@ async function main(): Promise<void> {
     byLabel.set(record.label, ids);
   }
 
+  // A class must keep enough training samples to remain learnable: below this
+  // size we take NO holdout records (the class joins the holdout set once it
+  // has grown). This prevents a 1-sample class from losing its only example.
+  const MIN_CLASS_SIZE_FOR_HOLDOUT = parseInt(process.env.MIN_CLASS_SIZE_FOR_HOLDOUT || '4', 10);
+
   const holdoutIds: string[] = [];
   for (const [label, ids] of byLabel) {
-    // At least one per class so every class is represented in the holdout set.
-    const take = Math.max(1, Math.round((ids.length * HOLDOUT_PERCENTAGE) / 100));
+    if (ids.length < MIN_CLASS_SIZE_FOR_HOLDOUT) {
+      // eslint-disable-next-line no-console
+      console.log(
+        `  ${label}: 0/${ids.length} marked as holdout (class below minimum size ${MIN_CLASS_SIZE_FOR_HOLDOUT}; all samples kept for training)`
+      );
+      continue;
+    }
+    // At least one per (sufficiently large) class, but never so many that the
+    // class loses its training majority.
+    const take = Math.min(
+      Math.max(1, Math.round((ids.length * HOLDOUT_PERCENTAGE) / 100)),
+      ids.length - 1
+    );
     holdoutIds.push(...ids.slice(0, take));
     // eslint-disable-next-line no-console
     console.log(`  ${label}: ${take}/${ids.length} marked as holdout`);

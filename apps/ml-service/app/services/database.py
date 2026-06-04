@@ -160,10 +160,10 @@ class DatabaseService:
         """Create a new model version record.
 
         ``metrics`` (Story 7.2) carries the holdout-evaluation block, kept
-        distinct from the scalar train/val metric columns. It is serialised as
-        proper JSON (``json.dumps``) so it round-trips as JSONB — unlike the
-        legacy ``config`` column which uses ``str()`` (a known pre-existing
-        quirk we deliberately do not propagate to ``metrics``).
+        distinct from the scalar train/val metric columns. Both ``config`` and
+        ``metrics`` are serialised with ``json.dumps`` so they round-trip as
+        JSONB — Python's ``str()`` repr (single quotes) is not valid JSON and
+        would be rejected by the JSONB column.
         """
         async with self.get_connection() as conn:
             row = await conn.fetchrow(
@@ -175,7 +175,7 @@ class DatabaseService:
                 RETURNING id, version, model_type, accuracy, is_active, created_at
                 """,
                 version, model_type, accuracy, precision_score, recall_score, f1_score,
-                str(config or {}), json.dumps(metrics or {})
+                json.dumps(config or {}), json.dumps(metrics or {})
             )
             return dict(row) if row else {}
 
@@ -364,31 +364,37 @@ class DatabaseService:
         self,
         batch_id: Optional[str] = None,
         validated_only: bool = True,
+        include_holdout: bool = False,
     ) -> List[Dict[str, Any]]:
         """Get training images with their labels.
 
-        Holdout-marked records are excluded at QUERY level (NFR3): they must
-        never reach the training selection, not even before Python filtering.
+        Holdout-marked records are excluded at QUERY level (NFR3) by default:
+        they must never reach the training selection, not even before Python
+        filtering. Non-training consumers (e.g. embedding rebuilds in the
+        similarity service) pass ``include_holdout=True`` because excluding
+        the holdout set there would silently drop logos from the vector index.
         """
+        holdout_clause = "" if include_holdout else "AND td.holdout = false"
+        holdout_clause_left = "" if include_holdout else "WHERE td.holdout IS NOT TRUE"
         if validated_only:
-            query = """
+            query = f"""
                 SELECT
                     li.id, li.filename, li.storage_path, li.brand_name,
                     td.label, td.confidence
                 FROM logo_images li
                 JOIN training_data td ON td.image_id = li.id
                 WHERE td.validated = true
-                  AND td.holdout = false
+                  {holdout_clause}
                 ORDER BY li.created_at DESC
             """
         else:
-            query = """
+            query = f"""
                 SELECT
                     li.id, li.filename, li.storage_path, li.brand_name,
                     td.label, td.confidence
                 FROM logo_images li
                 LEFT JOIN training_data td ON td.image_id = li.id
-                WHERE td.holdout IS NOT TRUE
+                {holdout_clause_left}
                 ORDER BY li.created_at DESC
             """
         return await self._execute_query(query)

@@ -8,41 +8,16 @@ import { mlClient, MLServiceError, TrainingRequest, TrainingConfig } from '../..
 import { socketIOManager } from '../../services/socket-io-manager';
 import { createLogger } from '../../core/logger';
 import prisma from '../../core/db';
+// Shared holdout-metrics mapper (single source of truth for the API shape).
+import { mapHoldoutMetrics } from '../../services/holdout-metrics';
 
 const logger = createLogger('training');
 
 // Minimum number of validated holdout records required before a training run
-// may start (NFR3). Configurable via env; defaults to 25.
+// may start (NFR3). Configurable via env; defaults to 25. NB: the same env var
+// feeds the ML-service guard (trainer.py) — wire it ONCE via docker-compose so
+// both layers cannot diverge.
 const HOLDOUT_MINIMUM = parseInt(process.env.HOLDOUT_MINIMUM || '25', 10);
-
-/**
- * Map the persisted `metrics.holdout` block (snake_case as written by the
- * ML-service) to the camelCase `holdoutMetrics` API shape (Story 7.2).
- * Accepts both snake_case and camelCase inner keys defensively.
- */
-function mapHoldoutMetrics(metrics: unknown): {
-  accuracy: number;
-  precision: number;
-  recall: number;
-  f1: number;
-  holdoutSize: number;
-  holdoutHash: string | null;
-} | null {
-  if (!metrics || typeof metrics !== 'object') return null;
-  const holdout = (metrics as { holdout?: Record<string, unknown> }).holdout;
-  if (!holdout || typeof holdout !== 'object') return null;
-
-  const num = (v: unknown): number => (typeof v === 'number' ? v : 0);
-
-  return {
-    accuracy: num(holdout.accuracy),
-    precision: num(holdout.precision),
-    recall: num(holdout.recall),
-    f1: num(holdout.f1),
-    holdoutSize: num(holdout.holdoutSize ?? holdout.holdout_size),
-    holdoutHash: (holdout.holdoutHash ?? holdout.holdout_hash ?? null) as string | null,
-  };
-}
 
 // ============================================
 // Types

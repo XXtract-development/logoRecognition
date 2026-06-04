@@ -239,20 +239,32 @@ describe('Holdout Routes (ATDD RED — Story 7.1 & 7.2)', () => {
       await feedbackApp.register(feedbackRoutes, { prefix: '/api/v1' });
       await feedbackApp.ready();
 
+      // Volledig holdout-blok conform contract: een blok zonder holdoutSize is
+      // malformed en levert (bewust) null op — zie services/holdout-metrics.ts.
       (mockPrisma.modelVersion.findMany as vi.Mock).mockResolvedValue([
         {
           id: 'model-a',
           version: 'v20260601_090000',
           accuracy: 0.95,
           isActive: true,
-          metrics: { holdout: { accuracy: 0.92, holdoutHash: 'sha256:abc123' } },
+          metrics: {
+            holdout: {
+              accuracy: 0.92, precision: 0.91, recall: 0.9, f1: 0.905,
+              holdout_size: 250, holdoutHash: 'sha256:abc123',
+            },
+          },
         },
         {
           id: 'model-b',
           version: 'v20260603_120000',
           accuracy: 0.97,
           isActive: false,
-          metrics: { holdout: { accuracy: 0.94, holdoutHash: 'sha256:abc123' } },
+          metrics: {
+            holdout: {
+              accuracy: 0.94, precision: 0.93, recall: 0.92, f1: 0.925,
+              holdout_size: 250, holdoutHash: 'sha256:abc123',
+            },
+          },
         },
       ]);
 

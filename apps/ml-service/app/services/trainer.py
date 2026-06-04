@@ -19,8 +19,29 @@ from app.services.storage import storage_service
 
 
 # Minimum number of validated holdout records required before a training run
-# may start (NFR3). Configurable via env; defaults to 25.
+# may start (NFR3). Configurable via env; defaults to 25. NB: the same env var
+# feeds the API-layer guard (training.ts) — wire it ONCE via docker-compose so
+# both layers cannot diverge.
 HOLDOUT_MINIMUM = int(os.environ.get("HOLDOUT_MINIMUM", "25"))
+
+# Canonical input-preprocessing constants. Training, validation AND holdout
+# evaluation MUST share these — if they diverge, holdout metrics are computed
+# with different preprocessing than the model was trained with, silently
+# invalidating the champion/challenger comparison.
+IMAGE_SIZE = (224, 224)
+NORMALIZE_MEAN = [0.485, 0.456, 0.406]
+NORMALIZE_STD = [0.229, 0.224, 0.225]
+
+
+def build_eval_transform():
+    """Deterministic eval/holdout transform: resize + normalize, NO augmentation."""
+    from torchvision import transforms
+
+    return transforms.Compose([
+        transforms.Resize(IMAGE_SIZE),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=NORMALIZE_MEAN, std=NORMALIZE_STD),
+    ])
 
 
 class HoldoutSetTooSmallError(Exception):
@@ -175,15 +196,9 @@ class TrainerService:
 
         device = torch.device(settings.device)
 
-        # Validation transform — identical to training's val path, no augmentation.
-        val_transform = transforms.Compose([
-            transforms.Resize((224, 224)),
-            transforms.ToTensor(),
-            transforms.Normalize(
-                mean=[0.485, 0.456, 0.406],
-                std=[0.229, 0.224, 0.225],
-            ),
-        ])
+        # Shared eval transform (module-level constants) — guaranteed identical
+        # to the training/validation preprocessing.
+        val_transform = build_eval_transform()
 
         if label_to_idx is None:
             labels = sorted({img["label"] for img in holdout_images if img.get("label")})
@@ -382,17 +397,15 @@ class TrainerService:
 
             logger.info(f"Loaded {len(training_images)} training images")
 
-            # Prepare data transforms
+            # Prepare data transforms (augmentation on top of the shared
+            # canonical size/normalization constants).
             train_transform = transforms.Compose([
-                transforms.Resize((224, 224)),
+                transforms.Resize(IMAGE_SIZE),
                 transforms.RandomHorizontalFlip(),
                 transforms.RandomRotation(15),
                 transforms.ColorJitter(brightness=0.2, contrast=0.2),
                 transforms.ToTensor(),
-                transforms.Normalize(
-                    mean=[0.485, 0.456, 0.406],
-                    std=[0.229, 0.224, 0.225]
-                ),
+                transforms.Normalize(mean=NORMALIZE_MEAN, std=NORMALIZE_STD),
             ])
 
             # Create label mapping

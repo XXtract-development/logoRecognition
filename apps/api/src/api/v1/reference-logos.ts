@@ -25,7 +25,13 @@ function minResolution(): number {
 
 interface ListQuery {
   code?: string;
+  limit?: string;
+  offset?: string;
 }
+
+/** Default/max page size for reference-logo listings. */
+const LIST_DEFAULT_LIMIT = 100;
+const LIST_MAX_LIMIT = 500;
 
 /** Lowercased file extension without the dot, or '' when absent. */
 function extensionOf(filename: string): string {
@@ -92,6 +98,19 @@ export async function referenceLogosRoutes(fastify: FastifyInstance) {
 
     const storagePath = `reference-logos/${t3777Code}/${variantLabel}.${ext}`;
 
+    // Duplicate guard BEFORE touching object storage: a re-upload of an
+    // existing (code, variant) must not overwrite the stored artwork and then
+    // fail on the unique constraint, leaving storage and DB out of sync.
+    const existing = await prisma.referenceLogo.findUnique({
+      where: { t3777Code_variantLabel: { t3777Code, variantLabel } },
+      select: { id: true },
+    });
+    if (existing) {
+      return reply.status(409).send({
+        error: `Variant '${variantLabel}' bestaat al voor ${t3777Code}. Deactiveer de bestaande variant of kies een ander variantlabel.`,
+      });
+    }
+
     // Persist the artwork to object storage. Wrapped defensively so a storage
     // hiccup does not crash the request handler.
     try {
@@ -141,6 +160,13 @@ export async function referenceLogosRoutes(fastify: FastifyInstance) {
         logoId: record.logoId ?? logoId,
       });
     } catch (error) {
+      // Race fallback: concurrent upload of the same (code, variant) slipped
+      // past the pre-check → unique violation. Report conflict, not a 500.
+      if ((error as { code?: string }).code === 'P2002') {
+        return reply.status(409).send({
+          error: `Variant '${variantLabel}' bestaat al voor ${t3777Code}.`,
+        });
+      }
       logger.error('Failed to create reference logo record', {
         error: error instanceof Error ? error.message : 'Unknown error',
         t3777Code,
@@ -158,20 +184,32 @@ export async function referenceLogosRoutes(fastify: FastifyInstance) {
     '/reference-logos',
     async (request: FastifyRequest<{ Querystring: ListQuery }>, reply: FastifyReply) => {
       const { code } = request.query;
+      const limit = Math.min(
+        Math.max(parseInt(request.query.limit || `${LIST_DEFAULT_LIMIT}`, 10) || LIST_DEFAULT_LIMIT, 1),
+        LIST_MAX_LIMIT
+      );
+      const offset = Math.max(parseInt(request.query.offset || '0', 10) || 0, 0);
 
       try {
         const records = await prisma.referenceLogo.findMany({
           where: code ? { t3777Code: code } : {},
           orderBy: [{ t3777Code: 'asc' }, { variantLabel: 'asc' }],
+          take: limit,
+          skip: offset,
         });
 
         const data = await Promise.all(
           records.map(async (r) => {
+            // Presign previews only for active variants: inactive history is
+            // listed (contract) but its previews are rarely rendered — signing
+            // them all makes the unbounded soft-delete history a per-request cost.
             let previewUrl: string | null = null;
-            try {
-              previewUrl = (await getReferenceLogoUrl(r.storagePath)) ?? null;
-            } catch {
-              previewUrl = null;
+            if (r.active) {
+              try {
+                previewUrl = (await getReferenceLogoUrl(r.storagePath)) ?? null;
+              } catch {
+                previewUrl = null;
+              }
             }
             return {
               id: r.id,

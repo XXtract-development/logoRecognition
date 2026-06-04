@@ -194,8 +194,11 @@ class SimilarityService:
 
         for logo in logos:
             try:
-                # Get representative images for this logo
-                images = await db_service.get_training_images()
+                # Get representative images for this logo.
+                # include_holdout=True: the embedding index must cover EVERY
+                # validated image — excluding the holdout set here would
+                # silently drop logos whose only samples are holdout-marked.
+                images = await db_service.get_training_images(include_holdout=True)
                 logo_images = [
                     img for img in images
                     if img.get("label") == logo["value"]
