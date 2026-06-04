@@ -323,6 +323,31 @@ export async function uploadReferenceLogo(
 }
 
 /**
+ * Upload an artwork file to MinIO (Epic 8, Story 8.1).
+ *
+ * Stored in the TRAINING bucket under the `artwork/` prefix.
+ * Path convention: `artwork/{gtin}/{fileName}`
+ *
+ * Retention note: `artwork/` prefix is a reproducible cache from the mediaserver.
+ * It may be cleared if needed; never use prefix-delete outside of `artwork/`.
+ */
+export async function uploadArtwork(
+  buffer: Buffer,
+  storagePath: string,
+  mimeType: string
+): Promise<void> {
+  const adapter = getStorageAdapter();
+  await adapter.putObject(BUCKETS.TRAINING, storagePath, buffer, buffer.length, {
+    'Content-Type': mimeType,
+  });
+  logger.info('Artwork stored', {
+    bucket: BUCKETS.TRAINING,
+    path: storagePath,
+    size: buffer.length,
+  });
+}
+
+/**
  * Signed preview URL for a reference logo. The stored `storagePath` is the
  * `reference-logos/...` object key inside the TRAINING bucket (not a
  * bucket-prefixed path), so it is signed against TRAINING directly.

@@ -1,5 +1,14 @@
 # Versiegeschiedenis
 
+## 2026-06-04 (Epic 8 — Automatische Trainingsdata)
+
+### Artwork-import via mediaserver
+- Het systeem kan nu etiket-artwork automatisch ophalen uit de mediaserver en lokaal opslaan
+- Per productcode (GTIN) worden alle PACKAGING_ARTWORK-bestanden geïmporteerd en gecachet
+- Bestanden die al geïmporteerd zijn, worden overgeslagen (geen dubbele downloads)
+- Importfouten per product worden geregistreerd; de rest van de batch gaat gewoon door
+- Importstatus is op te vragen: hoeveel bestanden geïmporteerd, overgeslagen, of mislukt
+
 ## 2026-06-04
 
 ### Stabiliteits- en kwaliteitsverbeteringen modeltraining

@@ -158,6 +158,57 @@ export const mockModelVersion = {
   createdAt: new Date(),
 };
 
+// Artwork import fixtures (Epic 8, Story 8.1)
+export const mockArtworkImportRun = {
+  id: 'run-uuid-0001-0000-0000-000000000001',
+  status: 'completed',
+  gtins: ['08718989912451'],
+  importedCount: 1,
+  skippedCount: 0,
+  failedCount: 0,
+  heartbeatAt: new Date('2026-06-04T10:00:00Z'),
+  completedAt: new Date('2026-06-04T10:01:00Z'),
+  createdAt: new Date('2026-06-04T10:00:00Z'),
+  items: [],
+};
+
+export const mockArtworkImport = {
+  id: 'art-uuid-0001-0000-0000-000000000001',
+  gtin: '08718989912451',
+  gln: '8718989000000',
+  mediaId: 'media-id-0001',
+  fileName: '08718989912451_46182_001.jpg',
+  sourceLocation:
+    '/8718989000000/PACKAGING_ARTWORK/1717500000000/08718989912451_46182_001/sha256abc.jpg',
+  sha256Hash: 'abc123def456abc123def456abc123def456abc123def456abc123def456abc123',
+  storagePath: 'artwork/08718989912451/08718989912451_46182_001.jpg',
+  mimeType: 'image/jpeg',
+  status: 'imported',
+  failureReason: null,
+  importRunId: 'run-uuid-0001-0000-0000-000000000001',
+  pages: {},
+  createdAt: new Date('2026-06-04T10:00:30Z'),
+};
+
+// Training data with provenance (Epic 8, Story 8.6)
+export const mockTrainingDataWithProvenance = {
+  id: 'c1c2c3c4-0000-0000-0000-000000000001',
+  imageId: 'test-image-id',
+  label: 'EU_ORGANIC_FARMING',
+  confidence: 0.94,
+  validated: true,
+  holdout: false,
+  active: true,
+  cropPath: 'artwork-crops/08718989912451/crop-1.png',
+  provenance: {
+    sourceFile: '08718989912451_46182_001.jpg',
+    bbox: { x: 10, y: 10, width: 80, height: 80 },
+    method: 'template',
+    confidence: 0.94,
+  },
+  createdAt: new Date('2026-06-04T10:05:00Z'),
+};
+
 export const mockTrainingJob = {
   id: 'test-job-id',
   batchId: 'test-batch-id',
