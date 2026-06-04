@@ -2,6 +2,11 @@
 
 ## 2026-06-04 (Epic 8 — Automatische Trainingsdata)
 
+### Trainingsdata-registratie met herkomst
+- Automatisch goedgekeurde keurmerk-crops worden opgeslagen als trainingsdata met volledige herkomst-informatie (bronbestand, boundingbox, methode, zekerheid)
+- Trainingsdata uit een specifiek bronbestand kunnen in bulk gedeactiveerd worden (zonder te verwijderen) via één API-aanroep
+- Elke trainingsrecord is volledig herleidbaar naar het originele artwork-bestand
+
 ### T3777-kruischeck en routing
 - Gedetecteerde keurmerken worden automatisch vergeleken met de T3777-declaratie van het product
 - Overeenkomsten met voldoende zekerheid worden direct goedgekeurd als trainingsdata
