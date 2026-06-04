@@ -122,6 +122,29 @@ describe('Holdout Routes (ATDD RED — Story 7.1 & 7.2)', () => {
 
       expect(response.statusCode).toBe(404);
     });
+
+    // Story 8.7 — dual holdout protection (b): the PATCH guard refuses to move
+    // a synthetic record into the holdout set (NFR3: holdout stays 100% real).
+    it('should refuse to mark a synthetic record as holdout (422)', async () => {
+      (mockPrisma.trainingData.findUnique as vi.Mock).mockResolvedValue({
+        provenance: {
+          method: 'synthetic',
+          sourceFile: 'artwork/123/page-1.png',
+          bbox: { x: 10, y: 20, width: 50, height: 50 },
+          confidence: 1.0,
+        },
+      });
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/v1/training/data/${mockTrainingDataRecord.id}/holdout`,
+        payload: { holdout: true },
+      });
+
+      expect(response.statusCode).toBe(422);
+      // The record must NOT have been mutated.
+      expect(mockPrisma.trainingData.update).not.toHaveBeenCalled();
+    });
   });
 
   describe('GET /training/data?holdout=true', () => {

@@ -388,6 +388,99 @@ describe('Artwork Pipeline Routes (ATDD — Epic 8)', () => {
   });
 
   // -------------------------------------------------------------------------
+  // Story 8.7 — Synthetic training-data generation
+  // -------------------------------------------------------------------------
+
+  describe('POST /artwork/synthesize (Story 8.7)', () => {
+    it('generates composites via ML and registers them through the 8.6 path with method=synthetic, holdout=false', async () => {
+      (mlClient.synthesizeArtwork as vi.Mock).mockResolvedValueOnce({
+        t3777_code: 'EU_ORGANIC_FARMING',
+        generated: 2,
+        samples: [
+          {
+            t3777_code: 'EU_ORGANIC_FARMING',
+            crop_path: 'synthetic/EU_ORGANIC_FARMING/100.png',
+            source_file: 'artwork/123/page-1.png',
+            bbox: { x: 10, y: 20, width: 50, height: 50 },
+            method: 'synthetic',
+            confidence: 1.0,
+            seed: 100,
+          },
+          {
+            t3777_code: 'EU_ORGANIC_FARMING',
+            crop_path: 'synthetic/EU_ORGANIC_FARMING/101.png',
+            source_file: 'artwork/123/page-1.png',
+            bbox: { x: 30, y: 40, width: 50, height: 50 },
+            method: 'synthetic',
+            confidence: 1.0,
+            seed: 101,
+          },
+        ],
+      });
+      (mockPrisma.trainingData.create as vi.Mock).mockResolvedValue({
+        id: 'synth-td-1',
+        label: 'EU_ORGANIC_FARMING',
+      });
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/v1/artwork/synthesize',
+        payload: { t3777Code: 'EU_ORGANIC_FARMING', count: 2, seed: 100 },
+      });
+
+      expect(response.statusCode).toBe(201);
+      const body = JSON.parse(response.body);
+      expect(body.generated).toBe(2);
+      expect(body.registered).toBe(2);
+      expect(mlClient.synthesizeArtwork).toHaveBeenCalledWith('EU_ORGANIC_FARMING', 2, 100);
+      // Registered through registerCropsTx → method 'synthetic', holdout false.
+      expect(mockPrisma.trainingData.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            label: 'EU_ORGANIC_FARMING',
+            holdout: false,
+            provenance: expect.objectContaining({
+              method: 'synthetic',
+              sourceFile: 'artwork/123/page-1.png',
+            }),
+          }),
+        }),
+      );
+    });
+
+    it('returns 200 generated=0 (no registration) when no references/backgrounds exist (open-input gate)', async () => {
+      (mlClient.synthesizeArtwork as vi.Mock).mockResolvedValueOnce({
+        t3777_code: 'RARE_MARK',
+        generated: 0,
+        samples: [],
+      });
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/v1/artwork/synthesize',
+        payload: { t3777Code: 'RARE_MARK', count: 5 },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.generated).toBe(0);
+      expect(body.registered).toBe(0);
+      expect(mockPrisma.trainingData.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects an invalid request (missing t3777Code) with 400', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/v1/artwork/synthesize',
+        payload: { count: 3 },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(mlClient.synthesizeArtwork).not.toHaveBeenCalled();
+    });
+  });
+
+  // -------------------------------------------------------------------------
   // Story 8.6 — Doorzet: accepted review items → training-data registration
   // -------------------------------------------------------------------------
 

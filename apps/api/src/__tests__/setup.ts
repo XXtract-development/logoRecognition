@@ -279,6 +279,7 @@ vi.mock('../services/ml-client', () => ({
     detectLogosFromBuffer: vi.fn(),
     generateEmbedding: vi.fn(),
     rasterizeArtwork: vi.fn(),
+    synthesizeArtwork: vi.fn(),
   },
   MLServiceError: class MLServiceError extends Error {
     statusCode: number;

@@ -113,6 +113,23 @@ export interface RasterizeResponse {
   error?: string | null;
 }
 
+// Synthetic training-data generation (Epic 8, Story 8.7)
+export interface SynthesizedSample {
+  t3777_code: string;
+  crop_path: string; // MinIO key synthetic/{t3777Code}/{seed}.png
+  source_file: string; // background object key (provenance.sourceFile)
+  bbox: { x: number; y: number; width: number; height: number };
+  method: string; // always 'synthetic'
+  confidence: number;
+  seed: number;
+}
+
+export interface SynthesizeResponse {
+  t3777_code: string;
+  generated: number;
+  samples: SynthesizedSample[];
+}
+
 // ============================================
 // ML Client Class
 // ============================================
@@ -299,6 +316,35 @@ export class MLClient {
       return response.data;
     } catch (error) {
       throw this.handleError(error, 'Artwork rasterization failed');
+    }
+  }
+
+  /**
+   * Generate synthetic training composites for one keurmerk class (Story 8.7).
+   *
+   * The ML service loads the active reference variants + real cached artwork
+   * backgrounds, composes `count` deterministic samples (scale/rotation/HSV/
+   * blur via a seeded RandomState), writes each PNG to MinIO under
+   * `synthetic/{t3777Code}/{seed}.png`, and returns crop descriptors. The caller
+   * registers these through the 8.6 registration path (no second write path).
+   *
+   * Returns `generated: 0` with an empty `samples` list when no usable
+   * references/backgrounds exist (open-input gate) — not an error.
+   */
+  async synthesizeArtwork(
+    t3777Code: string,
+    count: number,
+    seed?: number
+  ): Promise<SynthesizeResponse> {
+    try {
+      const response = await this.client.post<SynthesizeResponse>('/ml/artwork/synthesize', {
+        t3777_code: t3777Code,
+        count,
+        ...(seed !== undefined ? { seed } : {}),
+      });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error, 'Artwork synthesis failed');
     }
   }
 
