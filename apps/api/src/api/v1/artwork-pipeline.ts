@@ -10,10 +10,14 @@
  *   GET  /artwork/review-queue                                  → 200 open review items
  *
  * Story 8.6 — Training data registration with provenance:
- *   POST /artwork/:gtin/register-training-data  { items }     → 201
- *   PATCH /training/data/deactivate-by-source   { sourceFile } → 200 { deactivated }
+ *   POST  /artwork/:gtin/register-training-data    { items }     → 201
+ *   PATCH /training/data/deactivate-by-source       { sourceFile } → 200 { deactivated }
+ *   PATCH /artwork/review-items/:id/accept                       → 200 (doorzet to training data)
+ *   PATCH /artwork/review-items/:id/reject                       → 200
+ *   POST  /artwork/review-items/process-accepted                 → 200 (catch-up doorzet)
  *
- * RBAC: mutating endpoints (POST import runs, register, deactivate) require ADMIN.
+ * RBAC: mutating endpoints (POST import runs, register, deactivate, accept,
+ *       reject, process-accepted) require ADMIN.
  *       GET status and GET review-queue are open to any authenticated user.
  *       crosscheck (POST) requires ADMIN or data-manager role.
  */
@@ -26,6 +30,19 @@ import { requireRole, authMiddleware } from '../../middleware/auth';
 import { uploadArtwork } from '../../services/storage';
 import { mediaServerClient } from '../../services/mediaserver-client';
 import { mlClient } from '../../services/ml-client';
+import {
+  KEURMERK_CATEGORY,
+  buildProvenance,
+  ProvenanceMethod,
+} from '../../services/provenance';
+import type { Prisma } from '@prisma/client';
+
+/**
+ * Minimal transactional-client surface used by the shared registration helper.
+ * Typed locally so it works against both the real Prisma client and the test
+ * mock (which exposes the same model accessors).
+ */
+type TxClient = Prisma.TransactionClient;
 
 // ============================================
 // Constants
@@ -109,6 +126,150 @@ function sha256(buffer: Buffer): string {
 function isPdf(fileName: string, mimeType?: string): boolean {
   if (mimeType && mimeType.toLowerCase() === 'application/pdf') return true;
   return fileName.toLowerCase().endsWith('.pdf');
+}
+
+/**
+ * One crop to register as training data (Story 8.6). Shared by the explicit
+ * register endpoint and the accept-driven "doorzet" of review items.
+ */
+interface RegisterableCrop {
+  t3777Code: string;
+  cropPath: string;
+  sourceFile: string;
+  bbox: { x: number; y: number; width: number; height: number };
+  method: ProvenanceMethod;
+  confidence: number;
+}
+
+/**
+ * Register a batch of crops as training data within an existing transaction
+ * (Story 8.6). For each crop:
+ *   - find-or-create a LogoImage marked `metadata.artworkSource=true` (the
+ *     NOT NULL imageId FK requires an image row; the marker keeps these out of
+ *     the Image Library — see images.ts),
+ *   - upsert the keurmerk Logo so per-category stats stay linked,
+ *   - create a TrainingData record (active=true, holdout=false) with full
+ *     provenance built through the shared mapper shape.
+ *
+ * Returns the created TrainingData ids. Must run inside a transaction so a
+ * mid-batch failure never leaves partial records behind.
+ */
+async function registerCropsTx(
+  tx: TxClient,
+  gtin: string,
+  crops: RegisterableCrop[]
+): Promise<string[]> {
+  const ids: string[] = [];
+  for (const crop of crops) {
+    // storagePath is not unique in the schema → findFirst + create.
+    let logoImage = await tx.logoImage.findFirst({
+      where: { storagePath: crop.cropPath },
+      select: { id: true },
+    });
+    if (!logoImage) {
+      logoImage = await tx.logoImage.create({
+        data: {
+          filename: crop.sourceFile,
+          storagePath: crop.cropPath,
+          metadata: { artworkSource: true, gtin },
+        },
+      });
+    }
+
+    await tx.logo.upsert({
+      where: { category_value: { category: KEURMERK_CATEGORY, value: crop.t3777Code } },
+      update: {},
+      create: { category: KEURMERK_CATEGORY, value: crop.t3777Code },
+    });
+
+    const td = await tx.trainingData.create({
+      data: {
+        imageId: logoImage.id,
+        label: crop.t3777Code,
+        confidence: crop.confidence,
+        validated: true,
+        holdout: false,
+        active: true,
+        cropPath: crop.cropPath,
+        provenance: buildProvenance({
+          sourceFile: crop.sourceFile,
+          bbox: crop.bbox,
+          method: crop.method,
+          confidence: crop.confidence,
+        }),
+      },
+    });
+
+    ids.push(td.id);
+  }
+  return ids;
+}
+
+/**
+ * Doorzet (Story 8.6, carried over from 8.5): push 'accepted' ArtworkReviewItems
+ * to training-data registration and mark them 'registered'.
+ *
+ * An item can only be registered when it carries the crop references that
+ * provenance requires (cropPath + sourceFile). Items missing those are skipped
+ * (never fabricated) and reported back so they remain visible for manual fixing.
+ *
+ * Returns counts so both the accept action and the catch-up endpoint can report.
+ */
+async function processAcceptedReviewItems(
+  items: Array<{
+    id: string;
+    gtin: string;
+    t3777Code: string;
+    cropPath: string | null;
+    sourceFile: string | null;
+    bbox: unknown;
+    confidence: number | null;
+    method: string | null;
+  }>
+): Promise<{ registered: number; skipped: number; skippedIds: string[] }> {
+  let registered = 0;
+  let skipped = 0;
+  const skippedIds: string[] = [];
+
+  for (const item of items) {
+    // Provenance requires a crop + source. Without them we cannot register a
+    // truthful record — skip rather than fabricate (the no-fabricate rule).
+    if (!item.cropPath || !item.sourceFile) {
+      skipped += 1;
+      skippedIds.push(item.id);
+      logger.warn('Accepted review item lacks crop/source; cannot register', {
+        reviewItemId: item.id,
+        gtin: item.gtin,
+      });
+      continue;
+    }
+
+    const bbox = (item.bbox && typeof item.bbox === 'object'
+      ? (item.bbox as RegisterableCrop['bbox'])
+      : { x: 0, y: 0, width: 0, height: 0 });
+
+    // The reviewer made the call → provenance method is 'human'.
+    const crop: RegisterableCrop = {
+      t3777Code: item.t3777Code,
+      cropPath: item.cropPath,
+      sourceFile: item.sourceFile,
+      bbox,
+      method: 'human',
+      confidence: item.confidence ?? 0,
+    };
+
+    await prisma.$transaction(async (tx) => {
+      await registerCropsTx(tx as TxClient, item.gtin, [crop]);
+      await tx.artworkReviewItem.update({
+        where: { id: item.id },
+        data: { status: 'registered' },
+      });
+    });
+
+    registered += 1;
+  }
+
+  return { registered, skipped, skippedIds };
 }
 
 /**
@@ -384,6 +545,14 @@ interface DetectionItem {
   confidence: number;
   bbox: { x: number; y: number; width: number; height: number };
   method?: string;
+  /**
+   * Crop + source references (Epic 8, Stories 8.3/8.4). Carried through the
+   * crosscheck so a review item that is later accepted can be pushed to
+   * training-data registration with full provenance (Story 8.6 doorzet).
+   * Optional because legacy callers may not yet supply them.
+   */
+  cropPath?: string;
+  sourceFile?: string;
 }
 
 interface CrosscheckBody {
@@ -531,6 +700,8 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
         confidence?: number;
         bbox?: DetectionItem['bbox'];
         method?: string;
+        cropPath?: string;
+        sourceFile?: string;
       }> = [];
 
       const declaredSet = new Set(declared);
@@ -547,6 +718,8 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
             confidence: detection.confidence,
             bbox: detection.bbox,
             method: detection.method,
+            cropPath: detection.cropPath,
+            sourceFile: detection.sourceFile,
           });
           continue;
         }
@@ -561,6 +734,8 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
               confidence: detection.confidence,
               bbox: detection.bbox,
               method: detection.method,
+              cropPath: detection.cropPath,
+              sourceFile: detection.sourceFile,
             });
           }
         } else {
@@ -571,6 +746,8 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
             confidence: detection.confidence,
             bbox: detection.bbox,
             method: detection.method,
+            cropPath: detection.cropPath,
+            sourceFile: detection.sourceFile,
           });
         }
       }
@@ -596,6 +773,8 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
             confidence: item.confidence,
             method: item.method,
             reason: item.reason,
+            cropPath: item.cropPath,
+            sourceFile: item.sourceFile,
             status: 'open',
           })),
           skipDuplicates: false,
@@ -620,6 +799,108 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
       });
 
       return reply.status(200).send({ data: items });
+    }
+  );
+
+  /**
+   * PATCH /artwork/review-items/:id/accept
+   * Accept an open review item and push it straight to training-data
+   * registration (Story 8.6 doorzet). On success the item becomes 'registered';
+   * if it lacks crop/source references it is accepted but reported as skipped so
+   * a datamanager can complete it. Requires ADMIN.
+   */
+  fastify.patch<{ Params: { id: string } }>(
+    '/artwork/review-items/:id/accept',
+    { preHandler: REQUIRE_ADMIN },
+    async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+      const { id } = request.params;
+
+      const item = await prisma.artworkReviewItem.findUnique({ where: { id } });
+      if (!item) {
+        return reply.status(404).send({ error: 'Review item niet gevonden' });
+      }
+      if (item.status === 'registered') {
+        return reply.status(409).send({ error: 'Review item is al geregistreerd' });
+      }
+
+      // Mark accepted first so a crop-less item still leaves the open queue and
+      // is picked up by a later catch-up once its crop is supplied.
+      await prisma.artworkReviewItem.update({
+        where: { id },
+        data: { status: 'accepted' },
+      });
+
+      const result = await processAcceptedReviewItems([item]);
+
+      logger.info('Review item accepted', {
+        reviewItemId: id,
+        registered: result.registered,
+        skipped: result.skipped,
+      });
+
+      return reply.status(200).send({
+        status: result.registered > 0 ? 'registered' : 'accepted',
+        registered: result.registered,
+        skipped: result.skipped,
+      });
+    }
+  );
+
+  /**
+   * PATCH /artwork/review-items/:id/reject
+   * Reject an open review item (no training data is created). Requires ADMIN.
+   */
+  fastify.patch<{ Params: { id: string } }>(
+    '/artwork/review-items/:id/reject',
+    { preHandler: REQUIRE_ADMIN },
+    async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+      const { id } = request.params;
+
+      const item = await prisma.artworkReviewItem.findUnique({ where: { id } });
+      if (!item) {
+        return reply.status(404).send({ error: 'Review item niet gevonden' });
+      }
+
+      await prisma.artworkReviewItem.update({
+        where: { id },
+        data: { status: 'rejected' },
+      });
+
+      logger.info('Review item rejected', { reviewItemId: id });
+
+      return reply.status(200).send({ status: 'rejected' });
+    }
+  );
+
+  /**
+   * POST /artwork/review-items/process-accepted
+   * Catch-up doorzet (Story 8.6): register all 'accepted' review items that
+   * were accepted before this flow existed (or were skipped for missing crops
+   * and have since been completed). Idempotent — registered items are excluded
+   * by status. Requires ADMIN.
+   */
+  fastify.post(
+    '/artwork/review-items/process-accepted',
+    { preHandler: REQUIRE_ADMIN },
+    async (_request: FastifyRequest, reply: FastifyReply) => {
+      const accepted = await prisma.artworkReviewItem.findMany({
+        where: { status: 'accepted' },
+        orderBy: { createdAt: 'asc' },
+      });
+
+      const result = await processAcceptedReviewItems(accepted);
+
+      logger.info('Catch-up processing of accepted review items', {
+        candidates: accepted.length,
+        registered: result.registered,
+        skipped: result.skipped,
+      });
+
+      return reply.status(200).send({
+        processed: accepted.length,
+        registered: result.registered,
+        skipped: result.skipped,
+      });
     }
   );
 
@@ -649,63 +930,15 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
         return reply.status(400).send({ error: 'Geen items opgegeven' });
       }
 
-      const KEURMERK_CATEGORY = 'keurmerk';
-
       let created: string[] = [];
 
       // Register all items atomically: a failure mid-loop must not leave a
       // partial set of training-data records behind (the previous per-item
       // catch returned 500 while committing items 0..N-1).
       try {
-        created = await prisma.$transaction(async (tx) => {
-          const ids: string[] = [];
-          for (const item of items) {
-            // Find or create a LogoImage for this crop path (artwork source marker).
-            // storagePath is not unique in the schema, so we use findFirst + create.
-            let logoImage = await tx.logoImage.findFirst({
-              where: { storagePath: item.cropPath },
-              select: { id: true },
-            });
-            if (!logoImage) {
-              logoImage = await tx.logoImage.create({
-                data: {
-                  filename: item.sourceFile,
-                  storagePath: item.cropPath,
-                  metadata: { artworkSource: true, gtin },
-                },
-              });
-            }
-
-            // Upsert the Logo (category=keurmerk) to maintain stats linkage
-            await tx.logo.upsert({
-              where: { category_value: { category: KEURMERK_CATEGORY, value: item.t3777Code } },
-              update: {},
-              create: { category: KEURMERK_CATEGORY, value: item.t3777Code },
-            });
-
-            // Create the training data record with provenance
-            const td = await tx.trainingData.create({
-              data: {
-                imageId: logoImage.id,
-                label: item.t3777Code,
-                confidence: item.confidence,
-                validated: true,
-                holdout: false,
-                active: true,
-                cropPath: item.cropPath,
-                provenance: {
-                  sourceFile: item.sourceFile,
-                  bbox: item.bbox,
-                  method: item.method,
-                  confidence: item.confidence,
-                },
-              },
-            });
-
-            ids.push(td.id);
-          }
-          return ids;
-        });
+        created = await prisma.$transaction(async (tx) =>
+          registerCropsTx(tx as TxClient, gtin, items)
+        );
       } catch (err) {
         logger.error('Failed to register training data items', {
           gtin,

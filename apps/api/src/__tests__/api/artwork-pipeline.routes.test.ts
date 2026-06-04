@@ -275,6 +275,42 @@ describe('Artwork Pipeline Routes (ATDD — Epic 8)', () => {
       expect(body.reviewItems[0].reason).toMatch(/niet verwacht|not declared|unexpected/i);
     });
 
+    it('persists cropPath/sourceFile on review items so they can be doorgezet (Story 8.6)', async () => {
+      // A detection that goes to review (found but not declared) carries crop +
+      // source refs; these MUST be persisted on the ArtworkReviewItem so an
+      // accepted item can later be registered with truthful provenance.
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/v1/artwork/08718989912451/crosscheck',
+        payload: {
+          detections: [
+            {
+              t3777Code: 'FAIR_TRADE_MARK',
+              confidence: 0.91,
+              bbox: { x: 5, y: 5, width: 40, height: 40 },
+              method: 'template',
+              cropPath: 'artwork-crops/08718989912451/crop-7.png',
+              sourceFile: '08718989912451_46182_001.jpg',
+            },
+          ],
+          declared: ['GREEN_DOT'],
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(mockPrisma.artworkReviewItem.createMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.arrayContaining([
+            expect.objectContaining({
+              t3777Code: 'FAIR_TRADE_MARK',
+              cropPath: 'artwork-crops/08718989912451/crop-7.png',
+              sourceFile: '08718989912451_46182_001.jpg',
+            }),
+          ]),
+        }),
+      );
+    });
+
     it('should never auto-accept when no T3777 declaration exists', async () => {
       const response = await app.inject({
         method: 'POST',
@@ -348,6 +384,126 @@ describe('Artwork Pipeline Routes (ATDD — Epic 8)', () => {
       expect(response.statusCode).toBe(200);
       expect(JSON.parse(response.body).deactivated).toBe(4);
       expect(mockPrisma.trainingData.delete).not.toHaveBeenCalled();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Story 8.6 — Doorzet: accepted review items → training-data registration
+  // -------------------------------------------------------------------------
+
+  describe('Accept/reject doorzet of review items', () => {
+    const reviewItemWithCrop = {
+      id: 'ri-0001',
+      gtin: '08718989912451',
+      t3777Code: 'EU_ORGANIC_FARMING',
+      cropPath: 'artwork-crops/08718989912451/crop-1.png',
+      sourceFile: '08718989912451_46182_001.jpg',
+      bbox: { x: 10, y: 10, width: 80, height: 80 },
+      confidence: 0.91,
+      method: 'template',
+      reason: 'Confidence onder drempel',
+      status: 'open',
+    };
+
+    const reviewItemWithoutCrop = {
+      ...reviewItemWithCrop,
+      id: 'ri-0002',
+      cropPath: null,
+      sourceFile: null,
+    };
+
+    it('accepts a review item with a crop and registers it as training data', async () => {
+      (mockPrisma.artworkReviewItem.findUnique as vi.Mock).mockResolvedValue(reviewItemWithCrop);
+      (mockPrisma.artworkReviewItem.update as vi.Mock).mockResolvedValue({
+        ...reviewItemWithCrop,
+        status: 'registered',
+      });
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: '/api/v1/artwork/review-items/ri-0001/accept',
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.status).toBe('registered');
+      expect(body.registered).toBe(1);
+      // Real registration happened: a training-data record was created with the
+      // human provenance method, and the item was set to 'registered'.
+      expect(mockPrisma.trainingData.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            label: 'EU_ORGANIC_FARMING',
+            provenance: expect.objectContaining({ method: 'human' }),
+          }),
+        }),
+      );
+      expect(mockPrisma.artworkReviewItem.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'ri-0001' },
+          data: { status: 'registered' },
+        }),
+      );
+    });
+
+    it('does NOT fabricate training data for an accepted item lacking a crop', async () => {
+      (mockPrisma.artworkReviewItem.findUnique as vi.Mock).mockResolvedValue(reviewItemWithoutCrop);
+      (mockPrisma.artworkReviewItem.update as vi.Mock).mockResolvedValue({
+        ...reviewItemWithoutCrop,
+        status: 'accepted',
+      });
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: '/api/v1/artwork/review-items/ri-0002/accept',
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.status).toBe('accepted');
+      expect(body.skipped).toBe(1);
+      // No training data may be fabricated without a crop/source.
+      expect(mockPrisma.trainingData.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects a review item without creating training data', async () => {
+      (mockPrisma.artworkReviewItem.findUnique as vi.Mock).mockResolvedValue(reviewItemWithCrop);
+      (mockPrisma.artworkReviewItem.update as vi.Mock).mockResolvedValue({
+        ...reviewItemWithCrop,
+        status: 'rejected',
+      });
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: '/api/v1/artwork/review-items/ri-0001/reject',
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(JSON.parse(response.body).status).toBe('rejected');
+      expect(mockPrisma.trainingData.create).not.toHaveBeenCalled();
+      expect(mockPrisma.artworkReviewItem.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { status: 'rejected' } }),
+      );
+    });
+
+    it('catch-up processes pre-existing accepted items into training data', async () => {
+      (mockPrisma.artworkReviewItem.findMany as vi.Mock).mockResolvedValue([
+        { ...reviewItemWithCrop, id: 'ri-A', status: 'accepted' },
+        { ...reviewItemWithoutCrop, id: 'ri-B', status: 'accepted' },
+      ]);
+      (mockPrisma.artworkReviewItem.update as vi.Mock).mockResolvedValue({ status: 'registered' });
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/v1/artwork/review-items/process-accepted',
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.processed).toBe(2);
+      expect(body.registered).toBe(1); // only the crop-carrying item
+      expect(body.skipped).toBe(1); // the crop-less item is skipped, not faked
+      expect(mockPrisma.trainingData.create).toHaveBeenCalledTimes(1);
     });
   });
 

@@ -14,6 +14,7 @@ import { uploadReferenceLogo, getReferenceLogoUrl } from '../../services/storage
 import { optionalAuth } from '../../middleware/auth';
 import { logger } from '../../core/logger';
 import prisma from '../../core/db';
+import { KEURMERK_CATEGORY } from '../../services/provenance';
 
 /** Allowed reference-logo file extensions. */
 const ALLOWED_EXTENSIONS = ['png', 'svg'] as const;
@@ -131,9 +132,9 @@ export async function referenceLogosRoutes(fastify: FastifyInstance) {
     let logoId: string | null = null;
     try {
       const logo = await prisma.logo.upsert({
-        where: { category_value: { category: 'keurmerk', value: t3777Code } },
+        where: { category_value: { category: KEURMERK_CATEGORY, value: t3777Code } },
         update: {},
-        create: { category: 'keurmerk', value: t3777Code },
+        create: { category: KEURMERK_CATEGORY, value: t3777Code },
       });
       logoId = logo?.id ?? null;
     } catch (error) {

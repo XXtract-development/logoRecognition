@@ -10,6 +10,7 @@ import { createLogger } from '../../core/logger';
 import prisma from '../../core/db';
 // Shared holdout-metrics mapper (single source of truth for the API shape).
 import { mapHoldoutMetrics } from '../../services/holdout-metrics';
+import { mapProvenance } from '../../services/provenance';
 
 const logger = createLogger('training');
 
@@ -245,8 +246,9 @@ export async function trainingRoutes(fastify: FastifyInstance) {
           });
           // If the record is found and originates from synthetic generation,
           // refuse the holdout transition. A missing record falls through to
-          // the update below, which maps Prisma P2025 to a 404.
-          const provenance = (existing?.provenance ?? null) as { method?: string } | null;
+          // the update below, which maps Prisma P2025 to a 404. Provenance is
+          // read through the shared mapper (single source of truth for shape).
+          const provenance = mapProvenance(existing?.provenance ?? null);
           if (provenance?.method === 'synthetic') {
             return reply.status(422).send({
               error: 'Unprocessable Entity',
