@@ -226,7 +226,7 @@ describe('Artwork Pipeline Routes (ATDD — Epic 8)', () => {
   // -------------------------------------------------------------------------
 
   describe('POST /artwork/:gtin/crosscheck', () => {
-    it.skip('should auto-accept detections that match the declared T3777 set', async () => {
+    it('should auto-accept detections that match the declared T3777 set', async () => {
       const response = await app.inject({
         method: 'POST',
         url: '/api/v1/artwork/08718989912451/crosscheck',
@@ -244,7 +244,7 @@ describe('Artwork Pipeline Routes (ATDD — Epic 8)', () => {
       expect(body.autoAccepted[0].t3777Code).toBe('EU_ORGANIC_FARMING');
     });
 
-    it.skip('should route "expected but not found" to the review queue with reason', async () => {
+    it('should route "expected but not found" to the review queue with reason', async () => {
       const response = await app.inject({
         method: 'POST',
         url: '/api/v1/artwork/08718989912451/crosscheck',
@@ -258,7 +258,7 @@ describe('Artwork Pipeline Routes (ATDD — Epic 8)', () => {
       expect(body.reviewItems[0].t3777Code).toBe('BETER_LEVEN_1_STER');
     });
 
-    it.skip('should route "found but not declared" to the review queue with reason', async () => {
+    it('should route "found but not declared" to the review queue with reason', async () => {
       const response = await app.inject({
         method: 'POST',
         url: '/api/v1/artwork/08718989912451/crosscheck',
@@ -274,7 +274,7 @@ describe('Artwork Pipeline Routes (ATDD — Epic 8)', () => {
       expect(body.reviewItems[0].reason).toMatch(/niet verwacht|not declared|unexpected/i);
     });
 
-    it.skip('should never auto-accept when no T3777 declaration exists', async () => {
+    it('should never auto-accept when no T3777 declaration exists', async () => {
       const response = await app.inject({
         method: 'POST',
         url: '/api/v1/artwork/00000000000000/crosscheck',

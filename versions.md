@@ -2,6 +2,12 @@
 
 ## 2026-06-04 (Epic 8 — Automatische Trainingsdata)
 
+### T3777-kruischeck en routing
+- Gedetecteerde keurmerken worden automatisch vergeleken met de T3777-declaratie van het product
+- Overeenkomsten met voldoende zekerheid worden direct goedgekeurd als trainingsdata
+- Afwijkingen (verwacht maar niet gevonden, of gevonden maar niet gedeclareerd) gaan naar de beoordelingswachtrij met een duidelijke reden
+- Zonder T3777-declaratie wordt niets automatisch goedgekeurd — alles gaat ter controle
+
 ### Crop-classificatie van gelokaliseerde regio's
 - Gelokaliseerde keurmerk-regio's worden nu automatisch geclassificeerd naar een T3777-code
 - Classificatie gebruikt embedding-gelijkenis met de referentiebibliotheek; als de zekerheid onder de drempel blijft, wordt de regio gemarkeerd als 'onzeker' (input voor handmatige beoordeling in stap 8.5)
