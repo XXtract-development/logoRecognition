@@ -296,7 +296,7 @@ describe('Artwork Pipeline Routes (ATDD — Epic 8)', () => {
   // -------------------------------------------------------------------------
 
   describe('Provenance registration', () => {
-    it.skip('should register auto-accepted crops as training data with full provenance', async () => {
+    it('should register auto-accepted crops as training data with full provenance', async () => {
       (mockPrisma.trainingData.create as vi.Mock).mockResolvedValue({
         id: 'c1c2c3c4-0000-0000-0000-000000000001',
         label: 'EU_ORGANIC_FARMING',
@@ -335,7 +335,7 @@ describe('Artwork Pipeline Routes (ATDD — Epic 8)', () => {
       );
     });
 
-    it.skip('should support bulk-deactivation of all training data from one source file', async () => {
+    it('should support bulk-deactivation of all training data from one source file', async () => {
       (mockPrisma.trainingData.updateMany as vi.Mock).mockResolvedValue({ count: 4 });
 
       const response = await app.inject({
