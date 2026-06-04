@@ -1,5 +1,16 @@
 # Versiegeschiedenis
 
+## 2026-06-04 (Epic 8 — Review-scherm & bibliotheekweergave)
+
+### Beoordelingsscherm voor artwork-detecties
+- Nieuw scherm "Artwork review": twijfelgevallen uit de automatische keurmerk-detectie staan nu in één overzicht, naast de bestaande onzekere feedback-items
+- Per item zie je de uitsnede van het gedetecteerde keurmerk, het voorgestelde label, de zekerheidsscore, de herkomst (bronbestand + positie op het etiket) en de reden waarom het item beoordeling nodig heeft
+- Goedkeuren of afwijzen kan met één klik; goedgekeurde items worden direct als trainingsdata geregistreerd
+- Beoordelen is voorbehouden aan beheerders; voor anderen zijn de knoppen uitgeschakeld met uitleg
+
+### Bibliotheekweergave
+- Trainingsafbeeldingen tonen nooit meer "NaN MB" of een ongeldige datum; ontbrekende gegevens worden netjes als "—" weergegeven
+
 ## 2026-06-04 (Epic 8 — Automatische Trainingsdata)
 
 ### Stabiliteits- en kwaliteitsverbeteringen (code-review)
