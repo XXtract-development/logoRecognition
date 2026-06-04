@@ -2,6 +2,11 @@
 
 ## 2026-06-04 (Epic 8 — Automatische Trainingsdata)
 
+### Crop-classificatie van gelokaliseerde regio's
+- Gelokaliseerde keurmerk-regio's worden nu automatisch geclassificeerd naar een T3777-code
+- Classificatie gebruikt embedding-gelijkenis met de referentiebibliotheek; als de zekerheid onder de drempel blijft, wordt de regio gemarkeerd als 'onzeker' (input voor handmatige beoordeling in stap 8.5)
+- Bij ontbrekende referentie-embeddings valt het systeem terug op een pixelgebaseerde heuristiek
+
 ### Keurmerk-lokalisatie op artwork
 - Het systeem kan nu keurmerken automatisch lokaliseren op gerasterde artwork-afbeeldingen
 - Grote afbeeldingen worden opgeknipt in overlappende tegels (SAHI-aanpak) voor nauwkeurige detectie van kleine keurmerken
