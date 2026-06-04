@@ -25,6 +25,7 @@ import { logger } from '../../core/logger';
 import { requireRole, authMiddleware } from '../../middleware/auth';
 import { uploadArtwork } from '../../services/storage';
 import { mediaServerClient } from '../../services/mediaserver-client';
+import { mlClient } from '../../services/ml-client';
 
 // ============================================
 // Constants
@@ -48,6 +49,12 @@ const IMPORT_RUN_STALE_MINUTES = parseInt(
   process.env.IMPORT_RUN_STALE_MINUTES || '10',
   10
 );
+
+/**
+ * DPI for PDF-artwork rasterization (Story 8.2, FR45). Default 300.
+ * Passed through to the ML service; configurable via ARTWORK_RASTER_DPI.
+ */
+const ARTWORK_RASTER_DPI = parseInt(process.env.ARTWORK_RASTER_DPI || '300', 10);
 
 // Crosscheck confidence thresholds per detection method.
 // Detections without a method fall under STRICTEST (classifier).
@@ -96,6 +103,81 @@ async function markStaleRuns(): Promise<void> {
  */
 function sha256(buffer: Buffer): string {
   return crypto.createHash('sha256').update(buffer).digest('hex');
+}
+
+/** True when the file name is a PDF (case-insensitive extension check). */
+function isPdf(fileName: string, mimeType?: string): boolean {
+  if (mimeType && mimeType.toLowerCase() === 'application/pdf') return true;
+  return fileName.toLowerCase().endsWith('.pdf');
+}
+
+/**
+ * Rasterize an imported PDF artwork and persist the page relation (Story 8.2,
+ * AC1). Called AFTER the import itself has already succeeded.
+ *
+ * Soft-fail (AC2): any rasterization error is recorded in the item's `pages`
+ * JSON as an `error` reason and logged — it must NEVER throw, NEVER mark the
+ * item failed, and NEVER count as a pipeline error. The import already
+ * succeeded; rasterization is a best-effort follow-up step.
+ *
+ * Exported for direct (non-HTTP) unit testing of the AC behavior.
+ */
+export async function rasterizeImportedPdf(
+  importId: string,
+  gtin: string,
+  storagePath: string
+): Promise<void> {
+  try {
+    const result = await mlClient.rasterizeArtwork(storagePath, ARTWORK_RASTER_DPI);
+
+    // Store the per-page relation as a structured JSON object (never str()):
+    // { dpi, pages: [{ page, imagePath }], error? }. The object is handed to
+    // Prisma's Json field directly — no JSON.stringify.
+    const pagesJson: {
+      dpi: number;
+      pages: Array<{ page: number; imagePath: string }>;
+      error?: string;
+    } = {
+      dpi: result.dpi,
+      pages: result.pages.map((p) => ({ page: p.page, imagePath: p.image_path })),
+    };
+    if (result.error) {
+      pagesJson.error = result.error;
+    }
+
+    await prisma.artworkImport.update({
+      where: { id: importId },
+      data: { pages: pagesJson },
+    });
+
+    logger.info('PDF artwork rasterized', {
+      gtin,
+      importId,
+      storagePath,
+      pageCount: pagesJson.pages.length,
+      error: result.error ?? undefined,
+    });
+  } catch (err) {
+    // Soft-fail: record the reason on the item, do NOT rethrow, do NOT mark failed.
+    const reason = err instanceof Error ? err.message : String(err);
+    logger.warn('PDF artwork rasterization failed (soft-fail, item stays imported)', {
+      gtin,
+      importId,
+      storagePath,
+      error: reason,
+    });
+    try {
+      await prisma.artworkImport.update({
+        where: { id: importId },
+        data: { pages: { dpi: ARTWORK_RASTER_DPI, pages: [], error: reason } },
+      });
+    } catch (persistErr) {
+      logger.warn('Could not persist rasterization error to import record', {
+        importId,
+        error: persistErr instanceof Error ? persistErr.message : String(persistErr),
+      });
+    }
+  }
 }
 
 /**
@@ -155,6 +237,11 @@ async function importGtin(runId: string, gtin: string): Promise<void> {
       continue;
     }
 
+    // Track what was imported so the (separate) rasterization step can run
+    // OUTSIDE the import try/catch — a rasterize failure must not mark the
+    // import as failed (AC2).
+    let importedRecord: { id: string; storagePath: string; isPdfFile: boolean } | null = null;
+
     // Download and store
     try {
       const { buffer, mimeType } = await mediaServerClient.downloadFile(
@@ -165,7 +252,7 @@ async function importGtin(runId: string, gtin: string): Promise<void> {
 
       await uploadArtwork(buffer, storagePath, mimeType);
 
-      await prisma.artworkImport.upsert({
+      const record = await prisma.artworkImport.upsert({
         where: { mediaId: item.id },
         create: {
           gtin,
@@ -192,6 +279,12 @@ async function importGtin(runId: string, gtin: string): Promise<void> {
         where: { id: runId },
         data: { importedCount: { increment: 1 }, heartbeatAt: new Date() },
       });
+
+      importedRecord = {
+        id: record.id,
+        storagePath,
+        isPdfFile: isPdf(item.fileName, mimeType),
+      };
     } catch (err) {
       logger.warn('Artwork item import failed', {
         gtin,
@@ -221,6 +314,13 @@ async function importGtin(runId: string, gtin: string): Promise<void> {
         where: { id: runId },
         data: { failedCount: { increment: 1 }, heartbeatAt: new Date() },
       });
+    }
+
+    // Rasterization step (Story 8.2) — runs OUTSIDE the import try/catch so a
+    // rasterize failure cannot mark the item failed or increment failedCount.
+    // Only PDFs are rasterized; JPG/PNG already go straight into the pipeline.
+    if (importedRecord && importedRecord.isPdfFile) {
+      await rasterizeImportedPdf(importedRecord.id, gtin, importedRecord.storagePath);
     }
   }
 }

@@ -98,6 +98,21 @@ export interface HealthStatus {
   gpu_available: boolean;
 }
 
+// Artwork rasterization (Epic 8, Story 8.2)
+export interface RasterizedPage {
+  source_file: string;
+  page: number;
+  image_path: string; // MinIO object key of the page PNG
+  dpi: number;
+}
+
+export interface RasterizeResponse {
+  storage_path: string;
+  dpi: number;
+  pages: RasterizedPage[];
+  error?: string | null;
+}
+
 // ============================================
 // ML Client Class
 // ============================================
@@ -259,6 +274,31 @@ export class MLClient {
       await this.client.delete(`/ml/train/${jobId}`);
     } catch (error) {
       throw this.handleError(error, 'Cancel training failed');
+    }
+  }
+
+  // ==========================================
+  // Artwork (Epic 8, Story 8.2)
+  // ==========================================
+
+  /**
+   * Rasterize a cached PDF artwork to per-page PNGs (Story 8.2, FR45).
+   * The ML service downloads the PDF from the training bucket, rasterizes each
+   * page at `dpi`, uploads the page PNGs next to the source, and returns the
+   * page list with MinIO object keys.
+   *
+   * A corrupt/protected PDF yields an empty `pages` list with an `error` reason
+   * (HTTP 200) — the caller records this softly without failing the import.
+   */
+  async rasterizeArtwork(storagePath: string, dpi?: number): Promise<RasterizeResponse> {
+    try {
+      const response = await this.client.post<RasterizeResponse>('/ml/artwork/rasterize', {
+        storage_path: storagePath,
+        ...(dpi !== undefined ? { dpi } : {}),
+      });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error, 'Artwork rasterization failed');
     }
   }
 
