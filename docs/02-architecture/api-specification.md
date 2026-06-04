@@ -280,3 +280,22 @@ GET /api/categories?page=1&limit=20&sort=-createdAt
 ---
 
 Voor gedetailleerde specs en voorbeelden, zie: `_archive/old-structure/architecture/5-api-specification.md`
+
+---
+
+## Update 2026-06-03 — Epic 7: Betrouwbaar Evaluatiefundament
+
+### Nieuwe/uitgebreide endpoints
+
+| Endpoint | Methode | Beschrijving |
+|----------|---------|--------------|
+| `/api/v1/training/data/:id/holdout` | PATCH | Markeer/demarkeer trainingsdata als holdout (`{ holdout: boolean }` → `{ id, holdout }`; 404 bij onbekend id) |
+| `/api/v1/training/data?holdout=true` | GET | Lijst gefilterd op holdout-status |
+| `/api/v1/training/start` | POST | **Uitgebreid:** weigert nu met 422 wanneer de holdout-set leeg is of onder `HOLDOUT_MINIMUM` (env, default 25) |
+| `/api/v1/models/:modelId` | GET | **Uitgebreid:** response bevat `holdoutMetrics { accuracy, precision, recall, f1, holdoutSize, holdoutHash }` |
+| `/api/v1/feedback/model-comparison` | GET | **Uitgebreid:** per vergeleken versie `holdoutMetrics` |
+| `/api/v1/reference-logos` | POST | Multipart upload keurmerk-referentie (`t3777Code`, `variantLabel`, `source` + PNG/SVG-bestand) → 201; 400 bij fout formaat of resolutie < `REFERENCE_MIN_RESOLUTION` (default 200px) |
+| `/api/v1/reference-logos?code=X` | GET | Varianten per T3777-code, inclusief inactieve (historie) + preview-URL |
+| `/api/v1/reference-logos/:id/deactivate` | PATCH | Soft delete (active=false); records worden nooit verwijderd |
+
+ML-service (intern): `get_holdout_images()`, `count_holdout_images()`, holdout-uitsluiting op query-niveau in `get_training_images()`, `compute_holdout_hash()` en holdout-evaluatie bij modelregistratie (`metrics.holdout`).

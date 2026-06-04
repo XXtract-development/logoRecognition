@@ -8,6 +8,8 @@ import { authMiddleware, requireRole } from '../../middleware/auth';
 import { socketIOManager } from '../../services/socket-io-manager';
 import { createLogger } from '../../core/logger';
 import prisma from '../../core/db';
+// Shared holdout-metrics mapper (single source of truth for the API shape).
+import { mapHoldoutMetrics } from '../../services/holdout-metrics';
 
 const logger = createLogger('feedback');
 
@@ -659,11 +661,12 @@ export async function feedbackRoutes(fastify: FastifyInstance) {
           models.map(async (model) => {
             // This would require model_id in recognition logs
             // Simplified version using model creation date
-            const feedbackAfterModel = await prisma.feedbackEntry.findMany({
-              where: {
-                validatedAt: { gte: model.createdAt },
-              },
-            });
+            const feedbackAfterModel =
+              (await prisma.feedbackEntry.findMany({
+                where: {
+                  validatedAt: { gte: model.createdAt },
+                },
+              })) ?? [];
 
             const correct = feedbackAfterModel.filter(
               (f) => f.predictedLogoId && f.correctLogoId === f.predictedLogoId
@@ -679,6 +682,8 @@ export async function feedbackRoutes(fastify: FastifyInstance) {
                 : null,
               feedbackCount: feedbackAfterModel.length,
               isActive: model.isActive,
+              // Holdout-evaluation metrics for fair, same-set comparison (Story 7.2).
+              holdoutMetrics: mapHoldoutMetrics((model as { metrics?: unknown }).metrics),
               createdAt: model.createdAt,
             };
           })

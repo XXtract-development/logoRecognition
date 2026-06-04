@@ -45,10 +45,14 @@ CREATE TABLE IF NOT EXISTS logos.training_data (
     label VARCHAR(255) NOT NULL,
     confidence FLOAT,
     validated BOOLEAN DEFAULT FALSE,
+    holdout BOOLEAN DEFAULT FALSE,
     validation_date TIMESTAMP WITH TIME ZONE,
     validated_by VARCHAR(255),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Index for holdout filtering (Epic 7: protected evaluation set)
+CREATE INDEX IF NOT EXISTS idx_training_data_holdout ON logos.training_data (holdout);
 
 -- Create model versions table
 CREATE TABLE IF NOT EXISTS logos.model_versions (
@@ -62,8 +66,26 @@ CREATE TABLE IF NOT EXISTS logos.model_versions (
     training_date TIMESTAMP WITH TIME ZONE,
     is_active BOOLEAN DEFAULT FALSE,
     config JSONB DEFAULT '{}',
+    metrics JSONB DEFAULT '{}',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Reference keurmerk library (Epic 7, Story 7.3)
+-- Curated official keurmerk artwork + variants; soft delete via active flag.
+CREATE TABLE IF NOT EXISTS logos.reference_logos (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    t3777_code VARCHAR(100) NOT NULL,
+    variant_label VARCHAR(100) NOT NULL,
+    source TEXT,
+    storage_path VARCHAR(500) NOT NULL,
+    active BOOLEAN NOT NULL DEFAULT TRUE,
+    logo_id UUID,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE (t3777_code, variant_label)
+);
+
+-- Index for per-code lookups in the reference library
+CREATE INDEX IF NOT EXISTS idx_reference_logos_t3777_code ON logos.reference_logos (t3777_code);
 
 -- Create search history table for analytics
 CREATE TABLE IF NOT EXISTS logos.search_history (

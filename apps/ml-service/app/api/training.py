@@ -10,7 +10,11 @@ from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel, Field
 
 from app.core.logging import logger
-from app.services.trainer import trainer_service, TrainingConfig as TrainerConfig
+from app.services.trainer import (
+    trainer_service,
+    TrainingConfig as TrainerConfig,
+    HoldoutSetTooSmallError,
+)
 from app.services.database import db_service
 
 
@@ -103,11 +107,16 @@ async def start_training(
         early_stopping_patience=config_data.early_stopping_patience,
     )
 
-    # Start training with real trainer service
-    progress = await trainer_service.start_training(
-        batch_id=request.batch_id,
-        config=trainer_config,
-    )
+    # Start training with real trainer service.
+    # HoldoutSetTooSmallError → 422: same error contract as the Node API layer
+    # (training.ts holdout guard), instead of an opaque 500.
+    try:
+        progress = await trainer_service.start_training(
+            batch_id=request.batch_id,
+            config=trainer_config,
+        )
+    except HoldoutSetTooSmallError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     logger.info("Training job started", job_id=progress.job_id, batch_id=request.batch_id)
 

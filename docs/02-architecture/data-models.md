@@ -232,3 +232,18 @@ Voor complete schema en migraties, zie:
 - Prisma schema: `apps/api/prisma/schema.prisma`
 - Migrations: `apps/api/prisma/migrations/`
 - Archived details: `_archive/old-structure/architecture/4-data-models.md`
+
+---
+
+## Update 2026-06-03 — Epic 7: Betrouwbaar Evaluatiefundament
+
+### Gewijzigde modellen
+
+- **TrainingData**: nieuw veld `holdout Boolean @default(false)` (+ index). Holdout-records zijn op query-niveau uitgesloten van training en augmentatie; initiële vulling via gestratificeerde steekproef (15% per label, alleen gevalideerde records).
+- **ModelVersion**: nieuw veld `metrics Json @default("{}")`. Bevat o.a. `metrics.holdout = { accuracy, precision, recall, f1, holdout_size, holdout_hash }` — de holdout-metrics zijn onderscheiden van de bestaande train/val-kolommen.
+
+### Nieuw model
+
+- **ReferenceLogo** (`reference_logos`): id, t3777Code, variantLabel, source, storagePath (MinIO, prefix `reference-logos/{code}/{variant}`), active (soft delete), logoId (FK → Logo via upsert op category='keurmerk'), createdAt. Unique op (t3777Code, variantLabel). Kennisbron voor Epic 8 (template-matching/synthese).
+
+Migratie: `apps/api/prisma/migrations/0004_add_reference_logos/` + synchroon bijgewerkte `infrastructure/docker/postgres/init.sql` (ML-service leest via asyncpg raw SQL).

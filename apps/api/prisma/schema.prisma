@@ -47,6 +47,7 @@ model TrainingData {
   label          String    @db.VarChar(255)
   confidence     Float?
   validated      Boolean   @default(false)
+  holdout        Boolean   @default(false) @map("holdout")
   validationDate DateTime? @map("validation_date") @db.Timestamptz
   validatedBy    String?   @map("validated_by") @db.VarChar(255)
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
@@ -57,6 +58,7 @@ model TrainingData {
   @@index([imageId])
   @@index([label])
   @@index([validated])
+  @@index([holdout])
   @@map("training_data")
 }
 
@@ -72,6 +74,7 @@ model ModelVersion {
   trainingDate   DateTime? @map("training_date") @db.Timestamptz
   isActive       Boolean   @default(false) @map("is_active")
   config         Json      @default("{}")
+  metrics        Json      @default("{}")
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
   @@index([isActive])
@@ -218,11 +221,34 @@ model Logo {
   annotations      Annotation[]
   embeddings       LogoEmbedding[]
   recognitionResults RecognitionResult[]
+  referenceLogos     ReferenceLogo[]
 
   @@unique([category, value])
   @@index([category])
   @@index([isActive])
   @@map("logos")
+}
+
+/// Reference keurmerk logos (Epic 7, Story 7.3)
+/// Curated library of official keurmerk artwork + variants. Consumed by
+/// Epic 8 (template-matching) and 8.7 (synthesis): the storagePath structure
+/// per code/variant is the contract there — do not change it.
+model ReferenceLogo {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  t3777Code    String   @map("t3777_code") @db.VarChar(100)
+  variantLabel String   @map("variant_label") @db.VarChar(100)
+  source       String?
+  storagePath  String   @map("storage_path") @db.VarChar(500)
+  active       Boolean  @default(true)
+  logoId       String?  @map("logo_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  logo Logo? @relation(fields: [logoId], references: [id])
+
+  @@unique([t3777Code, variantLabel])
+  @@index([t3777Code])
+  @@map("reference_logos")
 }
 
 /// Logo embeddings for vector search

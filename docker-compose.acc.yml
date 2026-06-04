@@ -48,6 +48,8 @@ services:
       - ENVIRONMENT=acc
       - PORT=8010
       - ML_SERVICE_URL=http://localhost:8011
+      # Single source of truth for the holdout guard on BOTH layers (API + ML)
+      - HOLDOUT_MINIMUM=${HOLDOUT_MINIMUM:-25}
     healthcheck:
       test: ["CMD", "curl", "-sf", "-o", "/dev/null", "http://localhost:${APP_PORT:-8010}/health"]
       interval: 30s
@@ -93,6 +95,8 @@ services:
       - LOG_LEVEL=info
       - ENVIRONMENT=acc
       - PORT=8011
+      # Same value as the app service — one env var, two guards (NFR3)
+      - HOLDOUT_MINIMUM=${HOLDOUT_MINIMUM:-25}
     healthcheck:
       test: ["CMD", "curl", "-sf", "-o", "/dev/null", "http://localhost:${ML_PORT:-8011}/health"]
       interval: 30s

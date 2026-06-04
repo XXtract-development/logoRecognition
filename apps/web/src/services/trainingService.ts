@@ -72,6 +72,18 @@ export async function deleteImage(id: string): Promise<void> {
   await apiClient.delete(`/training/images/${id}`);
 }
 
+/**
+ * Mark or unmark a training-data record as part of the protected holdout set
+ * (Epic 7, Story 7.1).
+ */
+export async function setImageHoldout(
+  id: string,
+  holdout: boolean
+): Promise<{ id: string; holdout: boolean }> {
+  const response = await apiClient.patch(`/training/data/${id}/holdout`, { holdout });
+  return response.data;
+}
+
 export async function deleteImages(ids: string[]): Promise<void> {
   await apiClient.post('/training/images/bulk-delete', { ids });
 }

@@ -6,6 +6,7 @@ Implements actual training pipeline with PyTorch/TensorFlow.
 import os
 import uuid
 import asyncio
+import hashlib
 from typing import Optional, List, Dict, Any, Callable
 from datetime import datetime
 from pathlib import Path
@@ -15,6 +16,52 @@ from app.core.config import settings
 from app.core.logging import logger
 from app.services.database import db_service
 from app.services.storage import storage_service
+
+
+# Minimum number of validated holdout records required before a training run
+# may start (NFR3). Configurable via env; defaults to 25. NB: the same env var
+# feeds the API-layer guard (training.ts) — wire it ONCE via docker-compose so
+# both layers cannot diverge.
+HOLDOUT_MINIMUM = int(os.environ.get("HOLDOUT_MINIMUM", "25"))
+
+# Canonical input-preprocessing constants. Training, validation AND holdout
+# evaluation MUST share these — if they diverge, holdout metrics are computed
+# with different preprocessing than the model was trained with, silently
+# invalidating the champion/challenger comparison.
+IMAGE_SIZE = (224, 224)
+NORMALIZE_MEAN = [0.485, 0.456, 0.406]
+NORMALIZE_STD = [0.229, 0.224, 0.225]
+
+
+def build_eval_transform():
+    """Deterministic eval/holdout transform: resize + normalize, NO augmentation."""
+    from torchvision import transforms
+
+    return transforms.Compose([
+        transforms.Resize(IMAGE_SIZE),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=NORMALIZE_MEAN, std=NORMALIZE_STD),
+    ])
+
+
+class HoldoutSetTooSmallError(Exception):
+    """Raised when the protected holdout set is empty or below the minimum.
+
+    Training without a stable, protected evaluation baseline is meaningless,
+    so the trainer refuses to start (NFR3).
+    """
+
+
+def compute_holdout_hash(ids: List[str]) -> str:
+    """Order-independent fingerprint of a holdout id-set.
+
+    The same set of ids always yields the same hash (proving two model
+    versions were evaluated on the exact same holdout set); a different set
+    yields a different hash. Format: ``sha256:<hexdigest>``.
+    """
+    joined = ",".join(sorted(str(i) for i in ids))
+    digest = hashlib.sha256(joined.encode("utf-8")).hexdigest()
+    return f"sha256:{digest}"
 
 
 class TrainingConfig:
@@ -118,6 +165,160 @@ class TrainerService:
         self._models_dir = Path(settings.MODEL_PATH)
         self._models_dir.mkdir(parents=True, exist_ok=True)
 
+    def build_augmented_dataset(
+        self, images: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """Return the trainable subset eligible for augmentation (NFR3).
+
+        Holdout-marked records are filtered out here as a defence-in-depth
+        guarantee: augmentation/duplication may never touch the protected
+        evaluation set, even if a holdout record were to slip past the
+        query-level filter.
+        """
+        return [img for img in images if not img.get("holdout", False)]
+
+    async def _evaluate_on_holdout(
+        self,
+        model: Any,
+        holdout_images: List[Dict[str, Any]],
+        label_to_idx: Optional[Dict[str, int]] = None,
+    ) -> Dict[str, float]:
+        """Evaluate a trained model on the fixed holdout set (Story 7.2).
+
+        Uses the SAME preprocessing as validation (Resize 224x224 +
+        normalisation, NO augmentation). Returns accuracy/precision/recall/f1
+        as macro-averages over the represented classes.
+        """
+        import io
+        import torch
+        from torchvision import transforms
+        from PIL import Image
+
+        device = torch.device(settings.device)
+
+        # Shared eval transform (module-level constants) — guaranteed identical
+        # to the training/validation preprocessing.
+        val_transform = build_eval_transform()
+
+        if label_to_idx is None:
+            labels = sorted({img["label"] for img in holdout_images if img.get("label")})
+            label_to_idx = {label: idx for idx, label in enumerate(labels)}
+
+        model.eval()
+        y_true: List[int] = []
+        y_pred: List[int] = []
+
+        with torch.no_grad():
+            for img_info in holdout_images:
+                label = img_info.get("label")
+                if not label or label not in label_to_idx:
+                    continue
+                try:
+                    image_bytes = storage_service.get_training_image(img_info["storage_path"])
+                    image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+                except Exception as e:  # noqa: BLE001 - skip unreadable holdout item
+                    logger.warning(f"Failed to load holdout image {img_info.get('id')}: {e}")
+                    continue
+
+                tensor = val_transform(image).unsqueeze(0).to(device)
+                outputs = model(tensor)
+                _, predicted = outputs.max(1)
+                y_true.append(label_to_idx[label])
+                y_pred.append(int(predicted.item()))
+
+        return self._compute_classification_metrics(y_true, y_pred)
+
+    @staticmethod
+    def _compute_classification_metrics(
+        y_true: List[int], y_pred: List[int]
+    ) -> Dict[str, float]:
+        """Macro-averaged accuracy/precision/recall/f1 without sklearn."""
+        if not y_true:
+            return {"accuracy": 0.0, "precision": 0.0, "recall": 0.0, "f1": 0.0}
+
+        total = len(y_true)
+        correct = sum(1 for t, p in zip(y_true, y_pred) if t == p)
+        accuracy = correct / total
+
+        classes = set(y_true) | set(y_pred)
+        precisions: List[float] = []
+        recalls: List[float] = []
+        f1s: List[float] = []
+        for c in classes:
+            tp = sum(1 for t, p in zip(y_true, y_pred) if p == c and t == c)
+            fp = sum(1 for t, p in zip(y_true, y_pred) if p == c and t != c)
+            fn = sum(1 for t, p in zip(y_true, y_pred) if p != c and t == c)
+            prec = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+            rec = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+            f1 = 2 * prec * rec / (prec + rec) if (prec + rec) > 0 else 0.0
+            precisions.append(prec)
+            recalls.append(rec)
+            f1s.append(f1)
+
+        n = len(classes) or 1
+        return {
+            "accuracy": accuracy,
+            "precision": sum(precisions) / n,
+            "recall": sum(recalls) / n,
+            "f1": sum(f1s) / n,
+        }
+
+    async def evaluate_and_register(
+        self,
+        model: Any,
+        job_id: str,
+        version: Optional[str] = None,
+        model_type: str = "EfficientNet-B0",
+        accuracy: Optional[float] = None,
+        precision_score: Optional[float] = None,
+        recall_score: Optional[float] = None,
+        f1_score: Optional[float] = None,
+        config: Optional[Dict[str, Any]] = None,
+        label_to_idx: Optional[Dict[str, int]] = None,
+    ) -> Dict[str, Any]:
+        """Evaluate the trained model on the holdout set and register the version.
+
+        Holdout-metrics are stored under ``metrics.holdout`` together with the
+        evaluated set identity (size + order-independent hash), so two model
+        versions evaluated on the same holdout set are provably comparable
+        (Story 7.2). The train/val scalar metrics remain in their own columns.
+
+        Edge case (AC note): a holdout-evaluation failure must NEVER fail a
+        training run that already succeeded. On error the version is still
+        registered, but with an empty holdout block and a warning.
+        """
+        version = version or f"v{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}"
+        holdout_block: Dict[str, Any] = {}
+
+        try:
+            holdout_images = await db_service.get_holdout_images()
+            holdout_ids = [img["id"] for img in holdout_images]
+            metrics = await self._evaluate_on_holdout(model, holdout_images, label_to_idx)
+            holdout_block = {
+                "accuracy": metrics["accuracy"],
+                "precision": metrics["precision"],
+                "recall": metrics["recall"],
+                "f1": metrics["f1"],
+                "holdout_size": len(holdout_ids),
+                "holdout_hash": compute_holdout_hash(holdout_ids),
+            }
+        except Exception as e:  # noqa: BLE001 - never fail a completed run
+            logger.warning(
+                f"Holdout evaluation failed for job {job_id}; registering model "
+                f"without holdout metrics: {e}"
+            )
+
+        return await db_service.create_model_version(
+            version=version,
+            model_type=model_type,
+            accuracy=accuracy,
+            precision_score=precision_score,
+            recall_score=recall_score,
+            f1_score=f1_score,
+            config=config,
+            metrics={"holdout": holdout_block} if holdout_block else {},
+        )
+
     async def start_training(
         self,
         batch_id: str,
@@ -126,6 +327,21 @@ class TrainerService:
     ) -> TrainingProgress:
         """Start a training job."""
         config = config or TrainingConfig()
+
+        # NFR3 holdout guard: refuse to start when the protected holdout set is
+        # empty or below the configured minimum. This runs BEFORE any job record
+        # or background task is created, so a too-small set never spawns a run.
+        holdout_count = await db_service.count_holdout_images()
+        if holdout_count < HOLDOUT_MINIMUM:
+            logger.error(
+                "Refusing to start training: holdout set too small "
+                f"({holdout_count}/{HOLDOUT_MINIMUM})"
+            )
+            raise HoldoutSetTooSmallError(
+                f"Holdout set too small: {holdout_count} validated holdout "
+                f"images, minimum is {HOLDOUT_MINIMUM}."
+            )
+
         job_id = f"train_{uuid.uuid4().hex[:8]}"
 
         # Create progress tracker
@@ -172,19 +388,24 @@ class TrainerService:
             if not training_images:
                 raise ValueError("No training images found")
 
+            # Defence-in-depth: ensure holdout records never reach augmentation,
+            # even though get_training_images already excludes them at query level.
+            training_images = self.build_augmented_dataset(training_images)
+            assert all(
+                not img.get("holdout", False) for img in training_images
+            ), "Holdout records must never enter the training/augmentation set"
+
             logger.info(f"Loaded {len(training_images)} training images")
 
-            # Prepare data transforms
+            # Prepare data transforms (augmentation on top of the shared
+            # canonical size/normalization constants).
             train_transform = transforms.Compose([
-                transforms.Resize((224, 224)),
+                transforms.Resize(IMAGE_SIZE),
                 transforms.RandomHorizontalFlip(),
                 transforms.RandomRotation(15),
                 transforms.ColorJitter(brightness=0.2, contrast=0.2),
                 transforms.ToTensor(),
-                transforms.Normalize(
-                    mean=[0.485, 0.456, 0.406],
-                    std=[0.229, 0.224, 0.225]
-                ),
+                transforms.Normalize(mean=NORMALIZE_MEAN, std=NORMALIZE_STD),
             ])
 
             # Create label mapping
@@ -354,14 +575,18 @@ class TrainerService:
                 model_data = f.read()
             storage_service.save_model(f"logo_detector_{model_version}", model_data, "onnx")
 
-            # Save to database
-            await db_service.create_model_version(
+            # Save to database (incl. holdout evaluation, Story 7.2). The
+            # holdout-metrics are evaluated and registered here, kept distinct
+            # from the train/val scalar metrics above.
+            await self.evaluate_and_register(
+                model=model,
+                job_id=progress.job_id,
                 version=model_version,
                 model_type="EfficientNet-B0",
                 accuracy=best_val_acc,
-                precision_score=best_val_acc,  # Simplified
-                recall_score=best_val_acc,     # Simplified
-                f1_score=best_val_acc,         # Simplified
+                precision_score=best_val_acc,  # Simplified train/val metric
+                recall_score=best_val_acc,     # Simplified train/val metric
+                f1_score=best_val_acc,         # Simplified train/val metric
                 config={
                     "epochs": config.epochs,
                     "batch_size": config.batch_size,
@@ -369,6 +594,7 @@ class TrainerService:
                     "num_classes": num_classes,
                     "labels": unique_labels,
                 },
+                label_to_idx=label_to_idx,
             )
 
             # Update logo training stats
