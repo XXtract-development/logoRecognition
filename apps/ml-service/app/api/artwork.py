@@ -10,9 +10,12 @@ Endpoints:
     Body: { "image_path": str, "templates": [{"t3777_code": str, "image_b64": str}] }
     Response: { "detections": [{"t3777_code", "bbox", "score"}] }
 
-  POST /ml/artwork/classify-crop  (Story 8.4)
-    Body: { "image_b64": str, "confidence_threshold": float }
-    Response: { "t3777_code": str, "confidence": float, "method": str, "uncertain": bool }
+  POST /ml/artwork/classify  (Story 8.4)
+    Body: { "storage_path": str?, "image_b64": str?, "crops": [{"x","y","width","height"}]?,
+            "confidence_threshold": float? }
+    Response: { "results": [{"bbox"?, "t3777_code", "confidence", "method", "uncertain"?}] }
+    Each localised region (8.3) is classified to a T3777 keurmerk via the
+    embedding/classifier routes; consumed by the cross-check flow (8.5).
 """
 
 import base64
@@ -267,3 +270,114 @@ async def localize_artwork(request: LocalizeRequest) -> LocalizeResponse:
         extra={"tiles": len(tiles), "raw_detections": len(raw_detections), "merged": len(merged)},
     )
     return LocalizeResponse(detections=merged)
+
+
+# ---------------------------------------------------------------------------
+# Story 8.4 — Crop classification endpoint
+# ---------------------------------------------------------------------------
+
+
+class CropBBox(BaseModel):
+    x: int = Field(..., ge=0)
+    y: int = Field(..., ge=0)
+    width: int = Field(..., gt=0)
+    height: int = Field(..., gt=0)
+
+
+class ClassifyRequest(BaseModel):
+    """Classify localised regions to T3777 keurmerk codes (Story 8.4).
+
+    Supply the source artwork via ``storage_path`` (MinIO object key) or
+    ``image_b64``; provide the regions to classify via ``crops`` (bboxes into
+    that image). When no crops are given, the whole image is classified as a
+    single region. ``confidence_threshold`` overrides the per-method default.
+    """
+
+    storage_path: Optional[str] = None
+    image_b64: Optional[str] = None
+    crops: Optional[List[CropBBox]] = None
+    confidence_threshold: Optional[float] = Field(None, ge=0.0, le=1.0)
+
+
+class ClassifyResult(BaseModel):
+    bbox: Optional[Dict[str, int]] = None
+    t3777_code: str
+    confidence: float
+    method: str
+    uncertain: bool = False
+
+
+class ClassifyResponse(BaseModel):
+    results: List[ClassifyResult]
+
+
+@router.post("/artwork/classify", response_model=ClassifyResponse)
+async def classify_artwork(request: ClassifyRequest) -> ClassifyResponse:
+    """
+    Classify each localised region of an artwork to a T3777 keurmerk (FR47).
+
+    Called by the cross-check flow (8.5) after localization (8.3). Per crop it
+    returns the classify_crop result (t3777_code + confidence + method +
+    uncertain). 'uncertain' is a marking for 8.5 routing, not a filter — every
+    region flows through with its result.
+    """
+    import cv2
+
+    from app.services.classification import classify_crop
+
+    # Load the source image (storage_path takes precedence over inline b64).
+    if request.storage_path:
+        try:
+            img_bytes = storage_service.get_training_image(request.storage_path)
+        except Exception as exc:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Kon artwork niet ophalen uit storage: {request.storage_path}",
+            ) from exc
+        img_arr = np.frombuffer(img_bytes, dtype=np.uint8)
+        img = cv2.imdecode(img_arr, cv2.IMREAD_COLOR)
+        if img is None:
+            raise HTTPException(status_code=422, detail="Kon artwork niet decoderen")
+    elif request.image_b64:
+        try:
+            img = _decode_image(request.image_b64)
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=f"Invalid image_b64: {exc}")
+    else:
+        raise HTTPException(status_code=422, detail="Either storage_path or image_b64 is required")
+
+    h, w = img.shape[:2]
+
+    # Build the list of (bbox, crop) to classify. No crops → whole image.
+    regions: List[Dict[str, Any]] = []
+    if request.crops:
+        for box in request.crops:
+            x0 = max(0, min(box.x, w))
+            y0 = max(0, min(box.y, h))
+            x1 = max(0, min(box.x + box.width, w))
+            y1 = max(0, min(box.y + box.height, h))
+            if x1 <= x0 or y1 <= y0:
+                logger.warning("Skipping out-of-bounds crop", extra={"bbox": box.model_dump()})
+                continue
+            regions.append({"bbox": box.model_dump(), "crop": img[y0:y1, x0:x1]})
+    else:
+        regions.append({"bbox": None, "crop": img})
+
+    results: List[ClassifyResult] = []
+    for region in regions:
+        outcome = await classify_crop(
+            region["crop"],
+            confidence_threshold=request.confidence_threshold,
+        )
+        results.append(
+            ClassifyResult(
+                bbox=region["bbox"],
+                t3777_code=outcome.get("t3777_code", "UNKNOWN"),
+                confidence=float(outcome.get("confidence", 0.0)),
+                method=outcome.get("method", "embedding"),
+                uncertain=bool(outcome.get("uncertain", False)),
+            )
+        )
+
+    logger.info("Artwork classification complete", extra={"regions": len(results)})
+    return ClassifyResponse(results=results)

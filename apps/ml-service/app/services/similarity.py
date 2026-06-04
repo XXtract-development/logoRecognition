@@ -236,6 +236,57 @@ class SimilarityService:
             "model_id": model_id,
         }
 
+    async def rebuild_reference_embeddings(self) -> Dict[str, Any]:
+        """Rebuild the reference keurmerk embedding index (Epic 8, Story 8.4).
+
+        Generates exactly ONE embedding per ACTIVE reference variant from the
+        keurmerk reference library (Story 7.3) and stores it in the dedicated
+        ``reference_embeddings`` table. Intended to run at startup and on
+        library refresh.
+
+        This mirrors ``rebuild_embeddings`` but is deliberately separate (Dev
+        Notes: do NOT extend the logo rebuild). Reference embeddings are NOT
+        holdout-filtered — they are independent of the training/holdout split.
+
+        The table is cleared first so the rebuild is idempotent and never leaves
+        stale embeddings for variants that were soft-deleted since the last run.
+        """
+        import io
+
+        from app.services.storage import storage_service
+
+        references = await db_service.get_active_reference_logos()
+
+        await db_service.clear_reference_embeddings()
+
+        processed = 0
+        errors = 0
+
+        for ref in references:
+            try:
+                image_bytes = storage_service.get_training_image(ref["storage_path"])
+                image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+
+                embedding = await model_manager.generate_embedding(image)
+
+                await db_service.store_reference_embedding(
+                    reference_logo_id=str(ref["id"]),
+                    embedding=embedding,
+                )
+                processed += 1
+            except Exception as e:
+                logger.error(
+                    f"Failed to build reference embedding for {ref.get('t3777_code')}"
+                    f"/{ref.get('variant_label')}: {e}"
+                )
+                errors += 1
+
+        return {
+            "total_references": len(references),
+            "processed": processed,
+            "errors": errors,
+        }
+
     def clear_cache(self) -> None:
         """Clear the embedding cache."""
         self._embedding_cache.clear()

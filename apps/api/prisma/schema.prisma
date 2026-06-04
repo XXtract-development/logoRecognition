@@ -251,11 +251,29 @@ model ReferenceLogo {
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   // Relations
-  logo Logo? @relation(fields: [logoId], references: [id])
+  logo       Logo?                @relation(fields: [logoId], references: [id])
+  embeddings ReferenceEmbedding[]
 
   @@unique([t3777Code, variantLabel])
   @@index([t3777Code])
   @@map("reference_logos")
+}
+
+/// Reference keurmerk embeddings (Epic 8, Story 8.4)
+/// One embedding per active reference variant, used to classify localised
+/// crops via pgvector cosine. Deliberately separate from LogoEmbedding:
+/// reference embeddings are model-independent and must not pollute logo search.
+model ReferenceEmbedding {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  referenceLogoId String   @map("reference_logo_id") @db.Uuid
+  embedding       Unsupported("vector(512)")?
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  referenceLogo ReferenceLogo @relation(fields: [referenceLogoId], references: [id], onDelete: Cascade)
+
+  @@index([referenceLogoId])
+  @@map("reference_embeddings")
 }
 
 /// Logo embeddings for vector search
