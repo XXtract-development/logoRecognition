@@ -54,7 +54,6 @@ def test_rasterize_corrupt_pdf_marks_error_without_raising():
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skip(reason="ATDD red phase — implementeer Story 8.3 en verwijder deze marker")
 def test_tile_image_produces_overlapping_tiles():
     """Groot artwork wordt in overlappende tegels gesneden (SAHI-aanpak)."""
     from app.services.localization import tile_image
@@ -70,7 +69,6 @@ def test_tile_image_produces_overlapping_tiles():
         assert tile["image"].shape[0] <= 640 and tile["image"].shape[1] <= 640
 
 
-@pytest.mark.skip(reason="ATDD red phase — implementeer Story 8.3 en verwijder deze marker")
 def test_template_matching_locates_known_mark_on_synthetic_tile():
     """Een ingeplakt referentie-keurmerk wordt op de juiste plek teruggevonden."""
     from app.services.localization import match_templates
@@ -90,7 +88,6 @@ def test_template_matching_locates_known_mark_on_synthetic_tile():
     assert abs(best["bbox"]["y"] - 150) <= 5
 
 
-@pytest.mark.skip(reason="ATDD red phase — implementeer Story 8.3 en verwijder deze marker")
 def test_template_matching_rejects_low_variance_regions():
     """Wit-op-wit-guard: TM_CCOEFF_NORMED is berucht onbetrouwbaar op
     lage-variantie-regio's — een (vrijwel) uniform template mag op een
@@ -109,7 +106,6 @@ def test_template_matching_rejects_low_variance_regions():
     assert matches == []
 
 
-@pytest.mark.skip(reason="ATDD red phase — implementeer Story 8.3 en verwijder deze marker")
 def test_merge_detections_deduplicates_across_tile_boundaries():
     """Detecties van overlappende tegels worden samengevoegd (non-max suppression)."""
     from app.services.localization import merge_detections

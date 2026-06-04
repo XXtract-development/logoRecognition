@@ -2,6 +2,13 @@
 
 ## 2026-06-04 (Epic 8 — Automatische Trainingsdata)
 
+### Keurmerk-lokalisatie op artwork
+- Het systeem kan nu keurmerken automatisch lokaliseren op gerasterde artwork-afbeeldingen
+- Grote afbeeldingen worden opgeknipt in overlappende tegels (SAHI-aanpak) voor nauwkeurige detectie van kleine keurmerken
+- Per tegel wordt template-matching uitgevoerd; detecties van overlappende tegels worden samengevoegd (non-maximum suppression)
+- Lege of bijna-eenkleurige regio's worden automatisch genegeerd (wit-op-wit-bescherming)
+- Nieuwe API-endpoint: POST /ml/artwork/localize — accepteert afbeelding en keurmerk-templates, retourneert detecties met coördinaten
+
 ### Artwork-import via mediaserver
 - Het systeem kan nu etiket-artwork automatisch ophalen uit de mediaserver en lokaal opslaan
 - Per productcode (GTIN) worden alle PACKAGING_ARTWORK-bestanden geïmporteerd en gecachet
