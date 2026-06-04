@@ -27,9 +27,10 @@ vi.mock('@prisma/client', () => {
     },
     logoImage: {
       findUnique: vi.fn(),
-      findFirst: vi.fn(),
+      findFirst: vi.fn().mockResolvedValue(null),
       findMany: vi.fn(),
-      create: vi.fn(),
+      create: vi.fn().mockResolvedValue({ id: 'img-001', storagePath: 'x' }),
+      upsert: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
       deleteMany: vi.fn(),
@@ -127,6 +128,39 @@ vi.mock('@prisma/client', () => {
       update: vi.fn(),
       count: vi.fn(),
     },
+    artworkImportRun: {
+      findUnique: vi.fn(),
+      findFirst: vi.fn(),
+      findMany: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
+      delete: vi.fn(),
+      count: vi.fn(),
+    },
+    artworkImport: {
+      findUnique: vi.fn(),
+      findFirst: vi.fn(),
+      findMany: vi.fn(),
+      create: vi.fn(),
+      createMany: vi.fn(),
+      upsert: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
+      delete: vi.fn(),
+      count: vi.fn(),
+    },
+    artworkReviewItem: {
+      findUnique: vi.fn(),
+      findFirst: vi.fn(),
+      findMany: vi.fn(),
+      create: vi.fn(),
+      createMany: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
+      delete: vi.fn(),
+      count: vi.fn(),
+    },
     $transaction: vi.fn((operations: unknown[]) => Promise.all(operations)),
     $connect: vi.fn(),
     $disconnect: vi.fn(),
@@ -167,6 +201,7 @@ vi.mock('../core/logger', () => ({
 vi.mock('../services/storage', () => ({
   uploadImage: vi.fn(),
   uploadReferenceLogo: vi.fn(),
+  uploadArtwork: vi.fn().mockResolvedValue(undefined),
   getSignedUrl: vi.fn(),
   getReferenceLogoUrl: vi.fn(),
   deleteImage: vi.fn(),
@@ -178,6 +213,54 @@ vi.mock('../services/storage', () => ({
     MODELS: 'models',
   },
 }));
+
+// Mock mediaserver client (Epic 8, Story 8.1)
+vi.mock('../services/mediaserver-client', () => {
+  const mockDiscover = vi.fn().mockImplementation(async (gtin: string) => {
+    // Known test GTIN: returns one PACKAGING_ARTWORK item
+    if (gtin === '08718989912451') {
+      return [
+        {
+          id: 'media-id-0001',
+          fileName: '08718989912451_46182_001.jpg',
+          previewUrl:
+            '/8718989000000/PACKAGING_ARTWORK/1717500000000/08718989912451_46182_001/sha256abc.jpg',
+          typeInfo: 'PACKAGING_ARTWORK',
+          active: true,
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+      ];
+    }
+    // Unknown GTIN: simulate discovery failure (not found = empty array)
+    return [];
+  });
+
+  const mockDownload = vi.fn().mockResolvedValue({
+    buffer: Buffer.from('fake-image-data'),
+    mimeType: 'image/jpeg',
+  });
+
+  return {
+    MediaServerClient: vi.fn(() => ({
+      discoverArtwork: mockDiscover,
+      downloadFile: mockDownload,
+    })),
+    MediaServerError: class MediaServerError extends Error {
+      statusCode?: number;
+      gtin?: string;
+      constructor(message: string, statusCode?: number, gtin?: string) {
+        super(message);
+        this.statusCode = statusCode;
+        this.gtin = gtin;
+        this.name = 'MediaServerError';
+      }
+    },
+    mediaServerClient: {
+      discoverArtwork: mockDiscover,
+      downloadFile: mockDownload,
+    },
+  };
+});
 
 // Mock ML client
 vi.mock('../services/ml-client', () => ({
