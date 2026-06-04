@@ -253,15 +253,30 @@ export async function imageRoutes(fastify: FastifyInstance) {
 
       const skip = (page - 1) * limit;
 
-      // Build where clause
-      const where: any = {};
+      // Build where clause.
+      //
+      // Exclude artwork-source LogoImage records (Epic 8, Story 8.6). These are
+      // synthetic markers created during training-data registration purely to
+      // satisfy the NOT NULL imageId FK; they are not real library images and
+      // would otherwise leak into the Image Library as "ghost cards"
+      // (NaN MB / Invalid Date) and inflate Total Images. The same `where`
+      // object is shared by findMany AND count below, so the exclusion covers
+      // both the listing (a) and the total-count stat (b).
+      //
+      // An AND array is used because a JSON-path categoryId filter and the
+      // artworkSource exclusion both target `metadata` and cannot be merged into
+      // a single `where.metadata` object.
+      const andClauses: any[] = [
+        { metadata: { path: ['artworkSource'], not: true } },
+      ];
 
       if (categoryId) {
-        where.metadata = {
-          path: ['categoryId'],
-          equals: categoryId,
-        };
+        andClauses.push({
+          metadata: { path: ['categoryId'], equals: categoryId },
+        });
       }
+
+      const where: any = { AND: andClauses };
 
       // Build order clause
       const orderBy: any = {};
