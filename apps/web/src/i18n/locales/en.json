@@ -37,6 +37,9 @@
     "exportResults": "Export results"
   },
   "connection": {
+    "online": "Online",
+    "offline": "Offline",
+    "limited": "Limited",
     "connected": "Connected",
     "disconnected": "Disconnected",
     "reconnecting": "Reconnecting...",
@@ -196,7 +199,9 @@
       "assignSuccess": "Category assigned to {{count}} images",
       "deleteSuccess": "{{count}} images deleted",
       "selectCategory": "Select a category"
-    }
+    },
+    "sizeUnknown": "—",
+    "dateUnknown": "—"
   },
   "categories": {
     "title": "Categories",
@@ -385,17 +390,8 @@
     "imageLibrary": "Image Library",
     "trainModel": "Train Model",
     "models": "Models",
-    "dashboard": "Dashboard"
-  },
-  "connection": {
-    "online": "Online",
-    "offline": "Offline",
-    "limited": "Limited",
-    "connected": "Connected",
-    "disconnected": "Disconnected",
-    "reconnecting": "Reconnecting...",
-    "backendUnavailable": "Backend services are not available",
-    "websocketUnavailable": "Real-time recognition is not available"
+    "dashboard": "Dashboard",
+    "artworkReview": "Review"
   },
   "emptyState": {
     "noImages": {
@@ -425,5 +421,43 @@
       "description": "Upload an image to detect and identify logos using your trained models.",
       "action": "Upload Image"
     }
+  },
+  "review": {
+    "title": "Artwork review",
+    "description": "Review keurmerk detections that could not be auto-confirmed. Each item shows its provenance (source file and coordinates) and the discrepancy reason.",
+    "confidence": "Confidence",
+    "method": "Method",
+    "provenance": "Provenance",
+    "sourceFile": "Source file",
+    "bbox": "Coordinates",
+    "unknown": "unknown",
+    "showDetails": "Show provenance",
+    "hideDetails": "Hide details",
+    "noCrop": "No crop",
+    "cropError": "Crop unavailable",
+    "accept": "Accept",
+    "reject": "Reject",
+    "acceptConfirm": "Accept review item?",
+    "acceptConfirmBody": "The crop will be registered as training data.",
+    "rejectConfirm": "Reject review item?",
+    "acceptedRegistered": "Accepted and registered as training data",
+    "acceptedSkipped": "Accepted, but not yet registered without a crop",
+    "rejected": "Review item rejected",
+    "actionError": "Action failed — please try again",
+    "loadError": "Failed to load the review queue",
+    "empty": "No open review items",
+    "refresh": "Refresh",
+    "retry": "Retry",
+    "catchUp": "Process accepted",
+    "catchUpDone": "{{registered}} registered, {{skipped}} skipped",
+    "readOnly": "You are viewing the review queue. Reviewing requires admin rights.",
+    "adminOnly": "Only an administrator can review items",
+    "confirm": "Confirm",
+    "reason": "Reason",
+    "sourceArtwork": "Artwork",
+    "sourceFeedback": "Feedback",
+    "openItems": "open items",
+    "uncertainItems": "uncertain predictions",
+    "noArtworkItems": "No open artwork review items"
   }
 }

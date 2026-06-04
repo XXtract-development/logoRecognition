@@ -169,16 +169,28 @@ export const ImageLibrary: React.FC<ImageLibraryProps> = ({
     }
   };
 
-  // Format file size
-  const formatSize = (bytes: number) => {
+  // Format file size — guard against missing/NaN sizes so library cards never
+  // render "NaN MB" (Epic 8, Story 8.6 hardening).
+  const formatSize = (bytes?: number) => {
+    if (typeof bytes !== 'number' || !Number.isFinite(bytes)) {
+      return t('training.sizeUnknown', { defaultValue: '—' });
+    }
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
-  // Format date
-  const formatDate = (date: Date) => {
-    return new Date(date).toLocaleDateString();
+  // Format date — the API exposes `createdAt`; older callers expect
+  // `uploadedAt`. Accept either and guard against invalid values so cards never
+  // render "Invalid Date" (Epic 8, Story 8.6 hardening).
+  const formatDate = (image: TrainingImage) => {
+    const raw = image.uploadedAt ?? image.createdAt;
+    if (!raw) return t('training.dateUnknown', { defaultValue: '—' });
+    const parsed = new Date(raw);
+    if (Number.isNaN(parsed.getTime())) {
+      return t('training.dateUnknown', { defaultValue: '—' });
+    }
+    return parsed.toLocaleDateString();
   };
 
   // Render grid item
@@ -230,7 +242,7 @@ export const ImageLibrary: React.FC<ImageLibraryProps> = ({
             <div className="truncate text-sm font-medium">{image.originalName}</div>
           </Tooltip>
           <div className="text-xs text-gray-500 mt-1">
-            {formatSize(image.size)} • {formatDate(image.uploadedAt)}
+            {formatSize(image.size)} • {formatDate(image)}
           </div>
           {image.categoryName && (
             <Tag className="mt-1" style={{ fontSize: '10px' }}>
@@ -281,7 +293,7 @@ export const ImageLibrary: React.FC<ImageLibraryProps> = ({
         <div className="flex-1 min-w-0">
           <div className="font-medium truncate">{image.originalName}</div>
           <div className="text-sm text-gray-500">
-            {formatSize(image.size)} • {formatDate(image.uploadedAt)}
+            {formatSize(image.size)} • {formatDate(image)}
           </div>
         </div>
         {image.categoryName && <Tag>{image.categoryName}</Tag>}

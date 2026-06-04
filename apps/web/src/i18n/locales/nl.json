@@ -199,7 +199,9 @@
       "assignSuccess": "Categorie toegewezen aan {{count}} afbeeldingen",
       "deleteSuccess": "{{count}} afbeeldingen verwijderd",
       "selectCategory": "Selecteer een categorie"
-    }
+    },
+    "sizeUnknown": "—",
+    "dateUnknown": "—"
   },
   "categories": {
     "title": "Categorieën",
@@ -388,7 +390,8 @@
     "imageLibrary": "Afbeeldingenbibliotheek",
     "trainModel": "Model Trainen",
     "models": "Modellen",
-    "dashboard": "Dashboard"
+    "dashboard": "Dashboard",
+    "artworkReview": "Review"
   },
   "emptyState": {
     "noImages": {
@@ -418,5 +421,43 @@
       "description": "Upload een afbeelding om logo's te detecteren en identificeren met je getrainde modellen.",
       "action": "Afbeelding Uploaden"
     }
+  },
+  "review": {
+    "title": "Artwork-review",
+    "description": "Beoordeel keurmerk-detecties die niet automatisch konden worden bevestigd. Per item zie je de herkomst (bronbestand en coördinaten) en de reden van de discrepantie.",
+    "confidence": "Betrouwbaarheid",
+    "method": "Methode",
+    "provenance": "Herkomst",
+    "sourceFile": "Bronbestand",
+    "bbox": "Coördinaten",
+    "unknown": "onbekend",
+    "showDetails": "Toon herkomst",
+    "hideDetails": "Verberg details",
+    "noCrop": "Geen crop",
+    "cropError": "Crop niet beschikbaar",
+    "accept": "Accepteer",
+    "reject": "Wijs af",
+    "acceptConfirm": "Reviewitem accepteren?",
+    "acceptConfirmBody": "De crop wordt als trainingsdata geregistreerd.",
+    "rejectConfirm": "Reviewitem afwijzen?",
+    "acceptedRegistered": "Geaccepteerd en als trainingsdata geregistreerd",
+    "acceptedSkipped": "Geaccepteerd, maar zonder crop nog niet geregistreerd",
+    "rejected": "Reviewitem afgewezen",
+    "actionError": "Actie mislukt — probeer opnieuw",
+    "loadError": "Ophalen van de reviewqueue mislukt",
+    "empty": "Geen openstaande reviewitems",
+    "refresh": "Vernieuw",
+    "retry": "Opnieuw",
+    "catchUp": "Verwerk geaccepteerde",
+    "catchUpDone": "{{registered}} geregistreerd, {{skipped}} overgeslagen",
+    "readOnly": "Je bekijkt de reviewqueue. Beoordelen vereist beheerdersrechten.",
+    "adminOnly": "Alleen een beheerder kan reviewitems beoordelen",
+    "confirm": "Bevestig",
+    "reason": "Reden",
+    "sourceArtwork": "Artwork",
+    "sourceFeedback": "Feedback",
+    "openItems": "openstaande items",
+    "uncertainItems": "onzekere voorspellingen",
+    "noArtworkItems": "Geen openstaande artwork-reviewitems"
   }
 }
