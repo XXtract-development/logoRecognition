@@ -430,6 +430,36 @@ class DatabaseService:
             return int(row["count"]) if row else 0
 
     # ============================================
+    # Story 8.7 — Synthetic data support
+    # ============================================
+
+    async def get_class_counts(self, active_only: bool = True) -> Dict[str, int]:
+        """
+        Return the number of validated, non-holdout training samples per class label.
+
+        Used by the synthetic data generator (Story 8.7) to decide which classes
+        need supplementation.  Holdout samples are intentionally excluded because
+        the holdout set must remain 100% real (NFR3).
+
+        Args:
+            active_only: When True (default), count only active=true records.
+
+        Returns:
+            { label: count }  — only classes with at least one qualifying sample.
+        """
+        active_clause = "AND td.active = true" if active_only else ""
+        query = f"""
+            SELECT td.label, COUNT(*) AS cnt
+            FROM training_data td
+            WHERE td.validated = true
+              AND td.holdout = false
+              {active_clause}
+            GROUP BY td.label
+        """
+        rows = await self._execute_query(query)
+        return {row["label"]: int(row["cnt"]) for row in rows}
+
+    # ============================================
     # Health Check
     # ============================================
 

@@ -157,7 +157,6 @@ async def test_classify_crop_below_threshold_is_marked_uncertain():
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skip(reason="ATDD red phase — implementeer Story 8.7 en verwijder deze marker")
 def test_compose_synthetic_returns_exact_label_and_bbox():
     """Synthese levert het label en de bbox gratis — je weet wat je waar plakt."""
     from app.services.synthesis import compose_synthetic
@@ -176,7 +175,6 @@ def test_compose_synthetic_returns_exact_label_and_bbox():
     assert 0 <= b["y"] and b["y"] + b["height"] <= 800
 
 
-@pytest.mark.skip(reason="ATDD red phase — implementeer Story 8.7 en verwijder deze marker")
 @pytest.mark.asyncio
 async def test_synthetic_batch_fills_shortage_but_never_enters_holdout():
     """Klassen onder het minimum worden synthetisch aangevuld; holdout blijft 100% echt (NFR3)."""
@@ -194,7 +192,6 @@ async def test_synthetic_batch_fills_shortage_but_never_enters_holdout():
     assert all(s.get("holdout") is not True for s in batch)
 
 
-@pytest.mark.skip(reason="ATDD red phase — implementeer Story 8.7 en verwijder deze marker")
 @pytest.mark.asyncio
 async def test_synthetic_ratio_cap_wins_over_min_per_class():
     """Conflictresolutie: het ratio-plafond WINT van min_per_class (kwaliteit

@@ -2,6 +2,12 @@
 
 ## 2026-06-04 (Epic 8 — Automatische Trainingsdata)
 
+### Synthetische trainingsdata-generatie
+- Schaarse klassen worden automatisch aangevuld met synthetisch gegenereerde trainingsdata
+- De ratio echte/synthetische voorbeelden is configureerbaar; het ratio-plafond wint altijd over het minimum (kwaliteit boven kwantiteit)
+- Klassen die het minimum niet kunnen halen door het ratio-plafond worden gerapporteerd als 'tekort' in plaats van stilletjes met ruis te worden opgevuld
+- Synthetische samples komen nooit in de holdout-set terecht (NFR3: holdout is altijd 100% echt)
+
 ### Trainingsdata-registratie met herkomst
 - Automatisch goedgekeurde keurmerk-crops worden opgeslagen als trainingsdata met volledige herkomst-informatie (bronbestand, boundingbox, methode, zekerheid)
 - Trainingsdata uit een specifiek bronbestand kunnen in bulk gedeactiveerd worden (zonder te verwijderen) via één API-aanroep
