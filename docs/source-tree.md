@@ -321,6 +321,34 @@ docs/
 
 ---
 
+## Update 2026-06-04 — Epic 8: nieuwe modules (Automatische Trainingsdata uit Etiket-Artwork)
+
+Epic 8 introduceert een artwork-pipeline. Een groot deel van de logica leeft als
+service-modules (geen HTTP-surface), met name de crop-classificatie en synthese.
+
+### ML-service (`apps/ml-service`)
+
+| Module | Verantwoordelijkheid |
+|--------|----------------------|
+| `app/api/artwork.py` | FastAPI-router (`/ml/artwork/localize`); decodeert artwork + templates en orkestreert tiling → matching → NMS. |
+| `app/services/artwork.py` | `rasterize_pdf(path, dpi=300)` — rastert etiket-PDF's naar PNG's per pagina (PyMuPDF). Pure, path-agnostische functie; corrupte/beveiligde PDF's geven `[]` of een dict met `error`-key terug en gooien nooit. Env: `ARTWORK_RASTER_DPI`. |
+| `app/services/localization.py` | Keurmerk-lokalisatie via tiling (SAHI-geïnspireerd) + OpenCV template-matching. `tile_image()`, `match_templates()` (met variance-guard tegen wit-op-wit) en `merge_detections()` (NMS over tile-grenzen). |
+| `app/services/classification.py` | `classify_crop()` — classificeert een crop als T3777-code via embedding-similariteit tegen de referentiebibliotheek, met fallback naar een lichte pixel-histogram-classifier. Interne functie (geen endpoint). Env: `CLASSIFY_MIN_CONFIDENCE` (0.70), `CLASSIFY_UNKNOWN_CODE`. |
+| `app/services/synthesis.py` | Synthetische trainingsdata: `compose_synthetic()` plaatst keurmerk-templates op achtergronden; `build_synthetic_batch()` vult klassen onder een drempel aan op basis van echte class-counts. Vervuilt de holdout-set niet. Interne functies. |
+| `app/services/database.py` | Uitgebreid met `get_class_counts(active_only=True)` — telt trainingsrecords per label (input voor de synthese-batch). |
+
+### API gateway (`apps/api`)
+
+| Module | Verantwoordelijkheid |
+|--------|----------------------|
+| `src/api/v1/artwork-pipeline.ts` | Fastify-routes voor importruns, T3777-crosscheck/routing en trainingsdata-registratie met provenance (zie `api-specification.md`). |
+| `src/services/mediaserver-client.ts` | Client voor de mediaserver: `discoverArtwork(gtin)` (LABEL-artwork via `/uploaded`) en `downloadFile(previewUrl)`. Rate-aware via `ARTWORK_IMPORT_CONCURRENCY` (default 3). |
+| `src/services/storage.ts` | Uitgebreid met `uploadArtwork(buffer, path, mimeType)` voor opslag van geïmporteerde artwork in MinIO (prefix `artwork/{gtin}/`). |
+
+Nieuwe Python-dependencies staan in `apps/ml-service/requirements.txt` (o.a. PDF-rasterisatie en beeldverwerking).
+
+---
+
 ## File Count by Category
 
 | Category | Count | Extensions |

@@ -247,3 +247,22 @@ Voor complete schema en migraties, zie:
 - **ReferenceLogo** (`reference_logos`): id, t3777Code, variantLabel, source, storagePath (MinIO, prefix `reference-logos/{code}/{variant}`), active (soft delete), logoId (FK → Logo via upsert op category='keurmerk'), createdAt. Unique op (t3777Code, variantLabel). Kennisbron voor Epic 8 (template-matching/synthese).
 
 Migratie: `apps/api/prisma/migrations/0004_add_reference_logos/` + synchroon bijgewerkte `infrastructure/docker/postgres/init.sql` (ML-service leest via asyncpg raw SQL).
+
+---
+
+## Update 2026-06-04 — Epic 8: Automatische Trainingsdata uit Etiket-Artwork
+
+### Gewijzigd model
+
+- **TrainingData**: drie nieuwe velden (Story 8.6):
+  - `provenance Json @default("{}")` — herkomst van een artwork-afgeleide crop: `{ sourceFile, bbox, method, confidence }`. GIN-index (`jsonb_path_ops`) voor het bulk-deactiveren per bronbestand.
+  - `active Boolean @default(true)` (+ index) — soft-delete-vlag; `false` sluit een record uit van training zonder het te verwijderen (intrekken van een foute bron).
+  - `cropPath String?` — pad naar de uitgesneden crop in MinIO.
+
+### Nieuwe modellen (artwork-pipeline)
+
+- **ArtworkImportRun** (`artwork_import_runs`, Story 8.1): id, `status` (`running`/`completed`/`failed`), `gtins` (JSONB-lijst), tellers `importedCount`/`skippedCount`/`failedCount`, `heartbeatAt` (stale-detectie: runs zonder heartbeat > `IMPORT_RUN_STALE_MINUTES` worden bij een nieuwe run op `failed` gezet), `completedAt`, `createdAt`. Eén rij per importbatch.
+- **ArtworkImport** (`artwork_imports`, Story 8.1): id, `gtin`, `gln?`, `mediaId` (**unique**), `fileName`, `sourceLocation`, `sha256Hash?`, `storagePath?` (MinIO, prefix `artwork/{gtin}/{fileName}`), `mimeType?`, `status` (`imported`/`failed`), `failureReason?`, `importRunId` (FK → ArtworkImportRun, cascade), `pages` (JSONB), `createdAt`. **Artwork-cache / dedup:** de unique-constraint op `mediaId` plus de `sha256Hash` vormen de cachelaag — bij een nieuwe run wordt een media-item met status `imported` overgeslagen (geteld als `skipped`), zodat ongewijzigde artwork niet opnieuw gedownload of opgeslagen wordt; alleen nieuwe of eerder mislukte items worden (her)verwerkt.
+- **ArtworkReviewItem** (`artwork_review_items`, Story 8.5): id, `gtin`, `t3777Code`, `cropPath?`, `bbox` (JSONB), `confidence?`, `method?`, `reason` (waarom naar review), `sourceFile?`, `status` (`open` …), `createdAt`/`updatedAt`. Gevuld door de crosscheck-routing voor alles wat niet automatisch geaccepteerd kan worden.
+
+Schema: `apps/api/prisma/schema.prisma` + synchroon bijgewerkte `infrastructure/docker/postgres/init.sql` (de drie tabellen in schema `logos`, `TrainingData`-kolommen via `ALTER TABLE … ADD COLUMN IF NOT EXISTS`). De ML-service leest deze tabellen via asyncpg raw SQL.

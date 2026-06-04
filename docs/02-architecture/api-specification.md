@@ -299,3 +299,30 @@ Voor gedetailleerde specs en voorbeelden, zie: `_archive/old-structure/architect
 | `/api/v1/reference-logos/:id/deactivate` | PATCH | Soft delete (active=false); records worden nooit verwijderd |
 
 ML-service (intern): `get_holdout_images()`, `count_holdout_images()`, holdout-uitsluiting op query-niveau in `get_training_images()`, `compute_holdout_hash()` en holdout-evaluatie bij modelregistratie (`metrics.holdout`).
+
+---
+
+## Update 2026-06-04 — Epic 8: Automatische Trainingsdata uit Etiket-Artwork
+
+### Nieuwe endpoints (API gateway, `apps/api`)
+
+Routes in `apps/api/src/api/v1/artwork-pipeline.ts`, geregistreerd onder prefix `/api/v1`.
+
+| Endpoint | Methode | RBAC | Beschrijving |
+|----------|---------|------|--------------|
+| `/api/v1/artwork-import/runs` | POST | ADMIN | Start een artwork-importrun. Body `{ gtins?: string[], force?: boolean }`. Antwoordt direct met `202 { runId }`; de import draait op de achtergrond (in-process async; verplaatst naar BullMQ in Epic 9). Reeds geïmporteerde media (zelfde `mediaId`, status `imported`) worden overgeslagen tenzij `force: true`. |
+| `/api/v1/artwork-import/runs/:runId` | GET | auth | Status van een importrun → `200 { status, imported, skipped, failed: [{ gtin, reason }] }`; `404` bij onbekend `runId`. |
+| `/api/v1/artwork/:gtin/crosscheck` | POST | ADMIN | Vergelijkt gedetecteerde keurmerken met de GS1 T3777-declaratie. Body `{ detections: [{ t3777Code, confidence, bbox, method? }], declared: string[] }` → `200 { autoAccepted, reviewItems }`. Auto-accept alleen wanneer detectie in `declared` zit én `confidence ≥ drempel-per-methode` (`template` 0.85, `embedding` 0.80, `classifier`/onbekend 0.90; env-configureerbaar). Lege `declared` → alles naar review (geen onafhankelijke bevestiging). Niet-gedeclareerde of niet-gevonden codes komen met reden in `reviewItems` (gepersisteerd in `artwork_review_items`). |
+| `/api/v1/artwork/review-queue` | GET | auth | Alle openstaande review-items (`status='open'`), nieuwste eerst. |
+| `/api/v1/artwork/:gtin/register-training-data` | POST | ADMIN | Registreert auto-geaccepteerde of handmatig goedgekeurde crops als trainingsdata. Body `{ items: [{ t3777Code, cropPath, sourceFile, bbox, method, confidence }] }` → `201 { registered, ids }`; `400` bij lege items. Maakt per item een `LogoImage` (`metadata.artworkSource=true`), upsert het `Logo` (category `keurmerk`) en een `TrainingData`-record met volledige provenance. |
+| `/api/v1/training/data/deactivate-by-source` | PATCH | ADMIN | Deactiveert (soft delete, `active=false`) in bulk alle trainingsdata afkomstig van één bronbestand. Body `{ sourceFile }` → `200 { deactivated }`; `400` zonder `sourceFile`. Filtert via JSON-path op `provenance.sourceFile`; records worden nooit verwijderd. |
+
+### Nieuwe endpoint (ML-service, `apps/ml-service`)
+
+Route in `apps/ml-service/app/api/artwork.py`, geregistreerd onder prefix `/ml`.
+
+| Endpoint | Methode | Beschrijving |
+|----------|---------|--------------|
+| `/ml/artwork/localize` | POST | Lokaliseert keurmerken op een artwork-afbeelding via tiling + template-matching + NMS. Body `{ image_path? \| image_b64?, templates: [{ t3777_code, image_b64 }] }` → `{ detections: [{ t3777_code, bbox, score }] }`. `400` bij onleesbare afbeelding; `422` wanneer noch `image_path` noch `image_b64` is opgegeven. |
+
+> De crop-classificatie (`classify_crop`) en synthese-generatie zijn als interne service-functies geïmplementeerd, niet als HTTP-endpoints — zie de moduleparagraaf in `source-tree.md`.
