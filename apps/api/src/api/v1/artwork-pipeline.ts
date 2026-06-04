@@ -577,6 +577,20 @@ interface DeactivateBySourceBody {
   sourceFile: string;
 }
 
+interface SynthesizeBody {
+  t3777Code: string;
+  count: number;
+  seed?: number;
+}
+
+/**
+ * Placeholder GTIN for synthetic training data (Story 8.7). Synthetic samples
+ * are not tied to a real product, but registerCropsTx (the 8.6 path) needs a
+ * gtin for the LogoImage marker. This sentinel keeps them grouped and out of
+ * any real-product reporting.
+ */
+const SYNTHETIC_GTIN = 'synthetic';
+
 export async function artworkPipelineRoutes(fastify: FastifyInstance) {
   // -----------------------------------------------------------------------
   // Story 8.1 — Import runs
@@ -993,6 +1007,90 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
       });
 
       return reply.status(200).send({ deactivated: result.count });
+    }
+  );
+
+  // -----------------------------------------------------------------------
+  // Story 8.7 — Synthetic training-data generation
+  // -----------------------------------------------------------------------
+
+  /**
+   * POST /artwork/synthesize
+   * Generate synthetic training composites for one keurmerk class and register
+   * them as training data through the 8.6 path (method='synthetic').
+   *
+   * The ML service does the image work + MinIO persistence and returns crop
+   * descriptors; this endpoint registers them via registerCropsTx — the single
+   * registration path (no duplicate writer). Every record lands holdout=false
+   * (NFR3): synthetic data never enters the protected holdout set.
+   *
+   * Requires ADMIN.
+   */
+  fastify.post<{ Body: SynthesizeBody }>(
+    '/artwork/synthesize',
+    { preHandler: REQUIRE_ADMIN },
+    async (request: FastifyRequest<{ Body: SynthesizeBody }>, reply: FastifyReply) => {
+      const { t3777Code, count, seed } = request.body ?? ({} as SynthesizeBody);
+
+      if (!t3777Code || typeof count !== 'number' || count < 1) {
+        return reply.status(400).send({ error: 't3777Code en count (>=1) zijn vereist' });
+      }
+
+      let synthResult;
+      try {
+        synthResult = await mlClient.synthesizeArtwork(t3777Code, count, seed);
+      } catch (err) {
+        logger.error('Synthetic generation request failed', {
+          t3777Code,
+          error: err instanceof Error ? err.message : String(err),
+        });
+        return reply.status(502).send({ error: 'Synthetische generatie mislukt' });
+      }
+
+      if (synthResult.generated === 0) {
+        // Open-input gate: no usable references/backgrounds. Not an error —
+        // report 0 so the caller knows the class needs reference uploads first.
+        logger.info('No synthetic samples generated (missing references/backgrounds)', {
+          t3777Code,
+        });
+        return reply.status(200).send({ generated: 0, registered: 0, ids: [] });
+      }
+
+      // Register via the 8.6 path (method='synthetic', holdout=false enforced
+      // by registerCropsTx). Atomic: a mid-batch failure leaves no partial set.
+      const crops: RegisterableCrop[] = synthResult.samples.map((s) => ({
+        t3777Code: s.t3777_code,
+        cropPath: s.crop_path,
+        sourceFile: s.source_file,
+        bbox: s.bbox,
+        method: 'synthetic',
+        confidence: s.confidence,
+      }));
+
+      let registered: string[] = [];
+      try {
+        registered = await prisma.$transaction(async (tx) =>
+          registerCropsTx(tx as TxClient, SYNTHETIC_GTIN, crops)
+        );
+      } catch (err) {
+        logger.error('Failed to register synthetic training data', {
+          t3777Code,
+          error: err instanceof Error ? err.message : String(err),
+        });
+        return reply.status(500).send({ error: 'Registratie van synthetische data mislukt' });
+      }
+
+      logger.info('Synthetic training data generated and registered', {
+        t3777Code,
+        generated: synthResult.generated,
+        registered: registered.length,
+      });
+
+      return reply.status(201).send({
+        generated: synthResult.generated,
+        registered: registered.length,
+        ids: registered,
+      });
     }
   );
 }

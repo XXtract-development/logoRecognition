@@ -381,3 +381,93 @@ async def classify_artwork(request: ClassifyRequest) -> ClassifyResponse:
 
     logger.info("Artwork classification complete", extra={"regions": len(results)})
     return ClassifyResponse(results=results)
+
+
+# ---------------------------------------------------------------------------
+# Story 8.7 — Synthetic training-data generation endpoint
+# ---------------------------------------------------------------------------
+
+
+class SynthesizeRequest(BaseModel):
+    """Generate synthetic composites for one keurmerk class (Story 8.7).
+
+    ``t3777_code`` selects the class; ``count`` is the number of composites to
+    generate; ``seed`` makes the batch reproducible (same seed → same PNGs and
+    crop descriptors). Each composite PNG is written to MinIO under
+    ``synthetic/{t3777Code}/{seed}.png``.
+    """
+
+    t3777_code: str = Field(..., min_length=1, description="Keurmerk class to synthesize for")
+    count: int = Field(..., ge=1, le=500, description="Number of composites to generate")
+    seed: Optional[int] = Field(None, ge=0, description="Base seed for reproducibility")
+
+
+class SynthesizedSample(BaseModel):
+    t3777_code: str
+    crop_path: str
+    source_file: str
+    bbox: Dict[str, int]
+    method: str
+    confidence: float
+    seed: int
+
+
+class SynthesizeResponse(BaseModel):
+    """Crop descriptors for the generated composites.
+
+    The caller (apps/api) registers these through the 8.6 path
+    (POST /artwork/:gtin/register-training-data) with method='synthetic'. This
+    service never writes training_data — image work + MinIO persistence here,
+    persistence of records in apps/api (single registration path).
+    """
+
+    t3777_code: str
+    generated: int
+    samples: List[SynthesizedSample]
+
+
+@router.post("/artwork/synthesize", response_model=SynthesizeResponse)
+async def synthesize_artwork(request: SynthesizeRequest) -> SynthesizeResponse:
+    """
+    Generate ``count`` synthetic composites for ``t3777_code`` (FR50).
+
+    Loads the active reference variants and real cached artwork backgrounds,
+    composes deterministic samples (scale/rotation/HSV/blur via RandomState),
+    writes each PNG to MinIO and returns crop descriptors for 8.6 registration.
+
+    Returns an empty ``samples`` list (generated=0) when no usable references or
+    backgrounds exist (open-input gate) — never a 5xx for that expected case.
+    """
+    from app.services.synthesis import synthesize_for_class
+
+    try:
+        samples = await synthesize_for_class(
+            request.t3777_code, request.count, seed=request.seed
+        )
+    except Exception as exc:
+        logger.error(
+            "Synthetic generation failed",
+            extra={"t3777_code": request.t3777_code, "error": str(exc)},
+        )
+        raise HTTPException(status_code=500, detail="Synthetische generatie mislukt") from exc
+
+    logger.info(
+        "Synthetic generation complete",
+        extra={"t3777_code": request.t3777_code, "generated": len(samples)},
+    )
+    return SynthesizeResponse(
+        t3777_code=request.t3777_code,
+        generated=len(samples),
+        samples=[
+            SynthesizedSample(
+                t3777_code=s["t3777_code"],
+                crop_path=s["crop_path"],
+                source_file=s["source_file"],
+                bbox=s["bbox"],
+                method=s["method"],
+                confidence=s["confidence"],
+                seed=s["seed"],
+            )
+            for s in samples
+        ],
+    )
