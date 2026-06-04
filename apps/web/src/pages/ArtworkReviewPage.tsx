@@ -1,0 +1,284 @@
+/**
+ * ArtworkReviewPage (Epic 8, Story 8.5 — AC3)
+ *
+ * The artwork review queue: open review items produced by the T3777 crosscheck
+ * (auto-accept handles the matches; only discrepancies land here). Each item
+ * shows its proposed label, confidence, detection method, discrepancy reason
+ * and — on view — the crop preview plus full provenance (source file + bbox).
+ *
+ * ADMIN users can accept (→ training-data registration) or reject items, plus
+ * run a catch-up pass over previously-accepted items. Non-admins see a
+ * read-only queue (actions disabled; the backend is the real guard).
+ */
+import React, { useCallback, useEffect, useState } from 'react';
+import { Typography, Space, Empty, Spin, Alert, Button, Tag, Card, message } from 'antd';
+import { ReloadOutlined, SyncOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
+import {
+  fetchReviewQueue,
+  fetchUncertainPredictions,
+  acceptReviewItem,
+  rejectReviewItem,
+  processAcceptedReviewItems,
+  type ArtworkReviewItem,
+  type UncertainPrediction,
+} from '@/services/artworkReviewService';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import ArtworkReviewItemCard from '@/components/review/ArtworkReviewItemCard';
+
+const { Title, Paragraph } = Typography;
+
+const ArtworkReviewPage: React.FC = () => {
+  const { t } = useTranslation();
+  const { isAdmin } = useCurrentUser();
+  const [items, setItems] = useState<ArtworkReviewItem[]>([]);
+  const [uncertain, setUncertain] = useState<UncertainPrediction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [catchUpBusy, setCatchUpBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // Both review sources are fetched together. The artwork queue is the
+      // primary actionable source; the uncertainty queue is shown read-only
+      // alongside it (Story 8.5 Task 2 — one page, two source-labeled sections).
+      // The uncertainty fetch is best-effort: it must not break the page.
+      const [artwork, uncertainItems] = await Promise.all([
+        fetchReviewQueue(),
+        fetchUncertainPredictions().catch(() => [] as UncertainPrediction[]),
+      ]);
+      setItems(artwork);
+      setUncertain(uncertainItems);
+    } catch {
+      setError(
+        t('review.loadError', { defaultValue: 'Ophalen van de reviewqueue mislukt' })
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [t]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  // Optimistically remove the item; restore it on failure.
+  const handleAccept = useCallback(
+    async (id: string) => {
+      const previous = items;
+      // Optimistic removal; restore only if the API call itself fails.
+      setItems((prev) => prev.filter((i) => i.id !== id));
+      let result;
+      try {
+        result = await acceptReviewItem(id);
+      } catch {
+        setItems(previous);
+        message.error(
+          t('review.actionError', { defaultValue: 'Actie mislukt — probeer opnieuw' })
+        );
+        return;
+      }
+      if (result.registered > 0) {
+        message.success(
+          t('review.acceptedRegistered', {
+            defaultValue: 'Geaccepteerd en als trainingsdata geregistreerd',
+          })
+        );
+      } else {
+        message.warning(
+          t('review.acceptedSkipped', {
+            defaultValue: 'Geaccepteerd, maar zonder crop nog niet geregistreerd',
+          })
+        );
+      }
+    },
+    [items, t]
+  );
+
+  const handleReject = useCallback(
+    async (id: string) => {
+      const previous = items;
+      setItems((prev) => prev.filter((i) => i.id !== id));
+      try {
+        await rejectReviewItem(id);
+      } catch {
+        setItems(previous);
+        message.error(
+          t('review.actionError', { defaultValue: 'Actie mislukt — probeer opnieuw' })
+        );
+        return;
+      }
+      message.success(t('review.rejected', { defaultValue: 'Reviewitem afgewezen' }));
+    },
+    [items, t]
+  );
+
+  const handleCatchUp = useCallback(async () => {
+    setCatchUpBusy(true);
+    try {
+      const result = await processAcceptedReviewItems();
+      message.success(
+        t('review.catchUpDone', {
+          defaultValue: '{{registered}} geregistreerd, {{skipped}} overgeslagen',
+          registered: result.registered,
+          skipped: result.skipped,
+        })
+      );
+    } catch {
+      message.error(
+        t('review.actionError', { defaultValue: 'Actie mislukt — probeer opnieuw' })
+      );
+    } finally {
+      setCatchUpBusy(false);
+    }
+  }, [t]);
+
+  return (
+    <div data-testid="artwork-review-page" style={{ padding: 24, color: '#1E293B' }}>
+      <Space
+        align="start"
+        style={{ justifyContent: 'space-between', width: '100%', flexWrap: 'wrap' }}
+      >
+        <div>
+          <Title level={2} style={{ color: '#2F5A7A', marginBottom: 4 }}>
+            {t('review.title', { defaultValue: 'Artwork-review' })}
+          </Title>
+          <Paragraph type="secondary" style={{ maxWidth: 640 }}>
+            {t('review.description', {
+              defaultValue:
+                'Beoordeel keurmerk-detecties die niet automatisch konden worden bevestigd. Per item zie je de herkomst (bronbestand en coördinaten) en de reden van de discrepantie.',
+            })}
+          </Paragraph>
+        </div>
+        <Space>
+          <Button
+            icon={<ReloadOutlined />}
+            onClick={load}
+            data-testid="review-refresh"
+          >
+            {t('review.refresh', { defaultValue: 'Vernieuw' })}
+          </Button>
+          {isAdmin && (
+            <Button
+              icon={<SyncOutlined />}
+              loading={catchUpBusy}
+              onClick={handleCatchUp}
+              data-testid="review-catchup"
+            >
+              {t('review.catchUp', { defaultValue: 'Verwerk geaccepteerde' })}
+            </Button>
+          )}
+        </Space>
+      </Space>
+
+      {!isAdmin && (
+        <Alert
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+          message={t('review.readOnly', {
+            defaultValue: 'Je bekijkt de reviewqueue. Beoordelen vereist beheerdersrechten.',
+          })}
+        />
+      )}
+
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: 48 }}>
+          <Spin size="large" />
+        </div>
+      ) : error ? (
+        <Alert
+          type="error"
+          showIcon
+          message={error}
+          data-testid="review-error"
+          action={
+            <Button size="small" onClick={load}>
+              {t('review.retry', { defaultValue: 'Opnieuw' })}
+            </Button>
+          }
+        />
+      ) : items.length === 0 && uncertain.length === 0 ? (
+        <Empty
+          data-testid="review-empty"
+          description={t('review.empty', {
+            defaultValue: 'Geen openstaande reviewitems',
+          })}
+        />
+      ) : (
+        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+          {/* Source 1 — artwork crosscheck review items (actionable). */}
+          <div data-testid="review-section-artwork">
+            <Space align="center" style={{ marginBottom: 8 }}>
+              <Tag color="#2F5A7A">
+                {t('review.sourceArtwork', { defaultValue: 'Artwork' })}
+              </Tag>
+              <Typography.Text type="secondary">
+                {items.length}{' '}
+                {t('review.openItems', { defaultValue: 'openstaande items' })}
+              </Typography.Text>
+            </Space>
+            {items.length === 0 ? (
+              <Empty
+                description={t('review.noArtworkItems', {
+                  defaultValue: 'Geen openstaande artwork-reviewitems',
+                })}
+              />
+            ) : (
+              <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                {items.map((item) => (
+                  <ArtworkReviewItemCard
+                    key={item.id}
+                    item={item}
+                    canMutate={isAdmin}
+                    onAccept={handleAccept}
+                    onReject={handleReject}
+                  />
+                ))}
+              </Space>
+            )}
+          </div>
+
+          {/* Source 2 — uncertain recognition predictions (read-only). */}
+          {uncertain.length > 0 && (
+            <div data-testid="review-section-feedback">
+              <Space align="center" style={{ marginBottom: 8 }}>
+                <Tag color="#54949E">
+                  {t('review.sourceFeedback', { defaultValue: 'Feedback' })}
+                </Tag>
+                <Typography.Text type="secondary">
+                  {uncertain.length}{' '}
+                  {t('review.uncertainItems', { defaultValue: 'onzekere voorspellingen' })}
+                </Typography.Text>
+              </Space>
+              <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                {uncertain.map((u) => (
+                  <Card
+                    key={u.resultId}
+                    size="small"
+                    data-testid="uncertain-item"
+                    style={{ borderColor: '#E2E8F0' }}
+                  >
+                    <Space wrap align="center">
+                      <Typography.Text strong style={{ color: '#1E293B' }}>
+                        {u.logo?.name ?? u.prediction.value ?? u.prediction.category}
+                      </Typography.Text>
+                      <Tag color="#54949E">
+                        {t('review.confidence', { defaultValue: 'Confidence' })}:{' '}
+                        {Math.round((u.prediction.confidence ?? 0) * 100)}%
+                      </Tag>
+                    </Space>
+                  </Card>
+                ))}
+              </Space>
+            </div>
+          )}
+        </Space>
+      )}
+    </div>
+  );
+};
+
+export default React.memo(ArtworkReviewPage);

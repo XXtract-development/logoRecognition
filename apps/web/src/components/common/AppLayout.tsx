@@ -20,6 +20,7 @@ import {
   GlobalOutlined,
   SunOutlined,
   MoonOutlined,
+  CheckCircleOutlined,
 } from '@ant-design/icons';
 import { useThemeStore } from '@/stores/themeStore';
 import { useBackendStatus } from '@/contexts/BackendStatusContext';
@@ -67,6 +68,11 @@ const getNavigationItems = (t: TFunction) => [
     label: t('nav.referenceLibrary', { defaultValue: 'Referenties' }),
   },
   {
+    key: '/artwork-review',
+    icon: <CheckCircleOutlined />,
+    label: t('nav.artworkReview', { defaultValue: 'Review' }),
+  },
+  {
     key: '/dashboard',
     icon: <DashboardOutlined />,
     label: t('nav.dashboard', { defaultValue: 'Dashboard' }),
@@ -89,6 +95,7 @@ export const AppLayout: React.FC = () => {
     if (path.startsWith('/recognize')) return '/recognize';
     if (path.startsWith('/models')) return '/models';
     if (path.startsWith('/reference-library')) return '/reference-library';
+    if (path.startsWith('/artwork-review')) return '/artwork-review';
     if (path.startsWith('/dashboard')) return '/dashboard';
     return '/';
   };

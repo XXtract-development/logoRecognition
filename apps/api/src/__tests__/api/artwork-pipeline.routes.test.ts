@@ -481,6 +481,63 @@ describe('Artwork Pipeline Routes (ATDD — Epic 8)', () => {
   });
 
   // -------------------------------------------------------------------------
+  // Story 8.5 (AC3 UI) — On-view crop presign for the review UI
+  // -------------------------------------------------------------------------
+
+  describe('GET /artwork/review-items/:id/crop-url', () => {
+    it('returns a presigned cropUrl for an item that has a crop', async () => {
+      const storage = await import('../../services/storage');
+      (storage.getReferenceLogoUrl as vi.Mock).mockResolvedValue(
+        'https://minio.example/training/artwork-crops/crop-1.png?sig=abc',
+      );
+      (mockPrisma.artworkReviewItem.findUnique as vi.Mock).mockResolvedValue({
+        id: 'ri-crop',
+        cropPath: 'artwork-crops/08718989912451/crop-1.png',
+      });
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/v1/artwork/review-items/ri-crop/crop-url',
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.cropUrl).toContain('sig=abc');
+      expect(storage.getReferenceLogoUrl).toHaveBeenCalledWith(
+        'artwork-crops/08718989912451/crop-1.png',
+      );
+    });
+
+    it('returns cropUrl=null for a crop-less item (no fabrication)', async () => {
+      const storage = await import('../../services/storage');
+      (mockPrisma.artworkReviewItem.findUnique as vi.Mock).mockResolvedValue({
+        id: 'ri-nocrop',
+        cropPath: null,
+      });
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/v1/artwork/review-items/ri-nocrop/crop-url',
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(JSON.parse(response.body).cropUrl).toBeNull();
+      expect(storage.getReferenceLogoUrl).not.toHaveBeenCalled();
+    });
+
+    it('returns 404 when the review item does not exist', async () => {
+      (mockPrisma.artworkReviewItem.findUnique as vi.Mock).mockResolvedValue(null);
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/v1/artwork/review-items/missing/crop-url',
+      });
+
+      expect(response.statusCode).toBe(404);
+    });
+  });
+
+  // -------------------------------------------------------------------------
   // Story 8.6 — Doorzet: accepted review items → training-data registration
   // -------------------------------------------------------------------------
 

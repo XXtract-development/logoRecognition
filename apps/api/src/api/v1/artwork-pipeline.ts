@@ -8,6 +8,7 @@
  * Story 8.5 — T3777 crosscheck:
  *   POST /artwork/:gtin/crosscheck     { detections, declared } → 200 { autoAccepted, reviewItems }
  *   GET  /artwork/review-queue                                  → 200 open review items
+ *   GET  /artwork/review-items/:id/crop-url                      → 200 { cropUrl } (on-view presign)
  *
  * Story 8.6 — Training data registration with provenance:
  *   POST  /artwork/:gtin/register-training-data    { items }     → 201
@@ -27,7 +28,7 @@ import crypto from 'crypto';
 import prisma from '../../core/db';
 import { logger } from '../../core/logger';
 import { requireRole, authMiddleware } from '../../middleware/auth';
-import { uploadArtwork } from '../../services/storage';
+import { uploadArtwork, getReferenceLogoUrl } from '../../services/storage';
 import { mediaServerClient } from '../../services/mediaserver-client';
 import { mlClient } from '../../services/ml-client';
 import {
@@ -813,6 +814,33 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
       });
 
       return reply.status(200).send({ data: items });
+    }
+  );
+
+  /**
+   * GET /artwork/review-items/:id/crop-url
+   * On-view presigned URL for a single review item's crop. The list endpoint
+   * deliberately does NOT presign every crop eagerly; the review UI requests
+   * this only when an item is opened. `cropPath` is a bare object key inside
+   * the TRAINING bucket (same convention as registered crops / reference
+   * logos), so it is signed via getReferenceLogoUrl. Items without a crop
+   * return cropUrl=null (the UI shows an empty-preview state). Open to any
+   * authenticated user (read-only).
+   */
+  fastify.get<{ Params: { id: string } }>(
+    '/artwork/review-items/:id/crop-url',
+    { preHandler: authMiddleware },
+    async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+      const { id } = request.params;
+
+      const item = await prisma.artworkReviewItem.findUnique({ where: { id } });
+      if (!item) {
+        return reply.status(404).send({ error: 'Review item niet gevonden' });
+      }
+
+      const cropUrl = item.cropPath ? await getReferenceLogoUrl(item.cropPath) : null;
+
+      return reply.status(200).send({ cropUrl });
     }
   );
 
