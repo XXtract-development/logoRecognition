@@ -28,6 +28,13 @@ albumentations==1.3.1
 scikit-image==0.22.0
 
 # ============================================
+# PDF Processing (Epic 8, Story 8.2)
+# ============================================
+# PyMuPDF (fitz) for PDF rasterization. License: AGPL — internal use only.
+# Alternative: pdf2image + poppler-utils (add apt-get install poppler-utils to Dockerfile).
+PyMuPDF>=1.24.0
+
+# ============================================
 # Object Detection
 # ============================================
 effdet==0.4.1  # EfficientDet implementation
