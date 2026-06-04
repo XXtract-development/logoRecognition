@@ -53,6 +53,17 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
         # Continue startup even if models fail to load
         # They can be loaded on-demand
 
+    # Build the reference keurmerk embedding index (Epic 8, Story 8.4).
+    # One embedding per active reference variant, used to classify localised
+    # crops via pgvector cosine. Non-fatal: if it fails, classification falls
+    # back to the classifier route / UNKNOWN.
+    try:
+        from app.services.similarity import similarity_service
+        summary = await similarity_service.rebuild_reference_embeddings()
+        logger.info("Reference embedding index built", extra=summary)
+    except Exception as e:
+        logger.error(f"Failed to build reference embedding index: {e}")
+
     logger.info(f"ML Service started on {settings.HOST}:{settings.PORT}")
 
     yield

@@ -87,6 +87,24 @@ CREATE TABLE IF NOT EXISTS logos.reference_logos (
 -- Index for per-code lookups in the reference library
 CREATE INDEX IF NOT EXISTS idx_reference_logos_t3777_code ON logos.reference_logos (t3777_code);
 
+-- Reference keurmerk embeddings (Epic 8, Story 8.4)
+-- One embedding per active reference variant, used for crop classification via
+-- pgvector cosine. Deliberately SEPARATE from logo_embeddings: (a) reference
+-- embeddings are model-independent (no model_id), (b) sharing logo_embeddings
+-- would pollute find_similar_logos with reference artwork as search results.
+CREATE TABLE IF NOT EXISTS logos.reference_embeddings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    reference_logo_id UUID NOT NULL REFERENCES logos.reference_logos(id) ON DELETE CASCADE,
+    embedding vector(512),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- ivfflat cosine index, mirroring logo_images.embedding
+CREATE INDEX IF NOT EXISTS idx_reference_embeddings_embedding ON logos.reference_embeddings
+    USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
+
+CREATE INDEX IF NOT EXISTS idx_reference_embeddings_ref_id ON logos.reference_embeddings (reference_logo_id);
+
 -- Create search history table for analytics
 CREATE TABLE IF NOT EXISTS logos.search_history (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

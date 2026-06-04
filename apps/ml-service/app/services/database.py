@@ -15,6 +15,30 @@ from app.core.config import settings
 from app.core.logging import logger
 
 
+def _parse_pgvector(value: Any) -> np.ndarray:
+    """Parse a pgvector text representation ("[0.1,0.2,...]") into a numpy array.
+
+    pgvector returns its value as a bracketed, comma-separated string when cast
+    to ::text. asyncpg has no native codec for the vector type, so we parse it
+    here. Returns an empty float32 array on malformed input.
+    """
+    if isinstance(value, np.ndarray):
+        return value.astype(np.float32)
+    if value is None:
+        return np.array([], dtype=np.float32)
+    if isinstance(value, (list, tuple)):
+        return np.array(value, dtype=np.float32)
+    text = str(value).strip()
+    if text.startswith("[") and text.endswith("]"):
+        text = text[1:-1]
+    if not text:
+        return np.array([], dtype=np.float32)
+    try:
+        return np.array([float(x) for x in text.split(",")], dtype=np.float32)
+    except ValueError:
+        return np.array([], dtype=np.float32)
+
+
 class DatabaseService:
     """PostgreSQL database service for ML operations."""
 
@@ -345,6 +369,144 @@ class DatabaseService:
                 str(embedding_list), limit
             )
             return [dict(row) for row in rows if row.get('similarity', 0) >= threshold]
+
+    # ============================================
+    # Reference Embedding Operations (Epic 8, Story 8.4)
+    # ============================================
+    #
+    # Reference embeddings live in their OWN table `reference_embeddings`,
+    # deliberately NOT in `logo_embeddings`:
+    #   (a) logo_embeddings.model_id is NOT NULL, but reference embeddings are
+    #       model-independent (they describe official keurmerk artwork, not a
+    #       trained model's view of it);
+    #   (b) sharing the table would pollute find_similar_logos — reference
+    #       artwork would surface as logo search results.
+    # The pgvector query pattern below mirrors find_similar_logos exactly.
+
+    async def store_reference_embedding(
+        self,
+        reference_logo_id: str,
+        embedding: np.ndarray,
+    ) -> str:
+        """Store an embedding for a reference keurmerk variant."""
+        async with self.get_connection() as conn:
+            embedding_list = embedding.tolist()
+            row = await conn.fetchrow(
+                """
+                INSERT INTO reference_embeddings (reference_logo_id, embedding, created_at)
+                VALUES ($1, $2, NOW())
+                RETURNING id
+                """,
+                reference_logo_id, str(embedding_list)
+            )
+            return str(row['id']) if row else ""
+
+    async def clear_reference_embeddings(self) -> int:
+        """Delete all reference embeddings (used before a full rebuild)."""
+        async with self.get_connection() as conn:
+            result = await conn.execute("DELETE FROM reference_embeddings")
+            # asyncpg returns e.g. "DELETE 12"
+            try:
+                return int(result.split()[-1])
+            except (ValueError, IndexError):
+                return 0
+
+    async def get_reference_embeddings(self) -> List[Dict[str, Any]]:
+        """Return all reference embeddings joined with their keurmerk metadata.
+
+        Each row: {reference_logo_id, t3777_code, variant_label, embedding}
+        where ``embedding`` is parsed back into a numpy float32 array. Only
+        embeddings of ACTIVE reference variants are returned — soft-deleted
+        variants must not influence classification. No holdout filtering applies
+        here: reference embeddings are independent of the training/holdout split.
+
+        Diagnostics/introspection helper (Story 8.4): the production classify
+        path uses pgvector via ``find_similar_references`` (no Python-side vector
+        search). This full-dump accessor exists for index inspection, rebuild
+        verification and tests — NOT for per-crop similarity in the hot path.
+        """
+        async with self.get_connection() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT
+                    re.reference_logo_id,
+                    rl.t3777_code,
+                    rl.variant_label,
+                    re.embedding::text AS embedding_text
+                FROM reference_embeddings re
+                JOIN reference_logos rl ON re.reference_logo_id = rl.id
+                WHERE rl.active = true
+                """
+            )
+            results: List[Dict[str, Any]] = []
+            for row in rows:
+                results.append(
+                    {
+                        "reference_logo_id": str(row["reference_logo_id"]),
+                        "t3777_code": row["t3777_code"],
+                        "variant_label": row["variant_label"],
+                        "embedding": _parse_pgvector(row["embedding_text"]),
+                    }
+                )
+            return results
+
+    async def find_similar_references(
+        self,
+        embedding: np.ndarray,
+        limit: int = 5,
+        threshold: float = 0.75,
+    ) -> List[Dict[str, Any]]:
+        """Find the closest reference keurmerk variants via pgvector cosine.
+
+        Mirrors find_similar_logos (Epic 8 Dev Notes: reuse the existing
+        pgvector search, do NOT build a separate vector search in Python).
+        ``similarity`` = 1 - cosine_distance, clamped into [0, 1]. Only active
+        reference variants are searched; results are filtered by ``threshold``.
+        """
+        async with self.get_connection() as conn:
+            embedding_list = embedding.tolist()
+            rows = await conn.fetch(
+                """
+                SELECT
+                    rl.id AS reference_logo_id,
+                    rl.t3777_code,
+                    rl.variant_label,
+                    1 - (re.embedding <=> $1::vector) AS similarity
+                FROM reference_embeddings re
+                JOIN reference_logos rl ON re.reference_logo_id = rl.id
+                WHERE rl.active = true
+                ORDER BY re.embedding <=> $1::vector
+                LIMIT $2
+                """,
+                str(embedding_list), limit
+            )
+            out: List[Dict[str, Any]] = []
+            for row in rows:
+                sim = float(row.get("similarity", 0.0) or 0.0)
+                sim = max(0.0, min(1.0, sim))  # cosine distance can exceed [0,2]
+                if sim >= threshold:
+                    out.append(
+                        {
+                            "reference_logo_id": str(row["reference_logo_id"]),
+                            "t3777_code": row["t3777_code"],
+                            "variant_label": row["variant_label"],
+                            "similarity": sim,
+                        }
+                    )
+            return out
+
+    async def get_active_reference_logos(self) -> List[Dict[str, Any]]:
+        """Return all active reference keurmerk variants (one row per variant)."""
+        async with self.get_connection() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT id, t3777_code, variant_label, storage_path
+                FROM reference_logos
+                WHERE active = true
+                ORDER BY t3777_code, variant_label
+                """
+            )
+            return [dict(row) for row in rows]
 
     # ============================================
     # Training Data Operations
