@@ -126,7 +126,6 @@ def test_merge_detections_deduplicates_across_tile_boundaries():
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skip(reason="ATDD red phase — implementeer Story 8.4 en verwijder deze marker")
 @pytest.mark.asyncio
 async def test_classify_crop_returns_t3777_label_with_confidence():
     """Een crop levert een T3777-label + confidence via embedding-similarity."""
@@ -141,7 +140,6 @@ async def test_classify_crop_returns_t3777_label_with_confidence():
     assert result["method"] in ("embedding", "classifier")
 
 
-@pytest.mark.skip(reason="ATDD red phase — implementeer Story 8.4 en verwijder deze marker")
 @pytest.mark.asyncio
 async def test_classify_crop_below_threshold_is_marked_uncertain():
     """Confidence onder de drempel ⇒ expliciet 'uncertain' (input voor 8.5-routing)."""
