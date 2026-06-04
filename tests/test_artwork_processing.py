@@ -50,6 +50,91 @@ def test_rasterize_corrupt_pdf_marks_error_without_raising():
 
 
 # ---------------------------------------------------------------------------
+# Story 8.2 — Rasterization endpoint (POST /ml/artwork/rasterize)
+# These exercise the real endpoint handler: MinIO get/put are mocked (no
+# container), rasterize_pdf itself runs for real on a generated PDF.
+# ---------------------------------------------------------------------------
+
+
+def _make_two_page_pdf_bytes() -> bytes:
+    """Generate a real 2-page PDF in-memory (no fixture file pollution)."""
+    import fitz
+
+    doc = fitz.open()
+    for n in range(2):
+        page = doc.new_page()
+        page.insert_text((72, 72), f"page {n + 1}")
+    data = doc.tobytes()
+    doc.close()
+    return data
+
+
+def test_rasterize_endpoint_uploads_pages_and_returns_minio_keys():
+    """AC1: endpoint haalt PDF op, rasterized, upload PNG's, geeft MinIO-keys terug."""
+    import asyncio
+    from app.api.artwork import rasterize_artwork, RasterizeRequest
+    from app.services import storage as storage_module
+
+    pdf_bytes = _make_two_page_pdf_bytes()
+    storage_module.storage_service.get_training_image.return_value = pdf_bytes
+    storage_module.storage_service.put_training_image.side_effect = lambda key, *a, **k: key
+
+    req = RasterizeRequest(storage_path="artwork/08718989912451/label.pdf", dpi=150)
+    resp = asyncio.run(rasterize_artwork(req))
+
+    assert resp.error is None
+    assert len(resp.pages) == 2
+    for i, page in enumerate(resp.pages, start=1):
+        # image_path is the durable MinIO object key, NOT a local temp path
+        assert page.image_path == f"artwork/08718989912451/label.page-{i}.png"
+        assert page.source_file == "label.pdf"
+        assert page.dpi == 150
+        assert page.page == i
+
+    # One upload per page, into the training bucket next to the source
+    assert storage_module.storage_service.put_training_image.call_count == 2
+
+
+def test_rasterize_endpoint_soft_fails_on_corrupt_pdf_no_422():
+    """AC2: corrupt PDF ⇒ 200 met lege pages + reden (geen 422, geen raise)."""
+    import asyncio
+    from app.api.artwork import rasterize_artwork, RasterizeRequest
+    from app.services import storage as storage_module
+
+    storage_module.storage_service.get_training_image.return_value = b"%PDF-1.4 broken"
+    storage_module.storage_service.put_training_image.reset_mock()
+    storage_module.storage_service.put_training_image.side_effect = lambda key, *a, **k: key
+
+    req = RasterizeRequest(storage_path="artwork/08718989912451/corrupt.pdf", dpi=150)
+    resp = asyncio.run(rasterize_artwork(req))
+
+    assert resp.pages == []
+    assert resp.error is not None
+    # Nothing should have been uploaded for an unrasterizable PDF
+    assert storage_module.storage_service.put_training_image.call_count == 0
+
+
+def test_rasterize_endpoint_raises_422_on_storage_fetch_failure():
+    """Storage-/input-fout ⇒ HTTP 422 (training.py-contract), niet stilletjes leeg."""
+    import asyncio
+    from fastapi import HTTPException
+    from app.api.artwork import rasterize_artwork, RasterizeRequest
+    from app.services import storage as storage_module
+
+    storage_module.storage_service.get_training_image.side_effect = RuntimeError("not found")
+
+    req = RasterizeRequest(storage_path="artwork/missing/none.pdf", dpi=150)
+    try:
+        asyncio.run(rasterize_artwork(req))
+        assert False, "expected HTTPException(422)"
+    except HTTPException as exc:
+        assert exc.status_code == 422
+    finally:
+        # Reset for any later tests sharing the module-level mock
+        storage_module.storage_service.get_training_image.side_effect = None
+
+
+# ---------------------------------------------------------------------------
 # Story 8.3 — Keurmerk-lokalisatie: tiling + template-matching (P0)
 # ---------------------------------------------------------------------------
 

@@ -24,6 +24,7 @@ import Fastify, { FastifyInstance } from 'fastify';
 import cookie from '@fastify/cookie';
 import { PrismaClient } from '@prisma/client';
 import { mockUser, mockArtworkImportRun, mockArtworkImport } from '../helpers/mock-data';
+import { mlClient } from '../../services/ml-client';
 
 const mockPrisma = new PrismaClient() as vi.Mocked<PrismaClient>;
 
@@ -347,6 +348,111 @@ describe('Artwork Pipeline Routes (ATDD — Epic 8)', () => {
       expect(response.statusCode).toBe(200);
       expect(JSON.parse(response.body).deactivated).toBe(4);
       expect(mockPrisma.trainingData.delete).not.toHaveBeenCalled();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Story 8.2 — PDF-artwork rasterization (P0)
+  //   AC1: na import van een PDF → rasterization-stap; paginarelatie vastgelegd
+  //   AC2: rasterization-fout = zacht falen, item blijft 'imported', geen pipeline-fout
+  // -------------------------------------------------------------------------
+
+  describe('rasterizeImportedPdf (Story 8.2)', () => {
+    it('rasterizes a PDF and persists the page relation in ArtworkImport.pages', async () => {
+      const { rasterizeImportedPdf } = await import('../../api/v1/artwork-pipeline');
+
+      (mlClient.rasterizeArtwork as vi.Mock).mockResolvedValueOnce({
+        storage_path: 'artwork/08718989912451/label.pdf',
+        dpi: 300,
+        pages: [
+          { source_file: 'label.pdf', page: 1, image_path: 'artwork/08718989912451/label.page-1.png', dpi: 300 },
+          { source_file: 'label.pdf', page: 2, image_path: 'artwork/08718989912451/label.page-2.png', dpi: 300 },
+        ],
+        error: null,
+      });
+
+      await rasterizeImportedPdf('import-001', '08718989912451', 'artwork/08718989912451/label.pdf');
+
+      // ML service was called with the storage path + DPI
+      expect(mlClient.rasterizeArtwork).toHaveBeenCalledWith('artwork/08718989912451/label.pdf', 300);
+
+      // Page relation is persisted as a structured JSON object (not a string)
+      expect(mockPrisma.artworkImport.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'import-001' },
+          data: {
+            pages: {
+              dpi: 300,
+              pages: [
+                { page: 1, imagePath: 'artwork/08718989912451/label.page-1.png' },
+                { page: 2, imagePath: 'artwork/08718989912451/label.page-2.png' },
+              ],
+            },
+          },
+        }),
+      );
+    });
+
+    it('soft-fails on rasterization error: records reason, item stays imported, never throws', async () => {
+      const { rasterizeImportedPdf } = await import('../../api/v1/artwork-pipeline');
+
+      (mlClient.rasterizeArtwork as vi.Mock).mockRejectedValueOnce(new Error('ML service down'));
+
+      // Must not throw (AC2: telt niet als pipeline-fout)
+      await expect(
+        rasterizeImportedPdf('import-002', '08718989912451', 'artwork/08718989912451/broken.pdf'),
+      ).resolves.toBeUndefined();
+
+      // The error is recorded on the item's pages JSON; status is NOT touched.
+      const updateCall = (mockPrisma.artworkImport.update as vi.Mock).mock.calls.find(
+        (c) => c[0]?.where?.id === 'import-002',
+      );
+      expect(updateCall).toBeDefined();
+      expect(updateCall[0].data.pages.error).toContain('ML service down');
+      expect(updateCall[0].data.pages.pages).toEqual([]);
+      // Soft-fail must never flip the import status to 'failed'
+      expect(updateCall[0].data).not.toHaveProperty('status');
+    });
+
+    it('propagates the corrupt-PDF soft error from the ML service (200, empty pages + reason)', async () => {
+      const { rasterizeImportedPdf } = await import('../../api/v1/artwork-pipeline');
+
+      (mlClient.rasterizeArtwork as vi.Mock).mockResolvedValueOnce({
+        storage_path: 'artwork/08718989912451/corrupt.pdf',
+        dpi: 300,
+        pages: [],
+        error: 'PDF kon niet gerasterized worden (corrupt, leeg of beveiligd)',
+      });
+
+      await rasterizeImportedPdf('import-003', '08718989912451', 'artwork/08718989912451/corrupt.pdf');
+
+      const updateCall = (mockPrisma.artworkImport.update as vi.Mock).mock.calls.find(
+        (c) => c[0]?.where?.id === 'import-003',
+      );
+      expect(updateCall).toBeDefined();
+      expect(updateCall[0].data.pages.pages).toEqual([]);
+      expect(updateCall[0].data.pages.error).toMatch(/corrupt/i);
+    });
+  });
+
+  describe('Import flow PDF detection (Story 8.2 AC1)', () => {
+    it('does NOT rasterize a non-PDF (JPG) import', async () => {
+      // The mocked mediaserver returns a .jpg item for this GTIN; after a full
+      // import run, rasterizeArtwork must not be invoked for it.
+      (mlClient.rasterizeArtwork as vi.Mock).mockClear();
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/v1/artwork-import/runs',
+        payload: { gtins: ['08718989912451'] },
+      });
+      expect(response.statusCode).toBe(202);
+
+      // Allow the background (setImmediate) import loop to run to completion.
+      await new Promise((resolve) => setImmediate(resolve));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mlClient.rasterizeArtwork).not.toHaveBeenCalled();
     });
   });
 });
