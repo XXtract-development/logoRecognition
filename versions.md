@@ -2,6 +2,13 @@
 
 ## 2026-06-04 (Epic 8 — Automatische Trainingsdata)
 
+### Stabiliteits- en kwaliteitsverbeteringen (code-review)
+- Gedeactiveerde trainingsdata (afgekeurde bron) wordt nu daadwerkelijk uitgesloten van modeltraining en de holdout-evaluatie — voorheen telde een gedeactiveerd record nog mee
+- Registratie van meerdere crops gebeurt nu in één transactie: bij een fout halverwege blijven er geen half-opgeslagen records achter
+- Synthetische trainingsdata kan niet meer als holdout gemarkeerd worden (de evaluatieset blijft gegarandeerd 100% echt)
+- Een herhaalde mislukte import voor dezelfde productcode laat de importrun niet meer vastlopen
+- Crop-classificatie verzint geen keurmerk-label meer wanneer er geen referentie beschikbaar is: de regio wordt dan als 'onzeker' gemarkeerd voor handmatige beoordeling in plaats van met een gegokt label de trainingsdata in te gaan
+
 ### Synthetische trainingsdata-generatie
 - Schaarse klassen worden automatisch aangevuld met synthetisch gegenereerde trainingsdata
 - De ratio echte/synthetische voorbeelden is configureerbaar; het ratio-plafond wint altijd over het minimum (kwaliteit boven kwantiteit)

@@ -136,19 +136,16 @@ async def classify_crop(
                         best_score = sim
                         best_code = ref.get("t3777_code", CLASSIFY_UNKNOWN_CODE)
         except Exception as db_exc:
-            logger.debug(
-                "Reference embedding lookup failed, using heuristic",
+            logger.warning(
+                "Reference embedding lookup failed — returning UNKNOWN/uncertain",
                 extra={"error": str(db_exc)},
             )
 
-        # --- Fallback: pixel-histogram heuristic when no DB references --------
-        # When the database is unavailable (e.g. in tests with mocked db),
-        # we use a lightweight heuristic: compute an internal classification
-        # based on the crop's colour distribution.  This ensures the function
-        # always returns a sensible result structure for unit tests.
-        if best_score == 0.0 and best_code == CLASSIFY_UNKNOWN_CODE:
-            best_code, best_score = _heuristic_classify(crop_embedding)
-            method = "classifier"
+        # No reference match (no references available, or lookup failed) →
+        # return UNKNOWN with confidence 0.0 so the result is marked uncertain
+        # and routed to human review (Story 8.5). We deliberately do NOT
+        # fabricate a plausible-looking T3777 label here: inventing labels would
+        # poison the training data downstream. Failing closed is correct.
 
     result: Dict[str, Any] = {
         "t3777_code": best_code,
@@ -160,39 +157,3 @@ async def classify_crop(
         result["uncertain"] = True
 
     return result
-
-
-# ---------------------------------------------------------------------------
-# Heuristic classifier (fallback / test path)
-# ---------------------------------------------------------------------------
-
-
-def _heuristic_classify(embedding: np.ndarray) -> tuple:
-    """
-    Lightweight heuristic used when no reference embeddings are available.
-
-    Divides the embedding value space into a small number of bins and picks
-    the most common bin as a pseudo-label.  This is purely to guarantee that
-    the function returns a non-empty t3777_code in isolated unit tests.
-
-    Returns: (t3777_code: str, confidence: float)
-    """
-    # Assign a pseudo-code based on the dominant value range in the embedding
-    mean_val = float(np.mean(embedding))
-    # Map mean value to a coarse label
-    if mean_val < 0.25:
-        code = "T3777_ORGANIC"
-    elif mean_val < 0.50:
-        code = "T3777_RECYCLING"
-    elif mean_val < 0.75:
-        code = "T3777_FAIRTRADE"
-    else:
-        code = "T3777_EU_LEAF"
-
-    # Confidence is a function of how far the mean deviates from midpoints
-    # (a very bimodal embedding → higher confidence; flat → lower)
-    std_val = float(np.std(embedding))
-    # Normalise to [0, 1] using std; 0.3 std → ~confidence 0.75
-    confidence = min(1.0, std_val * 2.5)
-
-    return code, confidence

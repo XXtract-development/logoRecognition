@@ -377,6 +377,9 @@ class DatabaseService:
         holdout_clause = "" if include_holdout else "AND td.holdout = false"
         holdout_clause_left = "" if include_holdout else "WHERE td.holdout IS NOT TRUE"
         if validated_only:
+            # active=false records are deactivated bad sources (Epic 8, Story 8.6)
+            # and must never reach the training selection. Applied at the inner
+            # JOIN where td.active is guaranteed non-null.
             query = f"""
                 SELECT
                     li.id, li.filename, li.storage_path, li.brand_name,
@@ -384,17 +387,23 @@ class DatabaseService:
                 FROM logo_images li
                 JOIN training_data td ON td.image_id = li.id
                 WHERE td.validated = true
+                  AND td.active = true
                   {holdout_clause}
                 ORDER BY li.created_at DESC
             """
         else:
+            # LEFT JOIN: keep images without any training_data row (td.active NULL);
+            # only exclude rows that are explicitly deactivated (Epic 8, Story 8.6).
+            active_clause_left = "AND (td.active = true OR td.id IS NULL)"
+            base_where = holdout_clause_left or "WHERE 1=1"
             query = f"""
                 SELECT
                     li.id, li.filename, li.storage_path, li.brand_name,
                     td.label, td.confidence
                 FROM logo_images li
                 LEFT JOIN training_data td ON td.image_id = li.id
-                {holdout_clause_left}
+                {base_where}
+                  {active_clause_left}
                 ORDER BY li.created_at DESC
             """
         return await self._execute_query(query)
@@ -413,6 +422,7 @@ class DatabaseService:
             JOIN training_data td ON td.image_id = li.id
             WHERE td.validated = true
               AND td.holdout = true
+              AND td.active = true
             ORDER BY li.created_at DESC
         """
         return await self._execute_query(query)

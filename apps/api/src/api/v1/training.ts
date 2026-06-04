@@ -235,6 +235,27 @@ export async function trainingRoutes(fastify: FastifyInstance) {
       const { holdout } = request.body;
 
       try {
+        // NFR3 (Epic 8, Stories 8.6/8.7): synthetic training data may NEVER
+        // enter the holdout set — the protected evaluation set stays 100% real.
+        // Refuse the transition before mutating.
+        if (holdout === true) {
+          const existing = await prisma.trainingData.findUnique({
+            where: { id },
+            select: { provenance: true },
+          });
+          // If the record is found and originates from synthetic generation,
+          // refuse the holdout transition. A missing record falls through to
+          // the update below, which maps Prisma P2025 to a 404.
+          const provenance = (existing?.provenance ?? null) as { method?: string } | null;
+          if (provenance?.method === 'synthetic') {
+            return reply.status(422).send({
+              error: 'Unprocessable Entity',
+              message:
+                'Synthetic training data cannot be marked as holdout (NFR3: the holdout set must remain 100% real).',
+            });
+          }
+        }
+
         const updated = await prisma.trainingData.update({
           where: { id },
           data: { holdout },

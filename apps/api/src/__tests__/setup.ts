@@ -161,7 +161,16 @@ vi.mock('@prisma/client', () => {
       delete: vi.fn(),
       count: vi.fn(),
     },
-    $transaction: vi.fn((operations: unknown[]) => Promise.all(operations)),
+    // Supports both Prisma transaction forms:
+    //  - array form: prisma.$transaction([op1, op2, ...])
+    //  - interactive form: prisma.$transaction(async (tx) => { ... })
+    // In the interactive form the same mock client is handed back as `tx`,
+    // so per-call assertions on mockPrismaClient.* keep working.
+    $transaction: vi.fn((arg: unknown) =>
+      typeof arg === 'function'
+        ? (arg as (tx: unknown) => unknown)(mockPrismaClient)
+        : Promise.all(arg as unknown[])
+    ),
     $connect: vi.fn(),
     $disconnect: vi.fn(),
   };

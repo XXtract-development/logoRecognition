@@ -111,13 +111,23 @@ async function importGtin(runId: string, gtin: string): Promise<void> {
       gtin,
       error: err instanceof Error ? err.message : String(err),
     });
-    // Count the entire GTIN as a single failure
-    await prisma.artworkImport.create({
-      data: {
+    // Count the entire GTIN as a single failure.
+    // Upsert (not create): a repeated discovery failure for the same GTIN on a
+    // re-run would otherwise collide with the @@unique([mediaId]) constraint and
+    // crash the whole run.
+    const failureMediaId = `discovery-failure-${gtin}`;
+    await prisma.artworkImport.upsert({
+      where: { mediaId: failureMediaId },
+      create: {
         gtin,
-        mediaId: `discovery-failure-${gtin}`,
+        mediaId: failureMediaId,
         fileName: '',
         sourceLocation: '',
+        status: 'failed',
+        failureReason: err instanceof Error ? err.message : String(err),
+        importRunId: runId,
+      },
+      update: {
         status: 'failed',
         failureReason: err instanceof Error ? err.message : String(err),
         importRunId: runId,
@@ -541,61 +551,67 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
 
       const KEURMERK_CATEGORY = 'keurmerk';
 
-      const created: string[] = [];
+      let created: string[] = [];
 
-      for (const item of items) {
-        try {
-          // Find or create a LogoImage for this crop path (artwork source marker).
-          // storagePath is not unique in the schema, so we use findFirst + create.
-          let logoImage = await prisma.logoImage.findFirst({
-            where: { storagePath: item.cropPath },
-            select: { id: true },
-          });
-          if (!logoImage) {
-            logoImage = await prisma.logoImage.create({
+      // Register all items atomically: a failure mid-loop must not leave a
+      // partial set of training-data records behind (the previous per-item
+      // catch returned 500 while committing items 0..N-1).
+      try {
+        created = await prisma.$transaction(async (tx) => {
+          const ids: string[] = [];
+          for (const item of items) {
+            // Find or create a LogoImage for this crop path (artwork source marker).
+            // storagePath is not unique in the schema, so we use findFirst + create.
+            let logoImage = await tx.logoImage.findFirst({
+              where: { storagePath: item.cropPath },
+              select: { id: true },
+            });
+            if (!logoImage) {
+              logoImage = await tx.logoImage.create({
+                data: {
+                  filename: item.sourceFile,
+                  storagePath: item.cropPath,
+                  metadata: { artworkSource: true, gtin },
+                },
+              });
+            }
+
+            // Upsert the Logo (category=keurmerk) to maintain stats linkage
+            await tx.logo.upsert({
+              where: { category_value: { category: KEURMERK_CATEGORY, value: item.t3777Code } },
+              update: {},
+              create: { category: KEURMERK_CATEGORY, value: item.t3777Code },
+            });
+
+            // Create the training data record with provenance
+            const td = await tx.trainingData.create({
               data: {
-                filename: item.sourceFile,
-                storagePath: item.cropPath,
-                metadata: { artworkSource: true, gtin },
+                imageId: logoImage.id,
+                label: item.t3777Code,
+                confidence: item.confidence,
+                validated: true,
+                holdout: false,
+                active: true,
+                cropPath: item.cropPath,
+                provenance: {
+                  sourceFile: item.sourceFile,
+                  bbox: item.bbox,
+                  method: item.method,
+                  confidence: item.confidence,
+                },
               },
             });
+
+            ids.push(td.id);
           }
-
-          // Upsert the Logo (category=keurmerk) to maintain stats linkage
-          await prisma.logo.upsert({
-            where: { category_value: { category: KEURMERK_CATEGORY, value: item.t3777Code } },
-            update: {},
-            create: { category: KEURMERK_CATEGORY, value: item.t3777Code },
-          });
-
-          // Create the training data record with provenance
-          const td = await prisma.trainingData.create({
-            data: {
-              imageId: logoImage.id,
-              label: item.t3777Code,
-              confidence: item.confidence,
-              validated: true,
-              holdout: false,
-              active: true,
-              cropPath: item.cropPath,
-              provenance: {
-                sourceFile: item.sourceFile,
-                bbox: item.bbox,
-                method: item.method,
-                confidence: item.confidence,
-              },
-            },
-          });
-
-          created.push(td.id);
-        } catch (err) {
-          logger.error('Failed to register training data item', {
-            gtin,
-            t3777Code: item.t3777Code,
-            error: err instanceof Error ? err.message : String(err),
-          });
-          return reply.status(500).send({ error: 'Registratie van trainingsdata mislukt' });
-        }
+          return ids;
+        });
+      } catch (err) {
+        logger.error('Failed to register training data items', {
+          gtin,
+          error: err instanceof Error ? err.message : String(err),
+        });
+        return reply.status(500).send({ error: 'Registratie van trainingsdata mislukt' });
       }
 
       logger.info('Training data registered from artwork', {
