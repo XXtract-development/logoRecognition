@@ -1,0 +1,563 @@
+[
+  {
+    "filename": "klas-A/img001.png",
+    "label": "klas-A",
+    "split": "train",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "klas-A/img002.png",
+    "label": "klas-A",
+    "split": "train",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "klas-A/img003.png",
+    "label": "klas-A",
+    "split": "train",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "klas-A/img004.png",
+    "label": "klas-A",
+    "split": "train",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "klas-A/img005.png",
+    "label": "klas-A",
+    "split": "train",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "klas-A/img006.png",
+    "label": "klas-A",
+    "split": "train",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "klas-A/img007.png",
+    "label": "klas-A",
+    "split": "train",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "klas-A/img008.png",
+    "label": "klas-A",
+    "split": "train",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "klas-A/img009.png",
+    "label": "klas-A",
+    "split": "train",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "klas-A/img010.png",
+    "label": "klas-A",
+    "split": "train",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "klas-A/img011.png",
+    "label": "klas-A",
+    "split": "train",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "klas-A/img012.png",
+    "label": "klas-A",
+    "split": "train",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "klas-B/img001.png",
+    "label": "klas-B",
+    "split": "train",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "klas-B/img002.png",
+    "label": "klas-B",
+    "split": "train",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "klas-B/img003.png",
+    "label": "klas-B",
+    "split": "train",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "klas-B/img004.png",
+    "label": "klas-B",
+    "split": "train",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "klas-B/img005.png",
+    "label": "klas-B",
+    "split": "train",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "klas-B/img006.png",
+    "label": "klas-B",
+    "split": "train",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "klas-B/img007.png",
+    "label": "klas-B",
+    "split": "train",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "klas-B/img008.png",
+    "label": "klas-B",
+    "split": "train",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "klas-B/img009.png",
+    "label": "klas-B",
+    "split": "train",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "klas-B/img010.png",
+    "label": "klas-B",
+    "split": "train",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "klas-B/img011.png",
+    "label": "klas-B",
+    "split": "train",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "klas-B/img012.png",
+    "label": "klas-B",
+    "split": "train",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "klas-C/img001.png",
+    "label": "klas-C",
+    "split": "train",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "klas-C/img002.png",
+    "label": "klas-C",
+    "split": "train",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "klas-C/img003.png",
+    "label": "klas-C",
+    "split": "train",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "klas-C/img004.png",
+    "label": "klas-C",
+    "split": "train",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "klas-C/img005.png",
+    "label": "klas-C",
+    "split": "train",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "klas-C/img006.png",
+    "label": "klas-C",
+    "split": "train",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "klas-C/img007.png",
+    "label": "klas-C",
+    "split": "train",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "klas-C/img008.png",
+    "label": "klas-C",
+    "split": "train",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "klas-C/img009.png",
+    "label": "klas-C",
+    "split": "train",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "klas-C/img010.png",
+    "label": "klas-C",
+    "split": "train",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "klas-C/img011.png",
+    "label": "klas-C",
+    "split": "train",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "klas-C/img012.png",
+    "label": "klas-C",
+    "split": "train",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "holdout/klas-A/img001.png",
+    "label": "klas-A",
+    "split": "holdout",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "holdout/klas-A/img002.png",
+    "label": "klas-A",
+    "split": "holdout",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "holdout/klas-A/img003.png",
+    "label": "klas-A",
+    "split": "holdout",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "holdout/klas-A/img004.png",
+    "label": "klas-A",
+    "split": "holdout",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "holdout/klas-A/img005.png",
+    "label": "klas-A",
+    "split": "holdout",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "holdout/klas-B/img001.png",
+    "label": "klas-B",
+    "split": "holdout",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "holdout/klas-B/img002.png",
+    "label": "klas-B",
+    "split": "holdout",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "holdout/klas-B/img003.png",
+    "label": "klas-B",
+    "split": "holdout",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "holdout/klas-B/img004.png",
+    "label": "klas-B",
+    "split": "holdout",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "holdout/klas-B/img005.png",
+    "label": "klas-B",
+    "split": "holdout",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "holdout/klas-C/img001.png",
+    "label": "klas-C",
+    "split": "holdout",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "holdout/klas-C/img002.png",
+    "label": "klas-C",
+    "split": "holdout",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "holdout/klas-C/img003.png",
+    "label": "klas-C",
+    "split": "holdout",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "holdout/klas-C/img004.png",
+    "label": "klas-C",
+    "split": "holdout",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  },
+  {
+    "filename": "holdout/klas-C/img005.png",
+    "label": "klas-C",
+    "split": "holdout",
+    "bbox": {
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  }
+]

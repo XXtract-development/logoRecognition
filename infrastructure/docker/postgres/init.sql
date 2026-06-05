@@ -301,6 +301,43 @@ ALTER TABLE logos.training_data
 CREATE INDEX IF NOT EXISTS idx_training_data_active ON logos.training_data (active);
 CREATE INDEX IF NOT EXISTS idx_training_data_provenance ON logos.training_data USING GIN (provenance jsonb_path_ops);
 
+-- =============================================================================
+-- Epic 9, Story 9.2: Retraining notifications (migration 0007)
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS logos.retraining_notifications (
+    id          UUID        NOT NULL DEFAULT gen_random_uuid(),
+    trigger_id  VARCHAR(128) NOT NULL,
+    reasons     TEXT[]      NOT NULL DEFAULT '{}',
+    status      VARCHAR(20) NOT NULL DEFAULT 'unread',
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    read_at     TIMESTAMPTZ,
+
+    CONSTRAINT retraining_notifications_pkey PRIMARY KEY (id),
+    CONSTRAINT retraining_notifications_trigger_id_key UNIQUE (trigger_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_retraining_notifications_status_created
+    ON logos.retraining_notifications (status, created_at DESC);
+
+-- =============================================================================
+-- Epic 9, Story 9.5: Model activation audit log (migration 0008)
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS logos.model_activation_logs (
+    id               UUID        NOT NULL DEFAULT gen_random_uuid(),
+    model_version_id UUID        NOT NULL,
+    user_id          VARCHAR(255) NOT NULL,
+    activated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    triggered_by     VARCHAR(50) NOT NULL,
+    batch_id         UUID,
+
+    CONSTRAINT model_activation_logs_pkey PRIMARY KEY (id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_model_activation_logs_model_version_id
+    ON logos.model_activation_logs (model_version_id);
+CREATE INDEX IF NOT EXISTS idx_model_activation_logs_activated_at
+    ON logos.model_activation_logs (activated_at DESC);
+
 -- Grant permissions
 GRANT ALL PRIVILEGES ON SCHEMA logos TO postgres;
 GRANT ALL PRIVILEGES ON SCHEMA monitoring TO postgres;
@@ -313,6 +350,9 @@ GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA monitoring TO postgres;
 -- GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE logos.artwork_import_runs TO logorecognition;
 -- GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE logos.artwork_imports TO logorecognition;
 -- GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE logos.artwork_review_items TO logorecognition;
+-- Epic 9 tables:
+GRANT SELECT, INSERT, UPDATE ON TABLE logos.retraining_notifications TO logorecognition;
+GRANT SELECT, INSERT ON TABLE logos.model_activation_logs TO logorecognition;
 
 -- Insert initial model version
 INSERT INTO logos.model_versions (version, model_type, is_active)

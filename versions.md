@@ -1,5 +1,59 @@
 # Versiegeschiedenis
 
+## 2026-06-05 (Epic 9 — Automatische Retraining: CI-smoke-test 9.6, revisie)
+
+### Geautomatiseerde regressiedetectie voor de volledige trainingspipeline — volledige flowdekking
+- Smoke-test uitgebreid met alle vijf pipelinestappen: incorporate (feedbacktelling op de mini-dataset), batch-opbouw (synthetisch aanvullen), trainen (2 epochs via ML-client), holdout-evaluatie (metriekencontract) en kwaliteitsgate
+- De kwaliteitsdrempel-test gebruikt uitsluitend de omgevingsvariabele `GATE_MIN_IMPROVEMENT` — geen expliciete doorgave in de aanroep — waardoor bewezen wordt dat de drempel werkelijk wordt gelezen uit de configuratie
+- Verwijderd: verouderde stub-testfile (`tests/smoke/pipeline-smoke-test.ts`) die nooit door de testrunner werd opgepikt
+- CI-aanroep gecorrigeerd naar `cd apps/api && npx vitest run ...` zodat de Vitest-configuratie en setupbestanden correct worden geladen
+- Totale looptijd van de smoke-test: onder de 5 minuten dankzij gemockte ML-service en kleine testdataset
+
+## 2026-06-05 (Epic 9 — Automatische Retraining: Goedkeuringsscherm 9.5)
+
+### Eén-klik modelactivatie met volledig evaluatierapport
+- Nieuwe pagina `/models/approval` toont uitsluitend modellen die de kwaliteitsgate haalden en op goedkeuring wachten
+- Per kandidaat-model ziet de datamanager een vergelijkingskaart: de nauwkeurigheid van het nieuwe model naast die van het huidige actieve model, het verschil en de reden voor de retraining-trigger
+- Activatie vereist één handeling: bevestig via de "Activeren"-knop; het systeem weigert geautomatiseerde activatiepogingen (servicesleutel in de header geeft een 403-foutmelding)
+- Elke activatie wordt vastgelegd met gebruiker, tijdstip en trigger-context (traceerbaarheid voor toekomstige audit-trail)
+
+## 2026-06-05 (Epic 9 — Automatische Retraining: Kwaliteitsgate 9.4)
+
+### Automatische kwaliteitsdrempel voor getrainde modellen
+- Na elke training beoordeelt een kwaliteitsgate automatisch of het nieuwe model de actieve versie overtreft op dezelfde testset
+- Een challenger die de huidige champion haalt of overtreft op nauwkeurigheid (en dezelfde holdout-set heeft gebruikt) wordt doorgestuurd voor goedkeuring
+- Afgewezen modellen worden geregistreerd met de vergelijkingscijfers; de datamanager ontvangt een melding met de exacte scores van beide modellen
+- Eerste trainingsrun (geen actieve champion) en legacy-modellen zonder testmetriken worden automatisch goedgekeurd
+- De minimale verbetering is instelbaar via de omgevingsvariabele `GATE_MIN_IMPROVEMENT` (standaard: gelijk of beter dan champion)
+
+## 2026-06-05 (Epic 9 — Automatische Retraining: Trainingspipeline 9.3)
+
+### Crash-bestendige trainingspipeline
+- De volledige retraining-pipeline draait nu als een aaneengekoppelde BullMQ-jobflow: incorporate-feedback → build-batch → train-model → evaluate-model
+- Elke stap in de flow is afzonderlijk herstelbaar: een herstarte container pikt de flow op vanaf de niet-voltooide stap, zonder de eerder afgeronde stappen te herhalen
+- De trainingsworker draait met concurrency 1 en binnen een configureerbaar tijdvenster (standaard 22:00–06:00) om productieverkeer niet te hinderen
+- Klassen met onvoldoende trainingsbeelden worden automatisch aangevuld via synthetische data (deferred van Story 8.7); het tekortrapport per klasse wordt gelogd op taakniveau
+- Datamanagers kunnen een trainingscyclus handmatig starten via de API (`POST /api/v1/pipeline/training/start`); het systeem weigert een nieuwe start als er al een actieve trainingsrun loopt
+
+## 2026-06-05 (Epic 9 — Automatische Retraining: Trigger & Notificaties 9.2)
+
+### Automatische herkenningsmeldingen
+- Het systeem controleert dagelijks (06:00) of hertraining zinvol is op basis van drie configureerbare drempels: minimaal aantal nieuwe annotaties, ratio onverwerkte feedback, en modelnauwkeurigheid
+- Bij een positieve check ontvangt de datamanager een concrete melding met het exacte aantal nieuwe annotaties ("512 nieuwe gevalideerde annotaties")
+- Meldingen worden bewaard in de database zodat een later paginabezoek de notificatie alsnog toont — een offline datamanager mist nooit een trigger
+- Dubbele meldingen worden onderdrukt: dezelfde trigger verstuurt hooguit één keer per 24 uur een notificatie, ook na een API-herstart (Redis-dedup)
+- Gelezen meldingen kunnen worden weggestreept via de "Gelezen"-knop in de banner
+
+## 2026-06-05 (Epic 9 — Automatische Retraining: Infrastructure 9.1)
+
+### Persistente job-wachtrij voor de trainingspipeline
+- Alle retraining-taken draaien nu in een persistente BullMQ-wachtrij die is opgeslagen in Redis; een herstarte container verliest nooit meer een taak in uitvoering
+- Elke taak wordt automatisch tot 3× opnieuw geprobeerd met exponentiële wachttijd bij tijdelijke fouten
+- Mislukte taken zijn terug te vinden in de taakgeschiedenis met de precieze foutmelding en een "opnieuw starten" optie
+- De trainingsoverzichtspagina toont nu een paneel met de actuele status van alle pipelinetaken
+- Geautomatiseerde planners authenticeren via een apart serviceaccount (API-sleutel); menselijke activatie blijft altijd vereist
+- Redis is toegevoegd aan alle deploymentconfiguraties (development, ACC en productie)
+
 ## 2026-06-04 (Epic 8 — Review-scherm & bibliotheekweergave)
 
 ### Beoordelingsscherm voor artwork-detecties

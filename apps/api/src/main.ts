@@ -26,6 +26,9 @@ import { feedbackRoutes } from './api/v1/feedback';
 import { statsRoutes } from './api/v1/stats';
 import { referenceLogosRoutes } from './api/v1/reference-logos';
 import { artworkPipelineRoutes } from './api/v1/artwork-pipeline';
+import { pipelineRoutes } from './api/v1/pipeline';
+import { registerRetrainingCronJob } from './services/pipeline/trigger';
+import { registerTrainingFlowWorker } from './services/pipeline/workers';
 import { logger } from './core/logger';
 import { wsManager } from './services/websocket-manager';
 import { socketIOManager } from './services/socket-io-manager';
@@ -128,6 +131,7 @@ async function startServer() {
     await app.register(statsRoutes, { prefix: '/api/v1' });
     await app.register(referenceLogosRoutes, { prefix: '/api/v1' });
     await app.register(artworkPipelineRoutes, { prefix: '/api/v1' });
+    await app.register(pipelineRoutes, { prefix: '/api/v1' });
 
     // ==========================================
     // Static Files (Monolith: serve frontend build)
@@ -280,6 +284,26 @@ async function startServer() {
     // Initialize Socket.IO with the HTTP server
     const httpServer = app.server;
     socketIOManager.initialize(httpServer);
+
+    // Register pipeline cron jobs (Epic 9 — retraining trigger scheduler)
+    // Only register when Redis is configured and not in test mode
+    if (process.env.REDIS_URL && process.env.NODE_ENV !== 'test') {
+      registerRetrainingCronJob().catch((err) => {
+        logger.warn('Failed to register retraining cron job (Redis may not be ready)', {
+          error: err instanceof Error ? err.message : 'Unknown error',
+        });
+      });
+
+      // Story 9.3: register the worker that processes the four training-flow steps
+      // (incorporate-feedback → build-batch → train-model → evaluate-model).
+      try {
+        registerTrainingFlowWorker();
+      } catch (err) {
+        logger.warn('Failed to register training-flow worker (Redis may not be ready)', {
+          error: err instanceof Error ? err.message : 'Unknown error',
+        });
+      }
+    }
 
     logger.info(`API Gateway started`, {
       host,

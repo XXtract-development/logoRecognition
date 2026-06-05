@@ -10,6 +10,8 @@ import { createLogger } from '../../core/logger';
 import prisma from '../../core/db';
 // Shared holdout-metrics mapper (single source of truth for the API shape).
 import { mapHoldoutMetrics } from '../../services/holdout-metrics';
+// Shared feedback-incorporation service (also used by the training-flow worker).
+import { incorporatePendingFeedback } from '../../services/pipeline/feedback-incorporation';
 
 const logger = createLogger('feedback');
 
@@ -470,18 +472,9 @@ export async function feedbackRoutes(fastify: FastifyInstance) {
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
       try {
-        // Get unincorporated feedback with correct logo assignments
-        const pendingFeedback = await prisma.feedbackEntry.findMany({
-          where: {
-            incorporated: false,
-            correctLogoId: { not: null },
-          },
-          include: {
-            log: true,
-          },
-        });
+        const { incorporated } = await incorporatePendingFeedback();
 
-        if (pendingFeedback.length === 0) {
+        if (incorporated === 0) {
           return {
             success: true,
             message: 'No pending feedback to incorporate',
@@ -489,52 +482,10 @@ export async function feedbackRoutes(fastify: FastifyInstance) {
           };
         }
 
-        // Create training data entries from feedback
-        let incorporatedCount = 0;
-        for (const feedback of pendingFeedback) {
-          // Create training data if there's an associated image
-          if (feedback.log.imageHash) {
-            // Find image by hash
-            const image = await prisma.logoImage.findFirst({
-              where: {
-                metadata: {
-                  path: ['hash'],
-                  equals: feedback.log.imageHash,
-                },
-              },
-            });
-
-            if (image) {
-              await prisma.trainingData.create({
-                data: {
-                  imageId: image.id,
-                  label: feedback.correctLogoId!,
-                  confidence: feedback.confidence || 1.0,
-                  validated: true,
-                  validationDate: new Date(),
-                  validatedBy: feedback.validatedBy || 'system',
-                },
-              });
-            }
-          }
-
-          // Mark feedback as incorporated
-          await prisma.feedbackEntry.update({
-            where: { id: feedback.id },
-            data: { incorporated: true },
-          });
-
-          incorporatedCount++;
-        }
-
-        logger.info('Feedback incorporated', {
-          count: incorporatedCount,
-        });
-
         return {
           success: true,
-          incorporated: incorporatedCount,
-          message: `Incorporated ${incorporatedCount} feedback entries`,
+          incorporated,
+          message: `Incorporated ${incorporated} feedback entries`,
         };
       } catch (error) {
         logger.error('Failed to incorporate feedback', {

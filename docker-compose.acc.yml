@@ -3,7 +3,40 @@
 # Database: PostgreSQL on Cherry (10.0.0.6:5432)
 # Storage: MinIO with Storage Box mount for persistence
 
+# DEPLOY NOTE: After merge, confirm Redis service is running before API container
+# starts BullMQ connections: redis-cli -u $REDIS_URL ping (expected: PONG)
+# redis-data volume holds only BullMQ queue state — no backup obligation.
+# PIPELINE_SERVICE_KEY must be set as a Coolify secret env var (min 32 chars random string).
+
 services:
+  # Redis — BullMQ queue backend (Epic 9, Story 9.1)
+  redis:
+    image: redis:7-alpine
+    network_mode: host
+    command: redis-server --appendonly yes --appendfsync everysec
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: always
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+
   minio:
     image: minio/minio:latest
     command: server /data --console-address ":9001"
@@ -117,3 +150,9 @@ services:
         reservations:
           cpus: '1.0'
           memory: 2G
+
+volumes:
+  # BullMQ queue state — survives Redis restarts (crash-resilience NFR1).
+  # Not primary data; no backup obligation. Can be safely deleted to clear all
+  # pending/failed jobs (manual recovery action).
+  redis-data:

@@ -349,6 +349,35 @@ export class MLClient {
   }
 
   // ==========================================
+  // Synthetic batch fill (Epic 9, Story 9.3 — wiring of deferred 8.7 hook)
+  // ==========================================
+
+  /**
+   * Request a synthetic batch plan from the ML service.
+   *
+   * The ML service's `build_synthetic_batch` function evaluates under-represented
+   * classes and returns crop descriptors + shortfall entries.
+   * Ratio cap wins over min_per_class (conflict-resolution decision 2026-06-04).
+   *
+   * @param opts.minPerClass  minimum samples per class before synthetic fill kicks in
+   * @param opts.ratio        maximum synthetic-to-real ratio (cap)
+   */
+  async buildSyntheticBatch(opts: {
+    minPerClass: number;
+    ratio: number;
+  }): Promise<{ batches: unknown[]; shortfall_reported: Record<string, number> }> {
+    try {
+      const response = await this.client.post('/ml/pipeline/build-synthetic-batch', {
+        min_per_class: opts.minPerClass,
+        real_synthetic_ratio: opts.ratio,
+      });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error, 'Build synthetic batch failed');
+    }
+  }
+
+  // ==========================================
   // Models
   // ==========================================
 

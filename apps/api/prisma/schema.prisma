@@ -461,6 +461,40 @@ model ArtworkImport {
   @@map("artwork_imports")
 }
 
+// ============================================
+// RETRAINING PIPELINE MODELS (Epic 9)
+// ============================================
+
+/// Persistent retraining trigger notification (Epic 9, Story 9.2)
+/// Ensures offline data managers never miss a trigger (Socket.IO is volatile).
+/// Also serves as the dedup source of truth alongside Redis.
+model RetrainingNotification {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  triggerId  String    @unique @map("trigger_id") @db.VarChar(128)
+  reasons    String[]
+  status     String    @default("unread") @db.VarChar(20)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  readAt     DateTime? @map("read_at") @db.Timestamptz
+
+  @@index([status, createdAt(sort: Desc)])
+  @@map("retraining_notifications")
+}
+
+/// Model activation audit log (Epic 9, Story 9.5)
+/// Records every human-approved activation with user + timestamp for compliance.
+model ModelActivationLog {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  modelVersionId  String    @map("model_version_id") @db.Uuid
+  userId          String    @map("user_id") @db.VarChar(255)
+  activatedAt     DateTime  @default(now()) @map("activated_at") @db.Timestamptz
+  triggeredBy     String    @map("triggered_by") @db.VarChar(50)
+  batchId         String?   @map("batch_id") @db.Uuid
+
+  @@index([modelVersionId])
+  @@index([activatedAt(sort: Desc)])
+  @@map("model_activation_logs")
+}
+
 /// Artwork review item — for 8.5 crosscheck routing (Epic 8, Story 8.5)
 model ArtworkReviewItem {
   id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid

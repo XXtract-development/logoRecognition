@@ -21,6 +21,7 @@ const TrainingPipelinePage = React.lazy(() => import('@/pages/TrainingPipelinePa
 const ModelsPage = React.lazy(() => import('@/pages/ModelsPage'));
 const ReferenceLibraryPage = React.lazy(() => import('@/pages/ReferenceLibraryPage'));
 const ArtworkReviewPage = React.lazy(() => import('@/pages/ArtworkReviewPage'));
+const ApprovalQueuePage = React.lazy(() => import('@/pages/ApprovalQueuePage'));
 const LoginPage = React.lazy(() => import('@/pages/LoginPage'));
 
 /**
@@ -124,6 +125,10 @@ const router = createBrowserRouter(
             {
               path: 'artwork-review',
               element: <ArtworkReviewPage />,
+            },
+            {
+              path: 'models/approval',
+              element: <ApprovalQueuePage />,
             },
           ],
         },

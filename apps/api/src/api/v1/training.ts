@@ -11,6 +11,7 @@ import prisma from '../../core/db';
 // Shared holdout-metrics mapper (single source of truth for the API shape).
 import { mapHoldoutMetrics } from '../../services/holdout-metrics';
 import { mapProvenance } from '../../services/provenance';
+import { isServiceRequest } from '../../services/pipeline/queue';
 
 const logger = createLogger('training');
 
@@ -501,14 +502,92 @@ export async function trainingRoutes(fastify: FastifyInstance) {
   );
 
   /**
+   * GET /api/v1/models/approval-queue
+   * List gate-passing challengers awaiting human approval (Story 9.5, AC1, AC2).
+   * Filter: metrics.gate.passed === true AND isActive === false AND pendingApproval === true.
+   * Returns evaluationReport { challenger, champion, diff, datasetGrowth, triggerReasons }.
+   */
+  fastify.get(
+    '/models/approval-queue',
+    {
+      schema: {
+        description: 'List gate-passing challengers awaiting human approval',
+        tags: ['Models'],
+      },
+    },
+    async (_request: FastifyRequest, reply: FastifyReply) => {
+      try {
+        // Filter challengers that passed the quality gate and await approval.
+        // Prisma JSONB path filter: metrics->gate->passed = true.
+        const challengers = await prisma.modelVersion.findMany({
+          where: {
+            isActive: false,
+            metrics: {
+              path: ['gate', 'passed'],
+              equals: true,
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+        });
+
+        // Build evaluation reports — champion metrics come from the currently active model.
+        const activeChampion = await prisma.modelVersion.findFirst({
+          where: { isActive: true },
+          orderBy: { createdAt: 'desc' },
+        });
+
+        const data = challengers.map((challenger) => {
+          const challengerMetrics = challenger.metrics as Record<string, unknown> | null;
+          const holdout = (challengerMetrics?.holdout ?? {}) as { accuracy?: number; holdoutHash?: string };
+          const championMetrics = activeChampion?.metrics as Record<string, unknown> | null;
+          const championHoldout = (championMetrics?.holdout ?? {}) as { accuracy?: number };
+
+          return {
+            ...challenger,
+            evaluationReport: {
+              challenger: {
+                holdoutAccuracy: holdout.accuracy ?? null,
+                holdoutHash: holdout.holdoutHash ?? null,
+              },
+              champion: activeChampion
+                ? { holdoutAccuracy: championHoldout.accuracy ?? null }
+                : null,
+              diff: activeChampion
+                ? { accuracy: (holdout.accuracy ?? 0) - (championHoldout.accuracy ?? 0) }
+                : null,
+              datasetGrowth: null, // calculated from batch metadata in a future iteration
+              triggerReasons: (challengerMetrics?.triggerReasons ?? []) as string[],
+            },
+          };
+        });
+
+        return reply.send({ data });
+      } catch (error) {
+        logger.error('Failed to list approval queue', {
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+        return reply.status(500).send({
+          error: 'Internal Server Error',
+          message: 'Failed to list approval queue',
+        });
+      }
+    }
+  );
+
+  /**
    * POST /api/v1/models/:modelId/activate
-   * Activate a specific model
+   * Activate a specific model.
+   *
+   * AC3 (Story 9.5, NFR5): Service-accounts (x-api-key header) are refused with 403 —
+   * activation always requires a human decision.
+   * AC4 (Story 9.5, NFR6): Every activation is logged in ModelActivationLog with
+   * userId, modelVersionId, activatedAt and triggeredBy.
    */
   fastify.post<{ Params: { modelId: string } }>(
     '/models/:modelId/activate',
     {
       schema: {
-        description: 'Activate a model for inference',
+        description: 'Activate a model for inference (human approval required)',
         tags: ['Models'],
         params: {
           type: 'object',
@@ -521,6 +600,28 @@ export async function trainingRoutes(fastify: FastifyInstance) {
     async (request: FastifyRequest<{ Params: { modelId: string } }>, reply: FastifyReply) => {
       const { modelId } = request.params;
 
+      // AC3 (NFR5): Refuse service-account callers — activation requires human approval.
+      if (isServiceRequest(request as { headers: Record<string, string | string[] | undefined> })) {
+        return reply.status(403).send({
+          error: 'Activation requires menselijke goedkeuring (human approval). Automated service accounts may not activate models.',
+        });
+      }
+
+      // NFR5/NFR6: activation must be attributable to a real human. main.ts mounts
+      // no global auth hook, so a route without an auth preHandler would otherwise
+      // let an anonymous request through and write a bogus userId:'unknown' audit
+      // row. Refuse when no authenticated user is present (the service-account 403
+      // above already handles the machine path).
+      const activatingUser = (request as { user?: { userId?: string } }).user;
+      if (!activatingUser?.userId) {
+        return reply.status(401).send({
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Authentication required',
+          },
+        });
+      }
+
       logger.info('Activating model', {
         requestId: request.id,
         modelId,
@@ -528,6 +629,19 @@ export async function trainingRoutes(fastify: FastifyInstance) {
 
       try {
         await mlClient.activateModel(modelId);
+
+        // AC4: Log activation with userId and timestamp. The 401 guard above
+        // guarantees activatingUser.userId is present here; the ?? keeps a
+        // defensive fallback that is unreachable on a real activation.
+        const userId = activatingUser.userId ?? 'unknown';
+        await prisma.modelActivationLog.create({
+          data: {
+            modelVersionId: modelId,
+            userId,
+            triggeredBy: 'manual-approval',
+          },
+        });
+
         return reply.send({ message: 'Model activated', model_id: modelId });
       } catch (error) {
         if (error instanceof MLServiceError) {
