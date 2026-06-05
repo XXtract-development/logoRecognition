@@ -20,6 +20,7 @@ const AnnotationPage = React.lazy(() => import('@/pages/AnnotationPage'));
 const TrainingPipelinePage = React.lazy(() => import('@/pages/TrainingPipelinePage'));
 const ModelsPage = React.lazy(() => import('@/pages/ModelsPage'));
 const ReferenceLibraryPage = React.lazy(() => import('@/pages/ReferenceLibraryPage'));
+const ArtworkReviewPage = React.lazy(() => import('@/pages/ArtworkReviewPage'));
 const LoginPage = React.lazy(() => import('@/pages/LoginPage'));
 
 /**
@@ -119,6 +120,10 @@ const router = createBrowserRouter(
             {
               path: 'reference-library',
               element: <ReferenceLibraryPage />,
+            },
+            {
+              path: 'artwork-review',
+              element: <ArtworkReviewPage />,
             },
           ],
         },

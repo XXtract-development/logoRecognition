@@ -87,6 +87,24 @@ CREATE TABLE IF NOT EXISTS logos.reference_logos (
 -- Index for per-code lookups in the reference library
 CREATE INDEX IF NOT EXISTS idx_reference_logos_t3777_code ON logos.reference_logos (t3777_code);
 
+-- Reference keurmerk embeddings (Epic 8, Story 8.4)
+-- One embedding per active reference variant, used for crop classification via
+-- pgvector cosine. Deliberately SEPARATE from logo_embeddings: (a) reference
+-- embeddings are model-independent (no model_id), (b) sharing logo_embeddings
+-- would pollute find_similar_logos with reference artwork as search results.
+CREATE TABLE IF NOT EXISTS logos.reference_embeddings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    reference_logo_id UUID NOT NULL REFERENCES logos.reference_logos(id) ON DELETE CASCADE,
+    embedding vector(512),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- ivfflat cosine index, mirroring logo_images.embedding
+CREATE INDEX IF NOT EXISTS idx_reference_embeddings_embedding ON logos.reference_embeddings
+    USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
+
+CREATE INDEX IF NOT EXISTS idx_reference_embeddings_ref_id ON logos.reference_embeddings (reference_logo_id);
+
 -- Create search history table for analytics
 CREATE TABLE IF NOT EXISTS logos.search_history (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -210,6 +228,79 @@ GROUP BY DATE_TRUNC('hour', created_at);
 -- Create index on materialized view
 CREATE UNIQUE INDEX idx_performance_metrics_hour ON monitoring.performance_metrics (hour);
 
+-- ============================================
+-- ARTWORK PIPELINE TABLES (Epic 8)
+-- ============================================
+
+-- Artwork import runs (Epic 8, Story 8.1)
+CREATE TABLE IF NOT EXISTS logos.artwork_import_runs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    status VARCHAR(20) NOT NULL DEFAULT 'running',
+    gtins JSONB NOT NULL DEFAULT '[]',
+    imported_count INTEGER NOT NULL DEFAULT 0,
+    skipped_count INTEGER NOT NULL DEFAULT 0,
+    failed_count INTEGER NOT NULL DEFAULT 0,
+    heartbeat_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    completed_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_artwork_import_runs_status ON logos.artwork_import_runs (status);
+CREATE INDEX IF NOT EXISTS idx_artwork_import_runs_created_at ON logos.artwork_import_runs (created_at DESC);
+
+-- Artwork import items (Epic 8, Story 8.1)
+CREATE TABLE IF NOT EXISTS logos.artwork_imports (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    gtin VARCHAR(50) NOT NULL,
+    gln VARCHAR(50),
+    media_id VARCHAR(255) NOT NULL,
+    file_name VARCHAR(500) NOT NULL,
+    source_location VARCHAR(1000) NOT NULL,
+    sha256_hash VARCHAR(64),
+    storage_path VARCHAR(1000),
+    mime_type VARCHAR(100),
+    status VARCHAR(20) NOT NULL DEFAULT 'imported',
+    failure_reason TEXT,
+    import_run_id UUID NOT NULL REFERENCES logos.artwork_import_runs(id) ON DELETE CASCADE,
+    pages JSONB NOT NULL DEFAULT '{}',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE (media_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_artwork_imports_gtin ON logos.artwork_imports (gtin);
+CREATE INDEX IF NOT EXISTS idx_artwork_imports_import_run_id ON logos.artwork_imports (import_run_id);
+CREATE INDEX IF NOT EXISTS idx_artwork_imports_status ON logos.artwork_imports (status);
+
+-- Artwork review items for crosscheck routing (Epic 8, Story 8.5)
+CREATE TABLE IF NOT EXISTS logos.artwork_review_items (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    gtin VARCHAR(50) NOT NULL,
+    t3777_code VARCHAR(100) NOT NULL,
+    crop_path VARCHAR(1000),
+    bbox JSONB NOT NULL DEFAULT '{}',
+    confidence FLOAT,
+    method VARCHAR(50),
+    reason TEXT NOT NULL,
+    source_file VARCHAR(500),
+    status VARCHAR(20) NOT NULL DEFAULT 'open',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_artwork_review_items_gtin ON logos.artwork_review_items (gtin);
+CREATE INDEX IF NOT EXISTS idx_artwork_review_items_status ON logos.artwork_review_items (status);
+CREATE INDEX IF NOT EXISTS idx_artwork_review_items_t3777_code ON logos.artwork_review_items (t3777_code);
+
+-- TrainingData extensions (Epic 8, Story 8.6)
+-- Add provenance, active and crop_path columns if they don't exist
+ALTER TABLE logos.training_data
+    ADD COLUMN IF NOT EXISTS provenance JSONB NOT NULL DEFAULT '{}',
+    ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT TRUE,
+    ADD COLUMN IF NOT EXISTS crop_path VARCHAR(1000);
+
+CREATE INDEX IF NOT EXISTS idx_training_data_active ON logos.training_data (active);
+CREATE INDEX IF NOT EXISTS idx_training_data_provenance ON logos.training_data USING GIN (provenance jsonb_path_ops);
+
 -- Grant permissions
 GRANT ALL PRIVILEGES ON SCHEMA logos TO postgres;
 GRANT ALL PRIVILEGES ON SCHEMA monitoring TO postgres;
@@ -217,6 +308,11 @@ GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA logos TO postgres;
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA monitoring TO postgres;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA logos TO postgres;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA monitoring TO postgres;
+
+-- Production deploy: also grant to logorecognition app user
+-- GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE logos.artwork_import_runs TO logorecognition;
+-- GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE logos.artwork_imports TO logorecognition;
+-- GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE logos.artwork_review_items TO logorecognition;
 
 -- Insert initial model version
 INSERT INTO logos.model_versions (version, model_type, is_active)

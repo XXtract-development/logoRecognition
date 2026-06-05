@@ -29,15 +29,27 @@ async function main(): Promise<void> {
   }
 
   // Group validated records per label.
-  const validated = await prisma.trainingData.findMany({
+  //
+  // Synthetic records (provenance.method === 'synthetic', Story 8.7) are
+  // EXCLUDED from holdout selection: the protected evaluation set must remain
+  // 100% real (NFR3). We filter in JS rather than via a Prisma JSON `not`
+  // filter because Prisma's JSON `not` drops rows whose provenance has no
+  // `method` key — and real data often lacks it, which would silently shrink
+  // the holdout pool. Keep every non-synthetic record (including method-null).
+  const validatedRaw = await prisma.trainingData.findMany({
     where: { validated: true },
-    select: { id: true, label: true },
+    select: { id: true, label: true, provenance: true },
     orderBy: { createdAt: 'asc' },
+  });
+
+  const validated = validatedRaw.filter((record) => {
+    const provenance = record.provenance as { method?: string } | null;
+    return provenance?.method !== 'synthetic';
   });
 
   if (validated.length === 0) {
     // eslint-disable-next-line no-console
-    console.log('No validated training data found. Nothing to stratify.');
+    console.log('No validated (non-synthetic) training data found. Nothing to stratify.');
     return;
   }
 

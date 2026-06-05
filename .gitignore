@@ -79,3 +79,4 @@ data/processed/
 secrets/
 credentials/
 .tar.gz
+tests/fixtures/*.page-*.png

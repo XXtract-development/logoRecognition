@@ -15,6 +15,12 @@ export interface TrainingImage {
   height: number;
   format: 'jpeg' | 'png' | 'webp';
   uploadedAt: Date;
+  /**
+   * Raw creation timestamp as returned by the API (`/training/images`).
+   * `uploadedAt` is not always populated by the backend, so cards fall back to
+   * this value (Epic 8, Story 8.6 hardening).
+   */
+  createdAt?: string | Date;
   annotationStatus: 'none' | 'partial' | 'complete';
   categoryId?: string;
   categoryName?: string;

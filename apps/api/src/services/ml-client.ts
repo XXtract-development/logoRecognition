@@ -98,6 +98,38 @@ export interface HealthStatus {
   gpu_available: boolean;
 }
 
+// Artwork rasterization (Epic 8, Story 8.2)
+export interface RasterizedPage {
+  source_file: string;
+  page: number;
+  image_path: string; // MinIO object key of the page PNG
+  dpi: number;
+}
+
+export interface RasterizeResponse {
+  storage_path: string;
+  dpi: number;
+  pages: RasterizedPage[];
+  error?: string | null;
+}
+
+// Synthetic training-data generation (Epic 8, Story 8.7)
+export interface SynthesizedSample {
+  t3777_code: string;
+  crop_path: string; // MinIO key synthetic/{t3777Code}/{seed}.png
+  source_file: string; // background object key (provenance.sourceFile)
+  bbox: { x: number; y: number; width: number; height: number };
+  method: string; // always 'synthetic'
+  confidence: number;
+  seed: number;
+}
+
+export interface SynthesizeResponse {
+  t3777_code: string;
+  generated: number;
+  samples: SynthesizedSample[];
+}
+
 // ============================================
 // ML Client Class
 // ============================================
@@ -259,6 +291,60 @@ export class MLClient {
       await this.client.delete(`/ml/train/${jobId}`);
     } catch (error) {
       throw this.handleError(error, 'Cancel training failed');
+    }
+  }
+
+  // ==========================================
+  // Artwork (Epic 8, Story 8.2)
+  // ==========================================
+
+  /**
+   * Rasterize a cached PDF artwork to per-page PNGs (Story 8.2, FR45).
+   * The ML service downloads the PDF from the training bucket, rasterizes each
+   * page at `dpi`, uploads the page PNGs next to the source, and returns the
+   * page list with MinIO object keys.
+   *
+   * A corrupt/protected PDF yields an empty `pages` list with an `error` reason
+   * (HTTP 200) — the caller records this softly without failing the import.
+   */
+  async rasterizeArtwork(storagePath: string, dpi?: number): Promise<RasterizeResponse> {
+    try {
+      const response = await this.client.post<RasterizeResponse>('/ml/artwork/rasterize', {
+        storage_path: storagePath,
+        ...(dpi !== undefined ? { dpi } : {}),
+      });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error, 'Artwork rasterization failed');
+    }
+  }
+
+  /**
+   * Generate synthetic training composites for one keurmerk class (Story 8.7).
+   *
+   * The ML service loads the active reference variants + real cached artwork
+   * backgrounds, composes `count` deterministic samples (scale/rotation/HSV/
+   * blur via a seeded RandomState), writes each PNG to MinIO under
+   * `synthetic/{t3777Code}/{seed}.png`, and returns crop descriptors. The caller
+   * registers these through the 8.6 registration path (no second write path).
+   *
+   * Returns `generated: 0` with an empty `samples` list when no usable
+   * references/backgrounds exist (open-input gate) — not an error.
+   */
+  async synthesizeArtwork(
+    t3777Code: string,
+    count: number,
+    seed?: number
+  ): Promise<SynthesizeResponse> {
+    try {
+      const response = await this.client.post<SynthesizeResponse>('/ml/artwork/synthesize', {
+        t3777_code: t3777Code,
+        count,
+        ...(seed !== undefined ? { seed } : {}),
+      });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error, 'Artwork synthesis failed');
     }
   }
 

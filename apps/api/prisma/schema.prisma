@@ -51,6 +51,12 @@ model TrainingData {
   validationDate DateTime? @map("validation_date") @db.Timestamptz
   validatedBy    String?   @map("validated_by") @db.VarChar(255)
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  /// Artwork provenance (Epic 8, Story 8.6): { sourceFile, bbox, method, confidence }
+  provenance     Json      @default("{}")
+  /// Soft-delete flag (Epic 8, Story 8.6): false = deactivated (bad source)
+  active         Boolean   @default(true)
+  /// Path to the crop in MinIO (Epic 8, Story 8.6)
+  cropPath       String?   @map("crop_path") @db.VarChar(1000)
 
   // Relations
   image LogoImage @relation(fields: [imageId], references: [id], onDelete: Cascade)
@@ -59,6 +65,7 @@ model TrainingData {
   @@index([label])
   @@index([validated])
   @@index([holdout])
+  @@index([active])
   @@map("training_data")
 }
 
@@ -244,11 +251,29 @@ model ReferenceLogo {
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   // Relations
-  logo Logo? @relation(fields: [logoId], references: [id])
+  logo       Logo?                @relation(fields: [logoId], references: [id])
+  embeddings ReferenceEmbedding[]
 
   @@unique([t3777Code, variantLabel])
   @@index([t3777Code])
   @@map("reference_logos")
+}
+
+/// Reference keurmerk embeddings (Epic 8, Story 8.4)
+/// One embedding per active reference variant, used to classify localised
+/// crops via pgvector cosine. Deliberately separate from LogoEmbedding:
+/// reference embeddings are model-independent and must not pollute logo search.
+model ReferenceEmbedding {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  referenceLogoId String   @map("reference_logo_id") @db.Uuid
+  embedding       Unsupported("vector(512)")?
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  referenceLogo ReferenceLogo @relation(fields: [referenceLogoId], references: [id], onDelete: Cascade)
+
+  @@index([referenceLogoId])
+  @@map("reference_embeddings")
 }
 
 /// Logo embeddings for vector search
@@ -383,4 +408,76 @@ model BackupHistory {
 
   @@index([createdAt(sort: Desc)])
   @@map("backup_history")
+}
+
+// ============================================
+// ARTWORK PIPELINE MODELS (Epic 8)
+// ============================================
+
+/// Artwork import run — tracks a batch import job (Epic 8, Story 8.1)
+model ArtworkImportRun {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  status         String    @default("running") @db.VarChar(20)
+  gtins          Json      @default("[]")
+  importedCount  Int       @default(0) @map("imported_count")
+  skippedCount   Int       @default(0) @map("skipped_count")
+  failedCount    Int       @default(0) @map("failed_count")
+  heartbeatAt    DateTime  @default(now()) @map("heartbeat_at") @db.Timestamptz
+  completedAt    DateTime? @map("completed_at") @db.Timestamptz
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  items ArtworkImport[]
+
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
+  @@map("artwork_import_runs")
+}
+
+/// Individual artwork import record — one per media item (Epic 8, Story 8.1)
+model ArtworkImport {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  gtin           String   @db.VarChar(50)
+  gln            String?  @db.VarChar(50)
+  mediaId        String   @map("media_id") @db.VarChar(255)
+  fileName       String   @map("file_name") @db.VarChar(500)
+  sourceLocation String   @map("source_location") @db.VarChar(1000)
+  sha256Hash     String?  @map("sha256_hash") @db.VarChar(64)
+  storagePath    String?  @map("storage_path") @db.VarChar(1000)
+  mimeType       String?  @map("mime_type") @db.VarChar(100)
+  status         String   @default("imported") @db.VarChar(20)
+  failureReason  String?  @map("failure_reason")
+  importRunId    String   @map("import_run_id") @db.Uuid
+  pages          Json     @default("{}")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  run ArtworkImportRun @relation(fields: [importRunId], references: [id], onDelete: Cascade)
+
+  @@unique([mediaId])
+  @@index([gtin])
+  @@index([importRunId])
+  @@index([status])
+  @@map("artwork_imports")
+}
+
+/// Artwork review item — for 8.5 crosscheck routing (Epic 8, Story 8.5)
+model ArtworkReviewItem {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  gtin        String   @db.VarChar(50)
+  t3777Code   String   @map("t3777_code") @db.VarChar(100)
+  cropPath    String?  @map("crop_path") @db.VarChar(1000)
+  bbox        Json     @default("{}")
+  confidence  Float?
+  method      String?  @db.VarChar(50)
+  reason      String
+  sourceFile  String?  @map("source_file") @db.VarChar(500)
+  status      String   @default("open") @db.VarChar(20)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([gtin])
+  @@index([status])
+  @@index([t3777Code])
+  @@map("artwork_review_items")
 }

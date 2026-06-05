@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import make_asgi_app
 
-from app.api import health, detection, training, models
+from app.api import health, detection, training, models, artwork as artwork_api
 from app.core.config import settings
 from app.core.logging import setup_logging, logger
 from app.ml.model_manager import model_manager
@@ -52,6 +52,17 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
         logger.error(f"Failed to load ML models: {e}")
         # Continue startup even if models fail to load
         # They can be loaded on-demand
+
+    # Build the reference keurmerk embedding index (Epic 8, Story 8.4).
+    # One embedding per active reference variant, used to classify localised
+    # crops via pgvector cosine. Non-fatal: if it fails, classification falls
+    # back to the classifier route / UNKNOWN.
+    try:
+        from app.services.similarity import similarity_service
+        summary = await similarity_service.rebuild_reference_embeddings()
+        logger.info("Reference embedding index built", extra=summary)
+    except Exception as e:
+        logger.error(f"Failed to build reference embedding index: {e}")
 
     logger.info(f"ML Service started on {settings.HOST}:{settings.PORT}")
 
@@ -99,6 +110,7 @@ app.include_router(health.router, tags=["Health"])
 app.include_router(detection.router, prefix="/ml", tags=["Detection"])
 app.include_router(training.router, prefix="/ml", tags=["Training"])
 app.include_router(models.router, prefix="/ml", tags=["Models"])
+app.include_router(artwork_api.router, prefix="/ml", tags=["Artwork"])
 
 
 @app.get("/")

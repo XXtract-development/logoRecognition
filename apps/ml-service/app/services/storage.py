@@ -182,6 +182,35 @@ class StorageService:
             logger.error(f"Failed to get training image: {e}")
             raise
 
+    def put_training_image(
+        self,
+        object_name: str,
+        data: bytes,
+        content_type: str = "image/png",
+    ) -> str:
+        """
+        Store a training image (or rasterized artwork page) in the training bucket.
+
+        Returns the object key. Used by the artwork rasterization endpoint
+        (Story 8.2) to write per-page PNGs back next to the source PDF.
+        """
+        if not self.client:
+            self.connect()
+
+        data_stream = io.BytesIO(data)
+        try:
+            self.client.put_object(
+                self.TRAINING_BUCKET,
+                object_name,
+                data_stream,
+                length=len(data),
+                content_type=content_type,
+            )
+            return object_name
+        except S3Error as e:
+            logger.error(f"Failed to store training image: {e}")
+            raise
+
     def list_training_images(self, prefix: str = "") -> List[str]:
         """List training images in storage."""
         if not self.client:

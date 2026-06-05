@@ -1,5 +1,61 @@
 # Versiegeschiedenis
 
+## 2026-06-04 (Epic 8 — Review-scherm & bibliotheekweergave)
+
+### Beoordelingsscherm voor artwork-detecties
+- Nieuw scherm "Artwork review": twijfelgevallen uit de automatische keurmerk-detectie staan nu in één overzicht, naast de bestaande onzekere feedback-items
+- Per item zie je de uitsnede van het gedetecteerde keurmerk, het voorgestelde label, de zekerheidsscore, de herkomst (bronbestand + positie op het etiket) en de reden waarom het item beoordeling nodig heeft
+- Goedkeuren of afwijzen kan met één klik; goedgekeurde items worden direct als trainingsdata geregistreerd
+- Beoordelen is voorbehouden aan beheerders; voor anderen zijn de knoppen uitgeschakeld met uitleg
+
+### Bibliotheekweergave
+- Trainingsafbeeldingen tonen nooit meer "NaN MB" of een ongeldige datum; ontbrekende gegevens worden netjes als "—" weergegeven
+
+## 2026-06-04 (Epic 8 — Automatische Trainingsdata)
+
+### Stabiliteits- en kwaliteitsverbeteringen (code-review)
+- Gedeactiveerde trainingsdata (afgekeurde bron) wordt nu daadwerkelijk uitgesloten van modeltraining en de holdout-evaluatie — voorheen telde een gedeactiveerd record nog mee
+- Registratie van meerdere crops gebeurt nu in één transactie: bij een fout halverwege blijven er geen half-opgeslagen records achter
+- Synthetische trainingsdata kan niet meer als holdout gemarkeerd worden (de evaluatieset blijft gegarandeerd 100% echt)
+- Een herhaalde mislukte import voor dezelfde productcode laat de importrun niet meer vastlopen
+- Crop-classificatie verzint geen keurmerk-label meer wanneer er geen referentie beschikbaar is: de regio wordt dan als 'onzeker' gemarkeerd voor handmatige beoordeling in plaats van met een gegokt label de trainingsdata in te gaan
+
+### Synthetische trainingsdata-generatie
+- Schaarse klassen worden automatisch aangevuld met synthetisch gegenereerde trainingsdata
+- De ratio echte/synthetische voorbeelden is configureerbaar; het ratio-plafond wint altijd over het minimum (kwaliteit boven kwantiteit)
+- Klassen die het minimum niet kunnen halen door het ratio-plafond worden gerapporteerd als 'tekort' in plaats van stilletjes met ruis te worden opgevuld
+- Synthetische samples komen nooit in de holdout-set terecht (NFR3: holdout is altijd 100% echt)
+
+### Trainingsdata-registratie met herkomst
+- Automatisch goedgekeurde keurmerk-crops worden opgeslagen als trainingsdata met volledige herkomst-informatie (bronbestand, boundingbox, methode, zekerheid)
+- Trainingsdata uit een specifiek bronbestand kunnen in bulk gedeactiveerd worden (zonder te verwijderen) via één API-aanroep
+- Elke trainingsrecord is volledig herleidbaar naar het originele artwork-bestand
+
+### T3777-kruischeck en routing
+- Gedetecteerde keurmerken worden automatisch vergeleken met de T3777-declaratie van het product
+- Overeenkomsten met voldoende zekerheid worden direct goedgekeurd als trainingsdata
+- Afwijkingen (verwacht maar niet gevonden, of gevonden maar niet gedeclareerd) gaan naar de beoordelingswachtrij met een duidelijke reden
+- Zonder T3777-declaratie wordt niets automatisch goedgekeurd — alles gaat ter controle
+
+### Crop-classificatie van gelokaliseerde regio's
+- Gelokaliseerde keurmerk-regio's worden nu automatisch geclassificeerd naar een T3777-code
+- Classificatie gebruikt embedding-gelijkenis met de referentiebibliotheek; als de zekerheid onder de drempel blijft, wordt de regio gemarkeerd als 'onzeker' (input voor handmatige beoordeling in stap 8.5)
+- Bij ontbrekende referentie-embeddings valt het systeem terug op een pixelgebaseerde heuristiek
+
+### Keurmerk-lokalisatie op artwork
+- Het systeem kan nu keurmerken automatisch lokaliseren op gerasterde artwork-afbeeldingen
+- Grote afbeeldingen worden opgeknipt in overlappende tegels (SAHI-aanpak) voor nauwkeurige detectie van kleine keurmerken
+- Per tegel wordt template-matching uitgevoerd; detecties van overlappende tegels worden samengevoegd (non-maximum suppression)
+- Lege of bijna-eenkleurige regio's worden automatisch genegeerd (wit-op-wit-bescherming)
+- Nieuwe API-endpoint: POST /ml/artwork/localize — accepteert afbeelding en keurmerk-templates, retourneert detecties met coördinaten
+
+### Artwork-import via mediaserver
+- Het systeem kan nu etiket-artwork automatisch ophalen uit de mediaserver en lokaal opslaan
+- Per productcode (GTIN) worden alle PACKAGING_ARTWORK-bestanden geïmporteerd en gecachet
+- Bestanden die al geïmporteerd zijn, worden overgeslagen (geen dubbele downloads)
+- Importfouten per product worden geregistreerd; de rest van de batch gaat gewoon door
+- Importstatus is op te vragen: hoeveel bestanden geïmporteerd, overgeslagen, of mislukt
+
 ## 2026-06-04
 
 ### Stabiliteits- en kwaliteitsverbeteringen modeltraining

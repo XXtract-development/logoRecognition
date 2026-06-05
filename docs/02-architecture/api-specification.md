@@ -299,3 +299,41 @@ Voor gedetailleerde specs en voorbeelden, zie: `_archive/old-structure/architect
 | `/api/v1/reference-logos/:id/deactivate` | PATCH | Soft delete (active=false); records worden nooit verwijderd |
 
 ML-service (intern): `get_holdout_images()`, `count_holdout_images()`, holdout-uitsluiting op query-niveau in `get_training_images()`, `compute_holdout_hash()` en holdout-evaluatie bij modelregistratie (`metrics.holdout`).
+
+---
+
+## Update 2026-06-04 — Epic 8: Automatische Trainingsdata uit Etiket-Artwork
+
+### Nieuwe endpoints (API gateway, `apps/api`)
+
+Routes in `apps/api/src/api/v1/artwork-pipeline.ts`, geregistreerd onder prefix `/api/v1`.
+
+| Endpoint | Methode | RBAC | Beschrijving |
+|----------|---------|------|--------------|
+| `/api/v1/artwork-import/runs` | POST | ADMIN | Start een artwork-importrun. Body `{ gtins?: string[], force?: boolean }`. Antwoordt direct met `202 { runId }`; de import draait op de achtergrond (in-process async; verplaatst naar BullMQ in Epic 9). Reeds geïmporteerde media (zelfde `mediaId`, status `imported`) worden overgeslagen tenzij `force: true`. |
+| `/api/v1/artwork-import/runs/:runId` | GET | auth | Status van een importrun → `200 { status, imported, skipped, failed: [{ gtin, reason }] }`; `404` bij onbekend `runId`. |
+| `/api/v1/artwork/:gtin/crosscheck` | POST | ADMIN | Vergelijkt gedetecteerde keurmerken met de GS1 T3777-declaratie. Body `{ detections: [{ t3777Code, confidence, bbox, method? }], declared: string[] }` → `200 { autoAccepted, reviewItems }`. Auto-accept alleen wanneer detectie in `declared` zit én `confidence ≥ drempel-per-methode` (`template` 0.85, `embedding` 0.80, `classifier`/onbekend 0.90; env-configureerbaar). Lege `declared` → alles naar review (geen onafhankelijke bevestiging). Niet-gedeclareerde of niet-gevonden codes komen met reden in `reviewItems` (gepersisteerd in `artwork_review_items`). |
+| `/api/v1/artwork/review-queue` | GET | auth | Alle openstaande review-items (`status='open'`), nieuwste eerst. |
+| `/api/v1/artwork/review-items/:id/accept` | PATCH | ADMIN | Accepteert een open review-item en zet het direct door naar trainingsdata-registratie (Story 8.6 "doorzet", method `human`). Het item wordt eerst op `accepted` gezet; bij aanwezige crop/source-referenties wordt het via de 8.6-registratiepad geregistreerd en op `registered` gezet → `200 { status, registered, skipped }`. Ontbreekt crop/source, dan blijft het `accepted` (skipped, geen fabricage) voor latere aanvulling. `404` bij onbekend id; `409` als het al `registered` is. |
+| `/api/v1/artwork/review-items/:id/reject` | PATCH | ADMIN | Verwerpt een open review-item (`status='rejected'`); er wordt geen trainingsdata aangemaakt. `404` bij onbekend id. |
+| `/api/v1/artwork/review-items/process-accepted` | POST | ADMIN | Catch-up "doorzet": registreert alle `accepted` review-items die nog niet geregistreerd zijn (bv. eerder geskipt wegens ontbrekende crop, intussen aangevuld). Idempotent — `registered` items worden op status uitgesloten → `200 { processed, registered, skipped }`. |
+| `/api/v1/artwork/:gtin/register-training-data` | POST | ADMIN | Registreert auto-geaccepteerde of handmatig goedgekeurde crops als trainingsdata. Body `{ items: [{ t3777Code, cropPath, sourceFile, bbox, method, confidence }] }` → `201 { registered, ids }`; `400` bij lege items. Maakt per item een `LogoImage` (`metadata.artworkSource=true`), upsert het `Logo` (category `keurmerk`) en een `TrainingData`-record met volledige provenance. De hele batch loopt in één transactie (atomair). |
+| `/api/v1/training/data/deactivate-by-source` | PATCH | ADMIN | Deactiveert (soft delete, `active=false`) in bulk alle trainingsdata afkomstig van één bronbestand. Body `{ sourceFile }` → `200 { deactivated }`; `400` zonder `sourceFile`. Filtert via JSON-path op `provenance.sourceFile`; records worden nooit verwijderd. |
+| `/api/v1/artwork/synthesize` | POST | ADMIN | Genereert synthetische trainingscomposieten voor één keurmerkklasse en registreert ze via het 8.6-pad (`method='synthetic'`, altijd `holdout=false` — NFR3). Body `{ t3777Code, count, seed? }`. Roept de ML-service `/ml/artwork/synthesize` aan en registreert de teruggegeven crop-descriptors atomair via `registerCropsTx` → `201 { generated, registered, ids }`. `400` bij ontbrekende `t3777Code`/`count < 1`; `200 { generated: 0, registered: 0, ids: [] }` wanneer er geen bruikbare referenties/achtergronden zijn (open-input gate, geen fout); `502` als de ML-aanroep faalt. |
+
+### Gewijzigd endpoint (Epic 7-holdout)
+
+| Endpoint | Methode | Beschrijving |
+|----------|---------|--------------|
+| `/api/v1/training/data/:id/holdout` | PATCH | **Uitgebreid (NFR3):** weigert nu met `422` wanneer `{ holdout: true }` wordt gezet op een record waarvan `provenance.method === 'synthetic'` — synthetische data mag de holdout-set nooit binnenkomen (de holdout blijft 100% echt). Provenance wordt gelezen via de gedeelde `mapProvenance`-mapper. Het bestaande `404`-gedrag bij onbekend id blijft ongewijzigd. |
+
+### Nieuwe/uitgebreide endpoints (ML-service, `apps/ml-service`)
+
+Routes in `apps/ml-service/app/api/artwork.py`, geregistreerd onder prefix `/ml`.
+
+| Endpoint | Methode | Beschrijving |
+|----------|---------|--------------|
+| `/ml/artwork/rasterize` | POST | **(Story 8.2)** Rastert elke pagina van een gecachte PDF-artwork naar PNG. Body `{ storage_path, dpi? }` (dpi 36–1200, default `ARTWORK_RASTER_DPI`) → `{ storage_path, dpi, pages: [{ source_file, page, image_path, dpi }], error? }`. De PNG's worden naast de bron in MinIO geschreven (`{dir}/{base}.page-{n}.png`). Soft-fail (AC2): een corrupte/beveiligde PDF geeft een lege `pages`-lijst + `error`-reden met HTTP `200`; alleen een storage-/fetchfout geeft `422`. |
+| `/ml/artwork/localize` | POST | Lokaliseert keurmerken op een artwork-afbeelding via tiling + template-matching + NMS. Body `{ image_path? \| image_b64?, templates: [{ t3777_code, image_b64 }] }` → `{ detections: [{ t3777_code, bbox, score }] }`. `400` bij onleesbare afbeelding; `422` wanneer noch `image_path` noch `image_b64` is opgegeven. |
+| `/ml/artwork/classify` | POST | **(Story 8.4)** Classificeert gelokaliseerde regio's naar een T3777-keurmerkcode via embedding-similariteit tegen de referentiebibliotheek (pgvector cosine), met fallback. Body `{ storage_path? \| image_b64?, crops?: [{ x, y, width, height }], confidence_threshold? }` (zonder `crops` → de hele afbeelding als één regio) → `{ results: [{ bbox?, t3777_code, confidence, method, uncertain }] }`. `uncertain` markeert lage-confidence-regio's voor 8.5-routing (geen filter). `422` bij ophaal-/decodeerfout of ontbrekende invoer; `400` bij ongeldige `image_b64`. |
+| `/ml/artwork/synthesize` | POST | **(Story 8.7)** Genereert `count` synthetische composieten voor `t3777_code`. Body `{ t3777_code, count, seed? }` (count 1–500). Laadt actieve referentievarianten + echte cached artwork-achtergronden, componeert deterministische samples (scale/rotatie/HSV/blur via seeded `RandomState`), schrijft elke PNG naar MinIO (`synthetic/{t3777_code}/{seed}.png`) en geeft crop-descriptors terug → `{ t3777_code, generated, samples: [{ t3777_code, crop_path, source_file, bbox, method, confidence, seed }] }`. Geen bruikbare invoer → `generated: 0` met lege `samples` (geen 5xx). Deze service schrijft zelf geen `training_data`: persistentie van records gebeurt in `apps/api` via het 8.6-pad. |

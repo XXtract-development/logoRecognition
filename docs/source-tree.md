@@ -321,6 +321,41 @@ docs/
 
 ---
 
+## Update 2026-06-04 — Epic 8: nieuwe modules (Automatische Trainingsdata uit Etiket-Artwork)
+
+Epic 8 introduceert een artwork-pipeline. De FastAPI-router `app/api/artwork.py`
+exposeert de stappen als HTTP-endpoints onder `/ml` (rasterize, localize, classify,
+synthesize); de zwaardere logica leeft in service-modules die door deze endpoints
+worden aangeroepen.
+
+### ML-service (`apps/ml-service`)
+
+| Module | Verantwoordelijkheid |
+|--------|----------------------|
+| `app/api/artwork.py` | FastAPI-router met vier endpoints: `/ml/artwork/rasterize` (8.2), `/ml/artwork/localize` (tiling → matching → NMS), `/ml/artwork/classify` (8.4) en `/ml/artwork/synthesize` (8.7). Decodeert artwork/templates en orkestreert de onderliggende services. |
+| `app/services/artwork.py` | `rasterize_pdf(path, dpi=300)` — rastert etiket-PDF's naar PNG's per pagina (PyMuPDF). Pure, path-agnostische functie; corrupte/beveiligde PDF's geven `[]` of een dict met `error`-key terug en gooien nooit. Env: `ARTWORK_RASTER_DPI`. Aangeroepen vanuit het rasterize-endpoint. |
+| `app/services/localization.py` | Keurmerk-lokalisatie via tiling (SAHI-geïnspireerd) + OpenCV template-matching. `tile_image()`, `match_templates()` (met variance-guard tegen wit-op-wit) en `merge_detections()` (NMS over tile-grenzen). |
+| `app/services/classification.py` | `classify_crop()` — classificeert een crop als T3777-code via embedding-similariteit tegen de referentiebibliotheek (pgvector cosine via `find_similar_references`), met fallback naar een lichte pixel-histogram-classifier. **Bereikbaar via HTTP**: aangeroepen door `/ml/artwork/classify`. Env: `CLASSIFY_MIN_CONFIDENCE` (0.70), `CLASSIFY_UNKNOWN_CODE`. |
+| `app/services/synthesis.py` | Synthetische trainingsdata: `compose_synthetic()` plaatst keurmerk-templates op achtergronden; `synthesize_for_class(t3777_code, count, seed)` componeert deterministische samples, schrijft PNG's naar MinIO en geeft crop-descriptors terug; `build_synthetic_batch()` vult klassen onder een drempel aan op basis van echte class-counts. **Bereikbaar via HTTP**: `synthesize_for_class` wordt aangeroepen door `/ml/artwork/synthesize`. Vervuilt de holdout-set niet. |
+| `app/services/similarity.py` | Uitgebreid met `rebuild_reference_embeddings()` (Story 8.4): genereert exact één embedding per **actieve** referentievariant en schrijft die naar de `reference_embeddings`-tabel. Idempotent (tabel wordt eerst geleegd); bewust gescheiden van `rebuild_embeddings` (logo-index). |
+| `app/main.py` | Lifespan-startup roept `similarity_service.rebuild_reference_embeddings()` aan om de referentie-embeddingindex te bouwen. Non-fataal: bij falen valt classificatie terug op de classifier-route / `UNKNOWN`. |
+| `app/services/database.py` | Uitgebreid met `get_class_counts(active_only=True)` (input voor de synthese-batch) en de referentie-embeddinghelpers `get_active_reference_logos()`, `store_reference_embedding()`, `clear_reference_embeddings()` en `find_similar_references()` (pgvector cosine, asyncpg raw SQL). |
+
+### API gateway (`apps/api`)
+
+| Module | Verantwoordelijkheid |
+|--------|----------------------|
+| `src/api/v1/artwork-pipeline.ts` | Fastify-routes voor importruns, T3777-crosscheck/routing, review-item accept/reject/process-accepted, trainingsdata-registratie met provenance en synthetische generatie (zie `api-specification.md`). |
+| `src/services/provenance.ts` | **Nieuw** — single source of truth voor het `provenance`-JSON-blok van `TrainingData`: gedeelde `Provenance`-shape + `buildProvenance()`/`mapProvenance()` (een ontbrekend/leeg blok → `null`; een present-maar-malformed blok → `null` + warning, nooit stille partiële waarden). Exporteert de named constant `KEURMERK_CATEGORY` (Logo-category voor keurmerk-trainingsdata) en het `ProvenanceMethod`-type (`template`/`classifier`/`human`/`synthetic`). Geïmporteerd door `artwork-pipeline.ts` (registratie) en `training.ts` (holdout synthetic-guard). |
+| `src/services/ml-client.ts` | Uitgebreid met `rasterizeArtwork(storagePath, dpi?)` (`POST /ml/artwork/rasterize`, Story 8.2) en `synthesizeArtwork(t3777Code, count, seed?)` (`POST /ml/artwork/synthesize`, Story 8.7), inclusief de bijbehorende response-types. |
+| `src/services/mediaserver-client.ts` | Client voor de mediaserver: `discoverArtwork(gtin)` (LABEL-artwork via `/uploaded`) en `downloadFile(previewUrl)`. Rate-aware via `ARTWORK_IMPORT_CONCURRENCY` (default 3). |
+| `src/services/storage.ts` | Uitgebreid met `uploadArtwork(buffer, path, mimeType)` voor opslag van geïmporteerde artwork in MinIO (prefix `artwork/{gtin}/`). |
+| `scripts/stratify-holdout.ts` | Sluit nu synthetische records (`provenance.method === 'synthetic'`, Story 8.7) uit van de holdout-selectie (NFR3: de holdout blijft 100% echt). De filtering gebeurt in JS i.p.v. via een Prisma JSON-`not`-filter, omdat dat ook records zonder `method`-key (veel echte data) zou laten vallen en de holdout-pool stil zou laten krimpen. |
+
+Nieuwe Python-dependencies staan in `apps/ml-service/requirements.txt` (o.a. PDF-rasterisatie en beeldverwerking).
+
+---
+
 ## File Count by Category
 
 | Category | Count | Extensions |
