@@ -337,3 +337,41 @@ Routes in `apps/ml-service/app/api/artwork.py`, geregistreerd onder prefix `/ml`
 | `/ml/artwork/localize` | POST | Lokaliseert keurmerken op een artwork-afbeelding via tiling + template-matching + NMS. Body `{ image_path? \| image_b64?, templates: [{ t3777_code, image_b64 }] }` → `{ detections: [{ t3777_code, bbox, score }] }`. `400` bij onleesbare afbeelding; `422` wanneer noch `image_path` noch `image_b64` is opgegeven. |
 | `/ml/artwork/classify` | POST | **(Story 8.4)** Classificeert gelokaliseerde regio's naar een T3777-keurmerkcode via embedding-similariteit tegen de referentiebibliotheek (pgvector cosine), met fallback. Body `{ storage_path? \| image_b64?, crops?: [{ x, y, width, height }], confidence_threshold? }` (zonder `crops` → de hele afbeelding als één regio) → `{ results: [{ bbox?, t3777_code, confidence, method, uncertain }] }`. `uncertain` markeert lage-confidence-regio's voor 8.5-routing (geen filter). `422` bij ophaal-/decodeerfout of ontbrekende invoer; `400` bij ongeldige `image_b64`. |
 | `/ml/artwork/synthesize` | POST | **(Story 8.7)** Genereert `count` synthetische composieten voor `t3777_code`. Body `{ t3777_code, count, seed? }` (count 1–500). Laadt actieve referentievarianten + echte cached artwork-achtergronden, componeert deterministische samples (scale/rotatie/HSV/blur via seeded `RandomState`), schrijft elke PNG naar MinIO (`synthetic/{t3777_code}/{seed}.png`) en geeft crop-descriptors terug → `{ t3777_code, generated, samples: [{ t3777_code, crop_path, source_file, bbox, method, confidence, seed }] }`. Geen bruikbare invoer → `generated: 0` met lege `samples` (geen 5xx). Deze service schrijft zelf geen `training_data`: persistentie van records gebeurt in `apps/api` via het 8.6-pad. |
+
+---
+
+## Update 2026-06-05 — Epic 9: Automatische Retraining
+
+Epic 9 voegt een crash-bestendige retraining-pipeline toe (BullMQ + Redis). De Node-routes voor jobstatus, trigger-notificaties, handmatige flow-start en de approval-queue staan in `apps/api/src/api/v1/pipeline.ts` (nieuw) en `apps/api/src/api/v1/training.ts` (uitgebreid), beide geregistreerd onder prefix `/api/v1`. De ML-service krijgt één extra endpoint voor synthetische batch-planning.
+
+### Auth-context (belangrijk)
+
+`apps/api/src/main.ts` registreert **geen** globale auth-hook; RBAC wordt per route afgedwongen via `requireRole(...)`-preHandlers. In de tabel hieronder betekent de RBAC-kolom:
+- **ADMIN** → route heeft een expliciete `requireRole('ADMIN')`-preHandler. ADMIN is in deze codebase de data-manager-equivalent (er is geen aparte `DATA_MANAGER`-rol).
+- **— (geen guard)** → de routehandler heeft geen role-/auth-preHandler. De activatie-route vormt de uitzondering met eigen, inline 403/401-guards (zie onder).
+
+### Nieuwe endpoints (API gateway, `apps/api`)
+
+Routes in `apps/api/src/api/v1/pipeline.ts`.
+
+| Endpoint | Methode | RBAC | Beschrijving |
+|----------|---------|------|--------------|
+| `/api/v1/pipeline/notifications` | GET | — (geen guard) | Lijst retraining-trigger-notificaties, ongelezen eerst (`status` oplopend — `'read'` < `'unread'` alfabetisch, dus ongelezen bovenaan), dan `createdAt` aflopend. Gepolld door de frontend bij mount zodat ook offline managers eerder verstuurde triggers nog zien (Story 9.2, AC3) → `200 { data: RetrainingNotification[] }`; `500` bij DB-fout. |
+| `/api/v1/pipeline/notifications/:id/read` | PATCH | — (geen guard) | Markeert één notificatie als gelezen (`status='read'`, `readAt=now`) → `200` met het bijgewerkte record; `404` bij onbekend id; `500` bij DB-fout. |
+| `/api/v1/pipeline/jobs/:jobId` | GET | — (geen guard) | Status van een BullMQ-pipelinejob via `getJobStatus(jobId)`. Geeft o.a. `state`, en voor gefaalde jobs `failedReason` + een `retryable`-vlag (Story 9.1, AC2) → `200 { ... }`; `404` met code `JOB_NOT_FOUND` wanneer de `jobId` onbekend is (state `not_found`); `500` bij interne fout. |
+| `/api/v1/pipeline/training/start` | POST | ADMIN | Start handmatig een volledige training-flow (Story 9.3). Body `{ triggerId?, batchId? }` (default `triggerId = manual-{timestamp}`). Idempotentie/concurrency=1 (AC3): wanneer er al een flow actief is (`getActiveTrainingFlowJobId()`) volgt `409` met code `TRAINING_FLOW_ACTIVE` + `activeJobId`. Anders draait `submitTrainingFlow()` de FlowProducer-keten (incorporate-feedback → build-batch → train-model → evaluate-model) → `202` met het flow-resultaat; `500` bij fout. **Let op:** de route in de code heet `/pipeline/training/start` (niet `/pipeline/training-flow`). |
+
+Routes in `apps/api/src/api/v1/training.ts` (Models-tag).
+
+| Endpoint | Methode | RBAC | Beschrijving |
+|----------|---------|------|--------------|
+| `/api/v1/models/approval-queue` | GET | — (geen guard) | Lijst challengers die de quality-gate haalden en op menselijke goedkeuring wachten (Story 9.5, AC1/AC2). Filter: `isActive === false` **en** `metrics.gate.passed === true` (Prisma JSONB-path-filter), nieuwste eerst. Per challenger wordt een `evaluationReport` opgebouwd t.o.v. de actieve champion: `{ challenger: { holdoutAccuracy, holdoutHash }, champion: { holdoutAccuracy } \| null, diff: { accuracy } \| null, datasetGrowth: null, triggerReasons: string[] }` → `200 { data: [...] }`; `500` bij DB-fout. (`datasetGrowth` is bewust `null` — gepland voor een volgende iteratie.) |
+| `/api/v1/models/:modelId/activate` | POST | menselijk vereist | **Uitgebreid (Story 9.5, NFR5/NFR6).** Activatie vereist altijd een menselijke beslissing. **Service-accounts** (geldige `x-api-key` t.o.v. `PIPELINE_SERVICE_KEY`, gecontroleerd met `isServiceRequest()` / `crypto.timingSafeEqual`) krijgen `403` (AC3, NFR5). **Anonieme** aanroepen zonder geauthenticeerde gebruiker (`request.user.userId` ontbreekt) krijgen `401 UNAUTHORIZED` — dit voorkomt een audit-rij met `userId:'unknown'`, omdat `main.ts` geen globale auth-hook mount. Bij succes roept de route `mlClient.activateModel(modelId)` aan en schrijft een **ModelActivationLog** (`modelVersionId`, `userId`, `triggeredBy: 'manual-approval'`, `activatedAt`) (AC4, NFR6) → `200 { message, model_id }`. |
+
+### Nieuw endpoint (ML-service, `apps/ml-service`)
+
+Route in `apps/ml-service/app/api/pipeline.py`, geregistreerd onder prefix `/ml`.
+
+| Endpoint | Methode | Beschrijving |
+|----------|---------|--------------|
+| `/ml/pipeline/build-synthetic-batch` | POST | **(Story 9.3, AC4)** Plant een synthetische batch-fill voor ondervertegenwoordigde keurmerkklassen — de wiring van de uitgestelde 8.7-hook. Body `{ min_per_class, real_synthetic_ratio }` (`min_per_class` 1–10000, `real_synthetic_ratio` >0–10). Thin REST-wrapper rond `build_synthetic_batch(..., persist=False)` — **compute-only**: een planningsaanroep schrijft nooit PNG's (echte generatie + MinIO-persistentie loopt via `/ml/artwork/synthesize`). De platte planner-output wordt gesplitst in `{ batches: [...], shortfall_reported: { "<label>": <count> } }`: shortfall-entries worden per label gesommeerd, alle overige crop-descriptors gaan naar `batches`. De ratio-cap wint van `min_per_class` (residueel tekort wordt gerapporteerd, nooit met synthetische ruis opgevuld — conflict-resolutie 2026-06-04). "Niets te vullen" is een `200` met lege resultaten; alleen een echte fout geeft `500`. Aangeroepen door de Node-pipeline via `mlClient.buildSyntheticBatch()` in de build-batch-stap. |

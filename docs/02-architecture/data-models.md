@@ -270,3 +270,21 @@ Migratie: `apps/api/prisma/migrations/0004_add_reference_logos/` + synchroon bij
 - **ReferenceEmbedding** (`reference_embeddings`, Story 8.4): id, `referenceLogoId` (FK → ReferenceLogo, **cascade delete**), `embedding` (`vector(512)`, Prisma `Unsupported`), `createdAt`. Eén embedding per **actieve** referentievariant uit de keurmerkbibliotheek (Story 7.3), gebruikt om gelokaliseerde crops te classificeren via pgvector cosine (`find_similar_references`). **Bewust een aparte tabel** van `logo_embeddings`: referentie-embeddings zijn model-onafhankelijk (geen `model_id`) en mogen `find_similar_logos` niet vervuilen met referentie-artwork als zoekresultaat. De index is btree op `referenceLogoId`; de **ivfflat cosine-index** (`ivfflat (embedding vector_cosine_ops)`, `lists = 100`) staat in `init.sql` (Prisma laat de vector-index buiten beschouwing). De index wordt aan de ML-servicekant herbouwd via `rebuild_reference_embeddings()` (idempotent: tabel wordt eerst geleegd), bij startup en library-refresh.
 
 Schema: `apps/api/prisma/schema.prisma` + synchroon bijgewerkte `infrastructure/docker/postgres/init.sql` (de tabellen in schema `logos`, `TrainingData`-kolommen via `ALTER TABLE … ADD COLUMN IF NOT EXISTS`). Migratie voor de referentie-embeddings: `apps/api/prisma/migrations/0005_add_reference_embeddings/` (tabel + FK + btree-index; de ivfflat cosine-index zit in `init.sql`). De ML-service leest deze tabellen via asyncpg raw SQL.
+
+---
+
+## Update 2026-06-05 — Epic 9: Automatische Retraining
+
+### Gewijzigd model
+
+- **ModelVersion** — nieuw sub-blok `metrics.gate` (geen kolomwijziging; het bestaande `metrics Json`-veld wordt uitgebreid). De `evaluate-model`-stap van de training-flow merget na de quality-gate (Story 9.4) het oordeel in `metrics` zónder `metrics.holdout` te overschrijven:
+  - `metrics.gate = { passed: boolean, reason: string | null, comparison: { championAccuracy, challengerAccuracy, minImprovement } | null, evaluatedAt: ISO-string }`. `comparison` is alleen gevuld op de faal-tak (challenger haalt champion + `minImprovement` niet); auto-pass-takken (geen champion / champion zonder `holdoutHash`) vullen alleen `reason`.
+  - `metrics.triggerReasons = string[]` — de redenen die de retraining triggerden, meegedragen naar de approval-queue.
+  - De approval-queue (`GET /api/v1/models/approval-queue`) selecteert op `metrics.gate.passed === true` **en** `isActive === false` (Prisma JSONB-path-filter). `metrics.gate.passed === true` is het signaal "challenger wacht op menselijke goedkeuring".
+
+### Nieuwe modellen (retraining-pipeline)
+
+- **RetrainingNotification** (`retraining_notifications`, Story 9.2): `id` (UUID), `triggerId` (**unique**, `VARCHAR(128)`), `reasons` (`TEXT[]`, default `{}`), `status` (`VARCHAR(20)`, default `'unread'`), `createdAt` (`TIMESTAMPTZ`), `readAt` (`TIMESTAMPTZ?`). Persistente trigger-notificatie zodat offline data managers nooit een trigger missen (Socket.IO is volatiel). Dient tevens als dedup-bron naast Redis (de unieke `triggerId`). Index op `(status, createdAt DESC)` voor de "ongelezen eerst"-lijstweergave. Migratie: `apps/api/prisma/migrations/0007_add_retraining_notifications/`.
+- **ModelActivationLog** (`model_activation_logs`, Story 9.5): `id` (UUID), `modelVersionId` (`UUID`), `userId` (`VARCHAR(255)`), `activatedAt` (`TIMESTAMPTZ`, default `now()`), `triggeredBy` (`VARCHAR(50)`), `batchId` (`UUID?`). Audit-log die elke menselijk goedgekeurde activatie vastlegt met gebruiker + tijdstip (NFR6). Eén rij per activatie, geschreven door `POST /api/v1/models/:modelId/activate` (`triggeredBy: 'manual-approval'`). Geen FK-relatie in Prisma; indexen op `modelVersionId` en `activatedAt DESC`. De tabel krijgt bewust alleen `GRANT SELECT, INSERT` (audit-rijen worden nooit gemuteerd). Migratie: `apps/api/prisma/migrations/0008_add_model_activation_log/`.
+
+Schema: `apps/api/prisma/schema.prisma` (sectie "RETRAINING PIPELINE MODELS (Epic 9)"). Migraties: `0007_add_retraining_notifications/` en `0008_add_model_activation_log/`.

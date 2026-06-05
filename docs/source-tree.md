@@ -356,6 +356,56 @@ Nieuwe Python-dependencies staan in `apps/ml-service/requirements.txt` (o.a. PDF
 
 ---
 
+## Update 2026-06-05 — Epic 9: nieuwe modules (Automatische Retraining)
+
+Epic 9 voegt een crash-bestendige retraining-pipeline toe op basis van **BullMQ + Redis**. De pipeline-logica leeft in een nieuwe service-module `apps/api/src/services/pipeline/`; HTTP-toegang loopt via `apps/api/src/api/v1/pipeline.ts` (nieuw) en uitbreidingen in `training.ts`. De ML-service krijgt één extra router voor synthetische batch-planning. Redis is als queue-backend toegevoegd aan de compose-bestanden.
+
+### API gateway — pipeline-module (`apps/api/src/services/pipeline/`)
+
+| Module | Verantwoordelijkheid |
+|--------|----------------------|
+| `queue.ts` | BullMQ-queue-infrastructuur (Story 9.1): Redis-connectie (`getRedisConnection`), de `training`-queue, `getJobStatus(jobId)` (incl. `failedReason` + `retryable`) en de security-helper `isServiceRequest()` — verifieert service-account-callers via `PIPELINE_SERVICE_KEY` met `crypto.timingSafeEqual` (geen fallback: ontbrekende key → `false`). Redis-state overleeft container-restarts (NFR1). |
+| `trigger.ts` | Retraining-trigger-service (Story 9.2): evalueert retraining-condities met configureerbare drempels, stuurt Socket.IO-notificaties met reden-tekst, persisteert naar `RetrainingNotification` en dedupt via Redis binnen het dedup-venster. `registerRetrainingCronJob()` plant de cron (`RETRAINING_CRON`, default daags 06:00). |
+| `training-flow.ts` | BullMQ-`FlowProducer`-keten (Story 9.3): `incorporate-feedback → build-batch → train-model → evaluate-model`. Elke stap individueel retryable; flow-state in Redis (NFR1). `submitTrainingFlow()`, `getActiveTrainingFlowJobId()` (concurrency=1) en de build-batch-stap die `mlClient.buildSyntheticBatch()` aanroept (ratio-cap wint van `min_per_class`). |
+| `workers.ts` | De BullMQ-workers die de vier flow-stappen verwerken (Story 9.3). `registerTrainingFlowWorker()`; de `train-model`-stap draait op Worker-concurrency 1 (AC3). De `evaluate-model`-stap roept de quality-gate aan en persisteert `metrics.gate` (+ `holdout` + `triggerReasons`) op de challenger, of emit `gate_failed` met vergelijkingscijfers. Step-processors zijn los geëxporteerd voor unit-tests (geen Redis nodig). |
+| `quality-gate.ts` | Champion/challenger quality-gate (Story 9.4): `evaluateGate()` → `GateVerdict { passed, reason?, comparison? }`. Passeert bij gelijke/betere holdout-accuracy (zelfde `holdoutHash`) + `minImprovement` (env `GATE_MIN_IMPROVEMENT`, default 0.0); auto-pass zonder champion of zonder champion-`holdoutHash`; verschillende holdout-sets falen altijd. `emitGateFailure()` stuurt de faal-notificatie. |
+| `feedback-incorporation.ts` | Single source of truth voor "valideerde feedback → trainingsdata" (Story 9.3, incorporate-feedback-stap): `incorporatePendingFeedback()`. Gedeeld door zowel de handmatige route `POST /api/v1/feedback/incorporate` (`feedback.ts` roept nu deze service aan i.p.v. inline) als de worker-stap, zodat de pipeline-stap geen HTTP-self-call met JWT hoeft te doen. Batch-idempotent. |
+
+`apps/api/src/main.ts` registreert de pipeline-routes en — alleen wanneer `REDIS_URL` gezet is en `NODE_ENV !== 'test'` — de retraining-cron en de training-flow-worker (non-fataal bij een nog niet gereed staande Redis).
+
+### API gateway — routes (`apps/api/src/api/v1/`)
+
+| Module | Verantwoordelijkheid |
+|--------|----------------------|
+| `pipeline.ts` | **Nieuw** — Fastify-routes voor jobstatus, trigger-notificaties (list + mark-read) en handmatige flow-start (`requireRole('ADMIN')`, concurrency-guard 409). Zie `api-specification.md`. |
+| `training.ts` | Uitgebreid met `GET /models/approval-queue` (gate-passende challengers, `metrics.gate.passed === true`) en de activatie-guards op `POST /models/:modelId/activate` (403 voor service-accounts via `isServiceRequest()`, 401 anoniem, schrijft `ModelActivationLog`). |
+| `ml-client.ts` | Uitgebreid met `buildSyntheticBatch({ minPerClass, ratio })` → `POST /ml/pipeline/build-synthetic-batch` (Story 9.3, wiring van de uitgestelde 8.7-hook). |
+
+### ML-service (`apps/ml-service`)
+
+| Module | Verantwoordelijkheid |
+|--------|----------------------|
+| `app/api/pipeline.py` | **Nieuw** — FastAPI-router met `POST /ml/pipeline/build-synthetic-batch` (Story 9.3, AC4). Thin compute-only wrapper rond `build_synthetic_batch(..., persist=False)`; splitst de platte planner-output in `{ batches, shortfall_reported }`. Geregistreerd in `app/main.py` onder prefix `/ml`. |
+
+### Frontend (`apps/web`)
+
+| Module | Verantwoordelijkheid |
+|--------|----------------------|
+| `src/pages/ApprovalQueuePage.tsx` | **Nieuw** — approval-queue-pagina (Story 9.5): toont gate-passende challengers met een volledig evaluatierapport (challenger vs champion, holdout-metrics naast elkaar, diff, trigger-reden) en één-klik-activatie met bevestigingsdialoog. Gemount in `App.tsx` op route `models/approval`. |
+| `src/components/training/RetrainingNotificationBanner.tsx` | **Nieuw** — banner die persistente retraining-aanbevelingen toont (Story 9.2). TanStack Query met `refetchOnMount` zodat ook een koude paginabezoek eerder verstuurde notificaties laat zien (AC3). |
+| `src/components/training/PipelineJobsPanel.tsx` | **Nieuw** — paneel voor BullMQ-pipelinejobs met live Socket.IO-updates en retry-actie voor gefaalde jobs (Story 9.1). **Nog niet gemount** in de app (geen route/parent rendert het component nog). |
+
+### Tests & infrastructuur
+
+| Pad | Verantwoordelijkheid |
+|-----|----------------------|
+| `apps/api/src/__tests__/smoke/pipeline-smoke-test.test.ts` | **Nieuw** — end-to-end smoke-test van de volledige pipeline op een mini-dataset (Story 9.6). In-process (Vitest, ML-client + BullMQ/Redis gemockt — geen Docker), asserteert op de volledige response-shape per stap (contractbreuk-detectie) en exerciseert een niet-default gate-drempel via `GATE_MIN_IMPROVEMENT`. Draait in CI als job `smoke-test-pipeline` in `.github/workflows/ci-cd.yml`. |
+| `tests/fixtures/mini-dataset/` | **Nieuw** — mini-dataset (51 gelabelde 64×64 PNG's, 3 klassen, incl. `holdout/`-submap en `labels.json`; ~204 KB, onder de no-LFS-limiet). |
+| `tests/test_pipeline_endpoint.py` | **Nieuw** — pytest voor het `/ml/pipeline/build-synthetic-batch`-endpoint. |
+| `docker-compose.yml` / `.acc.yml` / `.prod.yml` / `.full.yml` | **Redis-service toegevoegd** (Epic 9, Story 9.1) als BullMQ-queue-backend (`redis:7-alpine`, AOF-persistentie, healthcheck). Het `redis-data`-volume bevat alleen queue-state (geen back-up-verplichting); de API krijgt `REDIS_URL` + `depends_on: redis`. `PIPELINE_SERVICE_KEY` moet als secret gezet worden (min. 32 tekens). |
+
+---
+
 ## File Count by Category
 
 | Category | Count | Extensions |
