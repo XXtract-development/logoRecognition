@@ -1,5 +1,13 @@
 # Versiegeschiedenis
 
+## 2026-06-05 (Epic 9 — Automatische Retraining: CI-smoke-test 9.6)
+
+### Geautomatiseerde regressiedetectie voor de volledige trainingspipeline
+- Nieuwe CI-smoke-test controleert bij elke merge naar main/acc de volledige pipelineflow op een kleine testdataset (3 klassen, 36 trainingsafbeeldingen + 15 holdout-afbeeldingen, ~200KB)
+- De test verifieert alle API-contracten: ontbrekende velden of verkeerde respons-formaten laten de build mislukken zodat regressions direct zichtbaar worden
+- De configureerbare kwaliteitsdrempel wordt expliciet getest: de smoke-test bewijst dat een drempel van 2% daadwerkelijk in gebruik is (en niet wordt genegeerd)
+- Totale looptijd van de smoke-test: onder de 5 minuten dankzij gemockte ML-service en kleine testdataset
+
 ## 2026-06-05 (Epic 9 — Automatische Retraining: Goedkeuringsscherm 9.5)
 
 ### Eén-klik modelactivatie met volledig evaluatierapport
