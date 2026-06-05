@@ -188,6 +188,23 @@ export class PrismaClient {
     count: jest.fn(),
   };
 
+  retrainingNotification = {
+    findUnique: jest.fn(),
+    findFirst: jest.fn(),
+    findMany: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    count: jest.fn(),
+  };
+
+  modelActivationLog = {
+    findUnique: jest.fn(),
+    findFirst: jest.fn(),
+    findMany: jest.fn(),
+    create: jest.fn(),
+    count: jest.fn(),
+  };
+
   $transaction = jest.fn((operations: unknown[]) => Promise.all(operations));
   $connect = jest.fn();
   $disconnect = jest.fn();

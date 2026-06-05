@@ -1,5 +1,14 @@
 # Versiegeschiedenis
 
+## 2026-06-05 (Epic 9 — Automatische Retraining: Trigger & Notificaties 9.2)
+
+### Automatische herkenningsmeldingen
+- Het systeem controleert dagelijks (06:00) of hertraining zinvol is op basis van drie configureerbare drempels: minimaal aantal nieuwe annotaties, ratio onverwerkte feedback, en modelnauwkeurigheid
+- Bij een positieve check ontvangt de datamanager een concrete melding met het exacte aantal nieuwe annotaties ("512 nieuwe gevalideerde annotaties")
+- Meldingen worden bewaard in de database zodat een later paginabezoek de notificatie alsnog toont — een offline datamanager mist nooit een trigger
+- Dubbele meldingen worden onderdrukt: dezelfde trigger verstuurt hooguit één keer per 24 uur een notificatie, ook na een API-herstart (Redis-dedup)
+- Gelezen meldingen kunnen worden weggestreept via de "Gelezen"-knop in de banner
+
 ## 2026-06-05 (Epic 9 — Automatische Retraining: Infrastructure 9.1)
 
 ### Persistente job-wachtrij voor de trainingspipeline

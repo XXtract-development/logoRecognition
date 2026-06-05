@@ -9,7 +9,7 @@
  *   pipeline-jobs-panel    — root container
  *   pipeline-job-row       — one row per job
  */
-import React, { memo, useEffect } from 'react';
+import { memo, useEffect } from 'react';
 import { Table, Tag, Button, Tooltip, Space, Typography } from 'antd';
 import {
   CheckCircleOutlined,

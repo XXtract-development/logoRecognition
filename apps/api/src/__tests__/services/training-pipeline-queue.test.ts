@@ -71,8 +71,8 @@ describe('Training Pipeline Queue (ATDD RED — Epic 9)', () => {
   // -------------------------------------------------------------------------
 
   describe('Scheduled retraining trigger', () => {
-    // TODO ATDD: remove .skip when implemented (Story 9.2)
-    it.skip('should evaluate retraining conditions with configurable thresholds', async () => {
+    // ATDD: Story 9.2 implemented
+    it('should evaluate retraining conditions with configurable thresholds', async () => {
       const { evaluateRetrainingTrigger } = await import('../../services/pipeline/trigger');
 
       const result = await evaluateRetrainingTrigger({
@@ -86,8 +86,8 @@ describe('Training Pipeline Queue (ATDD RED — Epic 9)', () => {
       expect(Array.isArray(result.reasons)).toBe(true);
     });
 
-    // TODO ATDD: remove .skip when implemented (Story 9.2)
-    it.skip('should include the concrete reason in the trigger notification', async () => {
+    // ATDD: Story 9.2 implemented
+    it('should include the concrete reason in the trigger notification', async () => {
       const { notifyRetrainingRecommended } = await import('../../services/pipeline/trigger');
       const socketSpy = vi.fn();
 
@@ -102,8 +102,8 @@ describe('Training Pipeline Queue (ATDD RED — Epic 9)', () => {
       );
     });
 
-    // TODO ATDD: remove .skip when implemented (Story 9.2)
-    it.skip('should not send duplicate notifications within the dedup window', async () => {
+    // ATDD: Story 9.2 implemented
+    it('should not send duplicate notifications within the dedup window', async () => {
       const { notifyRetrainingRecommended } = await import('../../services/pipeline/trigger');
       const socketSpy = vi.fn();
       const trigger = { shouldRetrain: true, reasons: ['testreden'] };

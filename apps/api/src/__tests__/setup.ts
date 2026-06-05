@@ -166,6 +166,21 @@ vi.mock('@prisma/client', () => {
       delete: vi.fn(),
       count: vi.fn(),
     },
+    retrainingNotification: {
+      findUnique: vi.fn(),
+      findFirst: vi.fn(),
+      findMany: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      count: vi.fn(),
+    },
+    modelActivationLog: {
+      findUnique: vi.fn(),
+      findFirst: vi.fn(),
+      findMany: vi.fn(),
+      create: vi.fn(),
+      count: vi.fn(),
+    },
     // Supports both Prisma transaction forms:
     //  - array form: prisma.$transaction([op1, op2, ...])
     //  - interactive form: prisma.$transaction(async (tx) => { ... })
