@@ -1,5 +1,13 @@
 # Versiegeschiedenis
 
+## 2026-06-05 (Epic 9 — Automatische Retraining: Goedkeuringsscherm 9.5)
+
+### Eén-klik modelactivatie met volledig evaluatierapport
+- Nieuwe pagina `/models/approval` toont uitsluitend modellen die de kwaliteitsgate haalden en op goedkeuring wachten
+- Per kandidaat-model ziet de datamanager een vergelijkingskaart: de nauwkeurigheid van het nieuwe model naast die van het huidige actieve model, het verschil en de reden voor de retraining-trigger
+- Activatie vereist één handeling: bevestig via de "Activeren"-knop; het systeem weigert geautomatiseerde activatiepogingen (servicesleutel in de header geeft een 403-foutmelding)
+- Elke activatie wordt vastgelegd met gebruiker, tijdstip en trigger-context (traceerbaarheid voor toekomstige audit-trail)
+
 ## 2026-06-05 (Epic 9 — Automatische Retraining: Kwaliteitsgate 9.4)
 
 ### Automatische kwaliteitsdrempel voor getrainde modellen

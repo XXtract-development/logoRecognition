@@ -302,6 +302,11 @@ vi.mock('../services/ml-client', () => ({
     synthesizeArtwork: vi.fn(),
     getTrainingStatus: vi.fn().mockRejectedValue(Object.assign(new Error('Job not found'), { statusCode: 404 })),
     buildSyntheticBatch: vi.fn().mockResolvedValue({ batches: [], shortfall_reported: {} }),
+    activateModel: vi.fn().mockResolvedValue({ message: 'Model activated' }),
+    startTraining: vi.fn().mockResolvedValue({ job_id: 'mock-job-1', status: 'queued' }),
+    listModels: vi.fn().mockResolvedValue({ models: [], total: 0 }),
+    listTrainingJobs: vi.fn().mockResolvedValue([]),
+    cancelTraining: vi.fn().mockResolvedValue(undefined),
   },
   MLServiceError: class MLServiceError extends Error {
     statusCode: number;
@@ -313,6 +318,26 @@ vi.mock('../services/ml-client', () => ({
     }
   },
 }));
+
+// Mock Socket.IO manager (Epic 9 — broadcastAll used by trigger.ts, quality-gate.ts)
+vi.mock('../services/socket-io-manager', () => {
+  const mockManager = {
+    broadcastAll: vi.fn(),
+    notifyTrainingStarted: vi.fn(),
+    sendTrainingUpdate: vi.fn(),
+    notifyFeedbackReceived: vi.fn(),
+    notifyRetrainingTriggered: vi.fn(),
+    notifyTrainingCompleted: vi.fn(),
+    notifyTrainingFailed: vi.fn(),
+    sendRecognitionUpdate: vi.fn(),
+    isInitialized: vi.fn(() => true),
+    getClientCount: vi.fn(() => 0),
+  };
+  return {
+    socketIOManager: mockManager,
+    default: mockManager,
+  };
+});
 
 // Mock WebSocket manager
 vi.mock('../services/websocket-manager', () => ({

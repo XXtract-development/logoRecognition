@@ -52,8 +52,8 @@ describe('Model Approval Routes (ATDD RED — Story 9.5)', () => {
   });
 
   describe('GET /models/approval-queue', () => {
-    // TODO ATDD: remove .skip when implemented (Story 9.5)
-    it.skip('should list gate-passing challengers with full evaluation report', async () => {
+    // ATDD: Story 9.5 implemented
+    it('should list gate-passing challengers with full evaluation report', async () => {
       (mockPrisma.modelVersion.findMany as vi.Mock).mockResolvedValue([
         {
           id: 'challenger-1',
@@ -62,6 +62,12 @@ describe('Model Approval Routes (ATDD RED — Story 9.5)', () => {
           metrics: { holdout: { accuracy: 0.94, holdoutHash: 'sha256:abc' }, gate: { passed: true } },
         },
       ]);
+      (mockPrisma.modelVersion.findFirst as vi.Mock).mockResolvedValue({
+        id: 'champion-1',
+        version: 'v20260601_000000',
+        isActive: true,
+        metrics: { holdout: { accuracy: 0.91 } },
+      });
 
       const response = await app.inject({ method: 'GET', url: '/api/v1/models/approval-queue' });
 
@@ -77,9 +83,10 @@ describe('Model Approval Routes (ATDD RED — Story 9.5)', () => {
       });
     });
 
-    // TODO ATDD: remove .skip when implemented (Story 9.5)
-    it.skip('should exclude challengers that failed the gate', async () => {
+    // ATDD: Story 9.5 implemented
+    it('should exclude challengers that failed the gate', async () => {
       (mockPrisma.modelVersion.findMany as vi.Mock).mockResolvedValue([]);
+      (mockPrisma.modelVersion.findFirst as vi.Mock).mockResolvedValue(null);
 
       const response = await app.inject({ method: 'GET', url: '/api/v1/models/approval-queue' });
 
@@ -89,14 +96,14 @@ describe('Model Approval Routes (ATDD RED — Story 9.5)', () => {
   });
 
   describe('POST /models/:modelId/activate — human gate (NFR5)', () => {
-    // TODO ATDD: remove .skip when implemented (Story 9.5)
-    it.skip('should refuse activation by service accounts with 403', async () => {
+    // ATDD: Story 9.5 implemented
+    it('should refuse activation by service accounts with 403', async () => {
       const serviceApp = await buildApp('service');
 
       const response = await serviceApp.inject({
         method: 'POST',
         url: '/api/v1/models/challenger-1/activate',
-        headers: { 'x-api-key': 'pipeline-service-key' },
+        headers: { 'x-api-key': process.env.PIPELINE_SERVICE_KEY || 'test-service-key' },
       });
 
       expect(response.statusCode).toBe(403);
@@ -105,12 +112,19 @@ describe('Model Approval Routes (ATDD RED — Story 9.5)', () => {
       await serviceApp.close();
     });
 
-    // TODO ATDD: remove .skip when implemented (Story 9.5)
-    it.skip('should log every activation with user and timestamp', async () => {
+    // ATDD: Story 9.5 implemented
+    // Testcorrectie (8.2-precedent): Replaced the `??`-chain
+    //   `mockPrisma.auditLog?.create ?? mockPrisma.modelActivationLog?.create`
+    // with a direct assertion on `mockPrisma.modelActivationLog.create`.
+    // The `??`-chain returned `undefined` when neither property existed on the mock,
+    // causing `expect(undefined).toHaveBeenCalledWith(...)` to throw instead of fail.
+    // Own table ModelActivationLog is the correct approach (not a generic auditLog).
+    it('should log every activation with user and timestamp', async () => {
       (mockPrisma.modelVersion.findUnique as vi.Mock).mockResolvedValue({
         id: 'challenger-1',
         isActive: false,
       });
+      (mockPrisma.modelActivationLog.create as vi.Mock).mockResolvedValue({ id: 'log-1' });
 
       await app.inject({
         method: 'POST',
@@ -118,7 +132,7 @@ describe('Model Approval Routes (ATDD RED — Story 9.5)', () => {
       });
 
       // Activatie-audit: wie + wanneer (FR60-voorloper; volledige audit-trail in Story 10.3)
-      expect(mockPrisma.auditLog?.create ?? mockPrisma.modelActivationLog?.create).toHaveBeenCalledWith(
+      expect(mockPrisma.modelActivationLog.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
             userId: mockUser.id,
