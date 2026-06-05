@@ -1,5 +1,14 @@
 # Versiegeschiedenis
 
+## 2026-06-05 (Epic 9 — Automatische Retraining: Trainingspipeline 9.3)
+
+### Crash-bestendige trainingspipeline
+- De volledige retraining-pipeline draait nu als een aaneengekoppelde BullMQ-jobflow: incorporate-feedback → build-batch → train-model → evaluate-model
+- Elke stap in de flow is afzonderlijk herstelbaar: een herstarte container pikt de flow op vanaf de niet-voltooide stap, zonder de eerder afgeronde stappen te herhalen
+- De trainingsworker draait met concurrency 1 en binnen een configureerbaar tijdvenster (standaard 22:00–06:00) om productieverkeer niet te hinderen
+- Klassen met onvoldoende trainingsbeelden worden automatisch aangevuld via synthetische data (deferred van Story 8.7); het tekortrapport per klasse wordt gelogd op taakniveau
+- Datamanagers kunnen een trainingscyclus handmatig starten via de API (`POST /api/v1/pipeline/training/start`); het systeem weigert een nieuwe start als er al een actieve trainingsrun loopt
+
 ## 2026-06-05 (Epic 9 — Automatische Retraining: Trigger & Notificaties 9.2)
 
 ### Automatische herkenningsmeldingen

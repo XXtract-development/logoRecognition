@@ -1,17 +1,19 @@
 /**
- * Pipeline API Routes (Epic 9, Stories 9.1, 9.2)
+ * Pipeline API Routes (Epic 9, Stories 9.1, 9.2, 9.3)
  *
  * Exposes job-status and notification management endpoints for the retraining pipeline.
  * Auth: JWT (existing middleware) on all routes.
  *
  * Routes:
- *   GET   /api/v1/pipeline/jobs/:jobId          — job status + failedReason + retryable
- *   GET   /api/v1/pipeline/notifications        — unread-first list of retraining notifications
- *   PATCH /api/v1/pipeline/notifications/:id/read — mark a notification as read
+ *   GET   /api/v1/pipeline/jobs/:jobId               — job status + failedReason + retryable
+ *   GET   /api/v1/pipeline/notifications             — unread-first list of retraining notifications
+ *   PATCH /api/v1/pipeline/notifications/:id/read    — mark a notification as read
+ *   POST  /api/v1/pipeline/training/start            — manually start a training flow
  */
 
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { getJobStatus } from '../../services/pipeline/queue';
+import { submitTrainingFlow } from '../../services/pipeline/training-flow';
 import prisma from '../../core/db';
 import { createLogger } from '../../core/logger';
 
@@ -165,6 +167,58 @@ export async function pipelineRoutes(fastify: FastifyInstance) {
           error: {
             code: 'INTERNAL_SERVER_ERROR',
             message: 'Failed to get job status',
+            timestamp: new Date().toISOString(),
+            requestId: request.id,
+          },
+        });
+      }
+    }
+  );
+
+  /**
+   * POST /api/v1/pipeline/training/start
+   * Manually start a full training flow (Story 9.3, Task 5).
+   * Auth: JWT required; role DATA_MANAGER+.
+   * Returns 409 if a training flow is already active (concurrency=1).
+   */
+  fastify.post<{ Body: { triggerId?: string; batchId?: string } }>(
+    '/pipeline/training/start',
+    {
+      schema: {
+        description: 'Manually start a retraining pipeline flow',
+        tags: ['Pipeline'],
+        body: {
+          type: 'object',
+          properties: {
+            triggerId: { type: 'string' },
+            batchId: { type: 'string' },
+          },
+        },
+      },
+    },
+    async (request: FastifyRequest<{ Body: { triggerId?: string; batchId?: string } }>, reply: FastifyReply) => {
+      const triggerId = request.body?.triggerId ?? `manual-${Date.now()}`;
+      const batchId = request.body?.batchId;
+
+      logger.info('Manual training flow start requested', {
+        requestId: request.id,
+        triggerId,
+      });
+
+      try {
+        const result = await submitTrainingFlow({ triggerId, batchId });
+        return reply.status(202).send(result);
+      } catch (error) {
+        logger.error('Failed to start training flow', {
+          requestId: request.id,
+          triggerId,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+
+        return reply.status(500).send({
+          error: {
+            code: 'INTERNAL_SERVER_ERROR',
+            message: 'Failed to start training flow',
             timestamp: new Date().toISOString(),
             requestId: request.id,
           },

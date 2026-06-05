@@ -120,8 +120,8 @@ describe('Training Pipeline Queue (ATDD RED — Epic 9)', () => {
   // -------------------------------------------------------------------------
 
   describe('Training flow', () => {
-    // TODO ATDD: remove .skip when implemented (Story 9.3)
-    it.skip('should build a flow with the steps incorporate → batch → train → evaluate', async () => {
+    // ATDD: Story 9.3 implemented
+    it('should build a flow with the steps incorporate → batch → train → evaluate', async () => {
       const { buildTrainingFlow } = await import('../../services/pipeline/training-flow');
 
       const flow = buildTrainingFlow({ triggerId: 'trigger-1' });
@@ -132,8 +132,8 @@ describe('Training Pipeline Queue (ATDD RED — Epic 9)', () => {
       );
     });
 
-    // TODO ATDD: remove .skip when implemented (Story 9.3)
-    it.skip('should detect an aborted ML-service training and mark the step retryable', async () => {
+    // ATDD: Story 9.3 implemented
+    it('should detect an aborted ML-service training and mark the step retryable', async () => {
       const { checkTrainingStep } = await import('../../services/pipeline/training-flow');
 
       // ML-service meldt job die niet meer bestaat/hangt
@@ -143,14 +143,24 @@ describe('Training Pipeline Queue (ATDD RED — Epic 9)', () => {
       expect(result.retryable).toBe(true);
     });
 
-    // TODO ATDD: remove .skip when implemented (Story 9.3, NFR2)
-    it.skip('should only schedule the train step inside the configured window with concurrency 1', async () => {
+    // ATDD: Story 9.3 implemented
+    it('should only schedule the train step inside the configured window with concurrency 1', async () => {
       const { getTrainingJobOptions } = await import('../../services/pipeline/training-flow');
 
       const opts = getTrainingJobOptions();
 
       expect(opts.concurrency).toBe(1);
       expect(opts.window).toBeDefined(); // bijv. { start: '22:00', end: '06:00' }
+    });
+
+    // ATDD: Story 9.3 implemented (batch-hook, AC4)
+    it('should call buildSyntheticBatch and return shortfall_reported in build-batch step', async () => {
+      const { executeBuildBatchStep } = await import('../../services/pipeline/training-flow');
+
+      const result = await executeBuildBatchStep({ minPerClass: 50, syntheticRatio: 0.3 });
+
+      expect(result).toHaveProperty('shortfall_reported');
+      expect(typeof result.shortfall_reported).toBe('object');
     });
   });
 

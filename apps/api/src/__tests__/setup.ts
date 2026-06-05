@@ -300,6 +300,8 @@ vi.mock('../services/ml-client', () => ({
     generateEmbedding: vi.fn(),
     rasterizeArtwork: vi.fn(),
     synthesizeArtwork: vi.fn(),
+    getTrainingStatus: vi.fn().mockRejectedValue(Object.assign(new Error('Job not found'), { statusCode: 404 })),
+    buildSyntheticBatch: vi.fn().mockResolvedValue({ batches: [], shortfall_reported: {} }),
   },
   MLServiceError: class MLServiceError extends Error {
     statusCode: number;
