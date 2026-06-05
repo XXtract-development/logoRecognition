@@ -167,7 +167,9 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/logo_recognition_test
 
       - name: Run pipeline smoke tests
-        run: pnpm --filter @logo-recognition/api vitest run src/__tests__/smoke/pipeline-smoke-test.test.ts --reporter=verbose
+        run: |
+          cd apps/api
+          npx vitest run src/__tests__/smoke/pipeline-smoke-test.test.ts --reporter=verbose
         timeout-minutes: 8
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/logo_recognition_test

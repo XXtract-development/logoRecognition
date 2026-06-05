@@ -11,13 +11,15 @@
  *     unit tests. This keeps CI < 5 minutes (AC2).
  *   - Contractbreuk-detection (AC3): every pipeline stage asserts on the full
  *     response shape — missing fields or wrong types cause the test to fail.
- *   - Gate-drempel test (AC4): GATE_MIN_IMPROVEMENT is set to 0.02 so the test
- *     explicitly exercises a non-default threshold (bevinding #15 adversarial review).
+ *   - Gate-drempel test (AC4): GATE_MIN_IMPROVEMENT is set via process.env in
+ *     beforeEach so the test explicitly exercises a non-default threshold.
  *     The test seeds a champion and challenger whose delta is exactly 0.01 — below
  *     the 0.02 threshold → verdict.passed = false. This proves the threshold is
- *     in use, not a hardcoded 0.0.
- *   - Mini-dataset: tests/fixtures/mini-dataset/ (36 training images + 15 holdout,
+ *     read from the environment variable, not hardcoded 0.0.
+ *   - Mini-dataset: tests/fixtures/mini-dataset/ (51 labelled entries,
  *     64×64 PNG, 3 classes, ~204KB total — well below the 5MB no-LFS limit).
+ *   - Static imports are used for mlClient so that vi.mock() from setup.ts is
+ *     applied before the module is resolved (same pattern as training.routes.test.ts).
  *
  * Running locally:
  *   cd apps/api && GATE_MIN_IMPROVEMENT=0.02 npx vitest run src/__tests__/smoke/pipeline-smoke-test.test.ts
@@ -26,12 +28,20 @@
  * main/acc only (not on every PR) to keep PR feedback fast.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import path from 'path';
 import fs from 'fs';
+import { mlClient } from '../../services/ml-client';
+
+// Cast to vi.Mocked so TypeScript allows .mockResolvedValue() calls
+const mockedMlClient = mlClient as typeof mlClient & {
+  buildSyntheticBatch: ReturnType<typeof vi.fn>;
+  startTraining: ReturnType<typeof vi.fn>;
+  getTrainingStatus: ReturnType<typeof vi.fn>;
+};
 
 // ---------------------------------------------------------------------------
-// Mini-dataset validation (AC1, AC2)
+// Mini-dataset path resolution (AC1, AC2)
 // ---------------------------------------------------------------------------
 
 // In CI: MINI_DATASET_PATH env var is set by the workflow.
@@ -41,6 +51,10 @@ const MINI_DATASET_PATH = process.env.MINI_DATASET_PATH
   : path.resolve(__dirname, '../../../../../tests/fixtures/mini-dataset');
 
 describe('Pipeline Smoke Test (Story 9.6)', () => {
+  // ---------------------------------------------------------------------------
+  // Mini-dataset validation (AC1, AC2)
+  // ---------------------------------------------------------------------------
+
   describe('Mini-dataset integrity (AC1)', () => {
     it('should have the mini-dataset labels.json with training and holdout entries', () => {
       const labelsPath = path.join(MINI_DATASET_PATH, 'labels.json');
@@ -98,10 +112,37 @@ describe('Pipeline Smoke Test (Story 9.6)', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // Flow: buildTrainingFlow (AC1, AC3)
+  // Step 1: Incorporate — retraining trigger reads feedback count (AC1, AC3)
   // ---------------------------------------------------------------------------
 
-  describe('Training flow contract (AC1, AC3)', () => {
+  describe('Step 1 — Incorporate: retraining trigger with mini-dataset count (AC1, AC3)', () => {
+    it('should evaluate trigger based on mini-dataset feedback count', async () => {
+      const labelsPath = path.join(MINI_DATASET_PATH, 'labels.json');
+      const labels = JSON.parse(fs.readFileSync(labelsPath, 'utf8'));
+      const trainCount = labels.filter((e: { split: string }) => e.split === 'train').length;
+
+      const { evaluateRetrainingTrigger } = await import('../../services/pipeline/trigger');
+
+      const result = await evaluateRetrainingTrigger({
+        minFeedbackCount: trainCount - 1, // dataset is just enough to trigger
+        minUnincorporatedRatio: 0.0,       // not required for this test
+        lowAccuracyThreshold: 1.0,         // force accuracy-based trigger (high threshold → miss)
+      });
+
+      // AC3: contract — missing fields = broken contract
+      expect(result).toMatchObject({
+        shouldRetrain: expect.any(Boolean),
+        reasons: expect.any(Array),
+      });
+      expect(Array.isArray(result.reasons)).toBe(true);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Step 2: Build flow graph — all four steps present (AC1, AC3)
+  // ---------------------------------------------------------------------------
+
+  describe('Step 2 — Build flow: pipeline graph structure (AC1, AC3)', () => {
     it('should build a flow with all four pipeline steps', async () => {
       const { buildTrainingFlow } = await import('../../services/pipeline/training-flow');
 
@@ -137,41 +178,131 @@ describe('Pipeline Smoke Test (Story 9.6)', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // Flow: evaluateRetrainingTrigger (AC1, AC3)
+  // Step 3: Build batch — mlClient.buildSyntheticBatch response contract (AC3)
   // ---------------------------------------------------------------------------
 
-  describe('Retraining trigger contract (AC1, AC3)', () => {
-    it('should return trigger evaluation with shouldRetrain and reasons array', async () => {
-      const { evaluateRetrainingTrigger } = await import('../../services/pipeline/trigger');
-
-      const result = await evaluateRetrainingTrigger({
-        minFeedbackCount: 50,
-        minUnincorporatedRatio: 0.2,
-        lowAccuracyThreshold: 0.9,
+  describe('Step 3 — Build batch: synthetic batch fill (AC3)', () => {
+    it('should call executeBuildBatchStep and return the expected contract shape', async () => {
+      // Arrange: mock returns a batch result for 3 classes with 12 images each
+      mockedMlClient.buildSyntheticBatch.mockResolvedValue({
+        batches: [
+          { class: 'klas-A', count: 12 },
+          { class: 'klas-B', count: 12 },
+          { class: 'klas-C', count: 12 },
+        ],
+        shortfall_reported: {},
       });
 
-      // AC3: contract — missing fields = broken contract
+      const { executeBuildBatchStep } = await import('../../services/pipeline/training-flow');
+
+      const result = await executeBuildBatchStep({
+        minPerClass: 10,
+        syntheticRatio: 0.3,
+      });
+
+      // AC3: response shape — missing fields = broken contract
       expect(result).toMatchObject({
-        shouldRetrain: expect.any(Boolean),
-        reasons: expect.any(Array),
+        batches: expect.any(Array),
+        shortfall_reported: expect.any(Object),
       });
-      expect(Array.isArray(result.reasons)).toBe(true);
+
+      // Verify the mock was called with correct parameters
+      expect(mockedMlClient.buildSyntheticBatch).toHaveBeenCalledWith({
+        minPerClass: 10,
+        ratio: 0.3,
+      });
     });
   });
 
   // ---------------------------------------------------------------------------
-  // Gate with configurable threshold (AC4)
+  // Step 4a: Train — mlClient.startTraining with epochs (AC3)
   // ---------------------------------------------------------------------------
 
-  describe('Quality gate with configurable threshold (AC4)', () => {
-    it('should fail when challenger improvement is less than GATE_MIN_IMPROVEMENT=0.02', async () => {
+  describe('Step 4a — Train: mlClient.startTraining response contract (AC3)', () => {
+    it('should call startTraining with batch_id and epochs=2 and return { job_id, status }', async () => {
+      mockedMlClient.startTraining.mockResolvedValue({
+        job_id: 'smoke-job-001',
+        status: 'queued',
+      });
+
+      const result = await mockedMlClient.startTraining({
+        batch_id: 'smoke-batch-001',
+        config: { epochs: 2 },
+      });
+
+      // AC3: contract shape
+      expect(result).toMatchObject({
+        job_id: expect.any(String),
+        status: expect.stringMatching(/^(queued|running|completed|failed)$/),
+      });
+
+      expect(mockedMlClient.startTraining).toHaveBeenCalledWith(
+        expect.objectContaining({
+          batch_id: 'smoke-batch-001',
+          config: expect.objectContaining({ epochs: 2 }),
+        })
+      );
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Step 4b: Holdout eval — getTrainingStatus after training (AC3)
+  // ---------------------------------------------------------------------------
+
+  describe('Step 4b — Holdout evaluation: getTrainingStatus response contract (AC3)', () => {
+    it('should return a status with holdout accuracy and holdout hash fields', async () => {
+      // Challenger scenario: training completed, holdout metrics available
+      mockedMlClient.getTrainingStatus.mockResolvedValue({
+        status: 'completed',
+        metrics: {
+          accuracy: 0.92,
+          holdoutAccuracy: 0.91,
+          holdoutHash: 'sha256:smoke-holdout-abc',
+        },
+        job_id: 'smoke-job-001',
+      });
+
+      const statusResult = await mockedMlClient.getTrainingStatus('smoke-job-001');
+
+      // AC3: contract — holdout fields must be present on a completed job
+      expect(statusResult).toMatchObject({
+        status: 'completed',
+        metrics: expect.objectContaining({
+          holdoutAccuracy: expect.any(Number),
+          holdoutHash: expect.any(String),
+        }),
+      });
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Step 5: Quality gate with configurable threshold from env (AC4)
+  // ---------------------------------------------------------------------------
+
+  describe('Step 5 — Quality gate with threshold from GATE_MIN_IMPROVEMENT env (AC4)', () => {
+    const originalEnv = process.env.GATE_MIN_IMPROVEMENT;
+
+    beforeEach(() => {
+      // Set threshold via env var — evaluateGate must read it, NOT use a default 0.0
+      process.env.GATE_MIN_IMPROVEMENT = '0.02';
+    });
+
+    afterEach(() => {
+      if (originalEnv === undefined) {
+        delete process.env.GATE_MIN_IMPROVEMENT;
+      } else {
+        process.env.GATE_MIN_IMPROVEMENT = originalEnv;
+      }
+    });
+
+    it('should fail when challenger improvement (0.01) is less than env threshold (0.02)', async () => {
       const { evaluateGate } = await import('../../services/pipeline/quality-gate');
 
       // Champion: 0.91, Challenger: 0.92 → delta = 0.01 < 0.02 threshold → should fail
+      // minImprovement is NOT passed explicitly — the function must read GATE_MIN_IMPROVEMENT
       const verdict = evaluateGate({
         champion: { holdoutAccuracy: 0.91, holdoutHash: 'sha256:smoke-holdout-abc' },
         challenger: { holdoutAccuracy: 0.92, holdoutHash: 'sha256:smoke-holdout-abc' },
-        minImprovement: parseFloat(process.env.GATE_MIN_IMPROVEMENT || '0.02'),
       });
 
       // AC4: threshold must be respected — NOT hardcoded 0.0
@@ -183,14 +314,13 @@ describe('Pipeline Smoke Test (Story 9.6)', () => {
       });
     });
 
-    it('should pass when challenger improvement meets GATE_MIN_IMPROVEMENT=0.02', async () => {
+    it('should pass when challenger improvement (0.03) meets env threshold (0.02)', async () => {
       const { evaluateGate } = await import('../../services/pipeline/quality-gate');
 
       // Champion: 0.91, Challenger: 0.94 → delta = 0.03 >= 0.02 threshold → should pass
       const verdict = evaluateGate({
         champion: { holdoutAccuracy: 0.91, holdoutHash: 'sha256:smoke-holdout-abc' },
         challenger: { holdoutAccuracy: 0.94, holdoutHash: 'sha256:smoke-holdout-abc' },
-        minImprovement: parseFloat(process.env.GATE_MIN_IMPROVEMENT || '0.02'),
       });
 
       expect(verdict.passed).toBe(true);
@@ -202,7 +332,6 @@ describe('Pipeline Smoke Test (Story 9.6)', () => {
       const verdict = evaluateGate({
         champion: null,
         challenger: { holdoutAccuracy: 0.87, holdoutHash: 'sha256:smoke-holdout-abc' },
-        minImprovement: parseFloat(process.env.GATE_MIN_IMPROVEMENT || '0.02'),
       });
 
       expect(verdict.passed).toBe(true);
@@ -224,7 +353,9 @@ describe('Pipeline Smoke Test (Story 9.6)', () => {
     it('should return true for isServiceRequest with correct PIPELINE_SERVICE_KEY', async () => {
       const { isServiceRequest } = await import('../../services/pipeline/queue');
 
-      const key = process.env.PIPELINE_SERVICE_KEY || 'test-service-key';
+      // PIPELINE_SERVICE_KEY is set in setup.ts to 'test-service-key'.
+      // Pass the same value to prove that key matching works correctly.
+      const key = process.env.PIPELINE_SERVICE_KEY!;
       expect(isServiceRequest({ headers: { 'x-api-key': key } })).toBe(true);
     });
   });

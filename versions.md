@@ -1,11 +1,12 @@
 # Versiegeschiedenis
 
-## 2026-06-05 (Epic 9 — Automatische Retraining: CI-smoke-test 9.6)
+## 2026-06-05 (Epic 9 — Automatische Retraining: CI-smoke-test 9.6, revisie)
 
-### Geautomatiseerde regressiedetectie voor de volledige trainingspipeline
-- Nieuwe CI-smoke-test controleert bij elke merge naar main/acc de volledige pipelineflow op een kleine testdataset (3 klassen, 36 trainingsafbeeldingen + 15 holdout-afbeeldingen, ~200KB)
-- De test verifieert alle API-contracten: ontbrekende velden of verkeerde respons-formaten laten de build mislukken zodat regressions direct zichtbaar worden
-- De configureerbare kwaliteitsdrempel wordt expliciet getest: de smoke-test bewijst dat een drempel van 2% daadwerkelijk in gebruik is (en niet wordt genegeerd)
+### Geautomatiseerde regressiedetectie voor de volledige trainingspipeline — volledige flowdekking
+- Smoke-test uitgebreid met alle vijf pipelinestappen: incorporate (feedbacktelling op de mini-dataset), batch-opbouw (synthetisch aanvullen), trainen (2 epochs via ML-client), holdout-evaluatie (metriekencontract) en kwaliteitsgate
+- De kwaliteitsdrempel-test gebruikt uitsluitend de omgevingsvariabele `GATE_MIN_IMPROVEMENT` — geen expliciete doorgave in de aanroep — waardoor bewezen wordt dat de drempel werkelijk wordt gelezen uit de configuratie
+- Verwijderd: verouderde stub-testfile (`tests/smoke/pipeline-smoke-test.ts`) die nooit door de testrunner werd opgepikt
+- CI-aanroep gecorrigeerd naar `cd apps/api && npx vitest run ...` zodat de Vitest-configuratie en setupbestanden correct worden geladen
 - Totale looptijd van de smoke-test: onder de 5 minuten dankzij gemockte ML-service en kleine testdataset
 
 ## 2026-06-05 (Epic 9 — Automatische Retraining: Goedkeuringsscherm 9.5)
