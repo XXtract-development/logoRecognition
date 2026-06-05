@@ -1,5 +1,14 @@
 # Versiegeschiedenis
 
+## 2026-06-05 (Epic 9 — Automatische Retraining: Kwaliteitsgate 9.4)
+
+### Automatische kwaliteitsdrempel voor getrainde modellen
+- Na elke training beoordeelt een kwaliteitsgate automatisch of het nieuwe model de actieve versie overtreft op dezelfde testset
+- Een challenger die de huidige champion haalt of overtreft op nauwkeurigheid (en dezelfde holdout-set heeft gebruikt) wordt doorgestuurd voor goedkeuring
+- Afgewezen modellen worden geregistreerd met de vergelijkingscijfers; de datamanager ontvangt een melding met de exacte scores van beide modellen
+- Eerste trainingsrun (geen actieve champion) en legacy-modellen zonder testmetriken worden automatisch goedgekeurd
+- De minimale verbetering is instelbaar via de omgevingsvariabele `GATE_MIN_IMPROVEMENT` (standaard: gelijk of beter dan champion)
+
 ## 2026-06-05 (Epic 9 — Automatische Retraining: Trainingspipeline 9.3)
 
 ### Crash-bestendige trainingspipeline
