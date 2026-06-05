@@ -1,5 +1,19 @@
 # Versiegeschiedenis
 
+## 2026-06-05 (Acceptatietest Epic 9 — UI-verbeteringen)
+
+### In- en uitloggen vanuit de navigatiebalk
+- Rechtsboven in elke pagina staat nu een gebruikersmenu: ingelogd zie je je e-mailadres met de optie "Uitloggen"; niet ingelogd zie je een "Inloggen"-knop
+- Na uitloggen kom je automatisch terug op het inlogscherm
+
+### Goedkeuringsscherm direct bereikbaar
+- Op de modellenpagina staat een knop "Goedkeuringsqueue" met een teller van het aantal modellen dat op goedkeuring wacht
+- De melding "Hertraining aanbevolen" bevat nu een knop "Bekijk goedkeuringsscherm" die je direct naar de goedkeuringspagina brengt
+- Het goedkeuringsscherm opent nu correct (was eerder niet bereikbaar)
+
+### Nettere melding bij verlopen sessie
+- Wanneer je sessie is verlopen toont de reviewpagina nu een duidelijke melding met een "Inloggen"-knop, in plaats van een technische foutmelding
+
 ## 2026-06-05 (Epic 9 — Automatische Retraining: CI-smoke-test 9.6, revisie)
 
 ### Geautomatiseerde regressiedetectie voor de volledige trainingspipeline — volledige flowdekking

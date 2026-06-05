@@ -351,6 +351,7 @@
     "deactivate": "Deactivate",
     "download": "Download ONNX",
     "compare": "Compare",
+    "approvalQueue": "Approval queue",
     "activated": "Model activated",
     "deactivated": "Model deactivated",
     "activateError": "Failed to activate model",
@@ -458,6 +459,12 @@
     "sourceFeedback": "Feedback",
     "openItems": "open items",
     "uncertainItems": "uncertain predictions",
-    "noArtworkItems": "No open artwork review items"
+    "noArtworkItems": "No open artwork review items",
+    "authRequired": "You are no longer signed in",
+    "authRequiredBody": "Please sign in again to view the review queue."
+  },
+  "auth": {
+    "login": "Sign in",
+    "logout": "Sign out"
   }
 }

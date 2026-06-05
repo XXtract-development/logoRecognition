@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import React from 'react';
 
 // Mock the review service before importing the page.
@@ -63,6 +64,16 @@ const mockItem: ArtworkReviewItem = {
   updatedAt: '2026-06-01T10:00:00Z',
 };
 
+// ArtworkReviewPage uses useNavigate (login redirect on 401), so every render
+// must be wrapped in a router.
+function renderPage() {
+  return render(
+    <MemoryRouter>
+      <ArtworkReviewPage />
+    </MemoryRouter>
+  );
+}
+
 function asAdmin(isAdmin: boolean) {
   vi.mocked(useCurrentUser).mockReturnValue({
     user: isAdmin ? ({ id: 'u1', email: 'a@b.c', name: 'A', role: 'ADMIN' } as never) : null,
@@ -83,7 +94,7 @@ describe('ArtworkReviewPage', () => {
     asAdmin(true);
     vi.mocked(fetchReviewQueue).mockResolvedValue([]);
 
-    render(<ArtworkReviewPage />);
+    renderPage();
 
     await waitFor(() => {
       expect(screen.getByTestId('review-empty')).toBeInTheDocument();
@@ -94,18 +105,36 @@ describe('ArtworkReviewPage', () => {
     asAdmin(true);
     vi.mocked(fetchReviewQueue).mockRejectedValue(new Error('boom'));
 
-    render(<ArtworkReviewPage />);
+    renderPage();
 
     await waitFor(() => {
       expect(screen.getByTestId('review-error')).toBeInTheDocument();
     });
   });
 
+  it('shows a login prompt (not a raw error) on a 401 from the review queue', async () => {
+    asAdmin(false);
+    // Axios-shaped 401 error — must hit the auth branch, not the generic one.
+    vi.mocked(fetchReviewQueue).mockRejectedValue({
+      isAxiosError: true,
+      response: { status: 401 },
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('review-auth-error')).toBeInTheDocument();
+    });
+    // A login affordance is present; the generic error/retry is not shown.
+    expect(screen.getByTestId('review-login')).toBeInTheDocument();
+    expect(screen.queryByTestId('review-error')).not.toBeInTheDocument();
+  });
+
   it('renders an item with label, confidence and discrepancy reason', async () => {
     asAdmin(true);
     vi.mocked(fetchReviewQueue).mockResolvedValue([mockItem]);
 
-    render(<ArtworkReviewPage />);
+    renderPage();
 
     await waitFor(() => {
       expect(screen.getByTestId('artwork-review-item')).toBeInTheDocument();
@@ -119,7 +148,7 @@ describe('ArtworkReviewPage', () => {
     asAdmin(true);
     vi.mocked(fetchReviewQueue).mockResolvedValue([mockItem]);
 
-    render(<ArtworkReviewPage />);
+    renderPage();
     await screen.findByTestId('artwork-review-item');
 
     await userEvent.click(screen.getByTestId('review-item-toggle'));
@@ -143,7 +172,7 @@ describe('ArtworkReviewPage', () => {
     vi.mocked(fetchReviewQueue).mockResolvedValue([mockItem]);
     vi.mocked(acceptReviewItem).mockResolvedValue({ status: 'registered', registered: 1, skipped: 0 });
 
-    render(<ArtworkReviewPage />);
+    renderPage();
     await screen.findByTestId('artwork-review-item');
 
     await userEvent.click(screen.getByTestId('review-item-accept'));
@@ -179,7 +208,7 @@ describe('ArtworkReviewPage', () => {
     };
     vi.mocked(fetchUncertainPredictions).mockResolvedValue([uncertain]);
 
-    render(<ArtworkReviewPage />);
+    renderPage();
 
     await screen.findByTestId('review-section-artwork');
     expect(screen.getByTestId('review-section-feedback')).toBeInTheDocument();
@@ -191,7 +220,7 @@ describe('ArtworkReviewPage', () => {
     asAdmin(false);
     vi.mocked(fetchReviewQueue).mockResolvedValue([mockItem]);
 
-    render(<ArtworkReviewPage />);
+    renderPage();
     await screen.findByTestId('artwork-review-item');
 
     expect(screen.getByTestId('review-item-accept')).toBeDisabled();

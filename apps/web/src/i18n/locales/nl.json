@@ -351,6 +351,7 @@
     "deactivate": "Deactiveren",
     "download": "ONNX Downloaden",
     "compare": "Vergelijken",
+    "approvalQueue": "Goedkeuringsqueue",
     "activated": "Model geactiveerd",
     "deactivated": "Model gedeactiveerd",
     "activateError": "Model activeren mislukt",
@@ -458,6 +459,12 @@
     "sourceFeedback": "Feedback",
     "openItems": "openstaande items",
     "uncertainItems": "onzekere voorspellingen",
-    "noArtworkItems": "Geen openstaande artwork-reviewitems"
+    "noArtworkItems": "Geen openstaande artwork-reviewitems",
+    "authRequired": "Je bent niet (meer) ingelogd",
+    "authRequiredBody": "Log opnieuw in om de reviewqueue te bekijken."
+  },
+  "auth": {
+    "login": "Inloggen",
+    "logout": "Uitloggen"
   }
 }

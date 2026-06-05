@@ -12,8 +12,10 @@
  */
 import React, { useCallback, useEffect, useState } from 'react';
 import { Typography, Space, Empty, Spin, Alert, Button, Tag, Card, message } from 'antd';
-import { ReloadOutlined, SyncOutlined } from '@ant-design/icons';
+import { ReloadOutlined, SyncOutlined, LoginOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import axios from 'axios';
 import {
   fetchReviewQueue,
   fetchUncertainPredictions,
@@ -30,16 +32,21 @@ const { Title, Paragraph } = Typography;
 
 const ArtworkReviewPage: React.FC = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { isAdmin } = useCurrentUser();
   const [items, setItems] = useState<ArtworkReviewItem[]>([]);
   const [uncertain, setUncertain] = useState<UncertainPrediction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Distinguishes a session/auth failure (401) from a generic load error so we
+  // can show a "log in" prompt instead of a raw error + retry that loops.
+  const [authError, setAuthError] = useState(false);
   const [catchUpBusy, setCatchUpBusy] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setAuthError(false);
     try {
       // Both review sources are fetched together. The artwork queue is the
       // primary actionable source; the uncertainty queue is shown read-only
@@ -51,10 +58,16 @@ const ArtworkReviewPage: React.FC = () => {
       ]);
       setItems(artwork);
       setUncertain(uncertainItems);
-    } catch {
-      setError(
-        t('review.loadError', { defaultValue: 'Ophalen van de reviewqueue mislukt' })
-      );
+    } catch (err) {
+      // A 401 means the session expired / the user is not logged in: show a
+      // dedicated login prompt rather than a generic error with a retry loop.
+      if (axios.isAxiosError(err) && err.response?.status === 401) {
+        setAuthError(true);
+      } else {
+        setError(
+          t('review.loadError', { defaultValue: 'Ophalen van de reviewqueue mislukt' })
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -188,6 +201,29 @@ const ArtworkReviewPage: React.FC = () => {
         <div style={{ textAlign: 'center', padding: 48 }}>
           <Spin size="large" />
         </div>
+      ) : authError ? (
+        <Alert
+          type="warning"
+          showIcon
+          data-testid="review-auth-error"
+          message={t('review.authRequired', {
+            defaultValue: 'Je bent niet (meer) ingelogd',
+          })}
+          description={t('review.authRequiredBody', {
+            defaultValue: 'Log opnieuw in om de reviewqueue te bekijken.',
+          })}
+          action={
+            <Button
+              type="primary"
+              icon={<LoginOutlined />}
+              data-testid="review-login"
+              onClick={() => navigate('/login')}
+              style={{ background: '#2F5A7A', borderColor: '#2F5A7A' }}
+            >
+              {t('auth.login', { defaultValue: 'Inloggen' })}
+            </Button>
+          }
+        />
       ) : error ? (
         <Alert
           type="error"

@@ -1,6 +1,7 @@
 import React, { Suspense, useEffect } from 'react';
 import { createBrowserRouter, RouterProvider, Outlet } from 'react-router-dom';
 import { ConfigProvider, theme, Spin } from 'antd';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { I18nextProvider } from 'react-i18next';
 import i18n from './i18n';
 import { ThemeProvider, useThemeStore } from '@/stores/themeStore';
@@ -11,6 +12,11 @@ import { AppLayout } from '@/components/common/AppLayout';
 import { RecognitionInterface } from '@/components/recognition/RecognitionInterface';
 import { useAccessibility } from '@/hooks/useAccessibility';
 import './styles/globals.css';
+
+// Single shared QueryClient for all react-query consumers (approval queue,
+// retraining notifications, pipeline jobs). Created once at module scope so the
+// cache is stable across renders.
+const queryClient = new QueryClient();
 
 // Lazy load pages for code splitting
 const HomePage = React.lazy(() => import('@/pages/HomePage'));
@@ -38,7 +44,8 @@ const RootLayout: React.FC = () => {
 
   return (
     <ErrorBoundary>
-      <I18nextProvider i18n={i18n}>
+      <QueryClientProvider client={queryClient}>
+        <I18nextProvider i18n={i18n}>
         <ConfigProvider
           theme={{
             algorithm: isDarkMode ? theme.darkAlgorithm : theme.defaultAlgorithm,
@@ -75,7 +82,8 @@ const RootLayout: React.FC = () => {
             </BackendStatusProvider>
           </ThemeProvider>
         </ConfigProvider>
-      </I18nextProvider>
+        </I18nextProvider>
+      </QueryClientProvider>
     </ErrorBoundary>
   );
 };

@@ -21,9 +21,14 @@ import {
   SunOutlined,
   MoonOutlined,
   CheckCircleOutlined,
+  UserOutlined,
+  LogoutOutlined,
+  LoginOutlined,
 } from '@ant-design/icons';
 import { useThemeStore } from '@/stores/themeStore';
 import { useBackendStatus } from '@/contexts/BackendStatusContext';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import apiClient from '@/services/apiClient';
 
 const { Header, Content } = Layout;
 const { Text } = Typography;
@@ -85,6 +90,19 @@ export const AppLayout: React.FC = () => {
   const { t, i18n } = useTranslation();
   const { isDarkMode, toggleTheme } = useThemeStore();
   const { isApiHealthy, isWebSocketHealthy } = useBackendStatus();
+  const { user, loading: userLoading } = useCurrentUser();
+
+  // Logout: clear the session server-side, then send the user to /login.
+  // /login lives outside AppLayout, so the layout unmounts and useCurrentUser
+  // re-runs on the next protected visit — no client-side cache to invalidate.
+  const handleLogout = async () => {
+    try {
+      await apiClient.post('/auth/logout');
+    } catch {
+      // Best-effort: even if the call fails, route to login so the UI is consistent.
+    }
+    navigate('/login');
+  };
 
   // Determine active menu key based on current path
   const getActiveKey = () => {
@@ -225,6 +243,56 @@ export const AppLayout: React.FC = () => {
             icon={<SettingOutlined />}
             className={isDarkMode ? 'text-neutral-400' : 'text-neutral-600'}
           />
+
+          {/* User menu / Login */}
+          {!userLoading &&
+            (user ? (
+              <Dropdown
+                menu={{
+                  items: [
+                    {
+                      key: 'email',
+                      icon: <UserOutlined />,
+                      label: user.email,
+                      disabled: true,
+                    },
+                    { type: 'divider' },
+                    {
+                      key: 'logout',
+                      icon: <LogoutOutlined />,
+                      label: t('auth.logout', { defaultValue: 'Uitloggen' }),
+                    },
+                  ],
+                  onClick: ({ key }) => {
+                    if (key === 'logout') void handleLogout();
+                  },
+                }}
+                trigger={['click']}
+              >
+                <Button
+                  type="text"
+                  icon={<UserOutlined />}
+                  data-testid="user-menu"
+                  className={isDarkMode ? 'text-neutral-400' : 'text-neutral-600'}
+                >
+                  <Text
+                    className={`hidden md:inline ${isDarkMode ? 'text-neutral-300' : 'text-neutral-700'}`}
+                  >
+                    {user.email}
+                  </Text>
+                </Button>
+              </Dropdown>
+            ) : (
+              <Button
+                type="primary"
+                icon={<LoginOutlined />}
+                data-testid="login-button"
+                onClick={() => navigate('/login')}
+                style={{ background: '#2F5A7A', borderColor: '#2F5A7A' }}
+              >
+                {t('auth.login', { defaultValue: 'Inloggen' })}
+              </Button>
+            ))}
         </Space>
       </Header>
 
