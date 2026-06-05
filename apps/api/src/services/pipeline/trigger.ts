@@ -14,6 +14,7 @@
 import crypto from 'crypto';
 import { Queue, Worker } from 'bullmq';
 import { getRedisConnection } from './queue';
+import { submitTrainingFlow, getActiveTrainingFlowJobId } from './training-flow';
 import prisma from '../../core/db';
 import { socketIOManager } from '../socket-io-manager';
 import { createLogger } from '../../core/logger';
@@ -48,8 +49,11 @@ const DEDUP_HOURS = parseInt(process.env.RETRAINING_DEDUP_HOURS || '24', 10);
 /**
  * Compute a deterministic triggerId from the reason list + current time window.
  * Two identical reason lists within the same dedup window produce the same ID.
+ *
+ * Exported so the auto-start path can reuse the exact same dedup identity as the
+ * notification path (one trigger → one notification → at most one auto-start).
  */
-function computeTriggerId(reasons: string[]): string {
+export function computeTriggerId(reasons: string[]): string {
   const windowStart = Math.floor(Date.now() / (DEDUP_HOURS * 3600 * 1000));
   const raw = [...reasons].sort().join('|') + ':' + windowStart;
   return crypto.createHash('sha256').update(raw).digest('hex').slice(0, 64);
@@ -207,6 +211,65 @@ export async function notifyRetrainingRecommended(
 }
 
 // ============================================
+// Auto-start training flow (Story 9.3, Gap #3)
+// ============================================
+
+/**
+ * Auto-start a full training flow when retraining is recommended.
+ *
+ * Dedup: keyed on the same triggerId as the notification, so one trigger spawns
+ * at most one flow within the dedup window (survives API restarts via Redis).
+ * Concurrency (AC3): if a training flow is already in progress, skip — never run
+ * two at once.
+ *
+ * Returns the flowId when a flow was started, or null when skipped (dedup or
+ * already-active).
+ */
+export async function autoStartTrainingFlow(trigger: TriggerResult): Promise<string | null> {
+  if (!trigger.shouldRetrain || trigger.reasons.length === 0) {
+    return null;
+  }
+
+  const triggerId = computeTriggerId(trigger.reasons);
+  const startedKey = `retraining:flow-started:${triggerId}`;
+  const redis = getRedisConnection();
+
+  // Dedup: this trigger already started a flow within the window.
+  const alreadyStarted = await redis.get(startedKey);
+  if (alreadyStarted) {
+    logger.info('Auto-start skipped — flow already started for this trigger', { triggerId });
+    return null;
+  }
+
+  // Concurrency=1: never start a second flow while one is in progress.
+  const activeJobId = await getActiveTrainingFlowJobId();
+  if (activeJobId) {
+    logger.info('Auto-start skipped — a training flow is already active', { triggerId, activeJobId });
+    return null;
+  }
+
+  // Mark started BEFORE submit (TTL = dedup window) to prevent a restart race.
+  await redis.setex(startedKey, DEDUP_HOURS * 3600, '1');
+
+  try {
+    const { flowId } = await submitTrainingFlow({
+      triggerId,
+      triggerReasons: trigger.reasons,
+    });
+    logger.info('Auto-started training flow from retraining trigger', { triggerId, flowId });
+    return flowId;
+  } catch (error) {
+    // Roll back the dedup key so a later check can retry.
+    await redis.del(startedKey);
+    logger.error('Auto-start training flow failed', {
+      triggerId,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+    throw error;
+  }
+}
+
+// ============================================
 // Cron scheduler registration
 // ============================================
 
@@ -250,6 +313,8 @@ export async function registerRetrainingCronJob(): Promise<void> {
         await notifyRetrainingRecommended(trigger, {
           emit: (event, data) => socketIOManager.broadcastAll(event, data),
         });
+        // Gap #3: auto-start the full training flow (dedup + concurrency guarded).
+        await autoStartTrainingFlow(trigger);
       }
     },
     { connection }
