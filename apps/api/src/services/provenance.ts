@@ -28,19 +28,22 @@ export const KEURMERK_CATEGORY = 'keurmerk';
 export const PROVENANCE_METHODS = ['template', 'classifier', 'human', 'synthetic'] as const;
 export type ProvenanceMethod = (typeof PROVENANCE_METHODS)[number];
 
-export interface ProvenanceBbox {
+// Type aliases (not interfaces) on purpose: aliases carry an implicit index
+// signature, which makes them assignable to Prisma's InputJsonObject when
+// writing the provenance Json column (interfaces are not — TS2322 in build).
+export type ProvenanceBbox = {
   x: number;
   y: number;
   width: number;
   height: number;
-}
+};
 
-export interface Provenance {
+export type Provenance = {
   sourceFile: string;
   bbox: ProvenanceBbox;
   method: ProvenanceMethod;
   confidence: number;
-}
+};
 
 function isMethod(v: unknown): v is ProvenanceMethod {
   return typeof v === 'string' && (PROVENANCE_METHODS as readonly string[]).includes(v);
