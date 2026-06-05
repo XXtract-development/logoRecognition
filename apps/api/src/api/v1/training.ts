@@ -600,10 +600,25 @@ export async function trainingRoutes(fastify: FastifyInstance) {
     async (request: FastifyRequest<{ Params: { modelId: string } }>, reply: FastifyReply) => {
       const { modelId } = request.params;
 
-      // AC3: Refuse service-account callers — activation requires human approval.
+      // AC3 (NFR5): Refuse service-account callers — activation requires human approval.
       if (isServiceRequest(request as { headers: Record<string, string | string[] | undefined> })) {
         return reply.status(403).send({
           error: 'Activation requires menselijke goedkeuring (human approval). Automated service accounts may not activate models.',
+        });
+      }
+
+      // NFR5/NFR6: activation must be attributable to a real human. main.ts mounts
+      // no global auth hook, so a route without an auth preHandler would otherwise
+      // let an anonymous request through and write a bogus userId:'unknown' audit
+      // row. Refuse when no authenticated user is present (the service-account 403
+      // above already handles the machine path).
+      const activatingUser = (request as { user?: { userId?: string } }).user;
+      if (!activatingUser?.userId) {
+        return reply.status(401).send({
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Authentication required',
+          },
         });
       }
 
@@ -615,8 +630,10 @@ export async function trainingRoutes(fastify: FastifyInstance) {
       try {
         await mlClient.activateModel(modelId);
 
-        // AC4: Log activation with userId and timestamp.
-        const userId = (request as { user?: { userId?: string } }).user?.userId ?? 'unknown';
+        // AC4: Log activation with userId and timestamp. The 401 guard above
+        // guarantees activatingUser.userId is present here; the ?? keeps a
+        // defensive fallback that is unreachable on a real activation.
+        const userId = activatingUser.userId ?? 'unknown';
         await prisma.modelActivationLog.create({
           data: {
             modelVersionId: modelId,

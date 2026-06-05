@@ -24,16 +24,18 @@ const mockPrisma = new PrismaClient() as vi.Mocked<PrismaClient>;
 describe('Model Approval Routes (ATDD RED — Story 9.5)', () => {
   let app: FastifyInstance;
 
-  function buildApp(authAs: 'user' | 'service'): Promise<FastifyInstance> {
+  function buildApp(authAs: 'user' | 'service' | 'anonymous'): Promise<FastifyInstance> {
     const instance = Fastify({ logger: false });
     return (async () => {
       await instance.register(cookie, { secret: 'test-secret' });
       instance.addHook('preHandler', async (request) => {
         if (authAs === 'user') {
           (request as any).user = { userId: mockUser.id, email: mockUser.email, role: 'USER' };
-        } else {
+        } else if (authAs === 'service') {
           (request as any).serviceAccount = { name: 'pipeline-scheduler' };
         }
+        // 'anonymous': decorate nothing — no request.user, no x-api-key. This
+        // exercises the production path where main.ts has no global auth hook.
       });
       const { trainingRoutes } = await import('../../api/v1/training');
       await instance.register(trainingRoutes, { prefix: '/api/v1' });
@@ -139,6 +141,27 @@ describe('Model Approval Routes (ATDD RED — Story 9.5)', () => {
           }),
         }),
       );
+    });
+
+    // NFR5/NFR6 (pre-merge review): an anonymous caller (no JWT user, no
+    // x-api-key) must be refused with 401 and must NOT produce a bogus
+    // userId:'unknown' audit row. main.ts mounts no global auth hook, so the
+    // activate handler enforces this itself. The user-decoration harness above
+    // never exercises this path; this test registers the routes WITHOUT it.
+    it('should refuse anonymous activation with 401 and write no audit log', async () => {
+      const anonApp = await buildApp('anonymous');
+
+      const response = await anonApp.inject({
+        method: 'POST',
+        url: '/api/v1/models/challenger-1/activate',
+      });
+
+      expect(response.statusCode).toBe(401);
+      expect(JSON.parse(response.body).error.code).toBe('UNAUTHORIZED');
+      // NFR6: no audit row may be created for an unauthenticated activation attempt.
+      expect(mockPrisma.modelActivationLog.create).not.toHaveBeenCalled();
+
+      await anonApp.close();
     });
   });
 });
