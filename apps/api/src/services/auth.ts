@@ -17,9 +17,13 @@ const MAX_LOGIN_ATTEMPTS = 5;
 const LOGIN_WINDOW_MS = 60 * 1000; // 1 minute
 
 // Role mapping: MySQL int -> string
+// Role 3 is the standard XXtract employee profile in xxtractdb03; this is an
+// internal data-manager tool, so role 3 maps to ADMIN here (decision Friso,
+// 2026-06-05 — without it no central account could ever reach ADMIN).
 const ROLE_MAP: Record<number, string> = {
   1: 'CUSTOMER',
   2: 'EMPLOYEE',
+  3: 'ADMIN',
   4: 'ADMIN',
 };
 

@@ -213,6 +213,16 @@ describe('Auth Service', () => {
       expect(result.user!.role).toBe('ADMIN');
     });
 
+    it('should map role 3 (standard XXtract employee) to ADMIN in this tool', async () => {
+      mockAuthQuery.mockResolvedValueOnce([{ ...mockUserRow, role: 3 }] as any);
+      mockBcryptCompare.mockResolvedValue(true as never);
+
+      const result = await login('test@example.com', 'password123', '127.0.0.7');
+
+      expect(result.success).toBe(true);
+      expect(result.user!.role).toBe('ADMIN');
+    });
+
     it('should default to CUSTOMER for unknown role integers', async () => {
       mockAuthQuery.mockResolvedValueOnce([{ ...mockUserRow, role: 99 }] as any);
       mockBcryptCompare.mockResolvedValue(true as never);
