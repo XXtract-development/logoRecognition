@@ -125,8 +125,12 @@ export const generateDemoModels = (): ModelVersion[] => [
 
 export async function fetchTrainingJobs(): Promise<TrainingJob[]> {
   const response = await apiClient.get('/training/jobs');
-  // API returns { data: [...] }
-  return response.data.data || response.data;
+  // API returns { jobs: [...], total: n } — fall back defensively to older
+  // shapes ({ data: [...] } or a bare array) and never return a non-array,
+  // which crashed TrainingPipelinePage on `.find` (acceptance finding 2026-06-05).
+  const d = response.data;
+  const jobs = d?.jobs ?? d?.data ?? d;
+  return Array.isArray(jobs) ? jobs : [];
 }
 
 export async function fetchTrainingJob(id: string): Promise<TrainingJob | null> {

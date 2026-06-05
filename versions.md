@@ -1,5 +1,10 @@
 # Versiegeschiedenis
 
+## 2026-06-05 (fix trainingspijplijn-pagina)
+
+### Trainingspijplijn-pagina werkt weer
+- De pagina Training -> Pipeline crashte ("Something went wrong") door een verkeerd verwerkt server-antwoord; de pagina laadt nu correct, ook zonder trainingsjobs
+
 ## 2026-06-05 (login-fix)
 
 ### Inloggen met je XXtract-account werkt nu
