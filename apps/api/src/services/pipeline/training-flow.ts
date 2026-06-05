@@ -16,7 +16,7 @@
  *   (conflict-resolution decision 2026-06-04, tested in 8.7-pytest).
  */
 
-import { FlowProducer } from 'bullmq';
+import { FlowProducer, Queue } from 'bullmq';
 import { getRedisConnection } from './queue';
 import { mlClient, MLServiceError } from '../ml-client';
 import { createLogger } from '../../core/logger';
@@ -30,7 +30,17 @@ const logger = createLogger('pipeline-training-flow');
 export interface BuildTrainingFlowOptions {
   triggerId: string;
   batchId?: string;
+  /** Concrete retraining reasons, persisted onto the challenger for the 9.5 approval-queue. */
+  triggerReasons?: string[];
 }
+
+/** Flow step names that represent an in-progress training run (concurrency=1 guard). */
+export const TRAINING_STEP_NAMES = [
+  'incorporate-feedback',
+  'build-batch',
+  'train-model',
+  'evaluate-model',
+] as const;
 
 export interface TrainingFlowNode {
   name: string;
@@ -82,9 +92,9 @@ const FLOW_JOB_OPTIONS = {
  * so that BullMQ processes children first (bottom-up dependency resolution).
  */
 export function buildTrainingFlow(options: BuildTrainingFlowOptions): TrainingFlowNode {
-  const { triggerId, batchId } = options;
+  const { triggerId, batchId, triggerReasons } = options;
 
-  const flowData = { triggerId, batchId, startedAt: Date.now() };
+  const flowData = { triggerId, batchId, triggerReasons, startedAt: Date.now() };
 
   const flow: TrainingFlowNode = {
     name: 'evaluate-model',
@@ -118,6 +128,26 @@ export function buildTrainingFlow(options: BuildTrainingFlowOptions): TrainingFl
   };
 
   return flow;
+}
+
+/**
+ * Whether a training flow is already in progress (concurrency=1, AC3).
+ *
+ * Returns the jobId of an active/waiting/delayed training step if one exists,
+ * else null. Used by the manual-start route (409) and the auto-start path
+ * (skip duplicate) so two flows never run concurrently.
+ */
+export async function getActiveTrainingFlowJobId(): Promise<string | null> {
+  const connection = getRedisConnection();
+  const queue = new Queue('training', { connection });
+  try {
+    const jobs = await queue.getJobs(['active', 'waiting', 'delayed', 'paused']);
+    const stepNames = new Set<string>(TRAINING_STEP_NAMES);
+    const active = jobs.find((j) => stepNames.has(j.name));
+    return active?.id ?? null;
+  } finally {
+    await queue.close();
+  }
 }
 
 /**

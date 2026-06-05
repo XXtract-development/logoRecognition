@@ -12,8 +12,9 @@
  */
 
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { requireRole } from '../../middleware/auth';
 import { getJobStatus } from '../../services/pipeline/queue';
-import { submitTrainingFlow } from '../../services/pipeline/training-flow';
+import { submitTrainingFlow, getActiveTrainingFlowJobId } from '../../services/pipeline/training-flow';
 import prisma from '../../core/db';
 import { createLogger } from '../../core/logger';
 
@@ -178,12 +179,15 @@ export async function pipelineRoutes(fastify: FastifyInstance) {
   /**
    * POST /api/v1/pipeline/training/start
    * Manually start a full training flow (Story 9.3, Task 5).
-   * Auth: JWT required; role DATA_MANAGER+.
-   * Returns 409 if a training flow is already active (concurrency=1).
+   * Auth: JWT required; role ADMIN (highest privilege — the codebase has no
+   * separate DATA_MANAGER role; ADMIN is the data-manager-equivalent here, same
+   * as POST /feedback/incorporate).
+   * Returns 409 if a training flow is already active (concurrency=1, AC3).
    */
   fastify.post<{ Body: { triggerId?: string; batchId?: string } }>(
     '/pipeline/training/start',
     {
+      preHandler: [requireRole('ADMIN')],
       schema: {
         description: 'Manually start a retraining pipeline flow',
         tags: ['Pipeline'],
@@ -206,6 +210,20 @@ export async function pipelineRoutes(fastify: FastifyInstance) {
       });
 
       try {
+        // AC3 idempotency: refuse to start a second flow while one is active.
+        const activeJobId = await getActiveTrainingFlowJobId();
+        if (activeJobId) {
+          return reply.status(409).send({
+            error: {
+              code: 'TRAINING_FLOW_ACTIVE',
+              message: 'A training flow is already in progress (concurrency=1).',
+              activeJobId,
+              timestamp: new Date().toISOString(),
+              requestId: request.id,
+            },
+          });
+        }
+
         const result = await submitTrainingFlow({ triggerId, batchId });
         return reply.status(202).send(result);
       } catch (error) {

@@ -12,8 +12,9 @@
  */
 
 import crypto from 'crypto';
-import { Queue, Worker } from 'bullmq';
+import { Queue } from 'bullmq';
 import { getRedisConnection } from './queue';
+import { submitTrainingFlow, getActiveTrainingFlowJobId } from './training-flow';
 import prisma from '../../core/db';
 import { socketIOManager } from '../socket-io-manager';
 import { createLogger } from '../../core/logger';
@@ -48,8 +49,11 @@ const DEDUP_HOURS = parseInt(process.env.RETRAINING_DEDUP_HOURS || '24', 10);
 /**
  * Compute a deterministic triggerId from the reason list + current time window.
  * Two identical reason lists within the same dedup window produce the same ID.
+ *
+ * Exported so the auto-start path can reuse the exact same dedup identity as the
+ * notification path (one trigger → one notification → at most one auto-start).
  */
-function computeTriggerId(reasons: string[]): string {
+export function computeTriggerId(reasons: string[]): string {
   const windowStart = Math.floor(Date.now() / (DEDUP_HOURS * 3600 * 1000));
   const raw = [...reasons].sort().join('|') + ':' + windowStart;
   return crypto.createHash('sha256').update(raw).digest('hex').slice(0, 64);
@@ -207,6 +211,65 @@ export async function notifyRetrainingRecommended(
 }
 
 // ============================================
+// Auto-start training flow (Story 9.3, Gap #3)
+// ============================================
+
+/**
+ * Auto-start a full training flow when retraining is recommended.
+ *
+ * Dedup: keyed on the same triggerId as the notification, so one trigger spawns
+ * at most one flow within the dedup window (survives API restarts via Redis).
+ * Concurrency (AC3): if a training flow is already in progress, skip — never run
+ * two at once.
+ *
+ * Returns the flowId when a flow was started, or null when skipped (dedup or
+ * already-active).
+ */
+export async function autoStartTrainingFlow(trigger: TriggerResult): Promise<string | null> {
+  if (!trigger.shouldRetrain || trigger.reasons.length === 0) {
+    return null;
+  }
+
+  const triggerId = computeTriggerId(trigger.reasons);
+  const startedKey = `retraining:flow-started:${triggerId}`;
+  const redis = getRedisConnection();
+
+  // Dedup: this trigger already started a flow within the window.
+  const alreadyStarted = await redis.get(startedKey);
+  if (alreadyStarted) {
+    logger.info('Auto-start skipped — flow already started for this trigger', { triggerId });
+    return null;
+  }
+
+  // Concurrency=1: never start a second flow while one is in progress.
+  const activeJobId = await getActiveTrainingFlowJobId();
+  if (activeJobId) {
+    logger.info('Auto-start skipped — a training flow is already active', { triggerId, activeJobId });
+    return null;
+  }
+
+  // Mark started BEFORE submit (TTL = dedup window) to prevent a restart race.
+  await redis.setex(startedKey, DEDUP_HOURS * 3600, '1');
+
+  try {
+    const { flowId } = await submitTrainingFlow({
+      triggerId,
+      triggerReasons: trigger.reasons,
+    });
+    logger.info('Auto-started training flow from retraining trigger', { triggerId, flowId });
+    return flowId;
+  } catch (error) {
+    // Roll back the dedup key so a later check can retry.
+    await redis.del(startedKey);
+    logger.error('Auto-start training flow failed', {
+      triggerId,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+    throw error;
+  }
+}
+
+// ============================================
 // Cron scheduler registration
 // ============================================
 
@@ -215,6 +278,42 @@ const RETRAINING_CRON = process.env.RETRAINING_CRON || '0 6 * * *';
 /**
  * Register the retraining-check repeatable job with BullMQ.
  * Called once at startup (from queue init or main.ts).
+ */
+/**
+ * Run one scheduled retraining-check: evaluate conditions, notify, and (gap #3)
+ * auto-start the flow when retraining is recommended.
+ *
+ * Exported so the SINGLE training-flow worker (workers.ts) can route the
+ * `retraining-check` job here. There is intentionally NO separate Worker for the
+ * cron job: BullMQ does not partition consumers by job name, so a second worker
+ * on the 'training' queue would steal flow-step jobs (and vice-versa). One queue,
+ * one worker, all job names routed in processTrainingJob's switch.
+ */
+export async function runRetrainingCheck(): Promise<void> {
+  logger.info('Running scheduled retraining condition check');
+
+  const thresholds: RetrainingThresholds = {
+    minFeedbackCount: parseInt(process.env.RETRAINING_MIN_FEEDBACK_COUNT || '100', 10),
+    minUnincorporatedRatio: parseFloat(process.env.RETRAINING_MIN_UNINCORPORATED_RATIO || '0.1'),
+    lowAccuracyThreshold: parseFloat(process.env.RETRAINING_LOW_ACCURACY_THRESHOLD || '0.85'),
+  };
+
+  const trigger = await evaluateRetrainingTrigger(thresholds);
+
+  if (trigger.shouldRetrain) {
+    await notifyRetrainingRecommended(trigger, {
+      emit: (event, data) => socketIOManager.broadcastAll(event, data),
+    });
+    // Gap #3: auto-start the full training flow (dedup + concurrency guarded).
+    await autoStartTrainingFlow(trigger);
+  }
+}
+
+/**
+ * Register the repeatable retraining-check job on the 'training' queue.
+ * The job is PROCESSED by the single training-flow worker (registerTrainingFlowWorker),
+ * which routes 'retraining-check' to runRetrainingCheck(). This function only
+ * schedules the repeatable job — it does NOT create a worker.
  */
 export async function registerRetrainingCronJob(): Promise<void> {
   const connection = getRedisConnection();
@@ -230,34 +329,9 @@ export async function registerRetrainingCronJob(): Promise<void> {
     }
   );
 
-  // Worker processes the retraining-check jobs
-  const worker = new Worker(
-    'training',
-    async (job) => {
-      if (job.name !== 'retraining-check') return;
+  await queue.close();
 
-      logger.info('Running scheduled retraining condition check');
-
-      const thresholds: RetrainingThresholds = {
-        minFeedbackCount: parseInt(process.env.RETRAINING_MIN_FEEDBACK_COUNT || '100', 10),
-        minUnincorporatedRatio: parseFloat(process.env.RETRAINING_MIN_UNINCORPORATED_RATIO || '0.1'),
-        lowAccuracyThreshold: parseFloat(process.env.RETRAINING_LOW_ACCURACY_THRESHOLD || '0.85'),
-      };
-
-      const trigger = await evaluateRetrainingTrigger(thresholds);
-
-      if (trigger.shouldRetrain) {
-        await notifyRetrainingRecommended(trigger, {
-          emit: (event, data) => socketIOManager.broadcastAll(event, data),
-        });
-      }
-    },
-    { connection }
-  );
-
-  worker.on('error', (err) => {
-    logger.error('Retraining check worker error', { error: err.message });
+  logger.info('Retraining cron job scheduled (processed by the training-flow worker)', {
+    cron: RETRAINING_CRON,
   });
-
-  logger.info('Retraining cron job registered', { cron: RETRAINING_CRON });
 }

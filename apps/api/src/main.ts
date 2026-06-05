@@ -28,6 +28,7 @@ import { referenceLogosRoutes } from './api/v1/reference-logos';
 import { artworkPipelineRoutes } from './api/v1/artwork-pipeline';
 import { pipelineRoutes } from './api/v1/pipeline';
 import { registerRetrainingCronJob } from './services/pipeline/trigger';
+import { registerTrainingFlowWorker } from './services/pipeline/workers';
 import { logger } from './core/logger';
 import { wsManager } from './services/websocket-manager';
 import { socketIOManager } from './services/socket-io-manager';
@@ -292,6 +293,16 @@ async function startServer() {
           error: err instanceof Error ? err.message : 'Unknown error',
         });
       });
+
+      // Story 9.3: register the worker that processes the four training-flow steps
+      // (incorporate-feedback → build-batch → train-model → evaluate-model).
+      try {
+        registerTrainingFlowWorker();
+      } catch (err) {
+        logger.warn('Failed to register training-flow worker (Redis may not be ready)', {
+          error: err instanceof Error ? err.message : 'Unknown error',
+        });
+      }
     }
 
     logger.info(`API Gateway started`, {
