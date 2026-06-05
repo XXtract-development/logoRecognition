@@ -1,5 +1,15 @@
 # Versiegeschiedenis
 
+## 2026-06-05 (Epic 9 — Automatische Retraining: Infrastructure 9.1)
+
+### Persistente job-wachtrij voor de trainingspipeline
+- Alle retraining-taken draaien nu in een persistente BullMQ-wachtrij die is opgeslagen in Redis; een herstarte container verliest nooit meer een taak in uitvoering
+- Elke taak wordt automatisch tot 3× opnieuw geprobeerd met exponentiële wachttijd bij tijdelijke fouten
+- Mislukte taken zijn terug te vinden in de taakgeschiedenis met de precieze foutmelding en een "opnieuw starten" optie
+- De trainingsoverzichtspagina toont nu een paneel met de actuele status van alle pipelinetaken
+- Geautomatiseerde planners authenticeren via een apart serviceaccount (API-sleutel); menselijke activatie blijft altijd vereist
+- Redis is toegevoegd aan alle deploymentconfiguraties (development, ACC en productie)
+
 ## 2026-06-04 (Epic 8 — Review-scherm & bibliotheekweergave)
 
 ### Beoordelingsscherm voor artwork-detecties

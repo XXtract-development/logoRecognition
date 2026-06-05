@@ -28,8 +28,8 @@ describe('Training Pipeline Queue (ATDD RED — Epic 9)', () => {
   // -------------------------------------------------------------------------
 
   describe('Queue infrastructure', () => {
-    // TODO ATDD: remove .skip when implemented (Story 9.1)
-    it.skip('should register queues with retry + backoff defaults', async () => {
+    // ATDD: Story 9.1 implemented
+    it('should register queues with retry + backoff defaults', async () => {
       const { createPipelineQueues } = await import('../../services/pipeline/queue');
 
       const queues = createPipelineQueues();
@@ -41,8 +41,8 @@ describe('Training Pipeline Queue (ATDD RED — Epic 9)', () => {
       expect(defaults.removeOnComplete).not.toBe(true); // historie zichtbaar houden
     });
 
-    // TODO ATDD: remove .skip when implemented (Story 9.1)
-    it.skip('should expose job status including failure reason for failed jobs', async () => {
+    // ATDD: Story 9.1 implemented
+    it('should expose job status including failure reason for failed jobs', async () => {
       const { getJobStatus } = await import('../../services/pipeline/queue');
 
       const status = await getJobStatus('job-failed-1');
@@ -57,8 +57,8 @@ describe('Training Pipeline Queue (ATDD RED — Epic 9)', () => {
       }
     });
 
-    // TODO ATDD: remove .skip when implemented (Story 9.1, NFR6)
-    it.skip('should authenticate scheduled callers via service account, not user session', async () => {
+    // ATDD: Story 9.1 implemented
+    it('should authenticate scheduled callers via service account, not user session', async () => {
       const { isServiceRequest } = await import('../../services/pipeline/queue');
 
       expect(isServiceRequest({ headers: { 'x-api-key': process.env.PIPELINE_SERVICE_KEY || 'test-service-key' } })).toBe(true);

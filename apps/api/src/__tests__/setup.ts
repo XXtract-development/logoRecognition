@@ -15,6 +15,11 @@ process.env.MINIO_ACCESS_KEY = 'test-key';
 process.env.MINIO_SECRET_KEY = 'test-secret';
 process.env.ML_SERVICE_URL = 'http://localhost:8001';
 
+// Pipeline service account key (Epic 9, Story 9.1)
+// Matches the 'test-service-key' fallback in the ATDD fixture:
+//   isServiceRequest({ headers: { 'x-api-key': process.env.PIPELINE_SERVICE_KEY || 'test-service-key' } })
+process.env.PIPELINE_SERVICE_KEY = 'test-service-key';
+
 // Mock Prisma
 vi.mock('@prisma/client', () => {
   const mockPrismaClient = {
@@ -396,3 +401,67 @@ vi.mock('../middleware/auth', () => ({
     }
   }),
 }));
+
+// Mock BullMQ (Epic 9) — prevents Redis connection attempts during unit tests
+vi.mock('bullmq', () => {
+  const mockJob = {
+    id: 'job-failed-1',
+    state: 'failed',
+    failedReason: 'Mock failure reason',
+    retryable: true,
+    progress: 0,
+    data: {},
+    getState: vi.fn().mockResolvedValue('failed'),
+  };
+
+  const Queue = vi.fn().mockImplementation(() => ({
+    defaultJobOptions: {
+      attempts: 3,
+      backoff: { type: 'exponential', delay: 5000 },
+      removeOnComplete: false,
+      removeOnFail: false,
+    },
+    add: vi.fn().mockResolvedValue(mockJob),
+    getJob: vi.fn().mockImplementation((id: string) => {
+      if (id === 'job-failed-1') return Promise.resolve({ ...mockJob, id });
+      return Promise.resolve(null);
+    }),
+    close: vi.fn().mockResolvedValue(undefined),
+    addBulk: vi.fn(),
+    getJobs: vi.fn().mockResolvedValue([]),
+    obliterate: vi.fn(),
+  }));
+
+  const QueueEvents = vi.fn().mockImplementation(() => ({
+    on: vi.fn(),
+    close: vi.fn(),
+  }));
+
+  const Worker = vi.fn().mockImplementation(() => ({
+    on: vi.fn(),
+    close: vi.fn(),
+    run: vi.fn(),
+  }));
+
+  const FlowProducer = vi.fn().mockImplementation(() => ({
+    add: vi.fn().mockResolvedValue({ job: { id: 'flow-1' } }),
+    close: vi.fn(),
+  }));
+
+  return { Queue, QueueEvents, Worker, FlowProducer };
+});
+
+// Mock ioredis (Epic 9) — prevents Redis connection attempts during unit tests
+vi.mock('ioredis', () => {
+  const Redis = vi.fn().mockImplementation(() => ({
+    get: vi.fn().mockResolvedValue(null),
+    set: vi.fn().mockResolvedValue('OK'),
+    setex: vi.fn().mockResolvedValue('OK'),
+    del: vi.fn().mockResolvedValue(1),
+    exists: vi.fn().mockResolvedValue(0),
+    on: vi.fn(),
+    quit: vi.fn().mockResolvedValue('OK'),
+    disconnect: vi.fn(),
+  }));
+  return { default: Redis };
+});

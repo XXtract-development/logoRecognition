@@ -46,9 +46,30 @@ services:
       - NODE_ENV=development
       - PORT=8000
       - HOST=0.0.0.0
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - redis
     networks:
       - logo-recognition
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Redis — BullMQ queue backend + cache (Epic 9, Story 9.1)
+  # NOTE: redis-data volume holds only queue state, not primary data — no backup obligation.
+  redis:
+    image: redis:7-alpine
+    container_name: logo-recognition-redis
+    ports:
+      - "6379:6379"
+    environment:
+      - REDIS_URL=redis://localhost:6379
+    networks:
+      - logo-recognition
+    restart: always
     logging:
       driver: json-file
       options:
