@@ -38,6 +38,12 @@ vi.mock('../../services/socket-io-manager', () => ({
   socketIOManager: { broadcastAll: (...a: unknown[]) => broadcastAll(...a) },
 }));
 
+// --- Mock the trigger boundary (retraining-check routing) --------------------
+const runRetrainingCheck = vi.fn();
+vi.mock('../../services/pipeline/trigger', () => ({
+  runRetrainingCheck: (...a: unknown[]) => runRetrainingCheck(...a),
+}));
+
 import prisma from '../../core/db';
 import {
   processIncorporateFeedback,
@@ -238,13 +244,25 @@ describe('Training-flow workers (Story 9.3)', () => {
   // job router
   // ---------------------------------------------------------------------------
   describe('processTrainingJob router', () => {
-    it('routes by job name and ignores unrelated names (e.g. the cron job)', async () => {
+    it('routes flow steps by job name', async () => {
       feedbackEntry.findMany.mockResolvedValue([]);
       const incorporated = await processTrainingJob({ name: 'incorporate-feedback', data: {} });
       expect(incorporated).toEqual({ incorporated: 0 });
+    });
 
-      const ignored = await processTrainingJob({ name: 'retraining-check', data: {} });
-      expect(ignored).toBeUndefined();
+    it('routes the shared retraining-check job to runRetrainingCheck (single-worker design)', async () => {
+      runRetrainingCheck.mockResolvedValue(undefined);
+      const result = await processTrainingJob({ name: 'retraining-check', data: {} });
+      // BullMQ does not partition by job name; the cron job is handled by THIS
+      // worker, not a second one that would steal flow-step jobs.
+      expect(runRetrainingCheck).toHaveBeenCalledOnce();
+      expect(result).toBeUndefined();
+    });
+
+    it('ignores unknown job names', async () => {
+      const result = await processTrainingJob({ name: 'some-other-job', data: {} });
+      expect(result).toBeUndefined();
+      expect(runRetrainingCheck).not.toHaveBeenCalled();
     });
   });
 });

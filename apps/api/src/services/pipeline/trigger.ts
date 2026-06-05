@@ -12,7 +12,7 @@
  */
 
 import crypto from 'crypto';
-import { Queue, Worker } from 'bullmq';
+import { Queue } from 'bullmq';
 import { getRedisConnection } from './queue';
 import { submitTrainingFlow, getActiveTrainingFlowJobId } from './training-flow';
 import prisma from '../../core/db';
@@ -279,6 +279,42 @@ const RETRAINING_CRON = process.env.RETRAINING_CRON || '0 6 * * *';
  * Register the retraining-check repeatable job with BullMQ.
  * Called once at startup (from queue init or main.ts).
  */
+/**
+ * Run one scheduled retraining-check: evaluate conditions, notify, and (gap #3)
+ * auto-start the flow when retraining is recommended.
+ *
+ * Exported so the SINGLE training-flow worker (workers.ts) can route the
+ * `retraining-check` job here. There is intentionally NO separate Worker for the
+ * cron job: BullMQ does not partition consumers by job name, so a second worker
+ * on the 'training' queue would steal flow-step jobs (and vice-versa). One queue,
+ * one worker, all job names routed in processTrainingJob's switch.
+ */
+export async function runRetrainingCheck(): Promise<void> {
+  logger.info('Running scheduled retraining condition check');
+
+  const thresholds: RetrainingThresholds = {
+    minFeedbackCount: parseInt(process.env.RETRAINING_MIN_FEEDBACK_COUNT || '100', 10),
+    minUnincorporatedRatio: parseFloat(process.env.RETRAINING_MIN_UNINCORPORATED_RATIO || '0.1'),
+    lowAccuracyThreshold: parseFloat(process.env.RETRAINING_LOW_ACCURACY_THRESHOLD || '0.85'),
+  };
+
+  const trigger = await evaluateRetrainingTrigger(thresholds);
+
+  if (trigger.shouldRetrain) {
+    await notifyRetrainingRecommended(trigger, {
+      emit: (event, data) => socketIOManager.broadcastAll(event, data),
+    });
+    // Gap #3: auto-start the full training flow (dedup + concurrency guarded).
+    await autoStartTrainingFlow(trigger);
+  }
+}
+
+/**
+ * Register the repeatable retraining-check job on the 'training' queue.
+ * The job is PROCESSED by the single training-flow worker (registerTrainingFlowWorker),
+ * which routes 'retraining-check' to runRetrainingCheck(). This function only
+ * schedules the repeatable job — it does NOT create a worker.
+ */
 export async function registerRetrainingCronJob(): Promise<void> {
   const connection = getRedisConnection();
 
@@ -293,36 +329,9 @@ export async function registerRetrainingCronJob(): Promise<void> {
     }
   );
 
-  // Worker processes the retraining-check jobs
-  const worker = new Worker(
-    'training',
-    async (job) => {
-      if (job.name !== 'retraining-check') return;
+  await queue.close();
 
-      logger.info('Running scheduled retraining condition check');
-
-      const thresholds: RetrainingThresholds = {
-        minFeedbackCount: parseInt(process.env.RETRAINING_MIN_FEEDBACK_COUNT || '100', 10),
-        minUnincorporatedRatio: parseFloat(process.env.RETRAINING_MIN_UNINCORPORATED_RATIO || '0.1'),
-        lowAccuracyThreshold: parseFloat(process.env.RETRAINING_LOW_ACCURACY_THRESHOLD || '0.85'),
-      };
-
-      const trigger = await evaluateRetrainingTrigger(thresholds);
-
-      if (trigger.shouldRetrain) {
-        await notifyRetrainingRecommended(trigger, {
-          emit: (event, data) => socketIOManager.broadcastAll(event, data),
-        });
-        // Gap #3: auto-start the full training flow (dedup + concurrency guarded).
-        await autoStartTrainingFlow(trigger);
-      }
-    },
-    { connection }
-  );
-
-  worker.on('error', (err) => {
-    logger.error('Retraining check worker error', { error: err.message });
+  logger.info('Retraining cron job scheduled (processed by the training-flow worker)', {
+    cron: RETRAINING_CRON,
   });
-
-  logger.info('Retraining cron job registered', { cron: RETRAINING_CRON });
 }

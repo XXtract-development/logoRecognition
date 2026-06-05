@@ -35,6 +35,7 @@ import {
   getTrainingJobOptions,
 } from './training-flow';
 import { incorporatePendingFeedback } from './feedback-incorporation';
+import { runRetrainingCheck } from './trigger';
 import { evaluateGate, emitGateFailure, type ModelMetrics } from './quality-gate';
 import { mlClient } from '../ml-client';
 import prisma from '../../core/db';
@@ -238,9 +239,13 @@ export async function processTrainingJob(job: Pick<Job, 'name' | 'data'>): Promi
       return processTrainModel(data);
     case 'evaluate-model':
       return processEvaluateModel(data);
+    case 'retraining-check':
+      // The scheduled trigger-check shares the 'training' queue. Routed here
+      // (not a separate Worker) because BullMQ does not partition consumers by
+      // job name — a second worker would steal flow-step jobs.
+      await runRetrainingCheck();
+      return undefined;
     default:
-      // retraining-check (the cron job) is handled by the trigger worker; any
-      // other name is ignored here so a single queue can host both.
       return undefined;
   }
 }
