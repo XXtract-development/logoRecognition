@@ -22,6 +22,7 @@ import {
   Popconfirm,
   Alert,
   Tabs,
+  Badge,
 } from 'antd';
 import {
   RocketOutlined,
@@ -34,9 +35,12 @@ import {
   LoadingOutlined,
   StarFilled,
   EyeOutlined,
+  AuditOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { RetrainingNotificationBanner } from '@/components/training/RetrainingNotificationBanner';
 import { Line } from '@ant-design/plots';
 import { useModelStore } from '@/stores/modelStore';
 import {
@@ -73,6 +77,23 @@ const ModelsPage: React.FC = () => {
   const [compareModel1, setCompareModel1] = useState<string>('');
   const [compareModel2, setCompareModel2] = useState<string>('');
   const [isActivating, setIsActivating] = useState(false);
+
+  // Pending-challenger count for the approval-queue badge. Reuses the same
+  // ['approval-queue'] cache as ApprovalQueuePage, so navigating there is warm.
+  // Best-effort: a failed/empty fetch simply hides the badge (no error surface).
+  const { data: pendingApprovalCount = 0 } = useQuery({
+    queryKey: ['approval-queue'],
+    queryFn: async () => {
+      const response = await fetch('/api/v1/models/approval-queue', {
+        credentials: 'include',
+      });
+      if (!response.ok) return [];
+      const body = await response.json();
+      return (body.data ?? []) as unknown[];
+    },
+    select: (items) => items.length,
+    staleTime: 30_000,
+  });
 
   // Load models
   useEffect(() => {
@@ -396,6 +417,9 @@ const ModelsPage: React.FC = () => {
     <div className="min-h-screen bg-neutral-50 p-4">
       <div className="max-w-7xl mx-auto">
         <Space direction="vertical" size="large" className="w-full">
+          {/* Retraining recommendations — links through to the approval queue */}
+          <RetrainingNotificationBanner />
+
           {/* Header */}
           <Card className="shadow-sm">
             <div className="flex justify-between items-start flex-wrap gap-4">
@@ -408,6 +432,15 @@ const ModelsPage: React.FC = () => {
                 </Text>
               </div>
               <Space>
+                <Badge count={pendingApprovalCount} size="small" offset={[-4, 4]}>
+                  <Button
+                    icon={<AuditOutlined />}
+                    data-testid="approval-queue-link"
+                    onClick={() => navigate('/models/approval')}
+                  >
+                    {t('models.approvalQueue', 'Goedkeuringsqueue')}
+                  </Button>
+                </Badge>
                 <Button
                   icon={<SwapOutlined />}
                   onClick={() => setCompareModalVisible(true)}

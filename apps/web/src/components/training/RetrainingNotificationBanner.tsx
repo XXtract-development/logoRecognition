@@ -10,8 +10,9 @@
  */
 import { memo } from 'react';
 import { Alert, Button, Space, Typography } from 'antd';
-import { BellOutlined, CheckOutlined } from '@ant-design/icons';
+import { BellOutlined, CheckOutlined, RightOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 const { Text } = Typography;
@@ -48,6 +49,7 @@ async function markNotificationRead(id: string): Promise<void> {
 
 const RetrainingNotificationBanner = memo(() => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const { data: notifications = [] } = useQuery<RetrainingNotification[]>({
     queryKey: ['retraining-notifications'],
@@ -92,15 +94,27 @@ const RetrainingNotificationBanner = memo(() => {
             </Space>
           }
           action={
-            <Button
-              size="small"
-              icon={<CheckOutlined />}
-              onClick={() => markReadMutation.mutate(notification.id)}
-              loading={markReadMutation.isPending}
-              style={{ color: '#2F5A7A', borderColor: '#2F5A7A' }}
-            >
-              Gelezen
-            </Button>
+            <Space>
+              <Button
+                size="small"
+                type="primary"
+                icon={<RightOutlined />}
+                data-testid="retraining-notification-view-approval"
+                onClick={() => navigate('/models/approval')}
+                style={{ background: '#2F5A7A', borderColor: '#2F5A7A' }}
+              >
+                Bekijk goedkeuringsscherm
+              </Button>
+              <Button
+                size="small"
+                icon={<CheckOutlined />}
+                onClick={() => markReadMutation.mutate(notification.id)}
+                loading={markReadMutation.isPending}
+                style={{ color: '#2F5A7A', borderColor: '#2F5A7A' }}
+              >
+                Gelezen
+              </Button>
+            </Space>
           }
           closable={false}
         />
