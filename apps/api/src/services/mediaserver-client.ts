@@ -110,7 +110,12 @@ export class MediaServerClient {
 
       const data = response.data;
       const all = [...(data.active ?? []), ...(data.inactive ?? [])];
-      return all.filter((item) => item.typeInfo === 'PACKAGING_ARTWORK');
+      return all
+        .filter((item) => item.typeInfo === 'PACKAGING_ARTWORK')
+        // The live mediaserver returns numeric ids; our schema and the
+        // @@unique([mediaId]) dedup expect strings (found with real ACC data,
+        // 2026-06-05: "Expected String, provided Int" crashed the import run).
+        .map((item) => ({ ...item, id: String(item.id) }));
     } catch (error) {
       if (error instanceof AxiosError) {
         const status = error.response?.status;
