@@ -19,8 +19,9 @@
  *
  * RBAC: mutating endpoints (POST import runs, register, deactivate, accept,
  *       reject, process-accepted) require ADMIN.
- *       GET status and GET review-queue are open to any authenticated user.
- *       crosscheck (POST) requires ADMIN or data-manager role.
+ *       GET status, GET review-queue and GET crop-url are open to any
+ *       authenticated user.
+ *       crosscheck (POST) requires ADMIN.
  */
 
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
