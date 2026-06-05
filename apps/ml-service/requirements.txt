@@ -44,6 +44,10 @@ timm==0.9.12   # PyTorch Image Models
 # Vector Search / Embeddings
 # ============================================
 sentence-transformers==2.3.1
+# transformers MUST stay torch-2.1-compatible: unpinned it resolved to 4.57,
+# which needs torch>=2.2 (register_pytree_node) and broke the embedding
+# backbone at runtime on ACC (2026-06-05).
+transformers==4.38.2
 faiss-cpu==1.7.4
 # faiss-gpu==1.7.4  # Uncomment for GPU support
 
