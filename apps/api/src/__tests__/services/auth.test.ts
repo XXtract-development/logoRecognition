@@ -223,6 +223,19 @@ describe('Auth Service', () => {
       expect(result.user!.role).toBe('ADMIN');
     });
 
+    it('should normalize PHP-style $2y$ hashes to $2b$ before bcrypt.compare (xxtractdb03)', async () => {
+      const { verifyPassword } = await import('../../services/auth');
+      mockBcryptCompare.mockResolvedValueOnce(true as never);
+
+      const phpStyleHash = '$2y$10$abcdefghijklmnopqrstuvABCDEFGHIJKLMNOPQRSTUVWXYZ012345';
+      await verifyPassword('central-pw', phpStyleHash);
+
+      expect(mockBcryptCompare).toHaveBeenCalledWith(
+        'central-pw',
+        phpStyleHash.replace(/^\$2y\$/, '$2b$'),
+      );
+    });
+
     it('should default to CUSTOMER for unknown role integers', async () => {
       mockAuthQuery.mockResolvedValueOnce([{ ...mockUserRow, role: 99 }] as any);
       mockBcryptCompare.mockResolvedValue(true as never);

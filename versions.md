@@ -1,5 +1,11 @@
 # Versiegeschiedenis
 
+## 2026-06-05 (login-fix)
+
+### Inloggen met je XXtract-account werkt nu
+- Inloggen met je gewone XXtract-accountgegevens werkt nu ook in deze applicatie (wachtwoordcontrole accepteerde het centrale wachtwoordformaat niet)
+- XXtract-medewerkers krijgen automatisch beheerrechten in dit tool
+
 ## 2026-06-05 (Acceptatietest Epic 9 — UI-verbeteringen)
 
 ### In- en uitloggen vanuit de navigatiebalk

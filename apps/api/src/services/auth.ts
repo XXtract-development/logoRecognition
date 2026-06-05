@@ -87,7 +87,11 @@ setInterval(() => {
  * Verify a password against a bcrypt hash
  */
 export async function verifyPassword(password: string, hash: string): Promise<boolean> {
-  return bcrypt.compare(password, hash);
+  // xxtractdb03 hashes are written by PHP (Laravel), which uses the $2y$
+  // bcrypt prefix. Node bcrypt only accepts $2a$/$2b$ and rejects $2y$
+  // outright, even though the algorithms are identical — normalize first.
+  const normalized = hash.replace(/^\$2y\$/, '$2b$');
+  return bcrypt.compare(password, normalized);
 }
 
 /**
