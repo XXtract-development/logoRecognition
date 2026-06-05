@@ -27,8 +27,16 @@ class StorageService:
     def connect(self) -> None:
         """Create MinIO client connection."""
         try:
+            # MINIO_ENDPOINT is shared with the Node API, which treats it as a
+            # bare host plus a separate MINIO_PORT. The python client needs
+            # host:port in one string — append the port when it is missing,
+            # otherwise the client silently defaults to :80 (Traefik → 404 on
+            # ACC; found during data rebuild 2026-06-05).
+            endpoint = settings.MINIO_ENDPOINT
+            if ":" not in endpoint:
+                endpoint = f"{endpoint}:{os.environ.get('MINIO_PORT', '9000')}"
             self.client = Minio(
-                settings.MINIO_ENDPOINT,
+                endpoint,
                 access_key=settings.MINIO_ACCESS_KEY,
                 secret_key=settings.MINIO_SECRET_KEY,
                 secure=settings.MINIO_USE_SSL,
