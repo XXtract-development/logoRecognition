@@ -28,7 +28,7 @@ import { referenceLogosRoutes } from './api/v1/reference-logos';
 import { artworkPipelineRoutes } from './api/v1/artwork-pipeline';
 import { pipelineRoutes } from './api/v1/pipeline';
 import { registerRetrainingCronJob } from './services/pipeline/trigger';
-import { registerTrainingFlowWorker } from './services/pipeline/workers';
+import { registerTrainingFlowWorker, registerDetectionWorker } from './services/pipeline/workers';
 import { logger } from './core/logger';
 import { wsManager } from './services/websocket-manager';
 import { socketIOManager } from './services/socket-io-manager';
@@ -300,6 +300,16 @@ async function startServer() {
         registerTrainingFlowWorker();
       } catch (err) {
         logger.warn('Failed to register training-flow worker (Redis may not be ready)', {
+          error: err instanceof Error ? err.message : 'Unknown error',
+        });
+      }
+
+      // Story 8-3O: register the artwork-detection worker (localize → classify
+      // → crosscheck → register). Queued jobs survive restarts (AC4).
+      try {
+        registerDetectionWorker();
+      } catch (err) {
+        logger.warn('Failed to register detection worker (Redis may not be ready)', {
           error: err instanceof Error ? err.message : 'Unknown error',
         });
       }

@@ -40,10 +40,14 @@ import { evaluateGate, emitGateFailure, type ModelMetrics } from './quality-gate
 import { mlClient } from '../ml-client';
 import prisma from '../../core/db';
 import { createLogger } from '../../core/logger';
+import { runDetectionJob, DETECTION_QUEUE, type DetectionJobData } from './detection-flow';
 
 const logger = createLogger('pipeline-workers');
 
 const TRAINING_QUEUE = 'training';
+
+// Detection-worker concurrency (Story 8-3O, decision 1). Default 2.
+const DETECTION_CONCURRENCY = parseInt(process.env.DETECTION_CONCURRENCY || '2', 10);
 
 // Poll interval while waiting for an ML training job to finish.
 const TRAIN_POLL_INTERVAL_MS = parseInt(process.env.TRAIN_POLL_INTERVAL_MS || '15000', 10);
@@ -288,4 +292,49 @@ export function registerTrainingFlowWorker(): Worker {
   logger.info('Training-flow worker registered', { concurrency });
 
   return trainingWorker;
+}
+
+// ============================================
+// Detection worker (Story 8-3O)
+// ============================================
+
+let detectionWorker: Worker | null = null;
+
+/**
+ * Register the BullMQ worker that processes artwork-detection jobs
+ * (localize → classify → crosscheck → register). One job per artwork image.
+ *
+ * Concurrency = DETECTION_CONCURRENCY (default 2, decision 1). Job state lives
+ * in Redis, so an API-container restart never loses queued detection jobs
+ * (crash-resilience, AC4) — proven via test.
+ *
+ * A job throws on a hard ML/DB failure so BullMQ retries it (attempts/backoff
+ * from the queue defaults); a sibling image's job is unaffected (8.1 pattern).
+ */
+export function registerDetectionWorker(): Worker {
+  if (detectionWorker) return detectionWorker;
+
+  const connection = getRedisConnection();
+
+  detectionWorker = new Worker(
+    DETECTION_QUEUE,
+    async (job) => runDetectionJob(job.data as DetectionJobData),
+    { connection, concurrency: DETECTION_CONCURRENCY },
+  );
+
+  detectionWorker.on('failed', (job, err) => {
+    logger.error('Detection job failed', {
+      jobId: job?.id,
+      attemptsMade: job?.attemptsMade,
+      error: err.message,
+    });
+  });
+
+  detectionWorker.on('completed', (job) => {
+    logger.info('Detection job completed', { jobId: job.id });
+  });
+
+  logger.info('Detection worker registered', { concurrency: DETECTION_CONCURRENCY });
+
+  return detectionWorker;
 }

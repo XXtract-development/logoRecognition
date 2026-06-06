@@ -348,6 +348,80 @@ export class MLClient {
     }
   }
 
+  /**
+   * Localize certification marks on an artwork image (Story 8.3/8.3R, called
+   * server-side by the detection worker — Story 8-3O).
+   *
+   * `templates` is OPTIONAL (8-3O decision 2): when omitted the ML service loads
+   * the active reference library itself (TTL-cached). Callers that supply
+   * templates (meet-scripts, tests) keep the existing behaviour. Returns the
+   * detections with absolute bbox coordinates + per-detection threshold.
+   */
+  async localizeArtwork(request: {
+    storage_path?: string;
+    image_b64?: string;
+    templates?: Array<{ t3777_code: string; image_b64: string }>;
+  }): Promise<{ detections: Array<Record<string, unknown>>; truncated: boolean }> {
+    try {
+      const response = await this.client.post<{
+        detections: Array<Record<string, unknown>>;
+        truncated: boolean;
+      }>('/ml/artwork/localize', request);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error, 'Artwork localization failed');
+    }
+  }
+
+  /**
+   * Classify localised regions to T3777 keurmerk codes (Story 8.4, called
+   * server-side by the detection worker — Story 8-3O).
+   *
+   * `gtin` + `persist_crops` are the 8-3O extension (decision 3): with
+   * persist_crops=true the ML service writes each crop to MinIO under
+   * artwork-crops/{gtin}/{sha1(...)} and returns `crop_path` per result, which
+   * the registration path (8.6) requires. Existing callers omit both fields and
+   * are unaffected.
+   */
+  async classifyArtwork(request: {
+    storage_path?: string;
+    image_b64?: string;
+    crops?: Array<{ x: number; y: number; width: number; height: number }>;
+    confidence_threshold?: number;
+    gtin?: string;
+    persist_crops?: boolean;
+  }): Promise<{
+    results: Array<{
+      bbox?: { x: number; y: number; width: number; height: number } | null;
+      t3777_code: string;
+      confidence: number;
+      method: string;
+      uncertain?: boolean;
+      crop_path?: string | null;
+    }>;
+  }> {
+    try {
+      const response = await this.client.post('/ml/artwork/classify', request);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error, 'Artwork classification failed');
+    }
+  }
+
+  /**
+   * Ask the ML service to drop its cached reference-template library (Story
+   * 8-3O decision 2). Best-effort: called by the Node side after reference
+   * library mutations so the next localize picks up the change without waiting
+   * for the TTL to expire.
+   */
+  async reloadTemplates(): Promise<void> {
+    try {
+      await this.client.post('/ml/artwork/reload-templates');
+    } catch (error) {
+      throw this.handleError(error, 'Reload templates failed');
+    }
+  }
+
   // ==========================================
   // Synthetic batch fill (Epic 9, Story 9.3 — wiring of deferred 8.7 hook)
   // ==========================================
