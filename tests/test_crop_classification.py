@@ -223,7 +223,8 @@ def test_rebuild_reference_embeddings_stores_one_per_active_variant():
 
     with patch.object(database.db_service, "get_active_reference_logos", new=AsyncMock(return_value=refs)), \
          patch.object(database.db_service, "clear_reference_embeddings", new=AsyncMock(return_value=0)) as clear_mock, \
-         patch.object(database.db_service, "store_reference_embedding", new=AsyncMock(return_value="emb-id")) as store_mock:
+         patch.object(database.db_service, "store_reference_embedding", new=AsyncMock(return_value="emb-id")) as store_mock, \
+         patch.object(database.db_service, "reindex_reference_embeddings", new=AsyncMock(return_value=None)):  # 8-N1 hook
 
         # Mock the backbone + storage (no torch / MinIO in CI).
         from app.services import storage as storage_mod
@@ -243,6 +244,69 @@ def test_rebuild_reference_embeddings_stores_one_per_active_variant():
     assert summary["total_references"] == 2
     assert summary["processed"] == 2
     assert summary["errors"] == 0
+
+
+# ---------------------------------------------------------------------------
+# Story 8-N1 — REINDEX hook after rebuild (ivfflat degenerates on empty table)
+# ---------------------------------------------------------------------------
+
+
+def _run_rebuild_with_refs(refs, reindex_mock):
+    """Run rebuild_reference_embeddings with the standard mock harness and the
+    given reindex mock; returns the summary dict."""
+    from app.services import storage as storage_mod
+    from app.ml import model_manager as mm
+
+    storage_mod.storage_service.get_training_image = MagicMock(return_value=b"fakebytes")
+    fake_embedding = np.ones(512, dtype=np.float32)
+
+    with patch.object(database.db_service, "get_active_reference_logos", new=AsyncMock(return_value=refs)), \
+         patch.object(database.db_service, "clear_reference_embeddings", new=AsyncMock(return_value=0)), \
+         patch.object(database.db_service, "store_reference_embedding", new=AsyncMock(return_value="emb-id")), \
+         patch.object(database.db_service, "reindex_reference_embeddings", new=reindex_mock), \
+         patch.object(mm.model_manager, "generate_embedding", new=AsyncMock(return_value=fake_embedding)), \
+         patch("PIL.Image.open", return_value=MagicMock(convert=lambda mode: MagicMock())):
+        return asyncio.run(similarity.similarity_service.rebuild_reference_embeddings())
+
+
+def test_rebuild_reindexes_after_storing_embeddings():
+    """8-N1 AC1: processed > 0 ⇒ exact één REINDEX-aanroep, errors blijft 0."""
+    refs = [
+        {"id": "r1", "t3777_code": "A", "variant_label": "v1", "storage_path": "reference-logos/A/v1.png"},
+        {"id": "r2", "t3777_code": "B", "variant_label": "v1", "storage_path": "reference-logos/B/v1.png"},
+    ]
+    reindex_mock = AsyncMock(return_value=None)
+
+    summary = _run_rebuild_with_refs(refs, reindex_mock)
+
+    reindex_mock.assert_awaited_once()
+    assert summary["processed"] == 2
+    assert summary["errors"] == 0
+
+
+def test_rebuild_skips_reindex_when_nothing_processed():
+    """8-N1 AC2: processed == 0 ⇒ géén REINDEX (index op lege tabel herbouwen
+    lost niets op; waarschuwing volstaat)."""
+    reindex_mock = AsyncMock(return_value=None)
+
+    summary = _run_rebuild_with_refs([], reindex_mock)
+
+    reindex_mock.assert_not_awaited()
+    assert summary["processed"] == 0
+
+
+def test_rebuild_counts_reindex_failure_as_error_without_raising():
+    """8-N1 AC1: een REINDEX-fout verhoogt errors en crasht de rebuild NIET."""
+    refs = [
+        {"id": "r1", "t3777_code": "A", "variant_label": "v1", "storage_path": "reference-logos/A/v1.png"},
+    ]
+    reindex_mock = AsyncMock(side_effect=RuntimeError("ivfflat boom"))
+
+    summary = _run_rebuild_with_refs(refs, reindex_mock)  # mag niet raisen
+
+    reindex_mock.assert_awaited_once()
+    assert summary["processed"] == 1
+    assert summary["errors"] == 1  # alleen de REINDEX-fout
 
 
 # ---------------------------------------------------------------------------

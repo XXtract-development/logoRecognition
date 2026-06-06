@@ -1,6 +1,6 @@
 # Story 8-N1: REINDEX-hook na rebuild_reference_embeddings (mini-fix)
 
-Status: ready-for-dev
+Status: done — AC1+AC2 geïmplementeerd en getest; AC3 = post-deploy verificatiestap (zie Dev Agent Record)
 
 ## Story
 
@@ -37,6 +37,18 @@ so that embedding-classificatie (8.4) niet stilletjes 0 resultaten geeft na een 
 
 ### Agent Model Used
 
+Claude Opus 4.8 — orchestrator-inline, 2026-06-06.
+
 ### Completion Notes List
 
+- AC1: `reindex_reference_embeddings()` in `apps/ml-service/app/services/database.py` (na `clear_reference_embeddings`) — indexnaam dynamisch via pg_indexes (`indexdef ILIKE '%ivfflat%'`), defensief gequoot; hook in `apps/ml-service/app/services/similarity.py` ná de rebuild-lus: alleen bij `processed > 0`; REINDEX-fout → `errors += 1` + log, geen raise. Tests: `test_rebuild_reindexes_after_storing_embeddings`, `test_rebuild_counts_reindex_failure_as_error_without_raising`
+- AC2: bij `processed == 0` géén REINDEX + waarschuwing (index mogelijk gedegenereerd tot volgende gevulde rebuild). Test: `test_rebuild_skips_reindex_when_nothing_processed`
+- AC3 (bewijs op ACC): **post-deploy verificatiestap** — kan pas na deploy van deze branch (rebuild draait bij container-start; handmatige rebuild op ACC = DB-mutatie, niet toegestaan binnen deze run). Verificatie: na deploy `docker exec <ml> python3 -` met `SET enable_seqscan=off; SELECT count(*) FROM reference_embeddings ORDER BY embedding <-> (SELECT embedding FROM reference_embeddings LIMIT 1) LIMIT 5;`-achtige similarity-query → > 0 rijen, plus log-regel "REINDEX complete for reference_embeddings index"
+- Tests ondergebracht in `tests/test_crop_classification.py` (bestaand real-module-harnas; een tweede aparte loader bleek te conflicteren met het conftest-mock-mechanisme); bestaande rebuild-test bijgewerkt met de reindex-mock (gedrags-update door deze story, gedocumenteerd)
+- Volledige suite: 15 failed (pre-existing baseline) · 54 passed (+3) · geen regressies
+
 ### File List
+
+- apps/ml-service/app/services/database.py (reindex_reference_embeddings)
+- apps/ml-service/app/services/similarity.py (hook in rebuild_reference_embeddings)
+- tests/test_crop_classification.py (3 nieuwe tests + reindex-mock in bestaande rebuild-test)
