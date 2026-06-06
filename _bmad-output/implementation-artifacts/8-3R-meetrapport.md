@@ -11,7 +11,9 @@ De eerste meting faalde **niet door de engine** maar door corrupte testdata uit 
 - Patroon: alle 4 valide items hadden de juiste aspect-ratio voor hun code; alle 5 corrupte items droegen de AR van een ándere referentie — wijst op een label↔crop-verwisseling + mislukte pastes in de fase-B-composietgeneratie. De B4–B7-acceptatie toetste UI-gedrag, niet label↔inhoud-consistentie.
 - Engine-bewijs op de valide 4: **4/4 gevonden**; crop-level (exacte schaal) 0,736–0,980.
 
-**Herstel (optie A, akkoord Friso):** 9 items in-place geregenereerd — labels en (x,y) behouden, bbox-afmetingen AR-correct gemaakt, referenties vers alpha-gecomposit op de bronbestanden, nieuwe crops (`artwork-crops/{gtin}/83r-*.png`). Mutaties limitatief: 9 UPDATE-rows, 3 bron-overschrijvingen, 9 nieuwe crop-objecten (script: `regen_composites.py`, sessie-log 2026-06-06).
+**Herstel (optie A, akkoord Friso):** 9 items in-place geregenereerd — labels en (x,y) behouden, bbox-afmetingen AR-correct gemaakt, referenties vers alpha-gecomposit op de bronbestanden, nieuwe crops (`artwork-crops/{gtin}/83r-*.png`). Mutaties limitatief: 9 UPDATE-rows, 3 bron-overschrijvingen, 9 nieuwe crop-objecten (script: `scripts/regen_composites_83r.py`, gecommit).
+
+> ⚠️ **Bron-overschrijving expliciet gemeld:** de 3 overschreven MinIO-keys zijn óók `artwork_imports.storage_path`-objecten (import-administratie verwijst ernaar). Of dit vóór de overschrijving originele mediaserver-downloads of al fase-B-composieten waren, is niet meer vast te stellen (de cross-GTIN-bestandsnaam `05060503504929/05060925294569.png` suggereert eerdere fase-B-bemoeienis). Herstelpad indien gewenst: gerichte her-import van de 3 GTIN's via het 8.1-importpad (vereist reset van de dedup-records → apart akkoord).
 
 ## 2. Composiet-recall-gate (run 3, definitief): 9/9 ✅
 
@@ -37,11 +39,11 @@ Geplant (n=9): min 0,553 · mediaan 0,656 · max 0,873 · Niet-geplant (n=30): m
 
 **Gekalibreerd: `min_score=0.55` bij `LOCALIZE_SCALE_STEP=1.10`.** Onderbouwing schaal-stap: CCOEFF is gevoelig voor afstand tot de dichtstbijzijnde ladder-stap — bij stap 1,25 (±11% mismatch) zakte detailrijk FSC van 0,98 (exacte schaal) naar 0,39; bij stap 1,10 (±5%) liggen alle plants op 0,55–0,87. De review voorzag dit ("range is kalibratie-output"); advies: defaults aanpassen naar stap 1,10 ten koste van ~2,2× rekentijd. De oude 1446-FP-telling blijft context (andere metric/route), geen vergelijkbare baseline.
 
-## 4. Natuurlijke opbrengst (bevinding 6 — meting, geen gate)
+## 4. Natuurlijke opbrengst (bevinding 6 — meting, geen gate) — PRECISIE-WAARSCHUWING
 
-- **Eerste echte detectie: RAINFOREST_ALLIANCE op beide Theunisse-koffie-GTIN's (08710679005795, 08710679016524), topscores 0,68** — boven de gekalibreerde drempel; plausibel voor koffie-artwork, visuele verificatie aanbevolen (geen T3777-declaratie beschikbaar ter kruischeck).
-- 11 natuurlijke afbeeldingen (1 PDF zonder afbeeldingssleutel overgeslagen en gerapporteerd) · 517 detecties boven capture-vloer 0,30.
-- **Facade-guard:** 153/517 natuurlijke detecties overleven drempel 0,55 (incl. veel duplicaten — meerdere identieke artworkbestanden per GTIN). Valide composiet-plants (0,55–0,87) en natuurlijke top (0,68) liggen in dezelfde band → drempel is niet wereldvreemd; de brede 0,3–0,5-staart bevestigt de noodzaak. Per-klasse drempels (ReferenceLogo-metadata) blijven het aangewezen vervolg (expliciet buiten scope, zie story).
+- 11 natuurlijke afbeeldingen (1 PDF zonder afbeeldingssleutel overgeslagen) · 517 detecties boven capture-vloer 0,30 · 153 boven drempel 0,55.
+- **FP-kwantificatie (facade-guard, expliciet geteld):** op één Theunisse-artwork (2273×2879) blijven na collapse+NMS **20 RAINFOREST-detecties ≥0,55** over, verspreid over het hele etiket en vrijwel allemaal op de kleinste ladder-schaal (48×35 … 77×57 px). Een koffielabel draagt hooguit één zegel → **≥19/20 zijn false positives**. Oorzaak: 48px-varianten bevatten te weinig detail en correleren op groene textuur. Mogelijk is één van de 20 het echte zegel (visuele verificatie vereist) — de "eerste natuurlijke detectie" is dus ongeverifieerd.
+- **Conclusie precisie: de composiet-gekalibreerde drempel 0,55 is op echt artwork NIET productierijp.** De composiet-kalibratie bewijst het mechanisme (en 5/9 composieten zijn na het herstel zelf-geplakte referenties — die kúnnen nauwelijks falen); de natuurlijke meting is de realiteit. Vereist vóór bulk-detectie (8.3O-scope, reeds gepland): per-klasse/per-schaal drempels en/of een minimum-instantiegrootte boven 48px, daarna her-kalibratie op een gelabelde natuurlijke steekproef.
 
 ## 5. Throughput
 
@@ -51,6 +53,6 @@ Geplant (n=9): min 0,553 · mediaan 0,656 · max 0,873 · Niet-geplant (n=30): m
 ## 6. Conclusies
 
 1. **AC4 voldaan:** gate 9/9 op herstelde ground truth; drempel als kalibratie-output mét distributies en facade-guard; reproduceerbaar script als deliverable; door de orchestrator zelf uitgevoerd en gediagnosticeerd.
-2. De fase-B-productie-failure ("Template larger than tile" → 0 detecties) is opgelost; de engine detecteert nu ook op echte artwork (Rainforest/Theunisse).
-3. Productie-aanbeveling: `LOCALIZE_SCALE_STEP=1.10` + `LOCALIZE_MIN_SCORE=0.55` (env), herbevestigen op een bredere natuurlijke set ná 8-3O (orkestratie) — input voor de 8-3O-story zoals gepland.
+2. De fase-B-productie-failure ("Template larger than tile" → 0 detecties) is opgelost; de engine produceert nu signaal op echte artwork — maar met een hoge FP-rate op de kleinste schaal (zie §4): **recall hersteld, precisie nog niet productierijp**.
+3. Productie-aanbeveling: `LOCALIZE_SCALE_STEP=1.10` als engine-default; `min_score=0.55` UITSLUITEND als composiet-gekalibreerd vertrekpunt — bulk-detectie pas na per-klasse drempels/minimum-instantiegrootte + her-kalibratie op gelabelde natuurlijke data (8-3O, inputs liggen klaar). NB: de live ACC-service draait tot merge+deploy nog de oude single-scale code.
 4. Ground-truth-incident gedocumenteerd als les: composiet-acceptatie hoort label↔inhoud-consistentie te toetsen (kruisproef zit nu in het script).
