@@ -1,6 +1,6 @@
 # Story 8.3R: Remediatie — multi-scale lokalisatie en score-herijking
 
-Status: ready-for-dev (adversarial review verwerkt — zie `review-8-3R-voorwerk.md`, 12 bevindingen)
+Status: done — alle AC's vervuld; AC4-gate 9/9 ná ground-truth-herstel (optie A, akkoord Friso 2026-06-06; zie `8-3R-meetrapport.md`)
 
 ## Story
 
@@ -89,6 +89,21 @@ so that productie-detectie op echte artwork daadwerkelijk keurmerken vindt zonde
 
 ### Agent Model Used
 
+Claude Opus 4.8 — orchestrator-inline (agent-infra instabiel; 2× socket-crash, daarna inline conform watchdog-protocol), 2026-06-06.
+
 ### Completion Notes List
 
+- AC1 (multi-scale flow): `apps/ml-service/app/services/localization.py` — `prepare_scaled_templates` (ladder + AR-behoud + alpha-neutralisatie, regels ~130–215); collapse per (code, tegel) vóór NMS in `apps/ml-service/app/api/artwork.py` handler; tests (i)/(ii)/(iv) groen
+- AC2 (score-herijking): CCOEFF_NORMED [0,1] op max_loc + degenerate-fallback (< `LOCALIZE_DEGENERATE_STD`=1.0) naar legacy SQDIFF-pad op min_loc; guards per geschaalde variant + weigering-logging; tests (iii) + beide beschermde metric-fixtures groen
+- AC3 (API): `LocalizeRequest` zonder `image_path`, mét `storage_path` + 6 tunables; `truncated`-veld; 422-pad; endpoint-handler-tests (v) groen
+- AC4 (empirische validatie): **gate 9/9 PASSED** (run 3) ná herstel van 5/9 corrupte fase-B-items (1 mislabel + 4 witte crops; kruisproef-bewijs in rapport) via optie A mét expliciet akkoord; gekalibreerde drempel 0,55 bij stap 1,10 (FP=3 op schone set); eerste natuurlijke detectie (RAINFOREST op Theunisse-koffie, 0,68); throughput 11,6 s/bestand → 39k ≈ 126 uur
+- AC5 (tests): 11 nieuwe ontskipt + groen; 4 beschermde byte-identiek groen; volledige suite: delta t.o.v. baseline = exact +11 passed, 0 nieuwe failures
+- Mock-state-lek gefixt in de 2 nieuwe endpoint-tests (gedeelde conftest-mock resetten i.p.v. vervangen — aantoonbare testfout, gedocumenteerd)
+
 ### File List
+
+- apps/ml-service/app/services/localization.py (herschreven: ladder, metric, guards, docstrings)
+- apps/ml-service/app/api/artwork.py (LocalizeRequest/Response + handler-flow + docstring)
+- apps/ml-service/scripts/remeasure_localization.py (nieuw, AC4-deliverable)
+- tests/test_localization_multiscale.py (11 ontskipt + mock-lek-fix)
+- _bmad-output/implementation-artifacts/8-3R-meetrapport.md (nieuw)

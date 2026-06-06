@@ -77,7 +77,7 @@ development_status:
   # Bron: fase-b-bevindingen-2026-06-05.md · voorwerk-review: review-8-3R-voorwerk.md
   # ============================================
   epic-8-nazorg: in-progress
-  8-3R-remediatie-multi-scale-lokalisatie-en-score-herijking: ready-for-dev  # story + adversarial review (12 bevindingen) verwerkt + ATDD red-phase: tests/test_localization_multiscale.py (11 skipped, geverifieerd 2026-06-06; checklist: test-artifacts/atdd-checklist-8-3R.md)
+  8-3R-remediatie-multi-scale-lokalisatie-en-score-herijking: done  # 2026-06-06: 32/32 tests groen; AC4-gate 9/9 na ground-truth-herstel (optie A, akkoord Friso); drempel 0.55 @ stap 1.10; zie 8-3R-meetrapport.md
   8-3O-server-side-detectie-orkestratie: backlog  # localize→classify→crosscheck + templates uit referentiebibliotheek; vereist 8-3R; story-file schrijven NÁ het 8-3R-meetrapport (drempels/throughput zijn input)
   8-N1-reindex-hook-na-rebuild-reference-embeddings: ready-for-dev  # story-file 2026-06-06; mini-fix, ivfflat-les (bevinding 3)
 
