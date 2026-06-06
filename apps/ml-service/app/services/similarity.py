@@ -281,6 +281,25 @@ class SimilarityService:
                 )
                 errors += 1
 
+        # Story 8-N1: an ivfflat index built on the (just-cleared) empty table is
+        # degenerate — index scans silently return 0 rows. REINDEX after every
+        # rebuild that actually stored embeddings; a REINDEX failure is a normal
+        # error in the summary, never a crash of the rebuild itself.
+        if processed > 0:
+            try:
+                await db_service.reindex_reference_embeddings()
+                logger.info(
+                    f"Reference embeddings REINDEX complete after rebuild ({processed} embeddings)"
+                )
+            except Exception as reindex_err:
+                logger.error(f"REINDEX after reference rebuild failed (non-fatal): {reindex_err}")
+                errors += 1
+        else:
+            logger.warning(
+                "rebuild_reference_embeddings stored 0 embeddings — REINDEX skipped; "
+                "the ivfflat index may be degenerate until the next non-empty rebuild"
+            )
+
         return {
             "total_references": len(references),
             "processed": processed,

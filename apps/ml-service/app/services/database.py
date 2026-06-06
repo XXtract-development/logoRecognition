@@ -411,6 +411,38 @@ class DatabaseService:
             except (ValueError, IndexError):
                 return 0
 
+    async def reindex_reference_embeddings(self) -> None:
+        """REINDEX the ivfflat index on reference_embeddings (Story 8-N1).
+
+        Runtime maintenance, NOT a schema migration. An ivfflat index built on
+        an empty table has degenerate clusters: index scans then silently
+        return 0 rows. Because ``rebuild_reference_embeddings`` clears the
+        table before refilling it, the index must be rebuilt afterwards.
+
+        The index name is resolved dynamically from pg_indexes — migration
+        renumbering may rename it, so it is never hardcoded. Raises on REINDEX
+        failure (the caller counts it as a non-fatal error).
+        """
+        async with self.get_connection() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT indexname
+                FROM pg_indexes
+                WHERE tablename = 'reference_embeddings'
+                  AND indexdef ILIKE '%ivfflat%'
+                LIMIT 1
+                """
+            )
+            if row is None:
+                logger.warning(
+                    "No ivfflat index found on reference_embeddings — REINDEX skipped"
+                )
+                return
+            index_name = row["indexname"]
+            # Identifier comes from pg_indexes (not user input); quote defensively.
+            await conn.execute(f'REINDEX INDEX "{index_name}"')
+            logger.info(f"REINDEX complete for reference_embeddings index '{index_name}'")
+
     async def get_reference_embeddings(self) -> List[Dict[str, Any]]:
         """Return all reference embeddings joined with their keurmerk metadata.
 
