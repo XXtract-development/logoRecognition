@@ -485,11 +485,12 @@ describe('Artwork Pipeline Routes (ATDD — Epic 8)', () => {
   // -------------------------------------------------------------------------
 
   describe('GET /artwork/review-items/:id/crop-url', () => {
-    it('returns a presigned cropUrl for an item that has a crop', async () => {
-      const storage = await import('../../services/storage');
-      (storage.getReferenceLogoUrl as vi.Mock).mockResolvedValue(
-        'https://minio.example/training/artwork-crops/crop-1.png?sig=abc',
-      );
+    // Testcorrectie 2026-06-06 (8.2-precedent, intentie behouden): presigned
+    // MinIO-URLs dragen het interne endpoint (localhost:9000 op ACC) en zijn
+    // onbereikbaar voor de browser. Het contract is nu een API-relatieve
+    // streaming-URL; de intentie — een browser-bruikbare cropUrl per item met
+    // crop, null zonder crop — is ongewijzigd.
+    it('returns an API-relative streaming cropUrl for an item that has a crop', async () => {
       (mockPrisma.artworkReviewItem.findUnique as vi.Mock).mockResolvedValue({
         id: 'ri-crop',
         cropPath: 'artwork-crops/08718989912451/crop-1.png',
@@ -502,14 +503,10 @@ describe('Artwork Pipeline Routes (ATDD — Epic 8)', () => {
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-      expect(body.cropUrl).toContain('sig=abc');
-      expect(storage.getReferenceLogoUrl).toHaveBeenCalledWith(
-        'artwork-crops/08718989912451/crop-1.png',
-      );
+      expect(body.cropUrl).toBe('/api/v1/artwork/review-items/ri-crop/crop');
     });
 
     it('returns cropUrl=null for a crop-less item (no fabrication)', async () => {
-      const storage = await import('../../services/storage');
       (mockPrisma.artworkReviewItem.findUnique as vi.Mock).mockResolvedValue({
         id: 'ri-nocrop',
         cropPath: null,
@@ -522,7 +519,39 @@ describe('Artwork Pipeline Routes (ATDD — Epic 8)', () => {
 
       expect(response.statusCode).toBe(200);
       expect(JSON.parse(response.body).cropUrl).toBeNull();
-      expect(storage.getReferenceLogoUrl).not.toHaveBeenCalled();
+    });
+
+    it('streams the crop bytes via /crop with the right content type', async () => {
+      const storage = await import('../../services/storage');
+      (storage.downloadImage as vi.Mock).mockResolvedValue(Buffer.from('png-bytes'));
+      (mockPrisma.artworkReviewItem.findUnique as vi.Mock).mockResolvedValue({
+        id: 'ri-crop',
+        cropPath: 'artwork-crops/08718989912451/crop-1.png',
+      });
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/v1/artwork/review-items/ri-crop/crop',
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.headers['content-type']).toContain('image/png');
+      expect(response.body).toBe('png-bytes');
+      expect(storage.downloadImage).toHaveBeenCalledWith('artwork-crops/08718989912451/crop-1.png');
+    });
+
+    it('returns 404 on /crop for a crop-less item', async () => {
+      (mockPrisma.artworkReviewItem.findUnique as vi.Mock).mockResolvedValue({
+        id: 'ri-nocrop',
+        cropPath: null,
+      });
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/v1/artwork/review-items/ri-nocrop/crop',
+      });
+
+      expect(response.statusCode).toBe(404);
     });
 
     it('returns 404 when the review item does not exist', async () => {

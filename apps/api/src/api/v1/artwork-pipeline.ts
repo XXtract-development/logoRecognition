@@ -29,7 +29,7 @@ import crypto from 'crypto';
 import prisma from '../../core/db';
 import { logger } from '../../core/logger';
 import { requireRole, authMiddleware } from '../../middleware/auth';
-import { uploadArtwork, getReferenceLogoUrl } from '../../services/storage';
+import { uploadArtwork, downloadImage } from '../../services/storage';
 import { mediaServerClient } from '../../services/mediaserver-client';
 import { mlClient } from '../../services/ml-client';
 import {
@@ -820,13 +820,12 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
 
   /**
    * GET /artwork/review-items/:id/crop-url
-   * On-view presigned URL for a single review item's crop. The list endpoint
-   * deliberately does NOT presign every crop eagerly; the review UI requests
-   * this only when an item is opened. `cropPath` is a bare object key inside
-   * the TRAINING bucket (same convention as registered crops / reference
-   * logos), so it is signed via getReferenceLogoUrl. Items without a crop
-   * return cropUrl=null (the UI shows an empty-preview state). Open to any
-   * authenticated user (read-only).
+   * On-view crop URL for a single review item. Returns an API-relative
+   * streaming URL (see /crop below) instead of a presigned MinIO URL:
+   * presigned URLs carry the *internal* MinIO endpoint (localhost:9000 on
+   * ACC), which the browser cannot reach — acceptance finding 2026-06-06.
+   * Items without a crop return cropUrl=null (empty-preview state in the UI).
+   * Open to any authenticated user (read-only).
    */
   fastify.get<{ Params: { id: string } }>(
     '/artwork/review-items/:id/crop-url',
@@ -839,9 +838,38 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
         return reply.status(404).send({ error: 'Review item niet gevonden' });
       }
 
-      const cropUrl = item.cropPath ? await getReferenceLogoUrl(item.cropPath) : null;
+      const cropUrl = item.cropPath ? `/api/v1/artwork/review-items/${id}/crop` : null;
 
       return reply.status(200).send({ cropUrl });
+    }
+  );
+
+  /**
+   * GET /artwork/review-items/:id/crop
+   * Streams the crop image bytes through the API (cookie-authenticated <img>
+   * requests work same-origin; MinIO stays internal). 404 when the item or its
+   * crop object is missing. Open to any authenticated user (read-only).
+   */
+  fastify.get<{ Params: { id: string } }>(
+    '/artwork/review-items/:id/crop',
+    { preHandler: authMiddleware },
+    async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+      const { id } = request.params;
+
+      const item = await prisma.artworkReviewItem.findUnique({ where: { id } });
+      if (!item || !item.cropPath) {
+        return reply.status(404).send({ error: 'Geen crop voor dit reviewitem' });
+      }
+
+      const buffer = await downloadImage(item.cropPath);
+      if (!buffer) {
+        return reply.status(404).send({ error: 'Crop niet gevonden in opslag' });
+      }
+
+      const ext = item.cropPath.split('.').pop()?.toLowerCase();
+      const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : 'image/png';
+      reply.header('Cache-Control', 'private, max-age=300');
+      return reply.type(mime).send(buffer);
     }
   );
 

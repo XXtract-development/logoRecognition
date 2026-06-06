@@ -1,5 +1,10 @@
 # Versiegeschiedenis
 
+## 2026-06-06 (fix crop-weergave review-scherm)
+
+### Uitsneden zichtbaar in het artwork-reviewscherm
+- De keurmerk-uitsnede bij elk reviewitem wordt nu correct getoond (de afbeeldings-link verwees naar interne opslag die de browser niet kon bereiken)
+
 ## 2026-06-05 (fix trainingspijplijn-pagina)
 
 ### Trainingspijplijn-pagina werkt weer
