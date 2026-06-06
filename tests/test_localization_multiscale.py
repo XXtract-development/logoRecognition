@@ -115,7 +115,6 @@ def _run_localize(source_img, template_img, **body_overrides):
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skip(reason="RED: story 8.3R niet geïmplementeerd")
 def test_prepare_scaled_templates_ladder_covers_measured_ratio():
     """De ladder dekt de gemeten ratio 0,11×–0,22×: een 960×644-referentie
     (EU_ORGANIC-formaat) levert varianten van 48px t/m ≤512px max-dim,
@@ -146,7 +145,6 @@ def test_prepare_scaled_templates_ladder_covers_measured_ratio():
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skip(reason="RED: story 8.3R niet geïmplementeerd")
 def test_localize_flow_finds_instance_at_15_percent_scale():
     """Een 400px-referentie waarvan de instantie op 60px (0,15×) op het artwork
     staat, wordt gevonden mét native-size referentie als input — de kern van
@@ -172,7 +170,6 @@ def test_localize_flow_finds_instance_at_15_percent_scale():
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skip(reason="RED: story 8.3R niet geïmplementeerd")
 def test_template_larger_than_tile_is_downscaled_not_skipped():
     """Een 960×960-referentie (groter dan de 640-tile) mag NIET worden
     geskipt ('Template larger than tile') — de productie-failure uit fase B."""
@@ -196,7 +193,6 @@ def test_template_larger_than_tile_is_downscaled_not_skipped():
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skip(reason="RED: story 8.3R niet geïmplementeerd")
 def test_score_discriminates_nonmatching_content():
     """FP-guard (de 1446-les): een structuurrijk template tegen een ANDERS
     structuurrijk beeld mag op geen enkele ladder-schaal boven min_score=0.8
@@ -209,7 +205,6 @@ def test_score_discriminates_nonmatching_content():
     assert resp.detections == []
 
 
-@pytest.mark.skip(reason="RED: story 8.3R niet geïmplementeerd")
 def test_degenerate_fallback_trigger_is_decoupled_from_variance_guard():
     """Ontwerpbeslissing 3: de fallback-trigger is LOCALIZE_DEGENERATE_STD
     (1,0), ontkoppeld van LOCALIZE_MIN_VARIANCE (12). Gemeten: echte
@@ -221,7 +216,6 @@ def test_degenerate_fallback_trigger_is_decoupled_from_variance_guard():
     assert LOCALIZE_DEGENERATE_STD < LOCALIZE_MIN_VARIANCE  # écht ontkoppeld én lager
 
 
-@pytest.mark.skip(reason="RED: story 8.3R niet geïmplementeerd")
 def test_low_contrast_template_still_matches_via_ccoeff_path():
     """Een laag-contrast (maar niet-degenerate) donker template — stddev tussen
     de degenerate-trigger (1) en de bright-guard-variantie (12) — wordt NIET
@@ -244,7 +238,6 @@ def test_low_contrast_template_still_matches_via_ccoeff_path():
     assert abs(best["bbox"]["y"] - 320) <= 10
 
 
-@pytest.mark.skip(reason="RED: story 8.3R niet geïmplementeerd")
 def test_localize_flow_matches_transparent_round_logo():
     """Ontwerpbeslissing 4 (GREEN_DOT-scenario): een rond RGBA-logo met
     transparante hoeken wordt gevonden op een grijze achtergrond. Zonder
@@ -270,7 +263,6 @@ def test_localize_flow_matches_transparent_round_logo():
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skip(reason="RED: story 8.3R niet geïmplementeerd")
 def test_best_scale_collapse_yields_single_detection_per_mark():
     """Eén geplante instantie mag bij een lage drempel (waar buur-schalen óók
     boven komen) precies ÉÉN detectie opleveren — IoU-NMS alleen redt dit
@@ -292,7 +284,6 @@ def test_best_scale_collapse_yields_single_detection_per_mark():
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skip(reason="RED: story 8.3R niet geïmplementeerd")
 def test_localize_endpoint_reads_storage_path_from_minio():
     """AC3: localize haalt het bronbeeld als MinIO-objectkey op via
     storage_service.get_training_image — zelfde semantiek als classify."""
@@ -306,30 +297,34 @@ def test_localize_endpoint_reads_storage_path_from_minio():
     source, _ = _paste_resized(source, logo, target_max_dim=60, x=300, y=400)
     png_bytes = cv2.imencode(".png", source)[1].tobytes()
 
-    storage_module.storage_service.get_training_image = MagicMock(return_value=png_bytes)
+    # Use the shared conftest mock — reset, don't replace (state would leak
+    # into the rasterize-endpoint tests in test_artwork_processing.py)
+    gti = storage_module.storage_service.get_training_image
+    gti.reset_mock()
+    gti.side_effect = None
+    gti.return_value = png_bytes
+    try:
+        req = LocalizeRequest(
+            storage_path="artwork/08710679005795/label.page-1.png",
+            templates=[{"t3777_code": "TEST_MARK", "image_b64": _b64_png(logo)}],
+        )
+        resp = asyncio.run(localize_artwork(req))
 
-    req = LocalizeRequest(
-        storage_path="artwork/08710679005795/label.page-1.png",
-        templates=[{"t3777_code": "TEST_MARK", "image_b64": _b64_png(logo)}],
-    )
-    resp = asyncio.run(localize_artwork(req))
-
-    storage_module.storage_service.get_training_image.assert_called_once_with(
-        "artwork/08710679005795/label.page-1.png"
-    )
-    assert len(resp.detections) >= 1
+        gti.assert_called_once_with("artwork/08710679005795/label.page-1.png")
+        assert len(resp.detections) >= 1
+    finally:
+        gti.reset_mock()
+        gti.side_effect = None
 
 
-@pytest.mark.skip(reason="RED: story 8.3R niet geïmplementeerd")
 def test_localize_endpoint_4xx_when_storage_fetch_fails():
     """AC3: onvindbare storage_path ⇒ duidelijke 4xx, geen stille lege lijst."""
     from fastapi import HTTPException
     from app.api.artwork import localize_artwork, LocalizeRequest
     from app.services import storage as storage_module
 
-    storage_module.storage_service.get_training_image = MagicMock(
-        side_effect=RuntimeError("not found")
-    )
+    gti = storage_module.storage_service.get_training_image
+    gti.side_effect = RuntimeError("not found")
 
     req = LocalizeRequest(
         storage_path="artwork/missing/none.png",
@@ -340,9 +335,10 @@ def test_localize_endpoint_4xx_when_storage_fetch_fails():
         assert False, "expected HTTPException(4xx)"
     except HTTPException as exc:
         assert 400 <= exc.status_code < 500
+    finally:
+        gti.side_effect = None  # restore shared mock for later tests
 
 
-@pytest.mark.skip(reason="RED: story 8.3R niet geïmplementeerd")
 def test_localize_request_no_longer_accepts_image_path():
     """AC3: het bestandssysteem-pad (`image_path`) is uit het contract
     verwijderd — MinIO-key of inline b64, niets anders."""

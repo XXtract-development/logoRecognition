@@ -6,9 +6,10 @@ Endpoints:
     Body: { "storage_path": str, "dpi": int }
     Response: { "storage_path", "dpi", "pages": [{"source_file", "page", "image_path", "dpi"}], "error"? }
 
-  POST /ml/artwork/localize
-    Body: { "image_path": str, "templates": [{"t3777_code": str, "image_b64": str}] }
-    Response: { "detections": [{"t3777_code", "bbox", "score"}] }
+  POST /ml/artwork/localize  (Story 8.3 + 8.3R multi-scale)
+    Body: { "storage_path": str?, "image_b64": str?, "templates": [{"t3777_code", "image_b64"}],
+            "tile_size"?, "overlap"?, "min_score"?, "scale_min_px"?, "scale_max_px"?, "scale_step"? }
+    Response: { "detections": [{"t3777_code", "bbox", "score"}], "truncated": bool }
 
   POST /ml/artwork/classify  (Story 8.4)
     Body: { "storage_path": str?, "image_b64": str?, "crops": [{"x","y","width","height"}]?,
@@ -171,17 +172,30 @@ async def rasterize_artwork(request: RasterizeRequest) -> RasterizeResponse:
 
 class TemplateInput(BaseModel):
     t3777_code: str
-    image_b64: str  # base64-encoded PNG/JPEG
+    image_b64: str  # base64-encoded PNG/JPEG (alpha channel preserved)
 
 
 class LocalizeRequest(BaseModel):
-    image_path: Optional[str] = None
+    """Story 8.3R (AC3): source via MinIO object key or inline b64; the
+    filesystem ``image_path`` is removed; tunables override env defaults."""
+
+    storage_path: Optional[str] = Field(
+        None, description="Object key in the training bucket, e.g. artwork/{gtin}/{file}.page-1.png"
+    )
     image_b64: Optional[str] = None
     templates: List[TemplateInput]
+    # Tunables (optional; env defaults apply — see localization module)
+    tile_size: Optional[int] = Field(None, ge=64, le=4096)
+    overlap: Optional[float] = Field(None, ge=0.0, lt=1.0)
+    min_score: Optional[float] = Field(None, ge=0.0, le=1.0)
+    scale_min_px: Optional[int] = Field(None, ge=8, le=4096)
+    scale_max_px: Optional[int] = Field(None, ge=8, le=4096)
+    scale_step: Optional[float] = Field(None, gt=1.0, le=4.0)
 
 
 class LocalizeResponse(BaseModel):
     detections: List[Dict[str, Any]]
+    truncated: bool = False  # True when the time budget cut matching short
 
 
 # ---------------------------------------------------------------------------
@@ -189,15 +203,22 @@ class LocalizeResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-def _decode_image(b64: str) -> np.ndarray:
-    """Decode a base64-encoded image to an OpenCV-compatible numpy array."""
+def _decode_image(b64: str, with_alpha: bool = False) -> np.ndarray:
+    """Decode a base64-encoded image to an OpenCV-compatible numpy array.
+
+    with_alpha=True preserves a BGRA channel layout (IMREAD_UNCHANGED) so the
+    localization ladder can alpha-neutralise transparent references (8.3R,
+    design decision 4).
+    """
     import cv2
 
     img_bytes = base64.b64decode(b64)
     img_arr = np.frombuffer(img_bytes, dtype=np.uint8)
-    img = cv2.imdecode(img_arr, cv2.IMREAD_COLOR)
+    img = cv2.imdecode(img_arr, cv2.IMREAD_UNCHANGED if with_alpha else cv2.IMREAD_COLOR)
     if img is None:
         raise ValueError("Could not decode image from base64 payload")
+    if with_alpha and img.ndim == 2:  # grayscale source — normalise to BGR
+        img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
     return img
 
 
@@ -209,34 +230,68 @@ def _decode_image(b64: str) -> np.ndarray:
 @router.post("/artwork/localize", response_model=LocalizeResponse)
 async def localize_artwork(request: LocalizeRequest) -> LocalizeResponse:
     """
-    Localize certification marks on an artwork image.
+    Localize certification marks on an artwork image (Story 8.3 + 8.3R).
 
-    Accepts the artwork either as a file path (on the ML service's FS / mounted volume)
-    or as a base64-encoded image. Returns a deduplicated list of detections with
-    absolute bbox coordinates.
+    Accepts the artwork as a MinIO object key in the training bucket
+    (``storage_path``, same semantics as classify) or as a base64-encoded
+    image. Builds the multi-scale template ladder once per request, matches
+    per tile, collapses to the best scale per (t3777_code, tile) BEFORE NMS
+    (design decision 5), and enforces a per-request time budget. Returns a
+    deduplicated list of detections with absolute bbox coordinates.
     """
+    import time
+
     import cv2
 
-    from app.services.localization import match_templates, merge_detections, tile_image
+    from app.services.localization import (
+        LOCALIZE_MIN_SCORE,
+        LOCALIZE_OVERLAP,
+        LOCALIZE_TILE_SIZE,
+        LOCALIZE_TIME_BUDGET_S,
+        match_templates,
+        merge_detections,
+        prepare_scaled_templates,
+        tile_image,
+    )
 
-    # Load source image
-    if request.image_path:
-        img = cv2.imread(request.image_path)
+    # Load source image (storage_path takes precedence over inline b64) — AC3
+    if request.storage_path:
+        try:
+            img_bytes = storage_service.get_training_image(request.storage_path)
+        except Exception as exc:
+            logger.warning(
+                "Could not fetch localize source from storage",
+                extra={"storage_path": request.storage_path, "error": str(exc)},
+            )
+            raise HTTPException(
+                status_code=422,
+                detail=f"Kon bronbeeld niet ophalen uit storage: {request.storage_path}",
+            )
+        img_arr = np.frombuffer(img_bytes, dtype=np.uint8)
+        img = cv2.imdecode(img_arr, cv2.IMREAD_COLOR)
         if img is None:
-            raise HTTPException(status_code=400, detail=f"Cannot read image at path: {request.image_path}")
+            raise HTTPException(
+                status_code=422,
+                detail=f"Bronbeeld is geen leesbare afbeelding: {request.storage_path}",
+            )
     elif request.image_b64:
         try:
             img = _decode_image(request.image_b64)
         except Exception as exc:
             raise HTTPException(status_code=400, detail=f"Invalid image_b64: {exc}")
     else:
-        raise HTTPException(status_code=422, detail="Either image_path or image_b64 is required")
+        raise HTTPException(status_code=422, detail="Either storage_path or image_b64 is required")
 
-    # Decode template images
+    # Effective tunables: request overrides env defaults
+    eff_tile_size = request.tile_size if request.tile_size is not None else LOCALIZE_TILE_SIZE
+    eff_overlap = request.overlap if request.overlap is not None else LOCALIZE_OVERLAP
+    eff_min_score = request.min_score if request.min_score is not None else LOCALIZE_MIN_SCORE
+
+    # Decode template images (alpha preserved for neutralisation in the ladder)
     templates: List[Dict[str, Any]] = []
     for tmpl in request.templates:
         try:
-            tmpl_img = _decode_image(tmpl.image_b64)
+            tmpl_img = _decode_image(tmpl.image_b64, with_alpha=True)
         except Exception as exc:
             logger.warning("Skipping template with invalid image", extra={"t3777_code": tmpl.t3777_code, "error": str(exc)})
             continue
@@ -245,31 +300,58 @@ async def localize_artwork(request: LocalizeRequest) -> LocalizeResponse:
     if not templates:
         return LocalizeResponse(detections=[])
 
-    # Tile + match
-    tiles = tile_image(img)
-    raw_detections: List[Dict[str, Any]] = []
+    # Build the scale ladder ONCE per request (design decisions 1+2)
+    variants = prepare_scaled_templates(
+        templates,
+        scale_min_px=request.scale_min_px,
+        scale_max_px=request.scale_max_px,
+        scale_step=request.scale_step,
+        tile_size=eff_tile_size,
+    )
 
-    for tile in tiles:
-        tile_matches = match_templates(tile["image"], templates)
-        for match in tile_matches:
-            # Translate bbox back to source image coordinates
-            abs_match = dict(match)
-            abs_match["bbox"] = {
-                "x": match["bbox"]["x"] + tile["x_offset"],
-                "y": match["bbox"]["y"] + tile["y_offset"],
-                "width": match["bbox"]["width"],
-                "height": match["bbox"]["height"],
-            }
-            raw_detections.append(abs_match)
+    # Tile + match with time budget; collapse best scale per (code, tile)
+    tiles = tile_image(img, tile_size=eff_tile_size, overlap=eff_overlap)
+    deadline = time.monotonic() + LOCALIZE_TIME_BUDGET_S
+    truncated = False
+    per_tile_best: Dict[Any, Dict[str, Any]] = {}
+
+    for tile_idx, tile in enumerate(tiles):
+        if time.monotonic() > deadline:
+            truncated = True
+            logger.warning(
+                "Localize time budget exceeded — truncating",
+                extra={"processed_tiles": tile_idx, "total_tiles": len(tiles), "budget_s": LOCALIZE_TIME_BUDGET_S},
+            )
+            break
+        for match in match_templates(tile["image"], variants, min_score=eff_min_score):
+            key = (match["t3777_code"], tile_idx)
+            best = per_tile_best.get(key)
+            if best is None or match["score"] > best["score"]:
+                abs_match = dict(match)
+                abs_match["bbox"] = {
+                    "x": match["bbox"]["x"] + tile["x_offset"],
+                    "y": match["bbox"]["y"] + tile["y_offset"],
+                    "width": match["bbox"]["width"],
+                    "height": match["bbox"]["height"],
+                }
+                per_tile_best[key] = abs_match
+
+    raw_detections = list(per_tile_best.values())
 
     # Merge overlapping detections across tile boundaries
     merged = merge_detections(raw_detections)
 
     logger.info(
         "Artwork localization complete",
-        extra={"tiles": len(tiles), "raw_detections": len(raw_detections), "merged": len(merged)},
+        extra={
+            "tiles": len(tiles),
+            "variants": len(variants),
+            "collapsed_detections": len(raw_detections),
+            "merged": len(merged),
+            "truncated": truncated,
+        },
     )
-    return LocalizeResponse(detections=merged)
+    return LocalizeResponse(detections=merged, truncated=truncated)
 
 
 # ---------------------------------------------------------------------------
