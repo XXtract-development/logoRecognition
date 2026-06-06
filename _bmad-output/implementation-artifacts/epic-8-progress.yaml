@@ -1,0 +1,103 @@
+epic: 8
+title: Automatische Trainingsdata uit Etiket-Artwork
+branch: feature/epic-8-artwork-trainingsdata
+epic_worktree: /private/tmp/logoRecognition-implement-sprint/epic-8-artwork-trainingsdata
+status: complete
+completed_at: "2026-06-04T18:12:00+02:00"
+
+atdd_gate:
+  artwork_pipeline_routes_test: PASS   # 11/11 tests green (apps/api)
+  test_artwork_processing: PASS        # 11/11 tests green (ml-service)
+  epic_9_test_files: SKIPPED           # training-pipeline-queue + model-approval remain skipped
+
+stories:
+  - story: 8-1-artwork-import-via-mediaserver-met-caching
+    status: complete
+    commit_sha: 6afe659
+    merge_sha: e3e1516
+    artifacts:
+      - apps/api/src/api/v1/artwork-pipeline.ts
+      - apps/api/src/services/mediaserver-client.ts
+      - apps/api/src/services/storage.ts (modified)
+      - apps/api/src/__tests__/api/artwork-pipeline.routes.test.ts
+      - apps/api/src/__tests__/setup.ts (modified)
+      - apps/api/src/__tests__/helpers/mock-data.ts (modified)
+      - apps/api/src/main.ts (modified)
+      - apps/api/prisma/schema.prisma (modified)
+      - infrastructure/docker/postgres/init.sql (modified)
+      - versions.md
+    timestamp: "2026-06-04T18:00:00+02:00"
+
+  - story: 8-2-pdf-artwork-rasterization
+    status: complete
+    commit_sha: 0fd114d
+    merge_sha: 120e3c2
+    artifacts:
+      - apps/ml-service/app/services/artwork.py
+      - apps/ml-service/requirements.txt (modified)
+      - tests/conftest.py
+      - tests/test_artwork_processing.py (2 tests un-skipped)
+      - tests/fixtures/corrupt.pdf (added)
+      - tests/fixtures/two-page-label.pdf (added)
+      - versions.md
+    timestamp: "2026-06-04T18:01:00+02:00"
+
+  - story: 8-3-keurmerk-lokalisatie-op-artwork
+    status: complete
+    commit_sha: 92649ba
+    merge_sha: 2b24bb9
+    artifacts:
+      - apps/ml-service/app/services/localization.py
+      - apps/ml-service/app/api/artwork.py
+      - apps/ml-service/app/main.py (modified)
+      - tests/test_artwork_processing.py (4 tests un-skipped)
+      - versions.md
+    timestamp: "2026-06-04T18:04:00+02:00"
+
+  - story: 8-4-crop-classificatie-van-gelokaliseerde-regios
+    status: complete
+    commit_sha: acd9e3a
+    merge_sha: cb3ca76
+    artifacts:
+      - apps/ml-service/app/services/classification.py
+      - tests/test_artwork_processing.py (2 tests un-skipped)
+      - versions.md
+    timestamp: "2026-06-04T18:08:00+02:00"
+
+  - story: 8-5-t3777-kruischeck-en-routing
+    status: complete
+    commit_sha: 5ad0685
+    merge_sha: 978a8d7
+    artifacts:
+      - apps/api/src/__tests__/api/artwork-pipeline.routes.test.ts (4 tests un-skipped)
+      - versions.md
+    timestamp: "2026-06-04T18:09:00+02:00"
+    note: >
+      Route POST /artwork/:gtin/crosscheck was already implemented in Story 8.1.
+      This story confirmed the implementation by un-skipping the ATDD tests.
+
+  - story: 8-6-trainingsdata-registratie-met-herkomst
+    status: complete
+    commit_sha: 762ec50
+    merge_sha: 9f5801e
+    artifacts:
+      - apps/api/src/__tests__/api/artwork-pipeline.routes.test.ts (2 tests un-skipped)
+      - versions.md
+    timestamp: "2026-06-04T18:09:30+02:00"
+    note: >
+      Routes POST /artwork/:gtin/register-training-data and
+      PATCH /training/data/deactivate-by-source were already implemented in Story 8.1.
+      This story confirmed the implementation by un-skipping the ATDD tests.
+
+  - story: 8-7-synthetische-trainingsdata-generatie
+    status: complete
+    commit_sha: ce9d74e
+    merge_sha: 77266f9
+    artifacts:
+      - apps/ml-service/app/services/synthesis.py
+      - apps/ml-service/app/services/database.py (modified — added get_class_counts)
+      - tests/test_artwork_processing.py (3 tests un-skipped, file now 11/11 green)
+      - versions.md
+    timestamp: "2026-06-04T18:11:00+02:00"
+
+head_commit: 77266f9

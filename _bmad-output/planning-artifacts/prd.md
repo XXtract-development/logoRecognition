@@ -396,3 +396,75 @@ Single Page Application (React 18 SPA) met Vite build tool, Fastify API gateway,
 - Graceful degradation bij ML-service uitval (herkenning offline, training queued)
 - Automatische herstart gefaalde training jobs (max 3 retries)
 - Database migraties zonder downtime
+
+---
+
+## Addendum: Geautomatiseerde Modeltraining — Fase 2-uitbreiding (2026-06-03)
+
+> Dit addendum breidt de PRD uit met de scope FR41-FR63 en herstelt de formele
+> traceability-keten PRD → epics voor Epic 7-11. Onderbouwing:
+> `research/technical-automatiseren-modeltraining-research-2026-06-03.md`.
+> Uitwerking in stories: `epics.md` (Epic 7-11). Aanleiding: implementation-readiness-rapport 2026-06-03, issue 1 en 5.
+
+### Aanleiding en doel
+
+Het MVP (Epic 1-6) is afgerond, maar modeltraining vergt nog ~11 handmatige handelingen per modelversie: afbeeldingen uploaden, annoteren, valideren, training starten, beoordelen, activeren. Deze uitbreiding realiseert de in deze PRD aangekondigde Growth-fase ("Epic 6: Self-Learning System — active learning, automatische hertraining") en maakt de beslislaag rondom de bestaande trainingspipeline automatisch. *Nummeringsnotitie (2026-06-06): het "Epic 6"-label hierboven verwijst naar het Growth-concept uit de oorspronkelijke scope-tabel; de daadwerkelijke uitwerking is doorgenummerd als Epic 7-11 in `epics.md` (Epic 6 bestaat reeds als afgerond MVP-werk in `docs/sprint-artifacts/`).* Kern-KPI's: **doorlooptijd feedback → actief model < 1 week** en **≤ 1 menselijke handeling per modelversie** (de goedkeuringsklik).
+
+Belangrijkste databron: de eigen GS1-productdata. Het GDSN-attribuut `packagingMarkedLabelAccreditationCode` (T3777) declareert per trade item welke keurmerken op de verpakking staan; gecombineerd met de etiket-artwork uit `xxtractdbmedia.media` (~39.000 bestanden, 12.498 GTINs, via mediaserver-endpoint) ontstaat een zelf-annoterende trainingsdatastroom.
+
+### Verhouding tot de productvisie (besluit)
+
+De Visie (Fase 3) noemt een "volledig autonome self-learning pipeline zonder menselijke interventie". **Besluit:** deze uitbreiding implementeert bewust de veiliger tussenvorm — volledige automatisering van uitvoering en beoordeling, met een **verplichte menselijke goedkeuringsgate vóór productie-activatie** (NFR-A5). Volledige autonomie blijft Fase 3-visie en vereist een afzonderlijk besluit op basis van de KPI-resultaten van deze fase.
+
+### Functionele Vereisten (uitbreiding)
+
+#### Evaluatiefundament
+- FR41: Het systeem ondersteunt een vaste holdout-set: trainingsdata kan als holdout gemarkeerd worden en wordt technisch uitgesloten van training en augmentatie
+- FR42: Elk getraind model wordt automatisch geëvalueerd op de vaste holdout-set; metrics worden vastgelegd bij de modelversie
+- FR43: Er is een beheerbare keurmerk-referentiebibliotheek met officiële beeldmerken en varianten
+
+#### Data-acquisitie & auto-annotatie
+- FR44: Het systeem importeert etiket-artwork via `xxtractdbmedia.media` (typeInfo=PACKAGING_ARTWORK) en het mediaserver-endpoint, met caching in MinIO
+- FR45: PDF-artwork wordt gerasterized naar hoogresolutie-afbeeldingen vóór verwerking
+- FR46: Het systeem lokaliseert keurmerk-kandidaten op artwork via template-matching en tiling
+- FR47: Gelokaliseerde regio's worden geclassificeerd met de crop-classifier en/of embedding-similarity
+- FR48: Per GTIN wordt de gedetecteerde keurmerk-set gekruischeckt met de T3777-declaratie; matches auto-geaccepteerd, discrepanties naar de uncertainty-review-queue
+- FR49: Auto-geaccepteerde crops worden met label en herkomst geregistreerd als trainingsdata
+- FR50: Het systeem genereert synthetische trainingsdata (composits van referentie-keurmerken op artwork-achtergronden) met automatische labels
+
+#### Retraining-triggers
+- FR51: De retraining-conditie-check draait periodiek via een scheduler met configureerbare drempels
+- FR52: Bij een trigger ontvangt de gebruiker een notificatie "retraining aanbevolen" inclusief reden
+
+#### Continuous training pipeline
+- FR53: Persistente job-queue-infrastructuur (BullMQ op bestaande Redis, Node-kant) met retries en zichtbare jobstatus
+- FR54: De trainingspipeline draait als job-flow: feedback incorporeren → batch → trainen → evalueren vs. champion → klaarzetten voor goedkeuring
+- FR55: Training-jobstatus is persistent en crash-bestendig
+- FR56: Een challenger wordt alleen ter goedkeuring aangeboden als hij de kwaliteitsgate haalt (≥ champion op holdout)
+- FR57: De gebruiker kan het evaluatierapport inzien en het model met één handeling activeren
+
+#### Bewaking & rollback
+- FR58: Na activatie monitort het systeem periodiek de realworld-accuracy van het actieve model
+- FR59: Bij accuracy-daling boven de drempel binnen het meetvenster volgt automatische rollback met notificatie
+- FR60: Elke promotie en rollback wordt vastgelegd in een onveranderbare audit-trail
+
+#### AI-agents (optioneel)
+- FR61: Een annotatie-QA-agent beoordeelt twijfelgevallen met onderbouwing
+- FR62: Een trainingsrun-analyse-agent voegt een leesbare aanbeveling toe aan de goedkeuringsnotificatie
+- FR63: Een rapportage-agent genereert periodiek een samenvatting van modelprestaties en datasetgroei
+
+### Niet-Functionele Vereisten (uitbreiding)
+
+- NFR-A1: Geen verloren training-jobs bij crash — queue-state persistent
+- NFR-A2: Trainingsruns planbaar buiten kantooruren; training-concurrency 1
+- NFR-A3: Holdout-lekkage technisch afgedwongen op query-niveau
+- NFR-A4: CI-smoke-test van de volledige pipeline op mini-dataset
+- NFR-A5: **Menselijke goedkeuring verplicht voor productie-activatie; agents en pipeline activeren nooit autonoom**
+- NFR-A6: Geautomatiseerde callers via service-account/API-key; activatie-endpoint ge-audit
+- NFR-A7: Externe bestanden gecachet in eigen opslag; geen runtime-afhankelijkheid van externe bronnen
+- NFR-A8: KPI's: doorlooptijd feedback → actief model < 1 week; ≤ 1 menselijke handeling per modelversie; 0 verloren jobs na crash
+
+### Scope-afbakening
+
+- **In scope:** Epic 7 (evaluatiefundament), Epic 8 (trainingsdata uit artwork), Epic 9 (automatische retraining met goedkeuring), Epic 10 (bewaking & auto-rollback); Epic 11 (AI-agents) optioneel na bewezen stabiliteit
+- **Buiten scope:** volledige autonomie zonder menselijke gate (Fase 3-visie); vervanging van het classificatiemodel; wijzigingen aan de mediaserver of media-tabel (alleen lezen)

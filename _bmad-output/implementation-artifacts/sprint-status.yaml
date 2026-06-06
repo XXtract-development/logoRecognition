@@ -1,0 +1,112 @@
+# generated: 2026-06-03
+# last_updated: 2026-06-05
+# project: logoRecognition
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: _bmad-output/implementation-artifacts
+# scope: Epic 7-11 — Geautomatiseerde Modeltraining (Epic 1-6 afgerond, zie docs/sprint-artifacts/sprint-status.yaml)
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog → in-progress: Automatically when first story is created (via create-story)
+#   - in-progress → done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - Developer typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+# - Epic 7 + 8 opgeleverd: gemerged naar acc (4c66ffd) en gedeployed op ACC (2026-06-05, Coolify Logorecognition)
+# - ATDD red-phase tests voor Epic 9 staan klaar (getrackt op acc): _bmad-output/test-artifacts/atdd-checklist-epic-8-9.md
+# - Epic 9-voorwerk adversarial gereviewd (15 bevindingen verwerkt in story-files): _bmad-output/implementation-artifacts/review-epic-9-voorwerk.md
+# - Volgorde-advies: Epic 9 strikt sequentieel 9.1→9.6 (Redis-infra in 9.1 is BLOCKER; migratienummers 0007/0008 vereisen volgorde 9.2 vóór 9.5); Epic 10 bouwt op 9; Epic 11 optioneel
+
+generated: 2026-06-03
+last_updated: 2026-06-05  # sprint-planning: epic 7+8 done & gedeployed; epic 9 ready-for-dev (6 stories + ATDD + review verwerkt)
+project: logoRecognition
+project_key: NOKEY
+tracking_system: file-system
+story_location: _bmad-output/implementation-artifacts
+
+development_status:
+  # ============================================
+  # Epic 7: Betrouwbaar Evaluatiefundament
+  # ============================================
+  epic-7: done
+  7-1-holdout-markering-op-trainingsdata: done
+  7-2-holdout-evaluatie-bij-elke-training: done
+  7-3-keurmerk-referentiebibliotheek: done
+  epic-7-retrospective: optional
+
+  # ============================================
+  # Epic 8: Automatische Trainingsdata uit Etiket-Artwork
+  # ============================================
+  # 2026-06-04 adversarial review (commit ddc70ca): ATDD-gate groen maar mockt de
+  # kernpaden; stories 8.2/8.4/8.5/8.6/8.7 hebben onvervulde AC's — teruggezet
+  # naar in-progress. 8.1 en 8.3 zijn wel volledig (bevindingen gefixt).
+  epic-8: done  # NB: 8.7-batch-hook bewust deferred → story 9.3 (zie aldaar)
+  8-1-artwork-import-via-mediaserver-met-caching: done
+  8-2-pdf-artwork-rasterization: done  # remediatie 93ee5bb/88764b9: /ml/artwork/rasterize + import-integratie, AC's onafhankelijk geverifieerd
+  8-3-keurmerk-lokalisatie-op-artwork: done
+  8-4-crop-classificatie-van-gelokaliseerde-regios: done  # remediatie 1bca7e0/64a0e37: pgvector embedding-route + /classify, AC's onafhankelijk geverifieerd
+  8-5-t3777-kruischeck-en-routing: done  # UI-slag 6605e9f/e7eeda9: AC3 review-UI met herkomst (ArtworkReviewPage), onafhankelijk geverifieerd
+  8-6-trainingsdata-registratie-met-herkomst: done  # remediatie 3d2f7c5/ecb8317: alle AC's vervuld; Image Library-wéérgave (geen AC) apart
+  8-7-synthetische-trainingsdata-generatie: done  # remediatie 8affd1d/ec9a4bd: AC's geverifieerd; batch-hook (AC2-wiring) bewust deferred → story 9.3 build-batch (besluit gebruiker 2026-06-04)
+  epic-8-retrospective: optional
+
+  # ============================================
+  # Epic 8 — Nazorg (remediatie uit acceptatie fase B, bevindingen 2026-06-05/06)
+  # Bron: fase-b-bevindingen-2026-06-05.md · voorwerk-review: review-8-3R-voorwerk.md
+  # ============================================
+  epic-8-nazorg: in-progress
+  8-3R-remediatie-multi-scale-lokalisatie-en-score-herijking: ready-for-dev  # story + adversarial review (12 bevindingen) verwerkt + ATDD red-phase: tests/test_localization_multiscale.py (11 skipped, geverifieerd 2026-06-06; checklist: test-artifacts/atdd-checklist-8-3R.md)
+  8-3O-server-side-detectie-orkestratie: backlog  # localize→classify→crosscheck + templates uit referentiebibliotheek; vereist 8-3R; story-file schrijven NÁ het 8-3R-meetrapport (drempels/throughput zijn input)
+  8-N1-reindex-hook-na-rebuild-reference-embeddings: ready-for-dev  # story-file 2026-06-06; mini-fix, ivfflat-les (bevinding 3)
+
+  # ============================================
+  # Epic 9: Automatische Retraining met Menselijke Goedkeuring
+  # ============================================
+  epic-9: done  # branch feature/epic-9-automatische-retraining @ 4ead8ed; fase F: 1 critical gefixt (anonieme activatie), 7 deferred (gedocumenteerd); wacht op merge-besluit + migratiekeuze 0007/0008
+  9-1-persistente-job-queue-infrastructuur: done  # commit f51ced8 on feature/epic-9-automatische-retraining
+  9-2-geplande-retraining-trigger-met-notificatie: done  # commit e59c4e3
+  9-3-trainingspipeline-als-crash-bestendige-job-flow: done  # 65fec76 + remediatie 4936cec: ML-endpoint, 4 step-workers, productiecallers — incl. 8.7-batch-hook; onafhankelijk geverifieerd
+  9-4-champion-challenger-kwaliteitsgate: done  # bb7bdc0, geverifieerd (gate + holdoutHash-weigering + fail-pad in workers.ts)
+  9-5-goedkeuringsscherm-en-eenklik-activatie: done  # b5cfaf8, geverifieerd (0008, approval-queue, activatielog, ApprovalQueuePage)
+  9-6-ci-smoke-test-van-de-volledige-pipeline: done  # c497246/ab70574, geverifieerd (14 smoke-tests)
+  epic-9-retrospective: optional
+
+  # ============================================
+  # Epic 10: Modelbewaking en Automatische Rollback
+  # ============================================
+  epic-10: backlog
+  10-1-realworld-accuracy-monitoring: backlog
+  10-2-automatische-rollback-bij-regressie: backlog
+  10-3-audit-trail-voor-promotie-en-rollback: backlog
+  epic-10-retrospective: optional
+
+  # ============================================
+  # Epic 11: AI-Agent Ondersteuning (optioneel)
+  # ============================================
+  epic-11: backlog
+  11-1-annotatie-qa-agent: backlog
+  11-2-trainingsrun-analyse-agent: backlog
+  11-3-periodieke-rapportage-agent: backlog
+  epic-11-retrospective: optional
