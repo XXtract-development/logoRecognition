@@ -1,6 +1,16 @@
 #!/usr/bin/env python3
 """
-8.3R hermeting — kalibratie en validatie van multi-scale lokalisatie op ACC.
+8.3R/8.3P hermeting — kalibratie en validatie van multi-scale lokalisatie op ACC.
+
+8-3P-uitbreiding (precisie-kalibratie):
+  - FP-baseline op het gepinde referentie-artwork (GTIN 08710679005795) met een
+    VOORAF bevroren instellingenset (floor/drempels/k), vastgelegd in het rapport
+    vóór de meting. Gate: ≤ 5 detecties.
+  - Labelsample-generator: markdown-overzicht van álle overgebleven detecties op
+    de ACC-artworks met crop-thumbnails als base64-data-URI's + scores, voor
+    menselijke echt/vals-beoordeling.
+  De per-klasse drempels komen uit ``LOCALIZE_CLASS_THRESHOLDS`` (env, ML-side
+  geresolved in match_templates); de FP-baseline draait op de productie-min_score.
 
 Reproduceerbaar AC4-script (story 8-3R). Draait IN de ml-service-container
 tegen de echte ACC-data, ZONDER deploy:
@@ -42,6 +52,13 @@ CALIBRATION_FLOOR = 0.30  # capture-drempel voor distributies (bewust laag)
 IOU_GATE = 0.30
 CANDIDATE_THRESHOLDS = [round(0.30 + 0.05 * i, 2) for i in range(13)]  # 0.30 .. 0.90
 
+# 8-3P — gepind FP-baseline-artwork (8-3R-referentie, GTIN 08710679005795).
+PINNED_FP_GTIN = "08710679005795"
+PINNED_FP_KEY = os.environ.get("PINNED_FP_KEY", f"artwork/{PINNED_FP_GTIN}/{PINNED_FP_GTIN}.jpg")
+PINNED_FP_GATE = int(os.environ.get("PINNED_FP_GATE", "5"))  # ≤ 5 detecties
+# Productie-min_score voor de FP-baseline (per-klasse env-drempels winnen ML-side).
+FP_BASELINE_MIN_SCORE = float(os.environ.get("FP_BASELINE_MIN_SCORE", "0.55"))
+
 
 def load_new_localization():
     """Laad de nieuwe localization.py en registreer als app.services.localization."""
@@ -74,6 +91,34 @@ def iou(a, b):
         return 0.0
     union = a["width"] * a["height"] + b["width"] * b["height"] - inter
     return inter / union if union else 0.0
+
+
+def crop_thumb_data_uri(img, bbox, max_dim=96):
+    """Knip de detectie-crop uit en codeer als base64 PNG data-URI (thumbnail).
+
+    Voor het menselijke label-overzicht (AC4c) — leesbaar in elke markdown-
+    viewer zonder externe bestanden. Geeft '' terug bij een lege/ongeldige crop.
+    """
+    import base64
+
+    import cv2
+
+    h, w = img.shape[:2]
+    x0 = max(0, min(int(bbox["x"]), w))
+    y0 = max(0, min(int(bbox["y"]), h))
+    x1 = max(0, min(int(bbox["x"]) + int(bbox["width"]), w))
+    y1 = max(0, min(int(bbox["y"]) + int(bbox["height"]), h))
+    if x1 <= x0 or y1 <= y0:
+        return ""
+    crop = img[y0:y1, x0:x1]
+    ch, cw = crop.shape[:2]
+    f = max_dim / max(ch, cw) if max(ch, cw) > max_dim else 1.0
+    if f < 1.0:
+        crop = cv2.resize(crop, (max(1, int(cw * f)), max(1, int(ch * f))), interpolation=cv2.INTER_AREA)
+    ok, buf = cv2.imencode(".png", crop)
+    if not ok:
+        return ""
+    return "data:image/png;base64," + base64.b64encode(buf.tobytes()).decode()
 
 
 def run_flow(loc, img, variants, min_score):
@@ -232,6 +277,7 @@ async def main():
             print(f"- ⚠️ overgeslagen (geen afbeeldingssleutel): {im['gtin']} {im['file_name']} ({im['mime_type']})")
 
     natural = []
+    natural_imgs = {}  # key -> decoded image (hergebruik voor labelsample-crops)
     for gtin, key in image_keys:
         try:
             img = decode(storage_service.get_training_image(key))
@@ -241,12 +287,22 @@ async def main():
         except Exception as exc:
             print(f"- ⚠️ niet ophaalbaar: {key} ({exc})")
             continue
+        natural_imgs[key] = img
         t0 = time.monotonic()
         detections, n_tiles = run_flow(loc, img, variants, CALIBRATION_FLOOR)
         dt = time.monotonic() - t0
         timings.append((key, dt, n_tiles, img.shape[1], img.shape[0]))
         for d in detections:
-            natural.append({"gtin": gtin, "key": key, "code": d["t3777_code"], "score": d["score"]})
+            natural.append(
+                {
+                    "gtin": gtin,
+                    "key": key,
+                    "code": d["t3777_code"],
+                    "score": d["score"],
+                    "bbox": d["bbox"],
+                    "threshold": d.get("threshold"),
+                }
+            )
 
     print(f"\nGescande natuurlijke afbeeldingen: {len(image_keys)} · detecties boven {CALIBRATION_FLOOR}: {len(natural)}\n")
     if natural:
@@ -260,8 +316,65 @@ async def main():
     else:
         print("Geen natuurlijke detecties boven de capture-drempel — distributie leeg (relevant voor bevinding 6).")
 
+    # --- FP-baseline op het gepinde artwork (8-3P AC4b) ----------------------
+    print("\n## 5. FP-baseline — gepind artwork (8-3P AC4b)\n")
+    frozen = {
+        "LOCALIZE_SCALE_MIN_PX (floor)": loc.LOCALIZE_SCALE_MIN_PX,
+        "LOCALIZE_SCALE_STEP": loc.LOCALIZE_SCALE_STEP,
+        "LOCALIZE_SCALE_MAX_PX": loc.LOCALIZE_SCALE_MAX_PX,
+        "LOCALIZE_PEAKS_PER_VARIANT": getattr(loc, "LOCALIZE_PEAKS_PER_VARIANT", None),
+        "LOCALIZE_COLLAPSE_TOP_K": getattr(loc, "LOCALIZE_COLLAPSE_TOP_K", None),
+        "LOCALIZE_CLASS_THRESHOLDS": getattr(loc, "LOCALIZE_CLASS_THRESHOLDS", {}),
+        "FP_BASELINE_MIN_SCORE (request)": FP_BASELINE_MIN_SCORE,
+    }
+    print("**Bevroren instellingenset (vastgelegd vóór de meting):**\n")
+    for k, v in frozen.items():
+        print(f"- `{k}` = `{v}`")
+    print(f"\n- Gepind artwork: `{PINNED_FP_KEY}` (GTIN {PINNED_FP_GTIN}) · gate: ≤ {PINNED_FP_GATE} detecties · was 20 (8-3R-meetrapport)\n")
+
+    fp_count = None
+    try:
+        pinned_img = decode(storage_service.get_training_image(PINNED_FP_KEY))
+        if pinned_img is None:
+            print(f"- ⚠️ gepind artwork niet decodeerbaar: {PINNED_FP_KEY}")
+        else:
+            fp_dets, _ = run_flow(loc, pinned_img, variants, FP_BASELINE_MIN_SCORE)
+            fp_count = len(fp_dets)
+            print(f"**FP-baseline: {fp_count} detecties** (gate ≤ {PINNED_FP_GATE}: "
+                  f"{'PASSED' if fp_count <= PINNED_FP_GATE else 'FAILED'})\n")
+            if fp_dets:
+                print("| code | score | drempel | bbox |")
+                print("|---|---|---|---|")
+                for d in sorted(fp_dets, key=lambda x: -x["score"]):
+                    b = d["bbox"]
+                    thr = f"{d['threshold']:.2f}" if d.get("threshold") is not None else "—"
+                    print(f"| {d['t3777_code']} | {d['score']:.3f} | {thr} | "
+                          f"{b['x']},{b['y']} {b['width']}×{b['height']} |")
+    except Exception as exc:
+        print(f"- ⚠️ FP-baseline niet meetbaar: {PINNED_FP_KEY} ({exc})")
+
+    # --- Labelsample-overzicht (8-3P AC4c) -----------------------------------
+    print("\n## 6. Labelsample — overgebleven detecties (8-3P AC4c, wacht op labels)\n")
+    print("Alle overgebleven detecties op de ACC-artworks met crop-thumbnail "
+          "(base64 data-URI) en score, voor menselijke echt/vals-beoordeling. "
+          "Vul de kolom **label** in (echt/vals) en bereken precision = echt / totaal.\n")
+    if natural:
+        print("| # | gtin | bestand | code | score | drempel | crop | label (echt/vals) |")
+        print("|---|---|---|---|---|---|---|---|")
+        for i, n in enumerate(sorted(natural, key=lambda x: -x["score"]), start=1):
+            img = natural_imgs.get(n["key"])
+            uri = crop_thumb_data_uri(img, n["bbox"]) if img is not None else ""
+            cell = f"![crop]({uri})" if uri else "—"
+            thr = f"{n['threshold']:.2f}" if n.get("threshold") is not None else "—"
+            print(f"| {i} | {n['gtin']} | {n['key'].split('/')[-1][:28]} | {n['code']} | "
+                  f"{n['score']:.3f} | {thr} | {cell} |  |")
+        print(f"\nTotaal overgebleven detecties (≥ capture-drempel {CALIBRATION_FLOOR}): {len(natural)}. "
+              "Beslismoment PO: precisie voldoende voor 8-3O-bulk → doorgaan; anders volgende iteratie.")
+    else:
+        print("Geen overgebleven detecties boven de capture-drempel — labelsample leeg.")
+
     # --- Throughput -----------------------------------------------------------
-    print("\n## 5. Throughput\n")
+    print("\n## 7. Throughput\n")
     total = sum(t[1] for t in timings)
     avg = total / len(timings) if timings else 0
     print("| bestand | tijd (s) | tegels | afmeting |")
@@ -272,8 +385,15 @@ async def main():
     print(f"- **Extrapolatie 39.000 bestanden: ~{avg * 39000 / 3600:.1f} uur** (single-threaded, huidige container)")
 
     await conn.close()
-    print(f"\n---\nGate-uitkomst: {'PASSED' if found_count == len(planted_results) else 'FAILED'} ({found_count}/{len(planted_results)})")
-    return 0 if found_count == len(planted_results) else 1
+    recall_ok = found_count == len(planted_results)
+    fp_ok = fp_count is not None and fp_count <= PINNED_FP_GATE
+    print("\n---")
+    print(f"Composiet-recall-gate: {'PASSED' if recall_ok else 'FAILED'} ({found_count}/{len(planted_results)})")
+    fp_str = fp_count if fp_count is not None else "n/a"
+    print(f"FP-baseline-gate: {'PASSED' if fp_ok else 'FAILED'} ({fp_str} ≤ {PINNED_FP_GATE} op {PINNED_FP_KEY}; was 20)")
+    overall = recall_ok and fp_ok
+    print(f"Gate-uitkomst (8-3P AC4): {'PASSED' if overall else 'BLOCKED/FAILED'}")
+    return 0 if overall else 1
 
 
 if __name__ == "__main__":

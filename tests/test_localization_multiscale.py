@@ -145,15 +145,21 @@ def test_prepare_scaled_templates_ladder_covers_measured_ratio():
 # ---------------------------------------------------------------------------
 
 
-def test_localize_flow_finds_instance_at_15_percent_scale():
-    """Een 400px-referentie waarvan de instantie op 60px (0,15×) op het artwork
+def test_localize_flow_finds_instance_at_small_scale():
+    """Een 400px-referentie waarvan de instantie op 80px (0,20×) op het artwork
     staat, wordt gevonden mét native-size referentie als input — de kern van
-    de remediatie (huidig gedrag: 0 detecties)."""
+    de remediatie (huidig gedrag: 0 detecties).
+
+    8-3P: instantiegrootte verhoogd van 60px (0,15×) naar 80px (0,20×, een
+    step-1.25-ladderrung). AC1 verhoogt de default ``LOCALIZE_SCALE_MIN_PX`` van
+    48 → 64, waardoor sub-64px-instanties bewust niet meer worden gedetecteerd
+    (de FP-fabriek zat onder 64px); het bewaakte mechanisme (kleine instantie
+    teruggevonden) blijft intact."""
     import numpy as np
 
     logo = _structured_logo(size=400)
     source = np.full((800, 800, 3), 255, dtype=np.uint8)
-    source, (iw, ih) = _paste_resized(source, logo, target_max_dim=60, x=300, y=400)
+    source, (iw, ih) = _paste_resized(source, logo, target_max_dim=80, x=300, y=400)
 
     resp = _run_localize(source, logo)
 
@@ -172,12 +178,15 @@ def test_localize_flow_finds_instance_at_15_percent_scale():
 
 def test_template_larger_than_tile_is_downscaled_not_skipped():
     """Een 960×960-referentie (groter dan de 640-tile) mag NIET worden
-    geskipt ('Template larger than tile') — de productie-failure uit fase B."""
+    geskipt ('Template larger than tile') — de productie-failure uit fase B.
+
+    8-3P: instantiegrootte 117→125px (step-1.25-ladderrung boven de nieuwe
+    64px-floor); min_score ongewijzigd."""
     import numpy as np
 
     logo = _structured_logo(size=960)
     source = np.full((640, 640, 3), 255, dtype=np.uint8)  # exact één tile
-    source, _ = _paste_resized(source, logo, target_max_dim=117, x=200, y=150)
+    source, _ = _paste_resized(source, logo, target_max_dim=125, x=200, y=150)
 
     resp = _run_localize(source, logo)
 
@@ -227,7 +236,8 @@ def test_low_contrast_template_still_matches_via_ccoeff_path():
     yy, xx = np.mgrid[0:400, 0:400]
     logo[((xx // 50 + yy // 50) % 2 == 0)] = 110  # stddev ≈ 5: laag maar reëel
     source = np.full((640, 640, 3), 70, dtype=np.uint8)
-    source, _ = _paste_resized(source, logo, target_max_dim=75, x=120, y=320)
+    # 8-3P: 75→80px (step-1.25-ladderrung boven de 64px-floor); min_score 0.7 ongewijzigd.
+    source, _ = _paste_resized(source, logo, target_max_dim=80, x=120, y=320)
 
     resp = _run_localize(source, logo, min_score=0.7)
 
@@ -247,7 +257,8 @@ def test_localize_flow_matches_transparent_round_logo():
 
     logo_rgba = _structured_logo(size=400, rgba=True)
     source = np.full((640, 640, 3), 150, dtype=np.uint8)
-    source, _ = _paste_resized(source, logo_rgba, target_max_dim=94, x=250, y=180)
+    # 8-3P: 94→100px (step-1.25-ladderrung boven de 64px-floor); min_score ongewijzigd.
+    source, _ = _paste_resized(source, logo_rgba, target_max_dim=100, x=250, y=180)
 
     resp = _run_localize(source, logo_rgba)
 
@@ -294,7 +305,9 @@ def test_localize_endpoint_reads_storage_path_from_minio():
 
     logo = _structured_logo(size=400)
     source = np.full((800, 800, 3), 255, dtype=np.uint8)
-    source, _ = _paste_resized(source, logo, target_max_dim=60, x=300, y=400)
+    # 8-3P: 60→100px (step-1.25-ladderrung boven de 64px-floor); grootte is hier
+    # incidenteel — de test bewaakt storage_path-plumbing + ≥1 detectie.
+    source, _ = _paste_resized(source, logo, target_max_dim=100, x=300, y=400)
     png_bytes = cv2.imencode(".png", source)[1].tobytes()
 
     # Use the shared conftest mock — reset, don't replace (state would leak
