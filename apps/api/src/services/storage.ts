@@ -444,6 +444,32 @@ export async function listUserImages(
 }
 
 /**
+ * Download an object from the TRAINING bucket by bare object key (crops,
+ * reference logos, artwork) — unlike downloadImage, which expects a
+ * "bucket/key" storagePath and would misread the first key segment as a
+ * bucket name (acceptance finding 2026-06-06).
+ */
+export async function downloadTrainingObject(objectKey: string): Promise<Buffer | null> {
+  try {
+    const adapter = getStorageAdapter();
+    const dataStream = await adapter.getObject(BUCKETS.TRAINING, objectKey);
+    const chunks: Buffer[] = [];
+
+    return new Promise((resolve, reject) => {
+      dataStream.on('data', (chunk) => chunks.push(chunk));
+      dataStream.on('end', () => resolve(Buffer.concat(chunks)));
+      dataStream.on('error', reject);
+    });
+  } catch (error) {
+    logger.error('Failed to download training object', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      objectKey,
+    });
+    return null;
+  }
+}
+
+/**
  * Download image buffer
  */
 export async function downloadImage(storagePath: string): Promise<Buffer | null> {

@@ -29,7 +29,7 @@ import crypto from 'crypto';
 import prisma from '../../core/db';
 import { logger } from '../../core/logger';
 import { requireRole, authMiddleware } from '../../middleware/auth';
-import { uploadArtwork, downloadImage } from '../../services/storage';
+import { uploadArtwork, downloadTrainingObject } from '../../services/storage';
 import { mediaServerClient } from '../../services/mediaserver-client';
 import { mlClient } from '../../services/ml-client';
 import {
@@ -861,7 +861,7 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
         return reply.status(404).send({ error: 'Geen crop voor dit reviewitem' });
       }
 
-      const buffer = await downloadImage(item.cropPath);
+      const buffer = await downloadTrainingObject(item.cropPath);
       if (!buffer) {
         return reply.status(404).send({ error: 'Crop niet gevonden in opslag' });
       }

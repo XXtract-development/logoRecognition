@@ -234,6 +234,7 @@ vi.mock('../services/storage', () => ({
   getSignedUrl: vi.fn(),
   getReferenceLogoUrl: vi.fn(),
   downloadImage: vi.fn(),
+  downloadTrainingObject: vi.fn(),
   deleteImage: vi.fn(),
   validateImage: vi.fn(),
   generateThumbnail: vi.fn(),

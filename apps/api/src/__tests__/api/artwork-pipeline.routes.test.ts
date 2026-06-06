@@ -523,7 +523,7 @@ describe('Artwork Pipeline Routes (ATDD — Epic 8)', () => {
 
     it('streams the crop bytes via /crop with the right content type', async () => {
       const storage = await import('../../services/storage');
-      (storage.downloadImage as vi.Mock).mockResolvedValue(Buffer.from('png-bytes'));
+      (storage.downloadTrainingObject as vi.Mock).mockResolvedValue(Buffer.from('png-bytes'));
       (mockPrisma.artworkReviewItem.findUnique as vi.Mock).mockResolvedValue({
         id: 'ri-crop',
         cropPath: 'artwork-crops/08718989912451/crop-1.png',
@@ -537,7 +537,7 @@ describe('Artwork Pipeline Routes (ATDD — Epic 8)', () => {
       expect(response.statusCode).toBe(200);
       expect(response.headers['content-type']).toContain('image/png');
       expect(response.body).toBe('png-bytes');
-      expect(storage.downloadImage).toHaveBeenCalledWith('artwork-crops/08718989912451/crop-1.png');
+      expect(storage.downloadTrainingObject).toHaveBeenCalledWith('artwork-crops/08718989912451/crop-1.png');
     });
 
     it('returns 404 on /crop for a crop-less item', async () => {
