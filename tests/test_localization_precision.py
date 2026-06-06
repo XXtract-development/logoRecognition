@@ -78,7 +78,6 @@ def _localize(source, logo, **body):
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skip(reason="RED: story 8-3P niet geïmplementeerd")
 def test_default_ladder_floor_is_64px():
     """AC1: de default-ladder genereert geen varianten < 64px max-dim (de
     FP-fabriek uit het 8-3R-meetrapport zat op 48px); expliciet lager blijft
@@ -101,7 +100,6 @@ def test_default_ladder_floor_is_64px():
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skip(reason="RED: story 8-3P niet geïmplementeerd")
 def test_class_threshold_resolution_three_levels(monkeypatch):
     """AC2: per-klasse env-drempel wint van request-min_score; codes zonder
     entry volgen de bestaande resolutie; elke detectie vermeldt de toegepaste
@@ -121,7 +119,6 @@ def test_class_threshold_resolution_three_levels(monkeypatch):
     assert all(d["t3777_code"] != "TEST_MARK" for d in resp.detections)
 
 
-@pytest.mark.skip(reason="RED: story 8-3P niet geïmplementeerd")
 def test_detections_report_applied_threshold():
     """AC2: de response vermeldt per detectie de toegepaste drempel."""
     import numpy as np
@@ -136,7 +133,6 @@ def test_detections_report_applied_threshold():
     assert marks[0].get("threshold") == pytest.approx(0.5)
 
 
-@pytest.mark.skip(reason="RED: story 8-3P niet geïmplementeerd")
 def test_invalid_class_thresholds_json_is_warning_not_crash(monkeypatch):
     """AC2: ongeldig JSON in LOCALIZE_CLASS_THRESHOLDS ⇒ lege map + warning,
     geen import-crash (parser is een aanroepbare functie)."""
@@ -152,7 +148,6 @@ def test_invalid_class_thresholds_json_is_warning_not_crash(monkeypatch):
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skip(reason="RED: story 8-3P niet geïmplementeerd")
 def test_two_instances_same_mark_in_one_tile_both_found():
     """AC3: twee instanties van hetzelfde keurmerk in ÉÉN tegel overleven
     beide, met aantoonbaar verschillende centra op de verwachte posities —
@@ -174,7 +169,6 @@ def test_two_instances_same_mark_in_one_tile_both_found():
     assert abs(x2 - (400 + 47)) <= 10 and abs(y2 - (380 + 47)) <= 10
 
 
-@pytest.mark.skip(reason="RED: story 8-3P niet geïmplementeerd")
 def test_multi_peak_entries_are_score_descending_per_template():
     """P2-contract: match_templates retourneert bij meerdere pieken extra
     entries, score-aflopend per template (signatuur ongewijzigd)."""
@@ -200,7 +194,6 @@ def test_multi_peak_entries_are_score_descending_per_template():
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skip(reason="RED: story 8-3P niet geïmplementeerd")
 def test_endpoint_exposes_new_precision_tunables():
     """Nieuwe tunables zitten in het request-contract; defaults uit env."""
     from app.api.artwork import LocalizeRequest

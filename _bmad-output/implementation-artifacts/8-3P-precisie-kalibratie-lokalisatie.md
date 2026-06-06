@@ -51,6 +51,50 @@ so that de review-queue bruikbaar blijft en bulk-detectie over de 39k-voorraad v
 
 ### Agent Model Used
 
+claude-opus-4-8 (BMAD Story Implementation Agent)
+
+### AC-bewijs
+
+**AC1 — Min-instance-floor (64px):**
+- `apps/ml-service/app/services/localization.py:66` — `LOCALIZE_SCALE_MIN_PX` default 48 → 64.
+- Test: `tests/test_localization_precision.py::test_default_ladder_floor_is_64px` (assert == 64, ladder ≥ 64px, expliciete `scale_min_px=48`-override < 64).
+- Composiet-gate 9/9 blijft groen — meetrapport §(a).
+
+**AC2 — Per-klasse drempels (ML-side) + drempel in response:**
+- `localization.py:73-117` — `_parse_class_thresholds(raw) -> dict` (ongeldig/leeg/non-object/non-numeric → `{}` + warning) en module-constante `LOCALIZE_CLASS_THRESHOLDS` geladen bij import.
+- `localization.py:_resolve_threshold` + `match_templates` — effectieve drempel per code = `LOCALIZE_CLASS_THRESHOLDS.get(code, min_score)`; module-global gelezen bij call-time (monkeypatch/reload werkt). `threshold`-veld op élke match in BEIDE takken (CCOEFF + SQDIFF).
+- Tests: `test_class_threshold_resolution_three_levels`, `test_detections_report_applied_threshold`, `test_invalid_class_thresholds_json_is_warning_not_crash`.
+
+**AC3 — Multi-peak + top-k-collapse (locatie-distinct):**
+- `localization.py` `match_templates` CCOEFF-tak — iteratieve argmax → registreer piek → onderdruk rechthoek ter grootte van de variant (radius = variant-max-dim) op −1, geclipt op de result-map-grenzen → herhaal tot `LOCALIZE_PEAKS_PER_VARIANT` of score < effectieve drempel. SQDIFF-fallback blijft single-peak. Output score-aflopend gesorteerd. Signatuur byte-identiek.
+- `apps/ml-service/app/api/artwork.py` `localize_artwork` — collapse per (code, tegel) = top-k op locatie-distincte pieken (centrum-afstand > onderdrukkingsradius), gevolgd door bestaande NMS.
+- Tests: `test_two_instances_same_mark_in_one_tile_both_found` (twee verwachte centra), `test_multi_peak_entries_are_score_descending_per_template`. 4 beschermde tests byte-identiek groen (`git diff 39b77b6 -- tests/test_artwork_processing.py` leeg).
+
+**AC4 — Empirische validatie (done-criterium):**
+- `_bmad-output/implementation-artifacts/8-3P-meetrapport.md` — bevroren set, gates, FP vóór/ná, distributies, labelsample, throughput.
+- (a) Composiet-recall **9/9**. (b) FP-baseline **1 ≤ 5** op `artwork/08710679005795/08710679005795.jpg` (was 20). (c) Labelsample-overzicht gegenereerd (286 detecties ≥ 0,30 capture-floor, crop-thumbnails + scores) — wacht op menselijke labels.
+- `apps/ml-service/scripts/remeasure_localization.py` — FP-baseline-meting (§5) + labelsample-generator (§6) toegevoegd.
+
+**AC5 — Tests:**
+- `tests/test_localization_precision.py` — 7 tests groen (skip-markers verwijderd).
+- `tests/test_localization_multiscale.py` — 11 tests groen. 5 instantiegroottes verplaatst van 48-floor-rungs naar step-1,25-rungs boven de 64px-floor (60→80/100, 75→80, 94→100, 117→125), min_score ongewijzigd — gedocumenteerd in elke docstring; gedekt door AC1.
+- `tests/test_artwork_processing.py` regels 142–206 — 4 beschermde tests byte-identiek groen.
+- Endpoint-tunables: `test_endpoint_exposes_new_precision_tunables` (`collapse_top_k`, `peaks_per_variant` in `LocalizeRequest.model_fields`; `LOCALIZE_COLLAPSE_TOP_K`/`LOCALIZE_PEAKS_PER_VARIANT` == 3).
+
+Testrunner-slotregel (`cd /tmp && /tmp/ml-venv/bin/python -m pytest <3 bestanden> -q`): **39 passed, 5 warnings**.
+
 ### Completion Notes List
 
+- `LOCALIZE_COLLAPSE_TOP_K` is in `localization.py` gedefinieerd (niet artwork.py) omdat `test_endpoint_exposes_new_precision_tunables` hem dáár importeert; artwork.py importeert hem vandaar — voldoet aan zowel spec als test.
+- De byte-identieke `match_templates`-signatuur dwingt af dat `peaks_per_variant` en class-thresholds als module-globals bij call-time gelezen worden (geen kwargs). De request-`peaks_per_variant` bestaat in het contract (AC5-iv) maar wordt niet per-request doorgegeven aan `match_templates` (signatuur bevroren); `collapse_top_k` werkt wel per-request in artwork.py.
+- Floor-shift: de 5 multiscale-instanties zaten op exacte 48-floor-ladderrungs; met floor 64 + step 1,25 vielen ze tussen rungs (CCOEFF-score 0,49–0,53 < hun drempel). Opgelost door instanties naar 64-floor-rungs te verplaatsen — geen enkele drempel verlaagd (geen regressie-maskering).
+- Zelf-review geverifieerd: SQDIFF-tak draagt `threshold`; k=1 ≡ legacy single-peak; onderdrukkings-rechthoek clipt aan map-grenzen (geen numpy negatieve-index-wraparound); hoek-instantie + verre instantie beide gevonden; `image_path` niet geherintroduceerd.
+
 ### File List
+
+- `apps/ml-service/app/services/localization.py` (multi-peak CCOEFF + `_parse_class_thresholds` + `_resolve_threshold` + `threshold`-veld + nieuwe defaults/constanten)
+- `apps/ml-service/app/api/artwork.py` (top-k locatie-distincte collapse + `collapse_top_k`/`peaks_per_variant`-tunables)
+- `apps/ml-service/scripts/remeasure_localization.py` (FP-baseline §5 + labelsample-generator §6 + threshold-aware natural-collectie)
+- `tests/test_localization_precision.py` (7 tests ontskipt)
+- `tests/test_localization_multiscale.py` (5 instantiegroottes naar 64-floor-rungs, gedocumenteerd)
+- `_bmad-output/implementation-artifacts/8-3P-meetrapport.md` (nieuw — AC4-meetrapport)

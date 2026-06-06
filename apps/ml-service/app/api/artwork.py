@@ -191,6 +191,9 @@ class LocalizeRequest(BaseModel):
     scale_min_px: Optional[int] = Field(None, ge=8, le=4096)
     scale_max_px: Optional[int] = Field(None, ge=8, le=4096)
     scale_step: Optional[float] = Field(None, gt=1.0, le=4.0)
+    # 8-3P precision tunables (optional; env defaults apply — see localization module)
+    collapse_top_k: Optional[int] = Field(None, ge=1, le=50)
+    peaks_per_variant: Optional[int] = Field(None, ge=1, le=50)
 
 
 class LocalizeResponse(BaseModel):
@@ -244,6 +247,7 @@ async def localize_artwork(request: LocalizeRequest) -> LocalizeResponse:
     import cv2
 
     from app.services.localization import (
+        LOCALIZE_COLLAPSE_TOP_K,
         LOCALIZE_MIN_SCORE,
         LOCALIZE_OVERLAP,
         LOCALIZE_TILE_SIZE,
@@ -309,11 +313,23 @@ async def localize_artwork(request: LocalizeRequest) -> LocalizeResponse:
         tile_size=eff_tile_size,
     )
 
-    # Tile + match with time budget; collapse best scale per (code, tile)
+    # Effective collapse top-k: request overrides env default (8-3P).
+    eff_collapse_top_k = request.collapse_top_k if request.collapse_top_k is not None else LOCALIZE_COLLAPSE_TOP_K
+
+    # Tile + match with time budget; collapse to the top-k LOCATION-DISTINCT
+    # peaks per (code, tile) before NMS (8-3P, P2). match_templates already
+    # extracts up to LOCALIZE_PEAKS_PER_VARIANT peaks per variant; here we merge
+    # the peaks of all scale variants of the same code in the same tile, keeping
+    # the k best-scoring ones whose centres are farther apart than the
+    # suppression radius (the variant max-dim) — two real instances in one tile
+    # survive, near-duplicate scale echoes collapse to the highest scorer.
     tiles = tile_image(img, tile_size=eff_tile_size, overlap=eff_overlap)
     deadline = time.monotonic() + LOCALIZE_TIME_BUDGET_S
     truncated = False
-    per_tile_best: Dict[Any, Dict[str, Any]] = {}
+    per_tile_peaks: Dict[Any, List[Dict[str, Any]]] = {}
+
+    def _center(bbox: Dict[str, int]) -> tuple:
+        return (bbox["x"] + bbox["width"] / 2.0, bbox["y"] + bbox["height"] / 2.0)
 
     for tile_idx, tile in enumerate(tiles):
         if time.monotonic() > deadline:
@@ -323,20 +339,36 @@ async def localize_artwork(request: LocalizeRequest) -> LocalizeResponse:
                 extra={"processed_tiles": tile_idx, "total_tiles": len(tiles), "budget_s": LOCALIZE_TIME_BUDGET_S},
             )
             break
+        # match_templates returns score-descending; process in that order so the
+        # location-distinct top-k keeps the highest scorers.
         for match in match_templates(tile["image"], variants, min_score=eff_min_score):
             key = (match["t3777_code"], tile_idx)
-            best = per_tile_best.get(key)
-            if best is None or match["score"] > best["score"]:
-                abs_match = dict(match)
-                abs_match["bbox"] = {
-                    "x": match["bbox"]["x"] + tile["x_offset"],
-                    "y": match["bbox"]["y"] + tile["y_offset"],
-                    "width": match["bbox"]["width"],
-                    "height": match["bbox"]["height"],
-                }
-                per_tile_best[key] = abs_match
+            abs_match = dict(match)
+            abs_match["bbox"] = {
+                "x": match["bbox"]["x"] + tile["x_offset"],
+                "y": match["bbox"]["y"] + tile["y_offset"],
+                "width": match["bbox"]["width"],
+                "height": match["bbox"]["height"],
+            }
+            kept = per_tile_peaks.setdefault(key, [])
+            cx, cy = _center(abs_match["bbox"])
+            # Suppression radius for THIS match = its own variant max-dim.
+            radius = max(abs_match["bbox"]["width"], abs_match["bbox"]["height"])
+            duplicate = False
+            for existing in kept:
+                ex, ey = _center(existing["bbox"])
+                er = max(existing["bbox"]["width"], existing["bbox"]["height"])
+                if (cx - ex) ** 2 + (cy - ey) ** 2 <= max(radius, er) ** 2:
+                    # Same location as an already-kept (higher-scoring) peak —
+                    # a scale echo of the same instance; collapse it away.
+                    duplicate = True
+                    break
+            if duplicate:
+                continue
+            if len(kept) < eff_collapse_top_k:
+                kept.append(abs_match)
 
-    raw_detections = list(per_tile_best.values())
+    raw_detections = [d for peaks in per_tile_peaks.values() for d in peaks]
 
     # Merge overlapping detections across tile boundaries
     merged = merge_detections(raw_detections)
