@@ -60,6 +60,12 @@ so that productie-detectie op echte artwork daadwerkelijk keurmerken vindt zonde
   - [ ] 4 bestaande tests ongewijzigd groen — beide metric-takken expliciet tegen de fixtures verifiëren vóór sign-off (reviewbevinding 1/12)
   - [ ] Nieuwe tests (i)–(v); pytest lokaal via `/tmp/ml-venv` vanuit /tmp (handover-les)
 
+## Bekende beperkingen (adversarial review epic-branch, 2026-06-06 — input voor 8.3O)
+
+1. **Collapse-key (code, tegel) is top-1:** twee échte instanties van hetzelfde keurmerk binnen één tegel collapsen naar één detectie (cv2.minMaxLoc is sowieso single-peak per variant). De gate ontweek dit doordat de duplicaten in aparte tegels vielen. 8.3O-kandidaat-fix: top-k per (code, tegel) of collapse per (code, schaal-bucket) + NMS.
+2. **`image_path` verwijderd = breaking change:** in deze repo bestaan geen callers (grep bevestigd), maar een eventuele externe consumer breekt. Cross-repo caller-check vóór deploy; expliciet meenemen in de 8.3O-integratie.
+3. **Time-budget is een soft cap:** de deadline gaat in ná het tilen en wordt per tegel gecheckt — de eerste tegel draait altijd volledig af.
+
 ## Expliciet buiten scope (aparte items)
 
 | Item | Waar |

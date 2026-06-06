@@ -1,5 +1,14 @@
 # Versiegeschiedenis
 
+## 2026-06-06 (keurmerk-detectie vindt nu ook kleine logo's)
+
+### Slimmere keurmerk-herkenning op etiketten
+- De automatische keurmerk-detectie herkent logo's nu op elk formaat op het etiket — ook kleine keurmerken op grote etiketbestanden werden eerder gemist
+- Ronde en deels transparante keurmerken (zoals de Groene Punt) worden beter herkend
+- Minder valse meldingen door een nauwkeurigere score-berekening
+- De keurmerk-zoekfunctie blijft betrouwbaar werken nadat de referentiebibliotheek opnieuw is opgebouwd
+
+
 ## 2026-06-06 (fix crop-weergave review-scherm)
 
 ### Uitsneden zichtbaar in het artwork-reviewscherm
