@@ -1,6 +1,6 @@
 # Story CI-1: Deploy via prebuilt GHCR-images (bouwstraat optie A)
 
-Status: ready-for-dev (adversarial review verwerkt — zie `review-CI-1-voorwerk.md`, 12 bevindingen)
+Status: done — alle 5 AC's live bewezen (2026-06-07); zie Dev Agent Record
 
 ## Story
 
@@ -56,6 +56,21 @@ so that een deploy van ~16 minuten naar ~1-2 minuten gaat en iteraties (kalibrat
 
 ### Agent Model Used
 
+Claude Opus 4.8 — orchestrator-inline, 2026-06-07.
+
 ### Completion Notes List
 
+- Volgorde-afwijking (gedocumenteerd, veiliger): auto-deploy is VÓÓR de merge uitgezet (handmatig door Friso — de Coolify-API staat het veld niet toe: "is_auto_deploy_enabled not allowed"), waardoor de gecombineerde merge racevrij was en er geen overgangsdeploy nodig was
+- AC1 ✅: eerste pull-only deploy draait `ghcr.io/...:8e93aca…`; `org.opencontainers.image.revision` == merge-SHA; `LOGO_IMAGE_TAG` door Actions gepind; geen lokale build
+- AC2 ✅: baseline (eerste run) 21m21s push→live; **steady-state 1m35s totaal** (Actions ~31 s mét cache · deploy-fase 1m04s ≤ 3 min) — cache-effect aangetoond (build ~15 min → ~31 s)
+- AC3 ✅: bestaande ghcr-host-login geverifieerd werkend; COOLIFY_TOKEN/COOLIFY_URL uitsluitend als GitHub-secrets gezet (waarden nergens getoond); least-privilege-rotatie gedocumenteerd opvolgpunt
+- AC4 ✅: deploy-job vereist beide builds (needs); **rollback geoefend**: pin 8e93aca → live in 1m22s → herstel c984ea8 → live; procedure in docs/04-deployment/ci-bouwstraat.md
+- AC5 ✅: meerdere deploys met healthy containers; env-injectie/mounts/healthchecks ongewijzigd (kalibratie-envs en detectieketen blijven werken)
+- Onderhoudspunten (buiten scope, genoteerd): doc-only pushes triggeren de volledige keten (overweeg paths-ignore); ci-cd.yml verspilt acc-test-compute; host-token-rotatie
+
 ### File List
+
+- .github/workflows/build-push.yml (concurrency, metadata-labels, GHA-cache, deploy-acc-job)
+- docker-compose.acc.yml (pull-only + ${LOGO_IMAGE_TAG:-acc} + pull_policy)
+- docs/04-deployment/ci-bouwstraat.md (nieuw)
+- GitHub-secrets COOLIFY_TOKEN/COOLIFY_URL · Coolify-env LOGO_IMAGE_TAG · Coolify Auto Deploy uit (UI, Friso)

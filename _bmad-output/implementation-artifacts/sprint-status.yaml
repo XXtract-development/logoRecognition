@@ -116,5 +116,5 @@ development_status:
   # ============================================
   # Infra: CI-bouwstraat (besluit handover: optie A)
   # ============================================
-  infra-bouwstraat: in-progress
-  CI-1-deploy-via-prebuilt-ghcr-images: ready-for-dev  # voorwerk 2026-06-07: story + adversarial review (12 bevindingen, live geverifieerd) verwerkt; SHA-pinning via LOGO_IMAGE_TAG-env; implementatievolgorde load-bearing (zie story besl. 7)
+  infra-bouwstraat: done
+  CI-1-deploy-via-prebuilt-ghcr-images: done  # 2026-06-07: alle AC's live bewezen — steady-state push→live 1m35s (was ~16-21 min); rollback geoefend (1m22s); zie story Dev Agent Record
