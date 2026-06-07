@@ -38,6 +38,11 @@ so that de review-queue en trainingsdata zich vullen zonder ad-hoc scripts en de
 
 - Declaratie-bron (catalog-API) → **8-3D** · UI voor detection-runs (jobstatus via API; PipelineJobsPanel is een bestaand deferred punt) · bulk-run over de volledige 39k (aparte beheeractie ná 8-3D, met PO-akkoord)
 
+## Bekende beperkingen (adversarial review epic-branch 2026-06-07 — opvolgen vóór de 39k-bulk-run)
+
+1. `loadExistingDetectionKeys` doet een ongeïndexeerde JSON-path-scan op trainingData.provenance per job — acceptabel op ACC-schaal, meetbaar risico bij de bulk-run; opties: provenance-sourceFile denormaliseren of index (migratie → toestemming).
+2. Dedup-floor-quantisatie dedupt níet over een 8px-rastergrens heen (x=7 vs x=9) — klein duplicaat-risico aan celranden, bewust geaccepteerd.
+
 ## Dev Notes
 
 - Volgt 9.1-patronen: queue-naam + worker in `apps/api/src/services/pipeline/` (queue.ts/workers.ts), service-key-auth voor interne callers (NFR6)

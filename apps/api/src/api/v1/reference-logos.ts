@@ -15,6 +15,7 @@ import { optionalAuth } from '../../middleware/auth';
 import { logger } from '../../core/logger';
 import prisma from '../../core/db';
 import { KEURMERK_CATEGORY } from '../../services/provenance';
+import { mlClient } from '../../services/ml-client';
 
 /** Allowed reference-logo file extensions. */
 const ALLOWED_EXTENSIONS = ['png', 'svg'] as const;
@@ -151,6 +152,14 @@ export async function referenceLogosRoutes(fastify: FastifyInstance) {
 
       logger.info('Reference logo created', { id: record.id, t3777Code, variantLabel });
 
+      // 8-3O decision 2/O4: refresh the ML template cache after library mutations
+      // (best-effort — a failure only means the TTL covers the gap).
+      void mlClient.reloadTemplates().catch((err: unknown) => {
+        logger.warn('reload-templates after create failed (TTL will refresh)', {
+          error: err instanceof Error ? err.message : 'Unknown error',
+        });
+      });
+
       return reply.status(201).send({
         id: record.id,
         t3777Code: record.t3777Code,
@@ -253,6 +262,13 @@ export async function referenceLogosRoutes(fastify: FastifyInstance) {
         });
 
         logger.info('Reference logo deactivated', { id });
+
+        // 8-3O decision 2/O4: best-effort ML template-cache refresh (see POST).
+        void mlClient.reloadTemplates().catch((err: unknown) => {
+          logger.warn('reload-templates after deactivate failed (TTL will refresh)', {
+            error: err instanceof Error ? err.message : 'Unknown error',
+          });
+        });
 
         return {
           id: record.id,

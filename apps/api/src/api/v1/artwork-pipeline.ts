@@ -257,7 +257,9 @@ async function importGtin(runId: string, gtin: string): Promise<void> {
           importRunId: runId,
         },
         update: {
-          gln: item.gln ?? null,
+          // Never clobber a previously stored gln with NULL on re-import
+          // (review finding 2; decision 8 only promises forward-filling).
+          ...(item.gln ? { gln: item.gln } : {}),
           sha256Hash: hash,
           storagePath,
           mimeType,

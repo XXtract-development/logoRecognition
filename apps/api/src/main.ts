@@ -28,7 +28,7 @@ import { referenceLogosRoutes } from './api/v1/reference-logos';
 import { artworkPipelineRoutes } from './api/v1/artwork-pipeline';
 import { pipelineRoutes } from './api/v1/pipeline';
 import { registerRetrainingCronJob } from './services/pipeline/trigger';
-import { registerTrainingFlowWorker, registerDetectionWorker } from './services/pipeline/workers';
+import { registerTrainingFlowWorker, registerDetectionWorker, closePipelineWorkers } from './services/pipeline/workers';
 import { logger } from './core/logger';
 import { wsManager } from './services/websocket-manager';
 import { socketIOManager } from './services/socket-io-manager';
@@ -356,6 +356,9 @@ const gracefulShutdown = async (signal: string) => {
     // Close WebSocket connections
     wsManager.closeAll();
     logger.info('WebSocket connections closed');
+
+    await closePipelineWorkers();
+    logger.info('Pipeline workers closed');
 
     await app.close();
     logger.info('Server closed');

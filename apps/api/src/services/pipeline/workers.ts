@@ -338,3 +338,17 @@ export function registerDetectionWorker(): Worker {
 
   return detectionWorker;
 }
+
+/**
+ * Close all registered pipeline workers (graceful shutdown). In-flight jobs
+ * finish or are returned to the queue by BullMQ; subsequent restarts resume
+ * them (NFR1). Safe to call when no worker was registered.
+ */
+export async function closePipelineWorkers(): Promise<void> {
+  const workers = [trainingWorker, detectionWorker].filter(
+    (w): w is Worker => w !== null
+  );
+  await Promise.allSettled(workers.map((w) => w.close()));
+  trainingWorker = null;
+  detectionWorker = null;
+}

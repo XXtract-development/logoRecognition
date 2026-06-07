@@ -104,7 +104,10 @@ export function setDeclarationProvider(provider: DeclarationProvider): void {
 function quantize(v: number): number {
   // floor division onto the raster: bboxes within the same raster cell collide,
   // so a few-px-shifted re-detection of the same instance dedups (O3). floor —
-  // NOT round — so x=9 and x=12 both map to cell 1 on an 8px raster.
+  // NOT round — x=9 and x=12 both map to cell 1 on an 8px raster. Honest
+  // limitation: a few-px shift ACROSS a raster boundary (x=7 vs x=9) lands in
+  // different cells and does NOT dedup — floor-quantization trades a small
+  // duplicate risk at cell edges for a simple, index-free key.
   return Math.floor(v / DEDUP_BBOX_RASTER_PX);
 }
 
