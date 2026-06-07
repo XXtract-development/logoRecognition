@@ -1,5 +1,16 @@
 # Versiegeschiedenis
 
+## 2026-06-07 (automatische keurmerk-detectie + veel minder valse meldingen)
+
+### Keurmerk-detectie draait nu vanzelf
+- Geïmporteerd etiket-artwork wordt voortaan automatisch gecontroleerd op keurmerken — uitkomsten verschijnen vanzelf in de reviewwachtrij (handmatig herstarten per productset blijft mogelijk voor beheerders)
+- Detecties die al beoordeeld of geregistreerd zijn worden niet opnieuw aangeboden
+
+### Veel nauwkeurigere detectie
+- Valse meldingen drastisch teruggebracht (in de testmeting van 20 naar 1 op hetzelfde etiket) door slimmere afstelling per keurmerk en het negeren van te kleine schijn-treffers
+- Twee dezelfde keurmerken op één etiket worden nu allebei gevonden
+
+
 ## 2026-06-06 (keurmerk-detectie vindt nu ook kleine logo's)
 
 ### Slimmere keurmerk-herkenning op etiketten

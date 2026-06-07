@@ -33,18 +33,13 @@ import { uploadArtwork, downloadTrainingObject } from '../../services/storage';
 import { mediaServerClient } from '../../services/mediaserver-client';
 import { mlClient } from '../../services/ml-client';
 import {
-  KEURMERK_CATEGORY,
-  buildProvenance,
-  ProvenanceMethod,
-} from '../../services/provenance';
-import type { Prisma } from '@prisma/client';
-
-/**
- * Minimal transactional-client surface used by the shared registration helper.
- * Typed locally so it works against both the real Prisma client and the test
- * mock (which exposes the same model accessors).
- */
-type TxClient = Prisma.TransactionClient;
+  TxClient,
+  RegisterableCrop,
+  registerCropsTx,
+  processAcceptedReviewItems,
+} from '../../services/artwork-registration';
+import { crosscheckDetections } from '../../services/artwork-crosscheck';
+import { enqueueDetectionForImport } from '../../services/pipeline/detection-flow';
 
 // ============================================
 // Constants
@@ -75,35 +70,9 @@ const IMPORT_RUN_STALE_MINUTES = parseInt(
  */
 const ARTWORK_RASTER_DPI = parseInt(process.env.ARTWORK_RASTER_DPI || '300', 10);
 
-// Crosscheck confidence thresholds per detection method.
-// Detections without a method fall under STRICTEST (classifier).
-const CROSSCHECK_THRESHOLD_TEMPLATE = parseFloat(
-  process.env.CROSSCHECK_THRESHOLD_TEMPLATE || '0.85'
-);
-const CROSSCHECK_THRESHOLD_EMBEDDING = parseFloat(
-  process.env.CROSSCHECK_THRESHOLD_EMBEDDING || '0.80'
-);
-const CROSSCHECK_THRESHOLD_CLASSIFIER = parseFloat(
-  process.env.CROSSCHECK_THRESHOLD_CLASSIFIER || '0.90'
-);
-
 // ============================================
 // Helpers
 // ============================================
-
-function getThresholdForMethod(method?: string): number {
-  switch (method) {
-    case 'template':
-      return CROSSCHECK_THRESHOLD_TEMPLATE;
-    case 'embedding':
-      return CROSSCHECK_THRESHOLD_EMBEDDING;
-    case 'classifier':
-      return CROSSCHECK_THRESHOLD_CLASSIFIER;
-    default:
-      // No method provided → apply strictest threshold
-      return CROSSCHECK_THRESHOLD_CLASSIFIER;
-  }
-}
 
 /**
  * Mark stale runs (no heartbeat for > IMPORT_RUN_STALE_MINUTES) as failed.
@@ -128,150 +97,6 @@ function sha256(buffer: Buffer): string {
 function isPdf(fileName: string, mimeType?: string): boolean {
   if (mimeType && mimeType.toLowerCase() === 'application/pdf') return true;
   return fileName.toLowerCase().endsWith('.pdf');
-}
-
-/**
- * One crop to register as training data (Story 8.6). Shared by the explicit
- * register endpoint and the accept-driven "doorzet" of review items.
- */
-interface RegisterableCrop {
-  t3777Code: string;
-  cropPath: string;
-  sourceFile: string;
-  bbox: { x: number; y: number; width: number; height: number };
-  method: ProvenanceMethod;
-  confidence: number;
-}
-
-/**
- * Register a batch of crops as training data within an existing transaction
- * (Story 8.6). For each crop:
- *   - find-or-create a LogoImage marked `metadata.artworkSource=true` (the
- *     NOT NULL imageId FK requires an image row; the marker keeps these out of
- *     the Image Library — see images.ts),
- *   - upsert the keurmerk Logo so per-category stats stay linked,
- *   - create a TrainingData record (active=true, holdout=false) with full
- *     provenance built through the shared mapper shape.
- *
- * Returns the created TrainingData ids. Must run inside a transaction so a
- * mid-batch failure never leaves partial records behind.
- */
-async function registerCropsTx(
-  tx: TxClient,
-  gtin: string,
-  crops: RegisterableCrop[]
-): Promise<string[]> {
-  const ids: string[] = [];
-  for (const crop of crops) {
-    // storagePath is not unique in the schema → findFirst + create.
-    let logoImage = await tx.logoImage.findFirst({
-      where: { storagePath: crop.cropPath },
-      select: { id: true },
-    });
-    if (!logoImage) {
-      logoImage = await tx.logoImage.create({
-        data: {
-          filename: crop.sourceFile,
-          storagePath: crop.cropPath,
-          metadata: { artworkSource: true, gtin },
-        },
-      });
-    }
-
-    await tx.logo.upsert({
-      where: { category_value: { category: KEURMERK_CATEGORY, value: crop.t3777Code } },
-      update: {},
-      create: { category: KEURMERK_CATEGORY, value: crop.t3777Code },
-    });
-
-    const td = await tx.trainingData.create({
-      data: {
-        imageId: logoImage.id,
-        label: crop.t3777Code,
-        confidence: crop.confidence,
-        validated: true,
-        holdout: false,
-        active: true,
-        cropPath: crop.cropPath,
-        provenance: buildProvenance({
-          sourceFile: crop.sourceFile,
-          bbox: crop.bbox,
-          method: crop.method,
-          confidence: crop.confidence,
-        }),
-      },
-    });
-
-    ids.push(td.id);
-  }
-  return ids;
-}
-
-/**
- * Doorzet (Story 8.6, carried over from 8.5): push 'accepted' ArtworkReviewItems
- * to training-data registration and mark them 'registered'.
- *
- * An item can only be registered when it carries the crop references that
- * provenance requires (cropPath + sourceFile). Items missing those are skipped
- * (never fabricated) and reported back so they remain visible for manual fixing.
- *
- * Returns counts so both the accept action and the catch-up endpoint can report.
- */
-async function processAcceptedReviewItems(
-  items: Array<{
-    id: string;
-    gtin: string;
-    t3777Code: string;
-    cropPath: string | null;
-    sourceFile: string | null;
-    bbox: unknown;
-    confidence: number | null;
-    method: string | null;
-  }>
-): Promise<{ registered: number; skipped: number; skippedIds: string[] }> {
-  let registered = 0;
-  let skipped = 0;
-  const skippedIds: string[] = [];
-
-  for (const item of items) {
-    // Provenance requires a crop + source. Without them we cannot register a
-    // truthful record — skip rather than fabricate (the no-fabricate rule).
-    if (!item.cropPath || !item.sourceFile) {
-      skipped += 1;
-      skippedIds.push(item.id);
-      logger.warn('Accepted review item lacks crop/source; cannot register', {
-        reviewItemId: item.id,
-        gtin: item.gtin,
-      });
-      continue;
-    }
-
-    const bbox = (item.bbox && typeof item.bbox === 'object'
-      ? (item.bbox as RegisterableCrop['bbox'])
-      : { x: 0, y: 0, width: 0, height: 0 });
-
-    // The reviewer made the call → provenance method is 'human'.
-    const crop: RegisterableCrop = {
-      t3777Code: item.t3777Code,
-      cropPath: item.cropPath,
-      sourceFile: item.sourceFile,
-      bbox,
-      method: 'human',
-      confidence: item.confidence ?? 0,
-    };
-
-    await prisma.$transaction(async (tx) => {
-      await registerCropsTx(tx as TxClient, item.gtin, [crop]);
-      await tx.artworkReviewItem.update({
-        where: { id: item.id },
-        data: { status: 'registered' },
-      });
-    });
-
-    registered += 1;
-  }
-
-  return { registered, skipped, skippedIds };
 }
 
 /**
@@ -403,7 +228,7 @@ async function importGtin(runId: string, gtin: string): Promise<void> {
     // Track what was imported so the (separate) rasterization step can run
     // OUTSIDE the import try/catch — a rasterize failure must not mark the
     // import as failed (AC2).
-    let importedRecord: { id: string; storagePath: string; isPdfFile: boolean } | null = null;
+    let importedRecord: { id: string; storagePath: string; isPdfFile: boolean; mimeType: string } | null = null;
 
     // Download and store
     try {
@@ -419,6 +244,9 @@ async function importGtin(runId: string, gtin: string): Promise<void> {
         where: { mediaId: item.id },
         create: {
           gtin,
+          // gln from the mediaserver discovery response (Story 8-3O, S3/D1).
+          // Nullable: records without a gln stay NULL → declared=[] fallback.
+          gln: item.gln ?? null,
           mediaId: item.id,
           fileName: item.fileName,
           sourceLocation: item.previewUrl,
@@ -429,6 +257,9 @@ async function importGtin(runId: string, gtin: string): Promise<void> {
           importRunId: runId,
         },
         update: {
+          // Never clobber a previously stored gln with NULL on re-import
+          // (review finding 2; decision 8 only promises forward-filling).
+          ...(item.gln ? { gln: item.gln } : {}),
           sha256Hash: hash,
           storagePath,
           mimeType,
@@ -447,6 +278,7 @@ async function importGtin(runId: string, gtin: string): Promise<void> {
         id: record.id,
         storagePath,
         isPdfFile: isPdf(item.fileName, mimeType),
+        mimeType,
       };
     } catch (err) {
       logger.warn('Artwork item import failed', {
@@ -484,6 +316,35 @@ async function importGtin(runId: string, gtin: string): Promise<void> {
     // Only PDFs are rasterized; JPG/PNG already go straight into the pipeline.
     if (importedRecord && importedRecord.isPdfFile) {
       await rasterizeImportedPdf(importedRecord.id, gtin, importedRecord.storagePath);
+    }
+
+    // Detection enqueue (Story 8-3O, O5) — runs OUTSIDE the import try/catch and
+    // AFTER rasterization so a PDF's pages exist. Best-effort soft-fail: an
+    // enqueue error is logged and never breaks the import run (AC3). For PDFs we
+    // re-read the persisted `pages` relation so we enqueue one job per page.
+    if (importedRecord) {
+      try {
+        let pages: { dpi?: number; pages?: Array<{ page: number; imagePath: string }>; error?: string } | null = null;
+        if (importedRecord.isPdfFile) {
+          const fresh = await prisma.artworkImport.findUnique({
+            where: { id: importedRecord.id },
+            select: { pages: true },
+          });
+          pages = (fresh?.pages ?? null) as typeof pages;
+        }
+        await enqueueDetectionForImport({
+          gtin,
+          mimeType: importedRecord.mimeType,
+          storagePath: importedRecord.storagePath,
+          pages,
+        });
+      } catch (err) {
+        logger.warn('Detection enqueue failed (soft-fail, import stays successful)', {
+          gtin,
+          importId: importedRecord.id,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
     }
   }
 }
@@ -685,6 +546,78 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
   );
 
   // -----------------------------------------------------------------------
+  // Story 8-3O — Manual detection-run management
+  // -----------------------------------------------------------------------
+
+  /**
+   * POST /artwork-detection/runs
+   * Manually (re)start detection over an existing set of artwork. Accepts a
+   * GTIN list and/or an importRunId; enqueues one detection job per imported
+   * image (PDFs per rasterized page). Idempotent at the queue level (stable
+   * jobId per image). Requires ADMIN.
+   *
+   * Returns 202 { enqueued } with the number of jobs queued.
+   */
+  fastify.post<{ Body: { gtins?: string[]; importRunId?: string } }>(
+    '/artwork-detection/runs',
+    { preHandler: REQUIRE_ADMIN },
+    async (
+      request: FastifyRequest<{ Body: { gtins?: string[]; importRunId?: string } }>,
+      reply: FastifyReply
+    ) => {
+      const { gtins, importRunId } = request.body ?? {};
+
+      if ((!gtins || gtins.length === 0) && !importRunId) {
+        return reply.status(400).send({ error: 'gtins of importRunId is vereist' });
+      }
+
+      const where: { status: string; gtin?: { in: string[] }; importRunId?: string } = {
+        status: 'imported',
+      };
+      if (gtins && gtins.length > 0) where.gtin = { in: gtins };
+      if (importRunId) where.importRunId = importRunId;
+
+      const imports = await prisma.artworkImport.findMany({
+        where,
+        select: { gtin: true, storagePath: true, mimeType: true, pages: true },
+      });
+
+      let enqueued = 0;
+      for (const imp of imports) {
+        if (!imp.storagePath) continue;
+        try {
+          const jobs = await enqueueDetectionForImport({
+            gtin: imp.gtin,
+            mimeType: imp.mimeType ?? undefined,
+            storagePath: imp.storagePath,
+            pages: (imp.pages ?? null) as {
+              dpi?: number;
+              pages?: Array<{ page: number; imagePath: string }>;
+              error?: string;
+            } | null,
+          });
+          enqueued += jobs.length;
+        } catch (err) {
+          logger.warn('Detection enqueue failed for import (manual run)', {
+            gtin: imp.gtin,
+            storagePath: imp.storagePath,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+
+      logger.info('Manual detection run enqueued', {
+        candidates: imports.length,
+        enqueued,
+        gtins: gtins?.length ?? 0,
+        importRunId: importRunId ?? null,
+      });
+
+      return reply.status(202).send({ enqueued, candidates: imports.length });
+    }
+  );
+
+  // -----------------------------------------------------------------------
   // Story 8.5 — T3777 crosscheck and routing
   // -----------------------------------------------------------------------
 
@@ -709,93 +642,13 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
       const { gtin } = request.params;
       const { detections = [], declared = [] } = request.body;
 
-      const autoAccepted: DetectionItem[] = [];
-      const reviewItems: Array<{
-        t3777Code: string;
-        reason: string;
-        confidence?: number;
-        bbox?: DetectionItem['bbox'];
-        method?: string;
-        cropPath?: string;
-        sourceFile?: string;
-      }> = [];
-
-      const declaredSet = new Set(declared);
-
-      // Process each detection
-      for (const detection of detections) {
-        const threshold = getThresholdForMethod(detection.method);
-
-        if (declaredSet.size === 0) {
-          // Safety rule: no declaration = no auto-accept
-          reviewItems.push({
-            t3777Code: detection.t3777Code,
-            reason: 'Geen T3777-declaratie beschikbaar — verwacht handmatige review',
-            confidence: detection.confidence,
-            bbox: detection.bbox,
-            method: detection.method,
-            cropPath: detection.cropPath,
-            sourceFile: detection.sourceFile,
-          });
-          continue;
-        }
-
-        if (declaredSet.has(detection.t3777Code)) {
-          if (detection.confidence >= threshold) {
-            autoAccepted.push(detection);
-          } else {
-            reviewItems.push({
-              t3777Code: detection.t3777Code,
-              reason: `Confidence onder drempel (${detection.confidence.toFixed(2)} < ${threshold.toFixed(2)})`,
-              confidence: detection.confidence,
-              bbox: detection.bbox,
-              method: detection.method,
-              cropPath: detection.cropPath,
-              sourceFile: detection.sourceFile,
-            });
-          }
-        } else {
-          // Detected but not declared
-          reviewItems.push({
-            t3777Code: detection.t3777Code,
-            reason: `Gevonden maar niet verwacht (niet gedeclareerd in T3777 voor GTIN ${gtin})`,
-            confidence: detection.confidence,
-            bbox: detection.bbox,
-            method: detection.method,
-            cropPath: detection.cropPath,
-            sourceFile: detection.sourceFile,
-          });
-        }
-      }
-
-      // Check for "declared but not found"
-      const detectedCodes = new Set(detections.map((d) => d.t3777Code));
-      for (const code of declared) {
-        if (!detectedCodes.has(code)) {
-          reviewItems.push({
-            t3777Code: code,
-            reason: `Verwacht maar niet gevonden op het artwork (gedeclareerd in T3777 voor GTIN ${gtin})`,
-          });
-        }
-      }
-
-      // Persist review items to ArtworkReviewItem table
-      if (reviewItems.length > 0) {
-        await prisma.artworkReviewItem.createMany({
-          data: reviewItems.map((item) => ({
-            gtin,
-            t3777Code: item.t3777Code,
-            bbox: item.bbox ?? {},
-            confidence: item.confidence,
-            method: item.method,
-            reason: item.reason,
-            cropPath: item.cropPath,
-            sourceFile: item.sourceFile,
-            status: 'open',
-          })),
-          skipDuplicates: false,
-        });
-      }
+      // Thin wrapper (Story 8-3O): the crosscheck logic now lives in the
+      // service so the detection worker can call it directly (no internal HTTP).
+      const { autoAccepted, reviewItems } = await crosscheckDetections(
+        gtin,
+        detections,
+        declared
+      );
 
       return reply.status(200).send({ autoAccepted, reviewItems });
     }

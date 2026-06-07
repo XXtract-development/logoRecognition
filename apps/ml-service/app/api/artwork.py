@@ -20,9 +20,11 @@ Endpoints:
 """
 
 import base64
+import hashlib
 import os
 import tempfile
-from typing import Any, Dict, List, Optional
+import time
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 from fastapi import APIRouter, HTTPException
@@ -33,6 +35,93 @@ from app.services.artwork import DEFAULT_DPI, rasterize_pdf
 from app.services.storage import storage_service
 
 router = APIRouter()
+
+
+# ---------------------------------------------------------------------------
+# Story 8-3O — ML-side reference-template loading with a TTL cache (decision 2)
+# ---------------------------------------------------------------------------
+#
+# When a localize request omits ``templates`` the service loads the active
+# reference library itself (db_service.get_active_reference_logos +
+# storage_service), caching the decoded BGRA template list in-process for
+# TEMPLATE_CACHE_TTL_S seconds. The cache is invalidated explicitly via
+# POST /ml/artwork/reload-templates (called best-effort by the Node side after
+# reference-library mutations) or implicitly when the TTL expires.
+#
+# Thread-safety: uvicorn workers are separate PROCESSES and asyncio within one
+# worker is single-threaded; the cache is a plain module-global tuple read/
+# written without a lock. A race at most recomputes the list twice — never
+# corrupts it. Documented choice (no asyncio.Lock needed for correctness).
+
+TEMPLATE_CACHE_TTL_S: float = float(os.environ.get("TEMPLATE_CACHE_TTL_S", "900"))
+
+# (loaded_at_monotonic, templates) — templates is a list of {t3777_code, image}.
+_TEMPLATE_CACHE: Tuple[float, Optional[List[Dict[str, Any]]]] = (0.0, None)
+
+
+def reset_template_cache() -> None:
+    """Drop the cached reference templates (next localize reloads them)."""
+    global _TEMPLATE_CACHE
+    _TEMPLATE_CACHE = (0.0, None)
+
+
+async def _load_reference_templates() -> List[Dict[str, Any]]:
+    """Load active reference variants as decoded BGRA templates from storage.
+
+    Mirrors synthesis._load_references_by_class: each active reference variant's
+    PNG is fetched from the training bucket and decoded with alpha preserved.
+    Variants that cannot be fetched/decoded are skipped (open-input gate). An
+    empty library yields an empty list — the caller logs a warning and returns
+    no detections (AC2, same pattern as 8.7).
+    """
+    from app.services.database import db_service
+
+    refs = await db_service.get_active_reference_logos()
+    templates: List[Dict[str, Any]] = []
+    for ref in refs:
+        code = ref["t3777_code"]
+        path = ref["storage_path"]
+        try:
+            data = storage_service.get_training_image(path)
+            img = _decode_image_bytes(data, with_alpha=True)
+        except Exception as exc:  # pragma: no cover - IO failure path
+            logger.warning(
+                "Skipping reference template (fetch/decode failed)",
+                extra={"t3777_code": code, "storage_path": path, "error": str(exc)},
+            )
+            continue
+        if img is None or getattr(img, "size", 0) == 0:
+            continue
+        templates.append({"t3777_code": code, "image": img})
+    return templates
+
+
+async def _get_reference_templates_cached() -> List[Dict[str, Any]]:
+    """Return the cached reference templates, reloading if the TTL expired."""
+    global _TEMPLATE_CACHE
+    loaded_at, cached = _TEMPLATE_CACHE
+    now = time.monotonic()
+    if cached is not None and (now - loaded_at) < TEMPLATE_CACHE_TTL_S:
+        return cached
+    templates = await _load_reference_templates()
+    _TEMPLATE_CACHE = (now, templates)
+    logger.info("Reference templates loaded into cache", extra={"count": len(templates), "ttl_s": TEMPLATE_CACHE_TTL_S})
+    return templates
+
+
+@router.post("/artwork/reload-templates")
+async def reload_templates() -> Dict[str, Any]:
+    """Invalidate the in-process reference-template cache (Story 8-3O).
+
+    Auth: NONE — this is an internal-service endpoint (same posture as the other
+    /ml/* endpoints, which run behind the API gateway on a private network and
+    carry no per-endpoint auth). The Node side calls it best-effort after
+    reference-library mutations so the next localize reflects the change without
+    waiting for the TTL.
+    """
+    reset_template_cache()
+    logger.info("Reference-template cache invalidated via reload-templates")
+    return {"status": "reloaded"}
 
 
 # ---------------------------------------------------------------------------
@@ -177,13 +266,18 @@ class TemplateInput(BaseModel):
 
 class LocalizeRequest(BaseModel):
     """Story 8.3R (AC3): source via MinIO object key or inline b64; the
-    filesystem ``image_path`` is removed; tunables override env defaults."""
+    filesystem ``image_path`` is removed; tunables override env defaults.
+
+    Story 8-3O (decision 2): ``templates`` is OPTIONAL. When omitted the ML
+    service loads the active reference library itself (TTL-cached). Callers that
+    supply templates (meet-scripts, tests) keep the exact same behaviour.
+    """
 
     storage_path: Optional[str] = Field(
         None, description="Object key in the training bucket, e.g. artwork/{gtin}/{file}.page-1.png"
     )
     image_b64: Optional[str] = None
-    templates: List[TemplateInput]
+    templates: Optional[List[TemplateInput]] = None
     # Tunables (optional; env defaults apply — see localization module)
     tile_size: Optional[int] = Field(None, ge=64, le=4096)
     overlap: Optional[float] = Field(None, ge=0.0, lt=1.0)
@@ -191,6 +285,9 @@ class LocalizeRequest(BaseModel):
     scale_min_px: Optional[int] = Field(None, ge=8, le=4096)
     scale_max_px: Optional[int] = Field(None, ge=8, le=4096)
     scale_step: Optional[float] = Field(None, gt=1.0, le=4.0)
+    # 8-3P precision tunables (optional; env defaults apply — see localization module)
+    collapse_top_k: Optional[int] = Field(None, ge=1, le=50)
+    peaks_per_variant: Optional[int] = Field(None, ge=1, le=50)
 
 
 class LocalizeResponse(BaseModel):
@@ -203,8 +300,8 @@ class LocalizeResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-def _decode_image(b64: str, with_alpha: bool = False) -> np.ndarray:
-    """Decode a base64-encoded image to an OpenCV-compatible numpy array.
+def _decode_image_bytes(img_bytes: bytes, with_alpha: bool = False) -> np.ndarray:
+    """Decode raw image bytes to an OpenCV-compatible numpy array.
 
     with_alpha=True preserves a BGRA channel layout (IMREAD_UNCHANGED) so the
     localization ladder can alpha-neutralise transparent references (8.3R,
@@ -212,14 +309,18 @@ def _decode_image(b64: str, with_alpha: bool = False) -> np.ndarray:
     """
     import cv2
 
-    img_bytes = base64.b64decode(b64)
     img_arr = np.frombuffer(img_bytes, dtype=np.uint8)
     img = cv2.imdecode(img_arr, cv2.IMREAD_UNCHANGED if with_alpha else cv2.IMREAD_COLOR)
     if img is None:
-        raise ValueError("Could not decode image from base64 payload")
+        raise ValueError("Could not decode image bytes")
     if with_alpha and img.ndim == 2:  # grayscale source — normalise to BGR
         img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
     return img
+
+
+def _decode_image(b64: str, with_alpha: bool = False) -> np.ndarray:
+    """Decode a base64-encoded image to an OpenCV-compatible numpy array."""
+    return _decode_image_bytes(base64.b64decode(b64), with_alpha=with_alpha)
 
 
 # ---------------------------------------------------------------------------
@@ -244,6 +345,7 @@ async def localize_artwork(request: LocalizeRequest) -> LocalizeResponse:
     import cv2
 
     from app.services.localization import (
+        LOCALIZE_COLLAPSE_TOP_K,
         LOCALIZE_MIN_SCORE,
         LOCALIZE_OVERLAP,
         LOCALIZE_TILE_SIZE,
@@ -287,17 +389,24 @@ async def localize_artwork(request: LocalizeRequest) -> LocalizeResponse:
     eff_overlap = request.overlap if request.overlap is not None else LOCALIZE_OVERLAP
     eff_min_score = request.min_score if request.min_score is not None else LOCALIZE_MIN_SCORE
 
-    # Decode template images (alpha preserved for neutralisation in the ladder)
+    # Templates: caller-supplied (decode b64) OR loaded ML-side from the active
+    # reference library with a TTL cache when omitted (Story 8-3O, decision 2).
     templates: List[Dict[str, Any]] = []
-    for tmpl in request.templates:
-        try:
-            tmpl_img = _decode_image(tmpl.image_b64, with_alpha=True)
-        except Exception as exc:
-            logger.warning("Skipping template with invalid image", extra={"t3777_code": tmpl.t3777_code, "error": str(exc)})
-            continue
-        templates.append({"t3777_code": tmpl.t3777_code, "image": tmpl_img})
+    if request.templates is not None:
+        for tmpl in request.templates:
+            try:
+                tmpl_img = _decode_image(tmpl.image_b64, with_alpha=True)
+            except Exception as exc:
+                logger.warning("Skipping template with invalid image", extra={"t3777_code": tmpl.t3777_code, "error": str(exc)})
+                continue
+            templates.append({"t3777_code": tmpl.t3777_code, "image": tmpl_img})
+    else:
+        templates = await _get_reference_templates_cached()
 
     if not templates:
+        # Open-input gate (AC2): an empty library / all-invalid templates yields
+        # an empty detection list plus a warning — never an error.
+        logger.warning("Localize has no usable templates (empty reference library?) — returning no detections")
         return LocalizeResponse(detections=[])
 
     # Build the scale ladder ONCE per request (design decisions 1+2)
@@ -309,11 +418,23 @@ async def localize_artwork(request: LocalizeRequest) -> LocalizeResponse:
         tile_size=eff_tile_size,
     )
 
-    # Tile + match with time budget; collapse best scale per (code, tile)
+    # Effective collapse top-k: request overrides env default (8-3P).
+    eff_collapse_top_k = request.collapse_top_k if request.collapse_top_k is not None else LOCALIZE_COLLAPSE_TOP_K
+
+    # Tile + match with time budget; collapse to the top-k LOCATION-DISTINCT
+    # peaks per (code, tile) before NMS (8-3P, P2). match_templates already
+    # extracts up to LOCALIZE_PEAKS_PER_VARIANT peaks per variant; here we merge
+    # the peaks of all scale variants of the same code in the same tile, keeping
+    # the k best-scoring ones whose centres are farther apart than the
+    # suppression radius (the variant max-dim) — two real instances in one tile
+    # survive, near-duplicate scale echoes collapse to the highest scorer.
     tiles = tile_image(img, tile_size=eff_tile_size, overlap=eff_overlap)
     deadline = time.monotonic() + LOCALIZE_TIME_BUDGET_S
     truncated = False
-    per_tile_best: Dict[Any, Dict[str, Any]] = {}
+    per_tile_peaks: Dict[Any, List[Dict[str, Any]]] = {}
+
+    def _center(bbox: Dict[str, int]) -> tuple:
+        return (bbox["x"] + bbox["width"] / 2.0, bbox["y"] + bbox["height"] / 2.0)
 
     for tile_idx, tile in enumerate(tiles):
         if time.monotonic() > deadline:
@@ -323,20 +444,36 @@ async def localize_artwork(request: LocalizeRequest) -> LocalizeResponse:
                 extra={"processed_tiles": tile_idx, "total_tiles": len(tiles), "budget_s": LOCALIZE_TIME_BUDGET_S},
             )
             break
+        # match_templates returns score-descending; process in that order so the
+        # location-distinct top-k keeps the highest scorers.
         for match in match_templates(tile["image"], variants, min_score=eff_min_score):
             key = (match["t3777_code"], tile_idx)
-            best = per_tile_best.get(key)
-            if best is None or match["score"] > best["score"]:
-                abs_match = dict(match)
-                abs_match["bbox"] = {
-                    "x": match["bbox"]["x"] + tile["x_offset"],
-                    "y": match["bbox"]["y"] + tile["y_offset"],
-                    "width": match["bbox"]["width"],
-                    "height": match["bbox"]["height"],
-                }
-                per_tile_best[key] = abs_match
+            abs_match = dict(match)
+            abs_match["bbox"] = {
+                "x": match["bbox"]["x"] + tile["x_offset"],
+                "y": match["bbox"]["y"] + tile["y_offset"],
+                "width": match["bbox"]["width"],
+                "height": match["bbox"]["height"],
+            }
+            kept = per_tile_peaks.setdefault(key, [])
+            cx, cy = _center(abs_match["bbox"])
+            # Suppression radius for THIS match = its own variant max-dim.
+            radius = max(abs_match["bbox"]["width"], abs_match["bbox"]["height"])
+            duplicate = False
+            for existing in kept:
+                ex, ey = _center(existing["bbox"])
+                er = max(existing["bbox"]["width"], existing["bbox"]["height"])
+                if (cx - ex) ** 2 + (cy - ey) ** 2 <= max(radius, er) ** 2:
+                    # Same location as an already-kept (higher-scoring) peak —
+                    # a scale echo of the same instance; collapse it away.
+                    duplicate = True
+                    break
+            if duplicate:
+                continue
+            if len(kept) < eff_collapse_top_k:
+                kept.append(abs_match)
 
-    raw_detections = list(per_tile_best.values())
+    raw_detections = [d for peaks in per_tile_peaks.values() for d in peaks]
 
     # Merge overlapping detections across tile boundaries
     merged = merge_detections(raw_detections)
@@ -379,6 +516,10 @@ class ClassifyRequest(BaseModel):
     image_b64: Optional[str] = None
     crops: Optional[List[CropBBox]] = None
     confidence_threshold: Optional[float] = Field(None, ge=0.0, le=1.0)
+    # Story 8-3O (decision 3) — crop persistence extension. Default off so
+    # existing callers (Story 8.5 crosscheck, tests) are byte-for-byte unchanged.
+    gtin: Optional[str] = None
+    persist_crops: bool = False
 
 
 class ClassifyResult(BaseModel):
@@ -387,6 +528,20 @@ class ClassifyResult(BaseModel):
     confidence: float
     method: str
     uncertain: bool = False
+    # Set only when persist_crops=True: MinIO object key of the saved crop PNG.
+    crop_path: Optional[str] = None
+
+
+def _crop_object_key(gtin: str, source: str, bbox: Optional[Dict[str, int]]) -> str:
+    """Idempotent crop key: artwork-crops/{gtin}/{sha1(source+bbox)[:12]}.png.
+
+    The same (source image, bbox) always maps to the same key, so re-running
+    classify for an artwork overwrites rather than duplicates (decision 3).
+    """
+    box = bbox or {}
+    digest_src = f"{source}|{box.get('x')}|{box.get('y')}|{box.get('width')}|{box.get('height')}"
+    digest = hashlib.sha1(digest_src.encode("utf-8")).hexdigest()[:12]
+    return f"artwork-crops/{gtin}/{digest}.png"
 
 
 class ClassifyResponse(BaseModel):
@@ -445,12 +600,36 @@ async def classify_artwork(request: ClassifyRequest) -> ClassifyResponse:
     else:
         regions.append({"bbox": None, "crop": img})
 
+    # Crop-persistence source label (decision 3): the storage key when available,
+    # else a stable inline-source marker so the idempotent key is deterministic.
+    persist = request.persist_crops and bool(request.gtin)
+    source_label = request.storage_path or "inline"
+
     results: List[ClassifyResult] = []
     for region in regions:
         outcome = await classify_crop(
             region["crop"],
             confidence_threshold=request.confidence_threshold,
         )
+
+        crop_path: Optional[str] = None
+        if persist:
+            # Write the crop PNG to MinIO under an idempotent key. A persistence
+            # failure must not fail the whole classify call — it is logged and
+            # the result simply carries crop_path=None.
+            try:
+                import cv2 as _cv2
+
+                ok, buf = _cv2.imencode(".png", region["crop"])
+                if ok:
+                    key = _crop_object_key(request.gtin, source_label, region["bbox"])
+                    storage_service.put_training_image(key, buf.tobytes(), content_type="image/png")
+                    crop_path = key
+                else:
+                    logger.warning("Crop PNG encoding failed; crop_path stays null", extra={"bbox": region["bbox"]})
+            except Exception as exc:
+                logger.warning("Crop persistence failed; crop_path stays null", extra={"bbox": region["bbox"], "error": str(exc)})
+
         results.append(
             ClassifyResult(
                 bbox=region["bbox"],
@@ -458,10 +637,11 @@ async def classify_artwork(request: ClassifyRequest) -> ClassifyResponse:
                 confidence=float(outcome.get("confidence", 0.0)),
                 method=outcome.get("method", "embedding"),
                 uncertain=bool(outcome.get("uncertain", False)),
+                crop_path=crop_path,
             )
         )
 
-    logger.info("Artwork classification complete", extra={"regions": len(results)})
+    logger.info("Artwork classification complete", extra={"regions": len(results), "persisted_crops": persist})
     return ClassifyResponse(results=results)
 
 

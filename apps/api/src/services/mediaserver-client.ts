@@ -30,6 +30,12 @@ export interface MediaItem {
   typeInfo: string;
   active: boolean;
   createdAt: string;
+  /**
+   * GLN of the owning party (Story 8-3O, S3/D1 prerequisite). Surfaced per-item
+   * from the discovery response's top-level `gln` so the import can persist it
+   * on artwork_imports — the catalog declaration provider (8-3D) needs it.
+   */
+  gln?: string;
 }
 
 export interface MediaDiscoveryResponse {
@@ -115,7 +121,9 @@ export class MediaServerClient {
         // The live mediaserver returns numeric ids; our schema and the
         // @@unique([mediaId]) dedup expect strings (found with real ACC data,
         // 2026-06-05: "Expected String, provided Int" crashed the import run).
-        .map((item) => ({ ...item, id: String(item.id) }));
+        // Surface the response-level gln per-item (Story 8-3O) without changing
+        // the array return shape callers/tests rely on.
+        .map((item) => ({ ...item, id: String(item.id), gln: data.gln }));
     } catch (error) {
       if (error instanceof AxiosError) {
         const status = error.response?.status;
