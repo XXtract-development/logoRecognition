@@ -2,6 +2,11 @@
 
 Datum: 2026-06-07 · Opsteller: Mary (BA) · Beslisser: Friso (PO)
 
+> **BESLOTEN 2026-06-07: OPTIE A (akkoord Friso).** Uitvoering gestart dezelfde dag:
+> - Corpus: 41.717 bestanden / 12.526 GTIN's (74% jpg, 24% pdf, 1,6% png) — bron: media-DB-query (fileSize-kolom is volledig NULL; omvang via schijfmeting: totale Xmedia-boom 282 GB, artwork-subset daarbinnen)
+> - Schijfruimte ACC: ruim voldoende — Storage Box 906 GB vrij vs. worst-case ±2×282 GB voor bron+cache
+> - Route: Banana en Vanilla mounten DEZELFDE Hetzner Storage Box → rsync op Banana van `/media/Xmedia/{gln}/PACKAGING_ARTWORK` naar `/mnt/storagebox-home/acc/TXmedia/` (≡ Vanilla `/mnt/storagebox/TXmedia`, de bron van de ACC-mediaserver). Artwork-only, structuurbehoudend, géén --delete; nohup + log `/tmp/artwork-sync.log` op Banana
+
 ## Feiten
 
 | Feit | Waarde | Bron |
