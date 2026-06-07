@@ -29,6 +29,7 @@ import { artworkPipelineRoutes } from './api/v1/artwork-pipeline';
 import { pipelineRoutes } from './api/v1/pipeline';
 import { registerRetrainingCronJob } from './services/pipeline/trigger';
 import { registerTrainingFlowWorker, registerDetectionWorker, closePipelineWorkers } from './services/pipeline/workers';
+import { installCatalogDeclarationProvider } from './services/t3777-declarations';
 import { logger } from './core/logger';
 import { wsManager } from './services/websocket-manager';
 import { socketIOManager } from './services/socket-io-manager';
@@ -300,6 +301,17 @@ async function startServer() {
         registerTrainingFlowWorker();
       } catch (err) {
         logger.warn('Failed to register training-flow worker (Redis may not be ready)', {
+          error: err instanceof Error ? err.message : 'Unknown error',
+        });
+      }
+
+      // Story 8-3D: install the real catalog-API T3777 declaration provider as
+      // the detection-flow default (only when CATALOG_API_KEY is set; otherwise
+      // the empty provider stays the default — all detections to review).
+      try {
+        installCatalogDeclarationProvider();
+      } catch (err) {
+        logger.warn('Failed to install catalog declaration provider', {
           error: err instanceof Error ? err.message : 'Unknown error',
         });
       }
