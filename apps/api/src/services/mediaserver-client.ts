@@ -45,6 +45,16 @@ export interface MediaDiscoveryResponse {
   inactive: MediaItem[];
 }
 
+/**
+ * Derive the owning party's GLN from a mediaserver previewUrl. The LIVE
+ * discovery response has NO top-level gln field (verified against ACC,
+ * 2026-06-07), but every previewUrl is structured as /{gln}/{typeInfo}/...
+ * Exported for direct testing (the module is mocked in the global test setup).
+ */
+export function deriveGlnFromPreviewUrl(previewUrl?: string): string | undefined {
+  return previewUrl?.match(/^\/(\d{13})\//)?.[1];
+}
+
 export class MediaServerError extends Error {
   constructor(
     message: string,
@@ -121,9 +131,18 @@ export class MediaServerClient {
         // The live mediaserver returns numeric ids; our schema and the
         // @@unique([mediaId]) dedup expect strings (found with real ACC data,
         // 2026-06-05: "Expected String, provided Int" crashed the import run).
-        // Surface the response-level gln per-item (Story 8-3O) without changing
-        // the array return shape callers/tests rely on.
-        .map((item) => ({ ...item, id: String(item.id), gln: data.gln }));
+        // Surface the gln per-item (Story 8-3O) without changing the array
+        // return shape callers/tests rely on. The LIVE discovery response has
+        // NO top-level gln field (verified against ACC, 2026-06-07) — but the
+        // mediaserver structures every previewUrl as /{gln}/{typeInfo}/... so
+        // we derive it from the first path segment, with the (typed but in
+        // practice absent) response-level gln as preferred source if it ever
+        // appears.
+        .map((item) => ({
+          ...item,
+          id: String(item.id),
+          gln: data.gln ?? deriveGlnFromPreviewUrl(item.previewUrl),
+        }));
     } catch (error) {
       if (error instanceof AxiosError) {
         const status = error.response?.status;

@@ -327,6 +327,17 @@ describe('Artwork Detection Orchestration (8-3O)', () => {
       await app.close();
     });
 
+    it('should derive gln from the previewUrl path when the discovery response lacks it', async () => {
+      // De echte ACC-respons heeft GEEN top-level gln; het pad begint met /{gln}/...
+      // De module is in setup.ts gemockt — importActual geeft de echte helper.
+      const actual = await vi.importActual<typeof import('../../services/mediaserver-client')>(
+        '../../services/mediaserver-client'
+      );
+      expect(actual.deriveGlnFromPreviewUrl('/8710679000011/PACKAGING_ARTWORK/1/x.jpg')).toBe('8710679000011');
+      expect(actual.deriveGlnFromPreviewUrl('/THUMBNAIL/zonder-gln.png')).toBeUndefined();
+      expect(actual.deriveGlnFromPreviewUrl(undefined)).toBeUndefined();
+    });
+
     it('should backfill a NULL gln on dedup-skip during re-import (8-3D repair path)', async () => {
       const Fastify = (await import('fastify')).default;
       const cookie = (await import('@fastify/cookie')).default;
