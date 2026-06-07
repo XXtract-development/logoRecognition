@@ -5,6 +5,12 @@ on:
     branches: [acc, main]
   workflow_dispatch:
 
+# CI-1: workflow-level concurrency (covers the deploy job too) — a newer push
+# cancels the whole older run so a stale deploy can never fire after a newer one.
+concurrency:
+  group: build-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   REGISTRY: ghcr.io
   IMAGE_PREFIX: xxtract-development/logo-recognition
@@ -25,12 +31,26 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # CI-1: OCI labels (org.opencontainers.image.revision et al.) so the host
+      # can prove image == commit via docker inspect (AC1).
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-app
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build and push app image
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
           push: true
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=app
+          cache-to: type=gha,scope=app,mode=max
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-app:${{ github.ref_name }}
             ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-app:${{ github.sha }}
@@ -50,12 +70,50 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-ml
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build and push ML service image
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ./apps/ml-service/Dockerfile
           push: true
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=ml
+          cache-to: type=gha,scope=ml,mode=max
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-ml:${{ github.ref_name }}
             ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-ml:${{ github.sha }}
+
+  # CI-1: acc-only deploy trigger. Runs ONLY when both images are pushed
+  # (needs:), pins the exact merge-SHA in Coolify (LOGO_IMAGE_TAG) so every
+  # deploy — including manual UI/MCP deploys later — pulls a consistent image
+  # pair, then triggers exactly one Coolify deployment. Secrets never echoed.
+  deploy-acc:
+    if: github.ref_name == 'acc'
+    needs: [build-app, build-ml]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pin image tag in Coolify
+        run: |
+          curl -fsS -X PATCH \
+            -H "Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"key\":\"LOGO_IMAGE_TAG\",\"value\":\"${{ github.sha }}\"}" \
+            "${{ secrets.COOLIFY_URL }}/api/v1/applications/qsookwow8koko0kwg00g0cwk/envs" \
+            -o /dev/null
+
+      - name: Trigger Coolify deployment
+        run: |
+          curl -fsS \
+            -H "Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}" \
+            "${{ secrets.COOLIFY_URL }}/api/v1/deploy?uuid=qsookwow8koko0kwg00g0cwk" \
+            -o /dev/null
+          echo "Deploy getriggerd voor ${{ github.sha }}"

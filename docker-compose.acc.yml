@@ -68,10 +68,10 @@ services:
           memory: 128M
 
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: logo-recognition-app:acc
+    # CI-1: pull-only — gebouwd door GitHub Actions (build-push.yml), gepind op
+    # de acc-merge-SHA via LOGO_IMAGE_TAG (gezet door de deploy-job in Actions).
+    image: ghcr.io/xxtract-development/logo-recognition-app:${LOGO_IMAGE_TAG:-acc}
+    pull_policy: always
     network_mode: host
     env_file:
       - .env
@@ -116,10 +116,9 @@ services:
           memory: 512M
 
   ml-service:
-    build:
-      context: .
-      dockerfile: apps/ml-service/Dockerfile
-    image: logo-recognition-ml:acc
+    # CI-1: pull-only (zie app-service hierboven).
+    image: ghcr.io/xxtract-development/logo-recognition-ml:${LOGO_IMAGE_TAG:-acc}
+    pull_policy: always
     network_mode: host
     env_file:
       - .env
