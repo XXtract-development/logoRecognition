@@ -55,6 +55,98 @@ so that de review-queue en trainingsdata zich vullen zonder ad-hoc scripts en de
 
 ### Agent Model Used
 
+claude-opus-4-8 (BMAD Story Implementation Agent)
+
 ### Completion Notes List
 
+Implemented per the 9 frozen design decisions. Bottom-up: shared registration
+module → crosscheck service → mlClient methods → detection-flow → queue/worker →
+routes/import-hook/gln → ML localize/classify.
+
+**AC-bewijs (tests):**
+- **AC1 (keten-job + provenance + idempotentie):** vitest `runDetectionJob` keten-test
+  (localize→classify(persist_crops)→crosscheck→registratie), dedup-pre-filter-test
+  (gequantiseerde 8px-bbox, `Math.floor`), auto-accept→`registerCropsTx`-test (crop_path +
+  provenance, géén interne HTTP), "no double-register on retry"-test (dedup vs bestaande
+  registratie). Alle groen.
+- **AC2 (templates ML-side):** pytest `test_detection_support.py` — TTL-cache laadt 1×
+  binnen TTL, reload-templates invalidatie → herlaadt, open-input-gate (lege bibliotheek →
+  lege detecties, geen error). Caller-supplied templates pad ongewijzigd
+  (`test_localization_precision` byte-gelijk groen).
+- **AC3 (run-beheer):** enqueue-per-beeld + per-PDF-page-test (O5), JPG/PNG-single-job-test,
+  `getJobStatus(jobId, 'artwork-detection')`-test (O6 parametrisering), `POST
+  /artwork-detection/runs` (ADMIN), per-item soft-fail enqueue-hook in de import-flow.
+- **AC4 (crash-bestendigheid, VERPLICHT):** vitest crash-resilience-test (BullMQ-mock):
+  ge-enqueude job blijft opvraagbaar via `getJobStatus` ná worker-herregistratie (singleton,
+  geen dubbele consumers); jobstate leeft in Redis, niet in-proces. Volgt 9.1-patroon.
+- **AC6 (gln):** vitest gln-persistentie-assertie via `POST /artwork-import/runs` →
+  `artworkImport.upsert` create+update krijgen gln uit de mediaserver-respons.
+
+**classify crop-persistentie (O1):** `gtin`+`persist_crops`→`crop_path`, idempotente sleutel
+`artwork-crops/{gtin}/{sha1(bron+bbox)[:12]}.png`; bestaande callers ongewijzigd
+(`test_classify_without_persist_flag_writes_nothing`).
+
+**Method-mapping:** classify levert `method='embedding'|'classifier'`; de provenance-union
+(`ProvenanceMethod`) kent geen `embedding` — `embedding`/`classifier`→`classifier` voor de
+registratie-provenance, `template` blijft behouden. Crosscheck-drempel gebruikt de echte
+method (embedding-drempel 0.80).
+
+**Cross-repo-check (besluit 9):** `gh api "search/code?q=org:XXtract-development+artwork/localize"`
+→ `total_count: 0` — geen externe callers van `/ml/artwork/localize`. `image_path`-breaking-change
+is veilig (geen externe consumenten).
+
+**Zelf-review bevindingen (gefixt):**
+- dedup-quantisatie: `Math.floor` (niet `round`) zodat x=9 en x=12 op 8px-raster colliden;
+  declared-not-found (null bbox) keyt op (sourceFile, code) via 'null'-bboxKey.
+- worker-error-semantiek: `runDetectionJob` throwt op harde ML/DB-fout → BullMQ-retry; per-item
+  isolatie (sibling-job onafhankelijk).
+- geen dubbele registratie bij retry ná partial success: `loadExistingDetectionKeys` queryt
+  ZOWEL open review-items ALS actieve trainingData-registraties; geverifieerd via test.
+- reload-endpoint auth: GEEN (interne service, zelfde posture als overige /ml/*-endpoints) —
+  gedocumenteerd in de endpoint-docstring.
+- TTL-cache thread-safety: plain module-global; uvicorn-workers zijn aparte processen, asyncio
+  single-threaded binnen één worker → race hooguit dubbele recompute, nooit corruptie —
+  gedocumenteerd.
+- ongebruikte `ProvenanceMethod`-import uit de route verwijderd na de extractie.
+
+### AC5 — ACC-validatie (POST-DEPLOY, NIET in deze story uitgevoerd)
+
+De Node detection-worker draait pas ná deploy. Verificatiestappen voor ACC (met ADMIN-token):
+
+1. **Run starten** (per GTIN-set of importRunId):
+   `POST /api/v1/artwork-detection/runs` body `{ "gtins": ["<gtin>", ...] }` of
+   `{ "importRunId": "<run-uuid>" }` → 202 `{ enqueued, candidates }`. Noteer `enqueued`
+   (= aantal jobs; PDFs tellen per pagina).
+2. **Jobstatus-check** via het bestaande jobs-endpoint met de `artwork-detection`-queue-naam
+   (getJobStatus is geparametriseerd, O6) — controleer `state` (completed/failed) +
+   `failedReason` per job.
+3. **Review-items-telling:** `GET /api/v1/artwork/review-queue` (vóór/ná) of een DB-count op
+   `artwork_review_items WHERE status='open'` voor de betrokken GTIN's → bevestig dat de
+   natuurlijke 8-3P-detecties review-items opleveren zonder ad-hoc scripts.
+4. **Geforceerde item-fout:** verwijder/blokkeer tijdelijk één bron-key (of mock ML-down) →
+   bevestig dat die ene job faalt (zichtbaar via failedReason) terwijl de run doorloopt
+   (8.1 per-item-isolatie).
+5. **39k-extrapolatie + DETECTION_CONCURRENCY-advies** actualiseren op basis van doorlooptijd/job.
+
+Geen ssh nodig; alles via de API met ADMIN-token. NIET zelf op ACC gedraaid (post-deploy).
+
 ### File List
+
+**Node (apps/api):**
+- `src/services/artwork-registration.ts` (NEW — registerCropsTx/processAcceptedReviewItems extractie)
+- `src/services/artwork-crosscheck.ts` (NEW — crosscheckDetections + thresholds)
+- `src/services/pipeline/detection-flow.ts` (NEW — runDetectionJob/dedupDetections/enqueueDetectionForImport/declaration-provider)
+- `src/services/pipeline/queue.ts` (artwork-detection queue + getJobStatus parametrisering)
+- `src/services/pipeline/workers.ts` (registerDetectionWorker)
+- `src/services/ml-client.ts` (localizeArtwork/classifyArtwork/reloadTemplates)
+- `src/services/mediaserver-client.ts` (gln per-item)
+- `src/api/v1/artwork-pipeline.ts` (crosscheck thin wrapper, gln-write, enqueue-hook, POST /artwork-detection/runs)
+- `src/main.ts` (registerDetectionWorker bij startup)
+- `src/__tests__/setup.ts` (mlClient mock localize/classify/reload)
+- `src/__tests__/services/artwork-detection-orchestration.test.ts` (9 ontskipt + 3 extra)
+
+**ML (apps/ml-service):**
+- `app/api/artwork.py` (templates Optional + TTL-cache + reload-templates + open-input-gate; classify gtin/persist_crops→crop_path idempotente sleutel; _decode_image_bytes helper)
+
+**Tests (root):**
+- `tests/test_detection_support.py` (NEW — TTL-cache, reload, open-input-gate, classify-crop-persistentie)

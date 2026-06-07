@@ -25,7 +25,31 @@ const logger = createLogger('pipeline-queue');
 
 export interface PipelineQueues {
   training: Queue;
+  'artwork-detection': Queue;
 }
+
+/**
+ * Known queue names. `getJobStatus` is parametrized over these (O6) so the
+ * existing jobs-endpoint can surface detection jobs alongside training jobs.
+ */
+export type QueueName = 'training' | 'artwork-detection';
+
+/**
+ * Shared default job-options (9.1): attempts ≥ 3, exponential backoff, history
+ * retained. Used BOTH by the queue factory AND by enqueueDetectionForImport's
+ * `.add()` call — BullMQ reads attempts/backoff from the options serialized onto
+ * the job by the *adding* Queue instance, so the enqueue path must spread these
+ * in (the factory's defaultJobOptions live on a different instance).
+ */
+export const PIPELINE_JOB_OPTIONS = {
+  attempts: 3,
+  backoff: {
+    type: 'exponential' as const,
+    delay: 5000,
+  },
+  removeOnComplete: false,
+  removeOnFail: false,
+};
 
 export interface JobStatusResult {
   id: string;
@@ -74,22 +98,18 @@ export function getRedisConnection(): Redis {
 export function createPipelineQueues(): PipelineQueues {
   const connection = getRedisConnection();
 
-  const training = new Queue('training', {
-    connection,
-    defaultJobOptions: {
-      attempts: 3,
-      backoff: {
-        type: 'exponential',
-        delay: 5000,
-      },
-      removeOnComplete: false,
-      removeOnFail: false,
-    },
-  });
+  const defaultJobOptions = PIPELINE_JOB_OPTIONS;
 
-  logger.info('Pipeline queues created', { queues: ['training'] });
+  const training = new Queue('training', { connection, defaultJobOptions });
 
-  return { training };
+  // Artwork-detection queue (Story 8-3O): one job per artwork image, processed
+  // by the detection worker (localize → classify → crosscheck → register).
+  // Same 9.1 defaults — Redis state survives restarts (crash-resilience, AC4).
+  const artworkDetection = new Queue('artwork-detection', { connection, defaultJobOptions });
+
+  logger.info('Pipeline queues created', { queues: ['training', 'artwork-detection'] });
+
+  return { training, 'artwork-detection': artworkDetection };
 }
 
 // ============================================
@@ -101,12 +121,15 @@ export function createPipelineQueues(): PipelineQueues {
  *
  * AC2: failedReason filled for failed jobs, retryable=true for failed state.
  */
-export async function getJobStatus(jobId: string): Promise<JobStatusResult> {
+export async function getJobStatus(
+  jobId: string,
+  queueName: QueueName = 'training'
+): Promise<JobStatusResult> {
   const connection = getRedisConnection();
-  const trainingQueue = new Queue('training', { connection });
+  const queue = new Queue(queueName, { connection });
 
   try {
-    const job = await trainingQueue.getJob(jobId);
+    const job = await queue.getJob(jobId);
 
     if (!job) {
       return {
@@ -129,7 +152,7 @@ export async function getJobStatus(jobId: string): Promise<JobStatusResult> {
       data: job.data,
     };
   } finally {
-    await trainingQueue.close();
+    await queue.close();
   }
 }
 
