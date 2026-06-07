@@ -326,6 +326,43 @@ describe('Artwork Detection Orchestration (8-3O)', () => {
 
       await app.close();
     });
+
+    it('should backfill a NULL gln on dedup-skip during re-import (8-3D repair path)', async () => {
+      const Fastify = (await import('fastify')).default;
+      const cookie = (await import('@fastify/cookie')).default;
+      const { mediaServerClient } = await import('../../services/mediaserver-client');
+
+      (mediaServerClient.discoverArtwork as ReturnType<typeof vi.fn>).mockResolvedValue([
+        { id: 'm-2', fileName: 'front.png', previewUrl: '/p/2', typeInfo: 'PACKAGING_ARTWORK', active: true, createdAt: '', gln: '8710400000007' },
+      ]);
+
+      (prisma.artworkImportRun.updateMany as ReturnType<typeof vi.fn>).mockResolvedValue({ count: 0 });
+      (prisma.artworkImportRun.create as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 'run-bf', status: 'running' });
+      (prisma.artworkImportRun.update as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 'run-bf' });
+      // bestaand record: al geimporteerd, maar gln ontbreekt (pre-8-3O import)
+      (prisma.artworkImport.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 'imp-old', status: 'imported', gln: null });
+      (prisma.artworkImport.update as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 'imp-old' });
+
+      const app = Fastify({ logger: false });
+      await app.register(cookie, { secret: 'test-secret' });
+      app.addHook('preHandler', async (request) => {
+        (request as { user?: unknown }).user = { userId: 'u1', email: 'a@b.c', role: 'ADMIN' };
+      });
+      const { artworkPipelineRoutes } = await import('../../api/v1/artwork-pipeline');
+      await app.register(artworkPipelineRoutes, { prefix: '/api/v1' });
+      await app.ready();
+
+      const res = await app.inject({ method: 'POST', url: '/api/v1/artwork-import/runs', payload: { gtins: ['123'] } });
+      expect(res.statusCode).toBe(202);
+      await new Promise((r) => setTimeout(r, 50));
+
+      // skip-pad: geen download/upsert, wel gln-backfill op het bestaande record
+      expect(mediaServerClient.downloadFile).not.toHaveBeenCalled();
+      expect(prisma.artworkImport.update).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 'imp-old' }, data: { gln: '8710400000007' } })
+      );
+      await app.close();
+    });
   });
 
   // -------------------------------------------------------------------------

@@ -214,10 +214,20 @@ async function importGtin(runId: string, gtin: string): Promise<void> {
     // Dedup: does a successfully imported record already exist for this mediaId?
     const existing = await prisma.artworkImport.findUnique({
       where: { mediaId: item.id },
-      select: { id: true, status: true },
+      select: { id: true, status: true, gln: true },
     });
 
     if (existing?.status === 'imported') {
+      // gln backfill (8-3D prerequisite): records imported before the gln
+      // column was sourced stay NULL forever because the dedup skip never
+      // reaches the upsert. Backfill it here — re-import is the documented
+      // repair path for missing glns.
+      if (!existing.gln && item.gln) {
+        await prisma.artworkImport.update({
+          where: { id: existing.id },
+          data: { gln: item.gln },
+        });
+      }
       await prisma.artworkImportRun.update({
         where: { id: runId },
         data: { skippedCount: { increment: 1 }, heartbeatAt: new Date() },
