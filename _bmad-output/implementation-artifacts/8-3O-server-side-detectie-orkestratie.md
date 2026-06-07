@@ -56,6 +56,20 @@ so that de review-queue en trainingsdata zich vullen zonder ad-hoc scripts en de
 
 - `8-3R`-story (bekende beperkingen) + `8-3R-meetrapport.md` · `8-3P` (kalibratie-input) · `artwork-pipeline.ts` (crosscheck:702, import-flow:404–486, register-training-data) · `services/pipeline/queue.ts`+`workers.ts` (9.1-patronen) · `services/ml-client.ts`
 
+## AC5 — Post-deploy verificatie (uitgevoerd 2026-06-07, acc @ 526236c + kalibratie-env)
+
+**Mechaniek: PASS.**
+- `POST /artwork-detection/runs {gtins:[5]}` → 202, `{enqueued:11, candidates:11}` (pagina-loze PDF correct overgeslagen)
+- 11/11 jobs completed, 0 failed; idempotente job-IDs `detect:{gtin}:{path}`; per-job logging (localized/classified/autoAccepted/reviewItems)
+- Review-queue 9 → 12 (+3 server-side items mét crops/provenance) — zónder ad-hoc scripts: FR46–FR48 nu end-to-end
+- Throughput: 11 beelden in ~55 s wall bij DETECTION_CONCURRENCY=2 (~5 s/beeld) → **39k ≈ 54 uur @ c=2; advies c=4 (ML-cpu-limiet 4.0) → ~27 uur**, bulk pas ná 8-3D
+- Geforceerde item-fout: vitest-test (verplicht) dekt dit; in de run deden alle 11 jobs het — ACC-demo niet geforceerd
+
+**Kalibratie-inzichten uit de run (opvolging):**
+1. **`LOCALIZE_MIN_SCORE` ontbreekt als env** — productie draait op code-default 0,8 terwijl de bevroren 8-3P-set op request-0,55 gemeten is. Gevolg in de run: composiet-plants (0,55–0,87) grotendeels "No keurmerk localized"; alleen FSC@0,873 en RAINFOREST (per-klasse 0,65) kwamen door. Fix: `LOCALIZE_MIN_SCORE=0.55` in Coolify (vereist redeploy-akkoord).
+2. **Classificatie-mislabel:** localize vond op beide Theunisse-koffie-artworks de (vermoedelijk echte) Rainforest-regio, maar de embedding-classify labelde de crop **EUROPEAN_V_LABEL_VEGAN** → reviewitems met het verkeerde voorgestelde label. Lokalisatie ✓, classificatie-kwaliteit op kleine echte crops = nieuw kalibratiepunt (8.4-route; meenemen in de 8-3P-labelronde/8-3D-fase).
+3. **Dedup-breedte-gevoeligheid bevestigd:** de FSC-plant op 00008500002456 werd opnieuw aangeboden (detectie-bbox ~100px-variant vs opgeslagen 110px → andere gequantiseerde sleutel) — gedocumenteerde O3-beperking, gedrag conform spec ("herdraai ná drempelwijziging kan bewust nieuwe items geven").
+
 ## Dev Agent Record
 
 ### Agent Model Used

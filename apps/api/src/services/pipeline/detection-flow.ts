@@ -376,6 +376,19 @@ export async function enqueueDetectionForImport(
   const enqueued: Array<{ gtin: string; storagePath: string; jobId?: string }> = [];
   try {
     for (const storagePath of targets) {
+      // A stable jobId dedups PENDING/ACTIVE work, but BullMQ also refuses
+      // re-adds while the id lives in the completed/failed HISTORY
+      // (removeOnComplete:false) — which silently turned manual re-runs into
+      // no-ops (AC3). Evict finished history first; pending/active jobs keep
+      // their dedup, and the review-item pre-filter still guards the data.
+      const jobId = `detect:${imported.gtin}:${storagePath}`;
+      const previous = await queue.getJob(jobId);
+      if (previous) {
+        const state = await previous.getState();
+        if (state === 'completed' || state === 'failed') {
+          await previous.remove();
+        }
+      }
       const job = await queue.add(
         'detect-artwork',
         { gtin: imported.gtin, storagePath } as DetectionJobData,
@@ -383,7 +396,7 @@ export async function enqueueDetectionForImport(
         // attempts/backoff from the options serialized by THIS adding instance,
         // not from the factory's separate instance. Stable jobId per (gtin,
         // image) → BullMQ dedups duplicate enqueues.
-        { ...PIPELINE_JOB_OPTIONS, jobId: `detect:${imported.gtin}:${storagePath}` }
+        { ...PIPELINE_JOB_OPTIONS, jobId }
       );
       enqueued.push({ gtin: imported.gtin, storagePath, jobId: job?.id });
     }

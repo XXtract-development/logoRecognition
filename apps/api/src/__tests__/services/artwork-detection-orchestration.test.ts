@@ -208,6 +208,53 @@ describe('Artwork Detection Orchestration (8-3O)', () => {
       expect(jobs[0].storagePath).toContain('page-1');
     });
 
+    it('should evict completed history so manual re-runs actually reprocess (AC3)', async () => {
+      // BullMQ refuses adds whose stable jobId still lives in the completed
+      // history (removeOnComplete:false) — without eviction a manual re-run
+      // (e.g. after a calibration change) is a silent no-op.
+      const { enqueueDetectionForImport } = await import('../../services/pipeline/detection-flow');
+      const bullmq = await import('bullmq');
+
+      const removeSpy = vi.fn().mockResolvedValue(undefined);
+      const addSpy = vi.fn().mockResolvedValue({ id: 'detect:123:artwork/123/x.png' });
+      (bullmq.Queue as unknown as ReturnType<typeof vi.fn>).mockImplementationOnce(() => ({
+        getJob: vi.fn().mockResolvedValue({ getState: vi.fn().mockResolvedValue('completed'), remove: removeSpy }),
+        add: addSpy,
+        close: vi.fn().mockResolvedValue(undefined),
+      }));
+
+      const jobs = await enqueueDetectionForImport({
+        gtin: '123',
+        mimeType: 'image/png',
+        storagePath: 'artwork/123/x.png',
+      } as never);
+
+      expect(removeSpy).toHaveBeenCalledOnce(); // finished history evicted...
+      expect(addSpy).toHaveBeenCalledOnce(); // ...then re-added for real reprocessing
+      expect(jobs).toHaveLength(1);
+    });
+
+    it('should NOT evict pending/active jobs (dedup of in-flight work stays)', async () => {
+      const { enqueueDetectionForImport } = await import('../../services/pipeline/detection-flow');
+      const bullmq = await import('bullmq');
+
+      const removeSpy = vi.fn().mockResolvedValue(undefined);
+      const addSpy = vi.fn().mockResolvedValue(null); // BullMQ dedups the add itself
+      (bullmq.Queue as unknown as ReturnType<typeof vi.fn>).mockImplementationOnce(() => ({
+        getJob: vi.fn().mockResolvedValue({ getState: vi.fn().mockResolvedValue('waiting'), remove: removeSpy }),
+        add: addSpy,
+        close: vi.fn().mockResolvedValue(undefined),
+      }));
+
+      await enqueueDetectionForImport({
+        gtin: '123',
+        mimeType: 'image/png',
+        storagePath: 'artwork/123/x.png',
+      } as never);
+
+      expect(removeSpy).not.toHaveBeenCalled();
+    });
+
     it('should enqueue exactly one job for a JPG/PNG image (O5)', async () => {
       const { enqueueDetectionForImport } = await import('../../services/pipeline/detection-flow');
 
