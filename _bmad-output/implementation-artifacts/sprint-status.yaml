@@ -80,7 +80,7 @@ development_status:
   8-3R-remediatie-multi-scale-lokalisatie-en-score-herijking: done  # 2026-06-06: 32/32 tests groen; AC4-gate 9/9 na ground-truth-herstel (optie A, akkoord Friso); drempel 0.55 @ stap 1.10; zie 8-3R-meetrapport.md
   8-3P-precisie-kalibratie-lokalisatie: done  # 2026-06-07 commit=ecfaece gates: tests 39 passed/0 failed/0 skipped · composiet-recall 9/9 · FP-baseline 1 ≤ 5 (was 20) op artwork/08710679005795/08710679005795.jpg
   8-3O-server-side-detectie-orkestratie: done  # 2026-06-07 commit=473c54b; AC5 = post-deploy. vitest 255 passed/2 skipped (9 ontskipt + 3 extra incl. crash-resilience + gln); pytest +5 nieuw (test_detection_support) groen, 4 beschermde + 28 route-tests byte-identiek; crossrepo artwork/localize total_count=0
-  8-3D-t3777-declaratiebron: ready-for-dev  # voorwerk 2026-06-06: story + review (D1-D5 verwerkt); HARDE PREREQUISITE: gln-taak in 8-3O (kolom is nu permanent NULL — in code bewezen); ATDD bij de story zelf; checklist: atdd-checklist-8-3POD.md
+  8-3D-t3777-declaratiebron: done  # 2026-06-07; AC4 = post-deploy (CATALOG_API_KEY vereist)
   8-N1-reindex-hook-na-rebuild-reference-embeddings: done  # 2026-06-06: hook + dynamische indexnaam + 3 tests; AC3 GEVERIFIEERD post-deploy 49afa72: REINDEX-log (idx_reference_embeddings_embedding, 5 embeddings) + index-scan >0 rijen
 
   # ============================================

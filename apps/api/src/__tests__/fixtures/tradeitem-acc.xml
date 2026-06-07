@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Story 8-3D test fixture: a realistic, heavily-namespaced GS1-style trade-item
+  document as returned by the catalog endpoint
+    GET https://catalog.acc.xxtract.com/api/tradeitemxml/{gln}-{gtin}-{tm}
+
+  The structure is MODELLED on the GS1 trade-item / packaging-marking shape
+  (multiple packaging layers, each carrying its own
+  packagingMarkedLabelAccreditationCode = the T3777 code). It deliberately mixes
+  namespace prefixes (gs1: / market: / no-prefix) so the parser is forced to
+  match on local-name only (decision D2). The accreditation codes are spread
+  across layers, include a duplicate (KEURMERK_BIO appears twice → must dedup)
+  and a lowercase value (beter_leven_1ster → must uppercase).
+
+  POST-DEPLOY VALIDATION (AC4): this fixture is verified against a REAL ACC
+  catalog response during the post-deploy step; if the live element name or
+  nesting differs, the local-name regex is the single point to revisit.
+-->
+<tradeItem
+    xmlns:gs1="urn:gs1:gdsn:trade_item:xsd:3"
+    xmlns:market="urn:gs1:gdsn:marketing_information:xsd:3"
+    xmlns="urn:gs1:gdsn:shared_common:xsd:3">
+  <gtin>08718989912451</gtin>
+  <targetMarketCountryCode>528</targetMarketCountryCode>
+
+  <!-- Base unit / consumer packaging layer -->
+  <gs1:packaging>
+    <gs1:packagingTypeCode>BO</gs1:packagingTypeCode>
+    <gs1:packagingMarkedLabelAccreditationCode>KEURMERK_BIO</gs1:packagingMarkedLabelAccreditationCode>
+    <gs1:packagingMarkedLabelAccreditationCode>NUTRISCORE_A</gs1:packagingMarkedLabelAccreditationCode>
+  </gs1:packaging>
+
+  <!-- Outer / case packaging layer (different prefix on purpose) -->
+  <market:packaging>
+    <market:packagingTypeCode>CT</market:packagingTypeCode>
+    <market:packagingMarkedLabelAccreditationCode> beter_leven_1ster </market:packagingMarkedLabelAccreditationCode>
+    <!-- duplicate of the base-layer code: union + dedup must collapse it -->
+    <market:packagingMarkedLabelAccreditationCode>KEURMERK_BIO</market:packagingMarkedLabelAccreditationCode>
+  </market:packaging>
+
+  <!-- A third occurrence WITHOUT any namespace prefix -->
+  <packagingMarkedLabelAccreditationCode>FAIRTRADE</packagingMarkedLabelAccreditationCode>
+</tradeItem>
