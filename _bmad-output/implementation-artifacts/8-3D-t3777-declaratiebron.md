@@ -42,6 +42,14 @@ Zonder declaratiebron draait de keten met `declared=[]` → álles naar review (
 
 - 8-3O ontwerpbeslissing 5 (provider-interface) · team-CLAUDE.md (tradeitemxml-endpoint + keys) · `artwork-pipeline.ts` crosscheck-regels · PRD FR48
 
+## AC4 — Post-deploy validatie (uitgevoerd 2026-06-07, acc @ 50dbae8)
+
+- **Provider end-to-end tegen de echte catalog (read-only):** `catalogDeclarationProvider("05060925294569")` → `[CERTIFIED_B_CORPORATION, VEGAN_SOCIETY_VEGAN_LOGO, LONDON_BETH_DIN_KOSHER, RETURNABLE_PET_BOTTLE_NL, RECYCLABLE_GENERAL_CLAIM]` · `"08710679005795"` → `[GREEN_DOT, HALAL_CORRECT, SOCIETY_PLASTICS_INDUSTRY]` — beide exact gelijk aan de handmatige XML-ground-truth
+- **Fail-safes:** GTIN's zonder declaratie/lege respons → `[]` zonder throw (05060503504929: lege catalog-respons; 08710679016524: XML zonder T3777)
+- **Redis-cache:** eerste call 269/42 ms → herhaling 2–3 ms (geen tweede fetch); negative caching idem
+- **gln-keten:** discovery-respons heeft géén gln-veld (live geverifieerd) → gln wordt uit het previewUrl-pad afgeleid (`deriveGlnFromPreviewUrl`, fix 50dbae8) + backfill op dedup-skip (94db402); alle 11 records van de 5 werkende GTIN's dragen nu een gln
+- **Beperking voor de volledige keten-demo:** dedup omvat bewust álle review-items (ook rejected — een menselijke reject is definitief), dus de bestaande ACC-detecties her-routeren niet; een natuurlijke auto-accept vergt bovendien een correcte classify-label die in de declaratie staat — wacht op de classify-kwaliteitsverbetering (zie 8-3O-record). Worker→provider-wiring en auto-accept/discrepantie-logica zijn vitest-bewezen.
+
 ## Dev Agent Record
 
 ### Agent Model Used
