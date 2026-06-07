@@ -112,3 +112,9 @@ development_status:
   11-2-trainingsrun-analyse-agent: backlog
   11-3-periodieke-rapportage-agent: backlog
   epic-11-retrospective: optional
+
+  # ============================================
+  # Infra: CI-bouwstraat (besluit handover: optie A)
+  # ============================================
+  infra-bouwstraat: in-progress
+  CI-1-deploy-via-prebuilt-ghcr-images: ready-for-dev  # voorwerk 2026-06-07: story + adversarial review (12 bevindingen, live geverifieerd) verwerkt; SHA-pinning via LOGO_IMAGE_TAG-env; implementatievolgorde load-bearing (zie story besl. 7)
