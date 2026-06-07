@@ -5,7 +5,7 @@
  * Auth: JWT (existing middleware) on all routes.
  *
  * Routes:
- *   GET   /api/v1/pipeline/jobs/:jobId               — job status + failedReason + retryable
+ *   GET   /api/v1/pipeline/jobs/:jobId?queue=...     — job status + failedReason + retryable
  *   GET   /api/v1/pipeline/notifications             — unread-first list of retraining notifications
  *   PATCH /api/v1/pipeline/notifications/:id/read    — mark a notification as read
  *   POST  /api/v1/pipeline/training/start            — manually start a training flow
@@ -13,7 +13,7 @@
 
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { requireRole } from '../../middleware/auth';
-import { getJobStatus } from '../../services/pipeline/queue';
+import { getJobStatus, type QueueName } from '../../services/pipeline/queue';
 import { submitTrainingFlow, getActiveTrainingFlowJobId } from '../../services/pipeline/training-flow';
 import prisma from '../../core/db';
 import { createLogger } from '../../core/logger';
@@ -122,7 +122,7 @@ export async function pipelineRoutes(fastify: FastifyInstance) {
    * Returns failedReason and retryable flag for failed jobs (AC2).
    * 404 when the jobId is unknown.
    */
-  fastify.get<{ Params: { jobId: string } }>(
+  fastify.get<{ Params: { jobId: string }; Querystring: { queue?: string } }>(
     '/pipeline/jobs/:jobId',
     {
       schema: {
@@ -135,15 +135,27 @@ export async function pipelineRoutes(fastify: FastifyInstance) {
             jobId: { type: 'string' },
           },
         },
+        querystring: {
+          type: 'object',
+          properties: {
+            // 8-3O (O6): which queue to look in; default stays 'training'
+            queue: { type: 'string', enum: ['training', 'artwork-detection'] },
+          },
+        },
       },
     },
-    async (request: FastifyRequest<{ Params: { jobId: string } }>, reply: FastifyReply) => {
+    async (
+      request: FastifyRequest<{ Params: { jobId: string }; Querystring: { queue?: string } }>,
+      reply: FastifyReply
+    ) => {
       const { jobId } = request.params;
+      // schema enum guarantees the value; cast is safe
+      const queueName = (request.query.queue ?? 'training') as QueueName;
 
-      logger.info('Getting pipeline job status', { requestId: request.id, jobId });
+      logger.info('Getting pipeline job status', { requestId: request.id, jobId, queueName });
 
       try {
-        const status = await getJobStatus(jobId);
+        const status = await getJobStatus(jobId, queueName);
 
         if (status.state === 'not_found') {
           return reply.status(404).send({
