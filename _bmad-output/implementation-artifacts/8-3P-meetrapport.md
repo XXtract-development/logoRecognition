@@ -97,7 +97,9 @@ superset (286 detecties) voor menselijke echt/vals-beoordeling — bewust ruim, 
 de productie-gefilterde set. De FP-gate (b) hierboven is gemeten op de bevroren
 productie-drempels, niet op deze capture-floor.
 
-**Status: wacht op labels.** Een menselijke beoordelaar vult de kolom `label`
+**UITSLAG LABELRONDE (Friso, 2026-06-07):** productie-gefilterd pakket (2 detecties, ontdubbeld): #1 FSC@0,873 op 00008500002456 = **echt** (composiet-plant — mechanisme bevestigd) · #2 RAINFOREST@0,665 op Theunisse-koffie = **VALS**. **Natuurlijke precisie: 0/1** — de eerder gerapporteerde "eerste natuurlijke detectie" is door de menselijke beoordelaar verworpen; op de natuurlijke ACC-set is nog géén echt keurmerk bevestigd (definitief antwoord op 8-3R-bevinding 6 voor deze set). Kalibratie-iteratie: RAINFOREST-drempel 0,65 → 0,70 (FP zat op 0,665); de bijbehorende koffie-reviewitems zijn gereject. Brede natuurlijke validatie volgt bij de bulk-voorbereiding op gevarieerder artwork.
+
+**Oorspronkelijke status: wacht op labels.** Een menselijke beoordelaar vult de kolom `label`
 (echt/vals) in; precision = echt / totaal per gekozen drempel. Beslismoment PO:
 precisie voldoende voor 8-3O-bulk → doorgaan; anders volgende kalibratie-iteratie.
 
