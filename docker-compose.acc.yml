@@ -120,6 +120,13 @@ services:
     image: ghcr.io/xxtract-development/logo-recognition-ml:${LOGO_IMAGE_TAG:-acc}
     pull_policy: always
     network_mode: host
+    # Detection throughput: the image CMD runs a single uvicorn worker, which
+    # serialises requests and leaves 3 of the 4 allotted CPUs idle. Run one
+    # worker per CPU so concurrent detection jobs are processed in parallel.
+    # Each worker pins its math libraries to 1 thread so 4 workers map cleanly
+    # onto 4 CPUs (no oversubscription). asyncpg pool is max_size=10/worker →
+    # ≤40 connections, well under Postgres max_connections=100.
+    command: ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8011} --workers ${ML_WORKERS:-4}"]
     env_file:
       - .env
     environment:
@@ -127,6 +134,10 @@ services:
       - LOG_LEVEL=info
       - ENVIRONMENT=acc
       - PORT=8011
+      - ML_WORKERS=${ML_WORKERS:-4}
+      - OMP_NUM_THREADS=1
+      - OPENBLAS_NUM_THREADS=1
+      - MKL_NUM_THREADS=1
       # Same value as the app service — one env var, two guards (NFR3)
       - HOLDOUT_MINIMUM=${HOLDOUT_MINIMUM:-25}
     healthcheck:
