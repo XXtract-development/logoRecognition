@@ -36,6 +36,10 @@ Eenmalige (+ evt. periodieke) rsync van de PACKAGING_ARTWORK-boom naar de ACC-NA
 logoRecognition (of alleen de detectieketen) deployen naast prod.
 - ❌ Zwaarste optie; nieuwe omgeving, secrets, governance — niet nodig zolang het doel trainingsdata is
 
+## UITVOERING VOLTOOID (2026-06-08)
+
+Sync afgerond: **84.270 bestanden / ~163 GB** op `/mnt/storagebox-home/acc/TXmedia` (= ACC-mediaserver-bron), rsync exit 0, 0 restfouten. Onderweg viel de kantoor-NAS (192.168.0.82) kort weg; een recovery-wachter hervatte automatisch met `--bwlimit=20M --partial` (uplink-vriendelijk). De ACC-mediaserver serveert de bestanden nu; import-runs per GTIN-batch werken. **Toegang tot de 39k is daarmee opgelost.**
+
 ## Aanbeveling
 
 **Optie A**, met twee voorbereidende acties die nu al kunnen: (1) omvang-query op de media-DB (GB-totaal) + vrije ruimte ACC-Storage-Box checken, (2) de 503 van de prod-mediaserver los hiervan laten verklaren door beheer — als die triviaal blijkt, blijft B een goedkoop alternatief voor versheid later.
