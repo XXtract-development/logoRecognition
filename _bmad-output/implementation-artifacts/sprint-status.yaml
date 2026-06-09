@@ -117,7 +117,7 @@ development_status:
   # Epic 12: Brede keurmerk-dekking (GS1 Label Guide)
   # ============================================
   epic-12: in-progress
-  12-1-keurmerk-dekking-uit-gs1-label-guide: in-progress  # AC1-4 live op ACC (5->10 klassen, embeddings zonder restart); AC5-validatie resteert
+  12-1-keurmerk-dekking-uit-gs1-label-guide: done  # proof-slice AC1-5: mechanisme werkt; classify-precisie 8% op nieuwe klassen -> 12.2 nodig
   12-2-class-agnostische-region-proposer: backlog           # architectuur-spike; honderden klassen; volgt na 12-1
   epic-12-retrospective: optional
 
