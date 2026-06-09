@@ -40,3 +40,22 @@ fijnmazige of generieke logo's.
 - **RECYCLABLE@1,00** verdient een snelle diagnose (degenererende referentie-embedding?) los van 12.2.
 
 Bron-labels: `~/Downloads/labels-oogstrun.json` (71). Detectie-run: 150 GTINs / 347 beelden, 10 klassen.
+
+## Diagnose RECYCLABLE@1,00 + fix (2026-06-09)
+
+**Root cause:** het RECYCLABLE-referentielogo is 86% transparant (line-art). De embedding-pijplijn doet
+`convert('RGB')`, wat transparant op **zwart** composit → bijna-zwart beeld → **degeneraat embedding**
+(norm 3,87 / std 0,16 vs gezond ~9,3 / ~0,40) dat cosine 1,00 matcht met vrijwel elke crop.
+
+**Fix:** transparantie tijdens extractie op **wit** platslaan (keurmerken staan op lichte verpakking).
+Commit `751596a`. Geverifieerd na re-seed:
+- RECYCLABLE-embedding-norm **3,87 → 10,59** (degeneraat → gezond).
+- Detectie op 12 verse beelden: RECYCLABLE max-score **1,00 → 0,387**, detecties ≥0,7 **681→0**.
+
+**Implicatie voor de 8%-meting:** die was deels een transparantie-bug, niet puur het "één-referentie"-probleem.
+RECYCLABLE (0%) en deels MSC (23% transparant) waren artefacten. Een **schone her-validatie ná de fix** geeft
+eerlijker cijfers. De bredere les blijft staan (single-reference + ImageNet-embedding heeft grenzen → 12.2),
+maar minder ernstig dan de ruwe 8% suggereerde.
+
+**Follow-up:** ook de ML-embedding-pijplijn zou RGBA op wit moeten platslaan (robuustheid voor transparante crops),
+los van de extractie-fix.
