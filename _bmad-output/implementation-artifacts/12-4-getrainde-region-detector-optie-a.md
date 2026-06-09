@@ -1,7 +1,9 @@
 # Story 12.4: Getrainde class-agnostische region-detector (12.2-optie A) — strakke localisatie
 
-Status: ready (besluit 12.2: optie C = klassiek→getraind; dit is de "A"-helft). Orthogonaal aan 12.3
-(localisatie vs discriminatie) — kan parallel. Voedt samen met 12.3 de endpoint (12.5).
+Status: ready, **maar start ná de 12.3-stap-0-go/no-go** (besluit 12.2: optie C = klassiek→getraind;
+dit is de "A"-helft). Orthogonaal aan 12.3 voor de *meting* (recall is embedding-onafhankelijk), maar
+de *waarde* materialiseert pas via de embedding — dus niet vóór stap-0 staffen, anders risico op
+weggegooid werk als de aanpak pivot. Voedt samen met 12.3 de endpoint (12.5).
 
 ## Story
 
@@ -29,17 +31,23 @@ de end-to-end-herkenning ongeacht de embedding-kwaliteit.
 
 ## Aanpak
 
-- **Bootstrap-data:** proposer-B-voorstellen (12.2) + de gold-set-loop-bboxen + **8.7-synthese**
-  (logo-op-achtergrond met bekende bbox → oneindig goedkope positieven, ook voor zeldzame keurmerken).
-- **Zwakke supervisie:** 84k artwork + declaraties (product claimt keurmerk X → ergens staat een mark).
-- **Train** een one-class region-detector; **evalueer recall @ IoU≥0,5** op de bevroren gold-set met de
+- **Trainingslabels — bewust risico:** proposer-B-boxen (45 % recall, juist de *losse* boxen) en
+  zwakke supervisie zijn geen strakke ground-truth. Een strakke detector trainen op losse labels werkt
+  niet vanzelf. → Leun voor de *strakke* positieven op **8.7-synthese** (bbox exact bekend) + de
+  schone, menselijk-bevestigde bboxen uit **12.6**; gebruik proposer-B/zwakke supervisie alleen als
+  *hoog-recall-laag-precisie* aanvulling. Annotatie-inspanning voor extra strakke boxen valt onder 12.6.
+- **8.7-synthese:** officieel logo op realistische achtergronden met bekende bbox → goedkope positieven,
+  ook voor zeldzame keurmerken.
+- **Train** een one-class region-detector; **evalueer recall @ IoU≥0,5** tegen de 12.6-bboxen met de
   12.2-harnas (proposer-recall-metriek bestaat al).
 
 ## Acceptatiecriteria
 
-1. **Recall-sprong:** detector-recall @ IoU≥0,5 op de gold-set **≥ 80 %** (van de 45 %-proposer-baseline),
-   bij een precisie die de downstream embed+open-set-kost beheersbaar houdt (regio's/beeld in dezelfde
-   orde als proposer-B, niet 10×).
+1. **Recall-sprong:** detector-recall @ IoU≥0,5 **≥ 80 %** (van de 45 %-proposer-baseline), bij een
+   precisie die de downstream embed+open-set-kost beheersbaar houdt (regio's/beeld in dezelfde orde als
+   proposer-B, niet 10×). **Meet tegen de schone 12.6-bboxen, NIET de oude gold-set** — we maten dat de
+   oude gold-bboxen te strak/verschoven zijn (`classify|covered` 20,6 % > perfecte-crop 17,3 %); recall
+   @ IoU≥0,5 tegen foute boxen is betekenisloos.
 2. **Kosten-ontkoppeling intact:** per-beeld-detectielatency blijft ≈constant in #klassen (12.2-AC1
    niet regresseren); gemeten met `ac1`/`ac1dist`.
 3. **A/B náást de proposer-B en template-match:** geen van de 4 beschermde tests
@@ -48,4 +56,5 @@ de end-to-end-herkenning ongeacht de embedding-kwaliteit.
 ## Afhankelijkheden
 
 - Hergebruikt: 8.7-synthese (done), gold-set-loop + 8.6-herkomst (done), Epic 9-trainings-infra (done),
-  de 12.2-meetharnas. Parallel met 12.3. Voedt 12.5 (endpoint).
+  de 12.2-meetharnas. **Voorwaarde:** 12.6 (schone bboxen voor eval + strakke positieven). Parallel met
+  12.3 mogelijk ná stap-0. Voedt 12.5 (endpoint).

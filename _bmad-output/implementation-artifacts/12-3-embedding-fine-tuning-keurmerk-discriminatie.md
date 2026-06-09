@@ -68,6 +68,14 @@ twee bijna-gratis experimenten door **dezelfde 12.2-harnas** (`goldset`), elk me
 Pas als beide pre-checks ontoereikend blijken, gaat de metric-learning-trap (hieronder) door. De
 pre-checks zijn **onderdeel van deze story** en hun harnas-output is een verplicht artefact (AC0).
 
+> **STAP-0 UITGEVOERD (2026-06-09) — resultaat: ontoereikend, ga door naar fine-tuning.**
+> `12-3-stap0-backbone-resultaten.md`. Sterkere off-the-shelf-backbones (convnext, DINOv2, CLIP)
+> verslaan de baseline `efficientnet_b0` **niet** op de schaal-invariante top-1-rang (effb0 60,5 % ≥
+> rest; DINOv2/CLIP slechter — hun hogere accept@0,75 is een cosine-schaal-artefact). Keurmerk-marks
+> zijn grafisch lijnwerk, niet de semantiek waar die modellen in uitblinken. **→ De gratis route faalt;
+> echte metric-learning-fine-tuning is bevestigd nodig.** Klein gratis winstje wél meenemen: de
+> 1280→512-truncatie verwijderen tilt accept 24 %→~30 %. Variant-family-plafond gemeten op ~14–19 %.
+
 ## Voorgestelde aanpak (metric-learning op een projectie-kop)
 
 ```

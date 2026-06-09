@@ -26,44 +26,51 @@ Voor elke code: dichtstbijzijnde logo van een **andere** code.
 Mediane dichtstbijzijnde-andere-code-cosine = **0,747** — d.w.z. het *typische* keurmerk ligt
 qua officieel logo op ~0,75 (de poort) van een ánder keurmerk **op déze embedding**.
 
-**Belangrijk onderscheid (geen wet over de logo's, maar een eigenschap van de zwakke embedding):**
-- De 50,7 % collisie is gemeten op de generieke ImageNet-`efficientnet_b0` mét de lossy 1280→512-
-  truncatie. Een zwakke embedding plaatst verschillende beelden dicht bij elkaar *omdat hij zwak is* —
-  dat is **grotendeels herstelbaar** door een sterkere/gefine-tunede embedding (precies wat metric-
-  learning doet: de marge vergroten). Het is **fixbaar signaal, geen plafond.**
-- Er is wél een echt plafond, maar dat is een **kleiner, nog niet apart gekwantificeerd** subset:
-  visueel bijna-identieke variant-families (FSC MIX/100%/RECYCLED, kosher/halal-certificeerder-
-  varianten, BETER_LEVEN-sterren, V-Label vegan/vegetarian). Die blijven moeilijk, óók met een
-  perfecte embedding. Niet de 50 %.
+**Onderscheid (nu gemeten — zie `12-3-stap0-backbone-resultaten.md`):** de 50,7 % collisie splitst in:
+- **~14 % same-family-plafond** (variant-families: FSC MIX/100%/RECYCLED, kosher/halal-varianten,
+  BETER_LEVEN-sterren, V-Label vegan/vegetarian). Een **echt plafond** — blijft moeilijk, óók met een
+  perfecte embedding. Robuust ~14–19 % over alle geteste backbones.
+- **~36 % cross-family** = embedding-zwakte. **Maar NIET gratis fixbaar:** stap-0 toont dat een sterkere
+  *off-the-shelf*-backbone (DINOv2/CLIP) de rang **niet** verbetert (effb0 blijft beste op top-1). De
+  cross-family-collisie is dus een **trainings-doel** (metric-learning op keurmerk-marks), géén
+  backbone-swap-fix — en het slagen daarvan is **onbewezen**.
 
-Drempel-tuning alléén lost de collisie niet op; een betere embedding wel (op het fixbare deel).
+Eerdere formulering "grotendeels herstelbaar door een sterkere embedding" is hiermee bijgesteld: alleen
+via échte fine-tuning, niet via off-the-shelf; ~14 % is een hard plafond. Drempel-tuning alléén lost
+niets op.
 
 ### B. Vervormde-crop → referentie (query-zijde, de as die op herkenning slaat)
 Elk schoon logo vervormd tot een artwork-achtige crop (downscale/blur/JPEG/rotatie), embed, gematcht
 tegen de 884-code-bibliotheek.
 
-| Metriek | Waarde | Lezing |
-|---|---:|---|
-| self-cosine p50 (crop ↔ eigen ref) | **0,654** | ónder de 0,75-poort; reproduceert de echte ~0,69 op de 4 gold-klassen |
-| top-1-accuratesse (juiste code = dichtstbij) | **57,6 %** | rangschikking is *redelijk*; signaal bestaat |
-| **accept @ 0,75 (zelfverzekerd herkend)** | **24 %** | herkenbaarheidsplafond onder gunstige condities |
+> ⚠️ **Proxy — indicatief, ongekalibreerd. Lees deze getallen NIET als harde meting.** De vervorming is
+> synthetisch (downscale/blur/JPEG/rotatie), één sample per code, en mist occlusie/mono-inkt/perspectief.
+> De gold-4-anker zwaait sterk: synthetische GREEN_DOT 0,825 vs reëel ~0,69 (mijn vervorming was hier
+> *milder* dan de realiteit → de accept kan **optimistisch** zijn, niet alleen "bovengrens"). Gebruik
+> deze as voor **richting**, niet voor cijfers; de harde getallen zijn collisie-A en de echte 17 % op
+> 4 klassen.
 
-De self-cosine p50 0,654 sluit aan bij de echt gemeten gold-crop-waarden (V_LABEL/FSC/EU_ORGANIC
-0,61–0,64 synthetisch vs 0,62–0,78 reëel) → het vervormingsproxy is ruwweg gekalibreerd, dus de
-24 %-accept is **richtinggevend** (geen exact getal). **Bovendien is 24 % een óvergrens:** schone
-referentie-bibliotheek, synthetische i.p.v. echte artwork-vervorming, géén proposer-localisatiefout,
-en gemeten op de single-reference-bibliotheek. Echte productie ligt láger (vgl. de gemeten 17 % accept
-op de 4 gold-klassen met echte crops).
+| Metriek (proxy, indicatief) | Waarde | Lezing |
+|---|---:|---|
+| self-cosine p50 (crop ↔ eigen ref) | ~0,65 | ónder de 0,75-poort; in de orde van de echte ~0,69 |
+| top-1-accuratesse (juiste code dichtstbij) | ~58 % | rangschikking dráágt signaal |
+| accept @ 0,75 | ~24 % | richtinggevend; door proxy-ruis zowel over- als onderschat mogelijk |
+
+Richting: crops liggen onder de poort, ranking is redelijk. **Maar een sterkere off-the-shelf-embedding
+wint hier niet** (stap-0: effb0 60,5 % top-1 ≥ DINOv2/CLIP) → "een betere embedding kan veel winnen"
+geldt alleen via échte fine-tuning, onbewezen. Het *getal* 24 % is zacht (synthetisch, single-sample);
+de robuuste herkennings-meting blijft de **17 % op 4 echte klassen**.
 
 ## Antwoord op de vraag
 
 **De meeste keurmerken zijn met deze epic wél te trainen, maar worden met de huidige (zwakke,
 ongetrainde) embedding níét betrouwbaar herkend.** Het knelpunt zit op **beide embedding-assen** —
-inter-klasse-marge (collisie) én intra-klasse-spreiding (crop→referentie). Dat is **grotendeels een
-eigenschap van de zwakke baseline-embedding, geen plafond:** een sterkere/gefine-tunede embedding
-(12.3) is precies bedoeld om beide te herstellen. Het echte (kleinere, nog niet gekwantificeerde)
-plafond zijn de visueel bijna-identieke variant-families. Robuuste cijfers: **collisie 50,7 %** (schone
-data) en **17 % accept op de 4 gold-klassen met echte crops**; de universe-brede 24 %/58 % uit proxy B
+inter-klasse-marge (collisie) én intra-klasse-spreiding (crop→referentie). Van de 50,7 % collisie is
+**~14 % een echt variant-family-plafond** en **~36 % embedding-zwakte** — maar die zwakte is **niet
+gratis te fixen**: stap-0 toont dat sterkere off-the-shelf-backbones (DINOv2/CLIP) níét beter ranken dan
+de baseline. Herstel kan dus alleen via **echte fine-tuning** (12.3), en dat is **onbewezen**. Robuuste
+cijfers: **collisie 50,7 %** (schone data), **same-family-plafond ~14 %**, en **17 % accept op de 4
+gold-klassen met echte crops**; de universe-brede 24 %/58 % uit proxy B
 zijn richtinggevend (synthetisch), geen hard getal.
 
 **Reden voor optimisme / pragmatisch pad:**
