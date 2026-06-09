@@ -1,6 +1,8 @@
 # Story 12.2 (architectuur): Class-agnostische region-proposer — detectiekosten ontkoppelen van het aantal keurmerk-klassen
 
-Status: ready-for-spike (architectuur; besluiten vastgesteld). Productie-build pas na go uit de spike.
+Status: **spike DONE** (2026-06-09) — alle AC's gemeten op ACC. Verdict: GO op de architectuur,
+GATED op embedding-fine-tuning. Volledige resultaten + beslisdocument:
+`12-2-spike-results-and-decision.md`. Productie-build volgt de fine-tuning-vervolgstory.
 
 ## Story
 

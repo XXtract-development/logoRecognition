@@ -118,7 +118,7 @@ development_status:
   # ============================================
   epic-12: in-progress
   12-1-keurmerk-dekking-uit-gs1-label-guide: done  # proof-slice AC1-5: mechanisme werkt; classify-precisie 8% op nieuwe klassen -> 12.2 nodig
-  12-2-class-agnostische-region-proposer: backlog           # architectuur-spike; honderden klassen; volgt na 12-1
+  12-2-class-agnostische-region-proposer: spike-done        # AC1 kosten-ontkoppeling bewezen (~const vs lineair, 800x@200); AC3 open-set 100% VALS-reject, 0.24% niet-logo-FP; AC2 toont embedding=knelpunt (perfecte-crop accept 17%, precisie 100%, faalt door onthouding). Verdict: GO architectuur, GATED op embedding-fine-tuning (vervolgstory). Zie 12-2-spike-results-and-decision.md
   epic-12-retrospective: optional
 
   # ============================================

@@ -1,0 +1,39 @@
+{
+  "image": "artwork/03059946316376/74f54da124969bdcd5305224a50930e22d3e8a77e41df931280ed76ffd92d21e_converted-0.png",
+  "dims": "3342x3161",
+  "proposer": {
+    "propose_ms": 238.7,
+    "regions": 43,
+    "embedded_regions": 43,
+    "embed_total_ms": 940.7,
+    "per_region_embed_ms": 21.88,
+    "embedding_dim": 512,
+    "real_pgvector_n": 10,
+    "real_pgvector_search_ms_total": 73.01,
+    "inmemory_search_ms_by_N": {
+      "5": 2.601,
+      "50": 0.052,
+      "200": 0.169,
+      "894": 0.634
+    },
+    "total_ms_by_N": {
+      "5": 1182.0,
+      "50": 1179.4,
+      "200": 1179.5,
+      "894": 1180.0
+    }
+  },
+  "baseline_template_match": {
+    "measured_templates": 10,
+    "tiles": 42,
+    "variants": 220,
+    "match_ms_measured": 47169.4,
+    "per_template_ms": 4716.94,
+    "extrapolated_total_ms_by_N": {
+      "5": 23584.7,
+      "50": 235846.9,
+      "200": 943387.7,
+      "894": 4216943.1
+    }
+  }
+}
