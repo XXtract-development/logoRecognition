@@ -75,6 +75,13 @@ pre-checks zijn **onderdeel van deze story** en hun harnas-output is een verplic
 > zijn grafisch lijnwerk, niet de semantiek waar die modellen in uitblinken. **→ De gratis route faalt;
 > echte metric-learning-fine-tuning is bevestigd nodig.** Klein gratis winstje wél meenemen: de
 > 1280→512-truncatie verwijderen tilt accept 24 %→~30 %. Variant-family-plafond gemeten op ~14–19 %.
+>
+> **ITERATIE 1 GEDAAN (2026-06-09) — naïeve synthese werkt NIET.** `12-3-finetune-iter1-resultaten.md`.
+> Bevroren-effb0 + projectie-kop (supervised-contrastive) op synthetische augmentaties: **echte
+> gold-crop top-1 37 %→23 % (−15pt, SLECHTER)**, terwijl de circulaire synthetische sanity-metriek
+> +15pt steeg (kop leerde de augmentatie terugdraaien). De augmentatie-distributie ≠ echte artwork →
+> overfit op de verkeerde vervorming. **→ Iteratie 2: realistische positieven (8.7-synthese) + bredere
+> echte gelabelde set (12.6) + evt. backbone ontdooien.** Bindende beperking = data-realisme, niet kop/loss.
 
 ## Voorgestelde aanpak (metric-learning op een projectie-kop)
 

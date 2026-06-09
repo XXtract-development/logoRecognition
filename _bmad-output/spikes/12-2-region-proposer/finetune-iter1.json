@@ -1,0 +1,27 @@
+{
+  "iteration": 1,
+  "note": "feasibility-grade; verdict = REAL held-out gold crops only",
+  "train_codes": 730,
+  "k_aug": 6,
+  "epochs": 60,
+  "real_gold_crops": {
+    "n": 75,
+    "classes": [
+      "GREEN_DOT",
+      "EUROPEAN_V_LABEL_VEGAN",
+      "FOREST_STEWARDSHIP_COUNCIL_MIX",
+      "EU_ORGANIC_FARMING"
+    ]
+  },
+  "VERDICT_real_top1": {
+    "before_effb0": 0.373,
+    "after_head": 0.227,
+    "delta": -0.147
+  },
+  "SANITY_heldout_synthetic_top1": {
+    "before": 0.6,
+    "after": 0.753,
+    "delta": 0.153,
+    "warning": "circular (measures undoing the augmentation); NOT a verdict"
+  }
+}
