@@ -114,6 +114,14 @@ development_status:
   epic-11-retrospective: optional
 
   # ============================================
+  # Epic 12: Brede keurmerk-dekking (GS1 Label Guide)
+  # ============================================
+  epic-12: backlog
+  12-1-keurmerk-dekking-uit-gs1-label-guide: ready-for-dev  # proof-slice (5) → top-20; adversariële review verwerkt
+  12-2-class-agnostische-region-proposer: backlog           # architectuur-spike; honderden klassen; volgt na 12-1
+  epic-12-retrospective: optional
+
+  # ============================================
   # Infra: CI-bouwstraat (besluit handover: optie A)
   # ============================================
   infra-bouwstraat: done

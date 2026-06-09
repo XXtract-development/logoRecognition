@@ -1,22 +1,13 @@
-# /implement-sprint sessie — nazorg-vervolg 8-3P → 8-3O
-started_at: 2026-06-06T23:55:00+02:00
+started_at: 2026-06-09
 sprint_status: _bmad-output/implementation-artifacts/sprint-status.yaml
-worktree_root: /private/tmp/logoRecognition-implement-sprint
-base_branch: acc  # LOKAAL @ 39b77b6 (bevat voorwerk P/O/D + ATDD)
-current_phase: story-8-3O-dev
-story_8_3P: done @ 9f8d4d8 (gates: composiet 9/9, FP-baseline 20→1; onafhankelijk geverifieerd: 54 passed, beschermde tests 0-diff)
-epic_branch_head: 8e883c2 (8-3P gemerged)
-last_heartbeat: 2026-06-07T00:35:00+02:00
-active_epics: [epic-8-nazorg]
-stories_in_scope: [8-3P, 8-3O]
-stories_excluded: [8-3D]  # harde prerequisite: gln-taak in 8-3O + her-import
-status: done
-result_branch: feature/epic-8-nazorg-po
-result_head: zie git (docs-commit na 8031cd3)
-stories: 8-3P done (9f8d4d8) · 8-3O done (4971654) · review-fixes 8031cd3
-gates: composiet 9/9 · FP-baseline 20→1 · vitest 256|2 · pytest-delta schoon · type-check schoon
-open: merge/push-besluit Friso · AC5 + 8-N1-stijl verificatie post-deploy · 8-3P-labelronde · 8-3D na gln-her-import
-notes:
-  - Volgorde strikt 8-3P → 8-3O (O bouwt op P-kalibratie)
-  - Geen Zoho, geen migraties, geen push binnen de run; ACC read-only behalve bestaande applicatiepaden
-  - Les vorige run: epic-subagent stopt na planfase → general-purpose met dwingend contract, inline fallback
+story_files: _bmad-output/implementation-artifacts
+source_epics: _bmad-output/implementation-artifacts
+worktree_root: inline (feature/epic-12-keurmerk-dekking)
+current_phase: story-dev
+active_epics: [epic-12]
+current_story: 12-1-keurmerk-dekking-uit-gs1-label-guide
+scope: proof-slice (5 keurmerken) -> AC1..AC5
+gates:
+  - db-migratie (field_type) -> gebruiker voert uit
+  - AC5-validatie -> ACC-detectierun na code-build
+status: running
