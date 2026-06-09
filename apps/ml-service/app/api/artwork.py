@@ -124,6 +124,25 @@ async def reload_templates() -> Dict[str, Any]:
     return {"status": "reloaded"}
 
 
+@router.post("/artwork/rebuild-reference-embeddings")
+async def rebuild_reference_embeddings_endpoint() -> Dict[str, Any]:
+    """Rebuild the reference keurmerk embedding index (Story 12.1).
+
+    Auth: NONE — internal-service endpoint (same posture as reload-templates).
+    Exposes ``similarity_service.rebuild_reference_embeddings()``, which until now
+    ran ONLY at ML-service startup (main.py lifespan). The Node side calls this
+    after bulk-seeding the reference library so newly seeded codes become
+    *classifiable* without an ML-service restart — ``reload-templates`` alone only
+    makes them *localisable* (template cache), not classifiable (pgvector
+    reference embeddings). Idempotent: the rebuild clears stale embeddings first.
+    """
+    from app.services.similarity import similarity_service
+
+    summary = await similarity_service.rebuild_reference_embeddings()
+    logger.info("Reference embeddings rebuilt via endpoint", extra={"summary": summary})
+    return {"status": "rebuilt", **summary}
+
+
 # ---------------------------------------------------------------------------
 # Story 8.2 — PDF rasterization endpoint
 # ---------------------------------------------------------------------------

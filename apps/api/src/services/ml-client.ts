@@ -422,6 +422,22 @@ export class MLClient {
     }
   }
 
+  /**
+   * Rebuild the reference keurmerk embedding index (Story 12.1). Unlike
+   * reloadTemplates (which only busts the localize template cache), this
+   * regenerates the pgvector reference embeddings so newly seeded codes become
+   * *classifiable* without an ML-service restart. Call after bulk-seeding the
+   * reference library, before reloadTemplates. Returns the ML rebuild summary.
+   */
+  async rebuildReferenceEmbeddings(): Promise<Record<string, unknown>> {
+    try {
+      const res = await this.client.post('/ml/artwork/rebuild-reference-embeddings');
+      return res.data as Record<string, unknown>;
+    } catch (error) {
+      throw this.handleError(error, 'Rebuild reference embeddings failed');
+    }
+  }
+
   // ==========================================
   // Synthetic batch fill (Epic 9, Story 9.3 — wiring of deferred 8.7 hook)
   // ==========================================
