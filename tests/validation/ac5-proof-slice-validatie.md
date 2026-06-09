@@ -59,3 +59,20 @@ maar minder ernstig dan de ruwe 8% suggereerde.
 
 **Follow-up:** ook de ML-embedding-pijplijn zou RGBA op wit moeten platslaan (robuustheid voor transparante crops),
 los van de extractie-fix.
+
+## Schone her-validatie ná de fix (2026-06-09) — verdict
+
+Detectie op 60 verse GTINs / 111 beelden met de gefixte embeddings; high-conf labelronde (33), gelabeld.
+
+| Keurmerk | ECHT | VALS | Precisie |
+|---|---|---|---|
+| TRIMAN | 2 | 3 | 40% |
+| BETER_LEVEN_1_STER | 1 | 18 | 5% |
+| RECYCLABLE / MSC / V-LABEL-VEG | 0 | 9 | 0% (geen high-conf meer) |
+| **Totaal** | **3** | **30** | **9%** |
+
+**Verdict:** de transparantie-fix verwijderde de RECYCLABLE-degeneratie (681 high-conf FP → 0) en kromp het
+FP-volume van honderden naar tientallen, **maar de precisie blijft 9%**. De resterende high-conf detecties zijn
+nog grotendeels vals; per-klasse drempels helpen marginaal (te weinig recall over). Dit bevestigt **met schone
+data** dat single-reference + ImageNet-embedding fundamenteel tekortschiet → **Story 12.2 (region-proposer +
+open-set + embedding-fine-tuning) is gerechtvaardigd**. De fix + drempels alleen volstaan niet.
