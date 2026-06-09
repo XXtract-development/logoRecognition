@@ -115,11 +115,19 @@ development_status:
 
   # ============================================
   # Epic 12: Brede keurmerk-dekking (GS1 Label Guide)
+  # EINDDOEL = herkennings-endpoint (PDF/afbeelding -> keurmerken). Scope GEFASEERD:
+  #   fase 1 top-N meest-gedeclareerd (afdwingbaar), fase 2 lange staart later (besluit 2026-06-09).
+  # Universe-probe (12-universe-recognizability-probe.md): met de huidige embedding niet haalbaar
+  #   (collisie 50,7%; 17% accept op 4 echte klassen) -> herkenning is de bindende, onbewezen schakel.
+  # Volgorde: 12.3-STAP-0 (off-the-shelf backbone, nul training) = goedkoopste de-risking, DOE-NU + go/no-go.
   # ============================================
   epic-12: in-progress
   12-1-keurmerk-dekking-uit-gs1-label-guide: done  # proof-slice AC1-5: mechanisme werkt; classify-precisie 8% op nieuwe klassen -> 12.2 nodig
-  12-2-class-agnostische-region-proposer: spike-done        # AC1 kosten-ontkoppeling bewezen (~const vs lineair, 800x@200); AC3 open-set 100% VALS-reject, 0.24% niet-logo-FP; AC2 toont embedding=knelpunt (perfecte-crop accept 17%, precisie 100%, faalt door onthouding). Verdict: GO architectuur, GATED op embedding-fine-tuning (vervolgstory). Zie 12-2-spike-results-and-decision.md
-  12-3-embedding-fine-tuning-keurmerk-discriminatie: ready  # metric-learning (ArcFace/projectie-kop) op keurmerk-crops; tilt perfecte-crop-accept van 17% baseline omhoog bij precisie-behoud; embedding-modelversionering + rebuild-bij-activatie; eval-gate = 12.2-harnas. Voorwaarde voor de 12.2 productie-build
+  12-2-class-agnostische-region-proposer: spike-done        # AC1 kosten-ontkoppeling bewezen (~const vs lineair, 800x@200); AC3 open-set 100% VALS-reject, 0.24% niet-logo-FP; AC2 toont embedding=knelpunt (perfecte-crop accept 17%, precisie 100%, faalt door onthouding). Verdict: GO architectuur, GATED op embedding-fine-tuning. Zie 12-2-spike-results-and-decision.md
+  12-3-embedding-fine-tuning-keurmerk-discriminatie: ready  # DOE-NU: begin met STAP-0 (1280-vs-512 + sterkere off-the-shelf backbone DINOv2/CLIP, nul training) als harde gate VOOR training. Daarna metric-learning indien nodig. Embedding-modelversionering + rebuild-bij-activatie. Eval-gate = 12.2-harnas + universe-probe. #1 recall-blokker; bindende voorwaarde voor 12.5
+  12-4-getrainde-region-detector-optie-a: ready             # getrainde class-agnostische region-detector (12.2-optie A); recall 45%->>=80% @IoU0.5; orthogonaal aan 12.3, parallel mogelijk; voedt 12.5. Bootstrap met proposer-B + 8.7-synthese
+  12-5-herkennings-endpoint-en-acceptatienorm: ready        # HET EINDDOEL: geserveerde twee-traps-endpoint (PDF/afbeelding -> keurmerken) + acceptatie-norm. Fase 1 = top-N (precisie >=90%, recall-bar na stap-0). Gated op 12.3, gevoed door 12.4. Hard go/no-go vooraf. Voorwaarde voor Epic 10
+  # Fase 2 (lange staart ~850 codes als accept-UNKNOWN/review) = apart vervolgspoor na go/no-go.
   epic-12-retrospective: optional
 
   # ============================================

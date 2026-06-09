@@ -1,0 +1,54 @@
+{
+  "n_logos": 1006,
+  "n_codes": 884,
+  "A_inter_code_collision": {
+    "codes_with_crosscode_neighbour_at": {
+      "0.65": {
+        "codes": 725,
+        "frac": 0.82
+      },
+      "0.7": {
+        "codes": 608,
+        "frac": 0.688
+      },
+      "0.75": {
+        "codes": 448,
+        "frac": 0.507
+      },
+      "0.8": {
+        "codes": 301,
+        "frac": 0.34
+      }
+    },
+    "nearest_crosscode_cosine_pctiles": {
+      "p10": 0.608,
+      "p50": 0.747,
+      "p90": 0.944
+    },
+    "reading": "frac at 0.75 = inherently-confusable floor (clean ref collides with ANOTHER code's clean ref)"
+  },
+  "B_distorted_crop_to_reference": {
+    "self_cosine_pctiles": {
+      "p10": 0.427,
+      "p50": 0.654,
+      "p90": 0.848
+    },
+    "top1_accuracy": 0.576,
+    "accept_at_0.75": 0.24,
+    "gold4_self_cosine": {
+      "EUROPEAN_V_LABEL_VEGAN": [
+        0.613
+      ],
+      "EU_ORGANIC_FARMING": [
+        0.632
+      ],
+      "FOREST_STEWARDSHIP_COUNCIL_MIX": [
+        0.64
+      ],
+      "GREEN_DOT": [
+        0.825
+      ]
+    },
+    "reading": "self-cosine p50 vs the REAL-crop 0.69 (4 gold classes) calibrates the proxy; accept@0.75 ~ recognizability ceiling across the universe under distortion"
+  }
+}
