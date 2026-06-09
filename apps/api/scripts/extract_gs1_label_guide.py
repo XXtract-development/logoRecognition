@@ -130,6 +130,7 @@ def main() -> int:
             except Exception:
                 stats["emf_skipped"] += 1   # EMF/WMF/unsupported → reported, not blocking
                 continue
+            orig_fmt = im.format or "PNG"
             w, h = im.size
             if w <= PLACEHOLDER_MAX or h <= PLACEHOLDER_MAX or w == 1:
                 stats["placeholder"] += 1
@@ -138,16 +139,27 @@ def main() -> int:
             os.makedirs(code_dir, exist_ok=True)
             fname = f"{variant}.png"
             fpath = os.path.join(code_dir, fname)
-            if im.mode not in ("RGB", "RGBA"):
-                im = im.convert("RGBA")
-            im.save(fpath, "PNG")           # PNG/JPEG/GIF → PNG (transcode)
+            # Flatten any transparency onto WHITE. The embedding pipeline does
+            # convert("RGB"), which composites alpha onto BLACK — a transparent
+            # line-art logo (e.g. RECYCLABLE: 86% transparent) then becomes a
+            # near-black image and yields a DEGENERATE embedding (norm ~3.9 vs
+            # ~9.3 healthy) that cosine-matches everything → 1.00 false positives.
+            # Keurmerken sit on light packaging, so white is the right neutral bg.
+            if im.mode in ("RGBA", "LA", "P"):
+                rgba = im.convert("RGBA")
+                bg = PILImage.new("RGB", rgba.size, (255, 255, 255))
+                bg.paste(rgba, mask=rgba.split()[-1])
+                im = bg
+            else:
+                im = im.convert("RGB")
+            im.save(fpath, "PNG")           # PNG/JPEG/GIF → PNG (transcode, opaque-on-white)
             manifest.append({
                 "code": code,
                 "fieldType": FIELD_TYPE,
                 "variant": variant,
                 "file": os.path.relpath(fpath, out),
                 "width": w, "height": h,
-                "origFormat": (im.format or "PNG"),
+                "origFormat": orig_fmt,
                 "anchor": "neighbor" if neighbor else "exact",
                 "belowMinRes": (w < MIN_RES or h < MIN_RES),
                 "needsReview": neighbor,    # neighbour-anchor is not silently trusted
