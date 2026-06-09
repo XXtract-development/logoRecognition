@@ -78,6 +78,8 @@ CREATE TABLE IF NOT EXISTS logos.reference_logos (
     variant_label VARCHAR(100) NOT NULL,
     source TEXT,
     storage_path VARCHAR(500) NOT NULL,
+    -- Story 12.1: GS1-veldtype (ACCREDITATION | DIET | NUTRITIONAL | GHS_SYMBOL | CONSUMER_USAGE)
+    field_type VARCHAR(30) NOT NULL DEFAULT 'ACCREDITATION',
     active BOOLEAN NOT NULL DEFAULT TRUE,
     logo_id UUID,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

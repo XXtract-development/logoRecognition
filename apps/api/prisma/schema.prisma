@@ -246,6 +246,9 @@ model ReferenceLogo {
   variantLabel String   @map("variant_label") @db.VarChar(100)
   source       String?
   storagePath  String   @map("storage_path") @db.VarChar(500)
+  // Story 12.1: welk GS1-veld de code beschrijft (ACCREDITATION | DIET | NUTRITIONAL
+  // | GHS_SYMBOL | CONSUMER_USAGE). Default ACCREDITATION (T3777) — de bestaande set.
+  fieldType    String   @default("ACCREDITATION") @map("field_type") @db.VarChar(30)
   active       Boolean  @default(true)
   logoId       String?  @map("logo_id") @db.Uuid
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
