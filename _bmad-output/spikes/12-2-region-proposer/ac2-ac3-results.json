@@ -8,8 +8,34 @@
       "proposer_recall": 0.453,
       "proposer_recall_iou03": 0.613,
       "proposer_surfaced_center": 0.693,
-      "classify_accuracy_perfect_crop": 0.173,
+      "classify_accuracy_perfect_crop_micro": 0.173,
+      "classify_accuracy_perfect_crop_macro": 0.205,
+      "per_class_accept": {
+        "EUROPEAN_V_LABEL_VEGAN": {
+          "n": 13,
+          "accept": 0.538
+        },
+        "EU_ORGANIC_FARMING": {
+          "n": 3,
+          "accept": 0.0
+        },
+        "FOREST_STEWARDSHIP_COUNCIL_MIX": {
+          "n": 17,
+          "accept": 0.235
+        },
+        "GREEN_DOT": {
+          "n": 42,
+          "accept": 0.048
+        }
+      },
+      "classify_given_covered": 0.206,
       "end_to_end_accuracy": 0.093,
+      "below_threshold_split": {
+        "non_accepted": 62,
+        "right_code_low_conf_abstention": 35,
+        "wrong_code_top1_confusion": 27,
+        "wrong_top1_frac": 0.435
+      },
       "confusion_goldcode_to_pred": {
         "EUROPEAN_V_LABEL_VEGAN->EUROPEAN_V_LABEL_VEGAN": 7,
         "EUROPEAN_V_LABEL_VEGAN->UNKNOWN": 6,

@@ -1,0 +1,64 @@
+{
+  "images": 8,
+  "regions_min_med_max": [
+    43,
+    131,
+    154
+  ],
+  "total_ms_min_med_max": [
+    1182.3,
+    3118.5,
+    3605.0
+  ],
+  "note": "class-INDEPENDENT fixed cost (propose+embed); varies with region count, NOT #classes",
+  "rows": [
+    {
+      "regions": 110,
+      "propose_ms": 83.7,
+      "embed_ms": 2345.4,
+      "total_ms": 2429.1
+    },
+    {
+      "regions": 43,
+      "propose_ms": 225.1,
+      "embed_ms": 957.2,
+      "total_ms": 1182.3
+    },
+    {
+      "regions": 131,
+      "propose_ms": 117.7,
+      "embed_ms": 3000.8,
+      "total_ms": 3118.5
+    },
+    {
+      "regions": 153,
+      "propose_ms": 90.6,
+      "embed_ms": 3452.0,
+      "total_ms": 3542.6
+    },
+    {
+      "regions": 143,
+      "propose_ms": 97.5,
+      "embed_ms": 3353.4,
+      "total_ms": 3450.9
+    },
+    {
+      "regions": 139,
+      "propose_ms": 87.8,
+      "embed_ms": 3134.4,
+      "total_ms": 3222.2
+    },
+    {
+      "regions": 125,
+      "propose_ms": 88.2,
+      "embed_ms": 2986.1,
+      "total_ms": 3074.3
+    },
+    {
+      "regions": 154,
+      "propose_ms": 93.7,
+      "embed_ms": 3511.3,
+      "total_ms": 3605.0
+    }
+  ]
+}

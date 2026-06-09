@@ -176,6 +176,67 @@ async def run_ac1(image_key: str) -> Dict[str, Any]:
 
 
 # --------------------------------------------------------------------------- #
+# AC1b — fixed-cost distribution across MANY images (kills the n=1 headline)
+# --------------------------------------------------------------------------- #
+async def run_ac1dist(gold_path: str, n: int) -> Dict[str, Any]:
+    """Measure the class-INDEPENDENT fixed cost (propose + embed-all-regions)
+    across N distinct artworks, so the latency is reported as a distribution
+    over artwork complexity, not a single sample. The class-dependent search
+    term is already shown negligible in `ac1`; this characterises the part that
+    actually varies (region count)."""
+    from app.ml.model_manager import model_manager
+    from app.services.storage import storage_service
+    from app.services.classification import _to_pil
+
+    if not model_manager.is_loaded:
+        await model_manager.load_models()
+
+    gold = json.load(open(gold_path))
+    srcs: List[str] = []
+    seen = set()
+    for r in gold["records"]:
+        s = r["sourceFile"]
+        if s not in seen:
+            seen.add(s); srcs.append(s)
+    srcs = srcs[:n]
+
+    rows: List[Dict[str, Any]] = []
+    for i, s in enumerate(srcs):
+        try:
+            data = storage_service.get_training_image(s)
+            img = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
+        except Exception as exc:
+            print(f"[{i+1}/{len(srcs)}] FAIL {s}: {exc}", file=sys.stderr)
+            continue
+        if img is None:
+            continue
+        boxes, pstats = propose_regions(img)
+        crops = [c for c in (crop_bgr(img, b) for b in boxes) if c is not None]
+        t0 = time.perf_counter()
+        for c in crops:
+            await model_manager.generate_embedding(_to_pil(c))
+        embed_ms = (time.perf_counter() - t0) * 1000.0
+        total = pstats["propose_ms"] + embed_ms
+        rows.append({"regions": pstats["proposed"], "propose_ms": pstats["propose_ms"],
+                     "embed_ms": round(embed_ms, 1), "total_ms": round(total, 1)})
+        print(f"[{i+1}/{len(srcs)}] regions={pstats['proposed']} total={total:.0f}ms", file=sys.stderr)
+
+    def q(vals, p):
+        vals = sorted(vals); k = (len(vals) - 1) * p
+        return round(vals[int(k)], 1)
+    tot = [r["total_ms"] for r in rows]; reg = [r["regions"] for r in rows]
+    summary = {
+        "images": len(rows),
+        "regions_min_med_max": [min(reg), q(reg, 0.5), max(reg)],
+        "total_ms_min_med_max": [min(tot), q(tot, 0.5), max(tot)],
+        "note": "class-INDEPENDENT fixed cost (propose+embed); varies with region count, NOT #classes",
+        "rows": rows,
+    }
+    print(json.dumps(summary, indent=2))
+    return summary
+
+
+# --------------------------------------------------------------------------- #
 # AC2 + AC3 — gold-set non-regression (decomposed) + open-set
 # --------------------------------------------------------------------------- #
 async def run_goldset(gold_path: str, limit: Optional[int], out_path: Optional[str]) -> Dict[str, Any]:
@@ -221,6 +282,9 @@ async def run_goldset(gold_path: str, limit: Optional[int], out_path: Optional[s
     vals_rejected = 0                      # VALS crops correctly -> UNKNOWN/uncertain
     classify_correct_perfectcrop = 0
     e2e_correct = 0
+    percls: Dict[str, Dict[str, int]] = defaultdict(lambda: {"n": 0, "acc": 0})  # per-class accept (macro-avg)
+    below_right_low = 0    # non-accepted ECHT perfect crop whose TOP-1 was the RIGHT code (abstention)
+    below_wrong_top1 = 0   # ...whose TOP-1 was a WRONG code (sub-threshold CONFUSION)
     fp_regions = 0                         # proposed regions far from any gold logo, accepted
     fp_proposed_total = 0
 
@@ -277,8 +341,17 @@ async def run_goldset(gold_path: str, limit: Optional[int], out_path: Optional[s
                 if surfaced:
                     proposer_surfaced += 1
                 confusion[(gold_code, pc_code if pc_acc else CLASSIFY_UNKNOWN_CODE)] += 1
+                percls[gold_code]["n"] += 1
                 if pc_acc and pc_code == gold_code:
                     classify_correct_perfectcrop += 1
+                    percls[gold_code]["acc"] += 1
+                elif not pc_acc:
+                    # below-threshold: was the nearest reference the right code (abstention)
+                    # or a wrong code (sub-threshold confusion)?
+                    if pc_code == gold_code:
+                        below_right_low += 1
+                    else:
+                        below_wrong_top1 += 1
                 if covered and e2e_acc and e2e_code == gold_code:
                     e2e_correct += 1
             else:  # VALS — open-set should reject (UNKNOWN / uncertain)
@@ -317,8 +390,19 @@ async def run_goldset(gold_path: str, limit: Optional[int], out_path: Optional[s
             "proposer_recall": round(proposer_hit / max(1, echt_total), 3),
             "proposer_recall_iou03": round(proposer_hit_iou03 / max(1, echt_total), 3),
             "proposer_surfaced_center": round(proposer_surfaced / max(1, echt_total), 3),
-            "classify_accuracy_perfect_crop": round(classify_correct_perfectcrop / max(1, echt_total), 3),
+            "classify_accuracy_perfect_crop_micro": round(classify_correct_perfectcrop / max(1, echt_total), 3),
+            "classify_accuracy_perfect_crop_macro": round(
+                sum(v["acc"] / max(1, v["n"]) for v in percls.values()) / max(1, len(percls)), 3
+            ),
+            "per_class_accept": {c: {"n": v["n"], "accept": round(v["acc"] / max(1, v["n"]), 3)} for c, v in sorted(percls.items())},
+            "classify_given_covered": round(e2e_correct / max(1, proposer_hit), 3),  # > perfect_crop => gold bboxes are worse-centred crops
             "end_to_end_accuracy": round(e2e_correct / max(1, echt_total), 3),
+            "below_threshold_split": {
+                "non_accepted": below_right_low + below_wrong_top1,
+                "right_code_low_conf_abstention": below_right_low,
+                "wrong_code_top1_confusion": below_wrong_top1,
+                "wrong_top1_frac": round(below_wrong_top1 / max(1, below_right_low + below_wrong_top1), 3),
+            },
             "confusion_goldcode_to_pred": {f"{k[0]}->{k[1]}": v for k, v in sorted(confusion.items())},
         },
         "AC3": {
@@ -345,6 +429,10 @@ def main() -> int:
     a1 = sub.add_parser("ac1")
     a1.add_argument("--image-key", required=True)
     a1.add_argument("--out")
+    ad = sub.add_parser("ac1dist")
+    ad.add_argument("--gold", required=True)
+    ad.add_argument("--n", type=int, default=8)
+    ad.add_argument("--out")
     gs = sub.add_parser("goldset")
     gs.add_argument("--gold", required=True)
     gs.add_argument("--limit", type=int)
@@ -354,6 +442,10 @@ def main() -> int:
     if args.cmd == "ac1":
         res = asyncio.run(run_ac1(args.image_key))
         print(json.dumps(res, indent=2))
+        if args.out:
+            json.dump(res, open(args.out, "w"), indent=2)
+    elif args.cmd == "ac1dist":
+        res = asyncio.run(run_ac1dist(args.gold, args.n))
         if args.out:
             json.dump(res, open(args.out, "w"), indent=2)
     elif args.cmd == "goldset":

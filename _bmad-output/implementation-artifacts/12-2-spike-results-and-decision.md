@@ -31,35 +31,47 @@ Datum: 2026-06-09 · Branch: `acc` · ML-image: `4a6c54c` (ACC, container
 
 ## AC1 — Kosten-ontkoppeling: **BEWEZEN**
 
-Eén beeld (`artwork/03059946316376/…_converted-0.png`, 3342×3161), volledige keten
-`propose → embed(alle regio's) → search`, afgezet tegen de template-match-baseline op
-dezelfde hardware.
+**Het resultaat is de vlakheid over N (klasse-onafhankelijkheid), niet één absoluut getal.**
+De region-proposer-kost = `propose + #regio's × embed + searchterm`. Alleen de searchterm hangt
+van #klassen af, en die is verwaarloosbaar; de totaalkost schaalt met het **aantal regio's**
+(artwork-complexiteit), niet met het aantal keurmerk-klassen.
 
-| #referentieklassen | Region-proposer (totaal/beeld) | Template-match baseline |
+**Per-beeld fixe kost over 8 artworks** (`ac1dist`, propose+embed, klasse-onafhankelijk):
+43–154 regio's → **1,18 – 3,61 s (mediaan 3,12 s)**. De eerder genoemde 1,18 s is de ondergrens
+(43 regio's), geen typisch geval.
+
+**Vlakheid over N op één representatief beeld** (43 regio's, volledige keten incl. searchterm):
+
+| #referentieklassen | Region-proposer (totaal) | Template-match baseline (zie caveats) |
 |---:|---:|---:|
-| 5   | **1,18 s** | 23,6 s |
-| 50  | **1,18 s** | 235,8 s (~4 min) |
-| 200 | **1,18 s** | 943,4 s (~16 min) |
-| 894 | **1,18 s** | 4216,9 s (~70 min) |
+| 5   | **1,182 s** | 23,6 s |
+| 50  | **1,179 s** | 235,8 s (~4 min) |
+| 200 | **1,180 s** | 943,4 s (~16 min) |
+| 894 | **1,180 s** | 4216,9 s (~70 min) |
 
-**Region-proposer-budget (constant):** propose 238,7 ms + embed 940,7 ms (43 regio's ×
-21,9 ms, **klasse-onafhankelijk**) + searchterm < 1 ms zelfs bij N=894 (0,634 ms
-in-memory; de echte pgvector-call mat 73 ms totaal over 43 regio's bij de huidige N=10).
-De enige klasse-afhankelijke term (nearest-reference-zoek) is verwaarloosbaar en
-sublineair in productie.
+De totaalkost beweegt **< 3 ms** van N=5 → N=894 — searchterm < 1 ms zelfs bij N=894 (0,634 ms
+in-memory brute-force; de echte pgvector-call mat 73 ms totaal over 43 regio's bij N=10).
 
-**Baseline:** gemeten 47,2 s bij 10 templates → 4,72 s/template, strikt lineair. De
-N=5-extrapolatie (23,6 s) bevestigt de in Story 12.1 gerapporteerde ~28 s @ 5.
+**Caveats op de baseline-kolom (eerlijkheidshalve):**
+1. **Het is een lineaire extrapolatie uit één meting @10** (47,2 s → 4,72 s/template), niet 894
+   echte templates gedraaid. De lineariteit volgt uit de `for tmpl in templates`-structuur
+   (`localization.py`), die de story al als gegeven accepteert; de N=5-extrapolatie (23,6 s) klopt
+   met de 12.1-meting ~28 s @5. Maar het is geen direct gemeten 894-curve.
+2. **De gemeten baseline is ongebudgetteerd.** De productie-`localize` heeft een
+   `LOCALIZE_TIME_BUDGET_S` die trunkeert — productie draait dus nooit 70 min, maar levert dan
+   **partiële detecties** (kwaliteitsverlies i.p.v. tijdverlies). De ~70 min is "wat het zonder
+   budget zou kosten"; de échte prijs bij schaal is gemiste detecties, hier niet gekwantificeerd.
+3. **De "sublineaire ivfflat in productie"-claim is geasserteerd, niet gemeten.** De in-memory
+   searchterm-curve gebruikt random vectoren + brute-force (lineair in N) als **conservatieve
+   bovengrens**; ivfflat-prestatie hangt van index-params (lists/probes) + datadistributie af,
+   geen daarvan hier gemeten. De decoupling-conclusie staat los hiervan: de searchterm is al
+   verwaarloosbaar bij brute-force.
 
-De ~1,18 s is voor dít beeld (43 regio's); een beeld met 153 regio's kost ~3,6 s. Het
-**resultaat is de vlakheid over N** (de totaalkost beweegt < 3 ms van N=5 → N=894), niet
-het absolute getal — dat schaalt met het aantal regio's, niet met het aantal klassen.
+→ Ongeacht de caveats: de region-proposer-kost is **vlak over #klassen** en de template-match
+**strikt lineair**; bij N=200 ~800× sneller, kloof groeit lineair. Detectiekost **ontkoppeld van
+#klassen**; een keurmerk toevoegen = één referentie-embedding (O(1)). **AC1 = PASS.**
 
-→ Bij N=200 is de region-proposer **~800× sneller**, en de kloof groeit lineair. De
-detectiekost is **ontkoppeld van het aantal keurmerk-klassen**. Een keurmerk toevoegen =
-één referentie-embedding toevoegen (O(1)), geen extra detectiekost. **AC1 = PASS.**
-
-Artefact: `spikes/12-2-region-proposer/ac1-latency.json`.
+Artefacten: `spikes/12-2-region-proposer/ac1-latency.json` (curve), `ac1dist.json` (distributie).
 
 ---
 
@@ -76,8 +88,10 @@ een goede crop?) — die splitsing ís het AC4-bewijs.
 | Proposer-recall @ IoU≥0,5 | **45,3 %** | strakke localisatie van de mark |
 | Proposer-recall @ IoU≥0,3 | 61,3 % | losse localisatie |
 | Proposer "surfaced" (centrum in een box) | 69,3 % | mark gezien maar box te grof/geabsorbeerd |
-| Classify-accuratesse op **perfecte crop** | **17,3 %** | embed→classify mét perfecte localisatie |
-| End-to-end (proposer-box → classify) | **9,3 %** | zelfde orde als AC5-9 % (zie kanttekening) |
+| Classify-accept op **perfecte crop** (micro) | **17,3 %** | embed→classify mét perfecte localisatie |
+| Classify-accept op perfecte crop (**macro**, klasse-gemiddeld) | **20,5 %** | minder vertekend door GREEN_DOT-imbalans |
+| Classify-accept op **proposer-box** (gegeven covered) | **20,6 %** | > perfecte crop → zie gold-bbox-kanttekening |
+| End-to-end (proposer-box → classify) | **9,3 %** | = 0,453 × 0,206 (recall × classify\|covered), sluit exact |
 
 **Per-klasse accept op de perfecte crop (drempel 0,75 cosine):**
 
@@ -88,28 +102,41 @@ een goede crop?) — die splitsing ís het AC4-bewijs.
 | GREEN_DOT | 42 | 5 % | 0,695 | 0,798 |
 | EU_ORGANIC_FARMING | 3 | 0 % | 0,618 | 0,618 |
 
-**Het beslissende patroon:** van de 13 geaccepteerde perfecte crops waren er **0 fout
-geclassificeerd** — *precisie van het geaccepteerde = 100 %*. De confusion-matrix bevat
-uitsluitend `CODE→CODE` (correct) en `CODE→UNKNOWN` (onthouding); **geen enkele
-`CODE→andere CODE`**. De embedding kiest dus nooit zelfverzekerd de verkeerde klasse —
-hij **onthoudt zich**. Echte keurmerk-crops liggen op cosine ~0,62–0,78, grotendeels
-ónder de 0,75-poort, dus recall stort in terwijl precisie 100 % blijft.
+**Het beslissende patroon — maar genuanceerder dan "alleen onthouding".** Bóven de drempel kiest
+de embedding nooit zelfverzekerd fout: van de geaccepteerde perfecte crops **0 fout-accepts →
+precisie 100 %** (confusion-matrix: enkel `CODE→CODE` en `CODE→UNKNOWN`). Maar **ónder** de drempel
+ligt wél verwarring: van de 62 niet-geaccepteerde ECHT-crops had **56 % de juiste code als top-1**
+(echte onthouding, conf < 0,75) en **44 % een verkéérde code als top-1** (sub-drempel-verwarring;
+voor GREEN_DOT zelfs 50/50). De fine-tuning moet dus niet alleen correcte matches **omhoog** duwen,
+maar in 44 % van de missers ook een fout-rangschikkende buur **omlaag** — een zwaardere opgave dan
+"til de drempel-bijna-halers eroverheen". Echte marks liggen op cosine ~0,62–0,78.
 
-→ **Non-regressie op precisie houdt stand (100 %); recall is het slachtoffer en wordt
-begrensd door de embedding, niet door de architectuur of de drempel.** De end-to-end
-9,3 % ligt in dezelfde orde als de schone AC5-9 %, maar dat is *suggestief, geen strikte
-reproductie*: AC5 mat **precisie op de 5 níéuwe klassen**, deze meting **end-to-end-
-accuratesse op de 4 óude gold-set-klassen** — andere metriek, andere klasse-set. Dat beide
-rond 9 % landen wijst op een uniform zwakke embedding over oud én nieuw, maar het is geen
-onafhankelijke bevestiging langs hetzelfde pad. Het plafond is de **17,3 % perfecte-crop-
-accept**: zelfs met perfecte localisatie
-klaart maar 17 % van de echte marks de drempel. Localisatie (proposer 45 %) is secundair;
-het bindende knelpunt is het onderscheidend vermogen van de ImageNet-embedding
-(`efficientnet_b0`).
+**De 9,3 %-anomalie verklaard (en wat ze onthult).** End-to-end 9,3 % = proposer-recall 45,3 % ×
+classify-accept-gegeven-covered **20,6 %** — sluit exact. Opvallend: classify op de **proposer-box
+(20,6 %)** is *hoger* dan op de **perfecte gold-crop (17,3 %)**. De proposer-boxen classificeren dus
+béter dan de gold-bboxen → sterke aanwijzing dat de **gold-bboxen (uit de oude template-match) te
+strak/verschoven gesneden zijn** en de proposer-recall daardoor mogelijk **onderschat** wordt
+(recall meet overeenstemming met een imperfecte referentie). Niet apart gevalideerd; zie kanttekening.
 
-Artefacten: `spikes/12-2-region-proposer/ac2-ac3-results.json` (summary + per-record),
-diagnose-viz `spikes/12-2-region-proposer/diag_{0,1,2}.png` (gold-box groen, proposals
-rood — toont kleine marks die in clusters door NMS in grovere buurregio's verdwijnen).
+**Kanttekeningen bij "non-regressie" (eerlijkheidshalve):**
+- **Er is geen oude-recall-baseline.** De gold-set is door de óúde pipeline gegenereerd; de oude
+  *recall* is nooit gemeten. We kunnen dus zeggen dat **precisie 100 % blijft** (nieuwe meting),
+  maar het AC2-criterium "evenaart/verbetert recall" is met deze data **niet strikt beantwoordbaar**
+  — alleen dat recall bij de huidige 0,75-drempel laag is en embedding-begrensd.
+- **Kleine per-klasse-n.** EU_ORGANIC n=3 (0 %) is ruis, niet signaal; de "17,3 %"-kop wordt voor
+  56 % bepaald door GREEN_DOT (n=42, slechtste klasse) → daarom ook de **macro 20,5 %** gerapporteerd.
+  Geen betrouwbaarheidsintervallen; per-klasse-deltas zijn indicatief.
+
+→ **Het bindende knelpunt is de embedding** (perfecte-crop-accept micro 17 % / macro 20 %), niet de
+architectuur of de drempel; localisatie (proposer 45 %, mogelijk onderschat) is secundair. Dat is
+het AC4-bewijs. *Relatie tot AC5:* die mat precisie op de 5 níéuwe klassen; deze meet end-to-end op
+de 4 óude — andere metriek/klasse-set, dus dezelfde-orde-9 % is suggestief (uniform zwakke embedding),
+geen strikte reproductie.
+
+Artefacten: `spikes/12-2-region-proposer/ac2-ac3-results.json` (summary met micro/macro/below-
+threshold-split + per-record); diagnose-viz `diag_{0,1,2}.png` (volle pagina, context) en
+**`diagzoom_{0,1,2}.png`** (ingezoomd op de gold-bbox — marks leesbaar; toont kleine marks die in
+clusters door NMS in grovere buurregio's verdwijnen).
 
 ---
 
@@ -124,12 +151,22 @@ Uit dezelfde run.
 | Daarvan als echte code geaccepteerd (FP) | 13 |
 | **Niet-logo-FP-rate** | **0,24 %** |
 
-De open-set-verwerping (UNKNOWN-markering + 0,75-drempel) verwerpt 100 % van de
-bekende false positives en 99,76 % van de proposer-geïntroduceerde niet-logo-regio's.
-Kanttekening: een deel van de 13 kan een écht maar ongelabeld logo zijn (de gold-set
-labelt één mark per beeld). **AC3 = PASS.** De prijs van deze strakke drempel is de lage
-AC2-recall — dezelfde drempel die ruis buitenhoudt, onthoudt zich ook op echte marks
-zolang de embedding ze niet boven 0,75 tilt.
+De open-set-verwerping (UNKNOWN-markering + 0,75-drempel) verwerpt 100 % van de bekende false
+positives en 99,76 % van de proposer-geïntroduceerde niet-logo-regio's. **AC3 = PASS**, met twee
+eerlijke afzwakkingen:
+
+- **De 16/16 VALS is zwak bewijs.** VALS-records zijn precies de crops waar de óúde embedding al
+  lage confidence (~0,5) gaf — ze lágen al onder elke redelijke drempel. Dat dezelfde zwakke
+  embedding ze opnieuw bij 0,75 verwerpt, toont **drempel-consistentie**, niet robuustheid tegen
+  níéuwe hard-negatives. Een echte open-set-stress-test (verse hard-negatives) staat nog open →
+  meegenomen als AC2 in de vervolgstory.
+- **De 0,24 % is dubbel vertekend.** De teller (13) bevat mogelijk **échte ongelabelde logo's** (de
+  gold-set labelt één mark/beeld) → mogelijk overschat als FP. De noemer (5424) is gedomineerd door
+  **makkelijke negatives** (tekst/achtergrond) → de rate ziet er gunstig uit zonder *harde*
+  negatives te toetsen. Het getal is geruststellend maar niet de eindmeting.
+
+De prijs van deze strakke drempel is de lage AC2-recall — dezelfde drempel die ruis buitenhoudt,
+onthoudt zich ook op echte marks zolang de embedding ze niet boven 0,75 tilt.
 
 ---
 
@@ -149,18 +186,22 @@ detector (optie A)** voor strakke localisatie, gebootstrapt met B + de 8.7-synth
 Dit was de open sub-beslissing (story §Besluiten 2): committeer fine-tuning niet vooraf,
 laat de meting beslissen. **De meting beslist JA.** Bewijs:
 
-- Perfecte-crop-accept maar 17,3 %; mediane cosine van echte marks 0,62–0,78 — een
-  ImageNet-`efficientnet_b0`-backbone trekt de fijnmazige keurmerk-klassen onvoldoende uit
-  elkaar (GREEN_DOT clustert rond 0,69; EU_ORGANIC rond 0,62).
-- Het faalpatroon is **onthouding, niet verwarring** (0 fout-accepts, precisie 100 %) →
-  precies wat metric-learning-fine-tuning op keurmerk-crops oplost: vergroot de
-  inter-klasse-marge zodat echte marks de 0,75-poort halen, zónder de precisie te slopen.
-- Verklaart de 9 % uit AC5 onafhankelijk: het is **niet** primair de architectuur of de
-  localisatie — het is de embedding.
+- Perfecte-crop-accept maar 17,3 % micro / 20,5 % macro; mediane cosine van echte marks
+  0,62–0,78 — een ImageNet-`efficientnet_b0`-backbone trekt de fijnmazige keurmerk-klassen
+  onvoldoende uit elkaar (GREEN_DOT clustert rond 0,69; EU_ORGANIC rond 0,62).
+- Het faalpatroon is **bóven de drempel onthouding** (0 fout-accepts, precisie 100 %), maar
+  **ónder de drempel deels verwarring**: 44 % van de missers heeft een verkéérde code als top-1.
+  Dat maakt de opgave zwaarder dan "til de bijna-halers eroverheen" — fine-tuning moet ook
+  fout-rangschikkende buren omlaag duwen. Het is precies waar metric-learning (inter-klasse-marge)
+  voor bedoeld is, en het bevestigt de noodzaak.
+- Diagnose geldt voor het systeem zoals gedeployed (echte pretrained ImageNet-gewichten,
+  geverifieerd). Relatie tot AC5: zelfde orde 9 %, suggestief (uniform zwakke embedding), geen
+  strikte reproductie (andere metriek/klasse-set).
 
-→ Start een **vervolgstory "metric-learning-fine-tuning op keurmerk-crops"** (triplet/
-ArcFace op de gold-set-loop + 8.7-synthese-crops). Dit is de #1-precisieblokker voor brede
-dekking. Per-klasse-drempelcalibratie + confusion-gedreven drempels (story §Open-set)
+→ Start een **vervolgstory** (12.3). **Eerst goedkope pre-checks** (volle 1280-dim vs getrunceerde
+512-dim; sterkere off-the-shelf-backbone als DINOv2/CLIP — nul training), pás dan metric-learning-
+fine-tuning (ArcFace/triplet op de gold-set-loop + 8.7-synthese) als de pre-checks ontoereikend zijn.
+Dit is de #1-recall-blokker voor brede dekking. Per-klasse-drempelcalibratie + confusion-gedreven drempels (story §Open-set)
 blijven nuttig maar zijn **secundair**: de huidige globale 0,75 levert al 100 % precisie;
 het probleem is recall, en recall komt van een betere embedding, niet van een andere
 drempel.
@@ -193,4 +234,13 @@ docker exec $C /opt/venv/bin/python /app/scripts/spike_pipeline_eval.py \
   ac1 --image-key '<artwork-key>' --out /tmp/ac1.json
 docker exec $C /opt/venv/bin/python /app/scripts/spike_pipeline_eval.py \
   goldset --gold /tmp/gold-set-oogstrun.json --out /tmp/goldset_full.json
+docker exec $C /opt/venv/bin/python /app/scripts/spike_pipeline_eval.py \
+  ac1dist --gold /tmp/gold-set-oogstrun.json --n 8 --out /tmp/ac1dist.json
 ```
+
+**Pinned omgeving (voor reproduceerbaarheid):** `torch 2.1.2+cu121`, `torchvision 0.16.2+cu121`,
+embedding-gewichten **`EfficientNet_B0_Weights.IMAGENET1K_V1`** (5,29M params), device CPU.
+Kanttekening: niet bit-reproduceerbaar buiten deze versies — de containernaam wisselt per deploy
+(ACC auto-deployt `acc`; her-resolven met `docker ps | grep ml-service-qsookwow`), de
+`/app/scripts`-kopieën zijn efemeer (her-`docker cp` na elke deploy), en torchvision-gewichten
+kunnen her-downloaden. Resultaten gemeten op image-tags `4a6c54c`/`84d7bcf` (ML-code identiek).
