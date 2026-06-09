@@ -1,13 +1,9 @@
 started_at: 2026-06-09
 sprint_status: _bmad-output/implementation-artifacts/sprint-status.yaml
-story_files: _bmad-output/implementation-artifacts
-source_epics: _bmad-output/implementation-artifacts
-worktree_root: inline (feature/epic-12-keurmerk-dekking)
-current_phase: story-dev
+current_phase: checkpoint
 active_epics: [epic-12]
-current_story: 12-1-keurmerk-dekking-uit-gs1-label-guide
-scope: proof-slice (5 keurmerken) -> AC1..AC5
-gates:
-  - db-migratie (field_type) -> gebruiker voert uit
-  - AC5-validatie -> ACC-detectierun na code-build
-status: running
+story_12_1: done   # proof-slice AC1-5 live op ACC (5->10 klassen) + RECYCLABLE-fix
+story_12_2: spike-stap-1-done   # region-proposer POC; stappen 2-5 resteren
+live_acc_image: 16c8a5f
+handover: _bmad-output/implementation-artifacts/handover-2026-06-09.md
+status: paused-clean-checkpoint
