@@ -1,7 +1,35 @@
 # Story 12.6: Top-N acceptatie-dataset (bevroren, menselijk gelabeld, echte PDF's/artwork)
 
-Status: ready — **voorwaarde voor 12.5** (de endpoint is niet toetsbaar zonder deze set). Toegevoegd na
-adversariële review: 12.5 hing op een testset die niet bestond.
+Status: **in-progress — concreet gemaakt 2026-06-09** (machinerie + seed + spec klaar; resteert het
+menselijke labelwerk). Voorwaarde voor 12.5 én voor fine-tuning-iteratie 2 (12.3).
+
+## Operationalisering (concreet, 2026-06-09)
+
+**Het echte-data-gat (de kern-bevinding).** Inventarisatie van álle labelbronnen: er zijn lokaal
+**75 echte ECHT-crops over 4 klassen** (gold-set: GREEN_DOT 42, FSC 17, V_LABEL_VEGAN 13, EU_ORGANIC 3)
++ ~9 ECHT proof-slice-crops (5 klassen, records in de DB). `labels-oogstrun.json` is 100 % de gold-set-
+overlay (geen extra data). **Conclusie: er is bijna geen gelabelde echte keurmerk-data → 12.6 is een
+data-CREATIE-taak (menselijk labelen), geen consolidatie. Dit gat is dé bottleneck van de epic.**
+
+**Concrete artefacten (klaar):**
+- **Top-N = 20 codes** (top-gedeclareerd ∩ guide-logo aanwezig; 25/26 hebben een logo, alleen de numerieke
+  resin-code `SOCIETY_PLASTICS_INDUSTRY` mist): `tests/validation/acceptatie-dataset/top-n-codes.json`.
+- **v0-seed** (geverifieerd startpunt, canoniek schema = gold-set-schema):
+  `tests/validation/acceptatie-dataset/dataset-v0.json` — 75 ECHT + 16 VALS, 4 klassen.
+- **Kandidaat-assembler** `apps/ml-service/scripts/assemble_acceptance_candidates.py`: draait propose→
+  classify over echte artwork, surfacet per-code kandidaat-crops (hoog-recall, floor 0,45) → een
+  label-wachtrij (crop + voorspelde code + bbox). Maakt "keurmerken zoeken" → "kandidaten accepteren/
+  afwijzen". Kosten ≈constant in #klassen (12.2-AC1).
+
+**Label-mechanisme (bestaat al — niet herbouwen):** de Epic 8.5/8.6 **review-UI (ArtworkReviewPage) +
+crop-stream/review-queue** surfacet gedetecteerde crops voor menselijke accept/reject mét herkomst. De
+assembler vult die queue gericht met top-N-kandidaten; geaccepteerde ECHT-crops → `dataset-vN.json`.
+
+**Doel-omvang & proces:**
+- **Target K ≥ 15 ECHT-crops per top-N-code** (gespreid over grootte/clustering/mono-inkt) + een
+  hard-negatieven-set. Nu: 4/20 codes ≥15, 1 code (EU_ORGANIC) onder; 16 codes = 0 → **labelwerk nodig**.
+- **Proces:** (0) **eerst de top-N referentielogo's seeden** (12.1-seed-runner) — de assembler classificeert tegen de actieve `reference_logos`; nu staan er 10, de top-N vergt alle 20 geseed, anders surfacet hij alleen de geseede codes. (1) assembler draaien over de ~2000 geïmporteerde artworks per top-N-code → kandidaat-queue. (2) PO labelt accept/reject + bbox-correctie via de review-UI. (3) export geaccepteerde ECHT → vN. (4) bevriezen + id-exclusie uit alle training (12.3-anti-leakage).
+- **Eigenaar labelwerk:** Product Owner (Sasha Roest) / aangewezen annotator — menselijke taak, geen modeltaak.
 
 ## Story
 

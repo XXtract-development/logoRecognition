@@ -1,0 +1,1566 @@
+{
+  "meta": {
+    "name": "keurmerk-acceptatie-dataset",
+    "version": "v0-seed",
+    "status": "SEED \u2014 verified gold-set crops (4 classes). Extend to top-N via human labelling (Story 12.6).",
+    "schema": "sourceFile, cropPath, bbox{x,y,width,height}, t3777Code, label(ECHT|VALS)",
+    "echt": 75,
+    "vals": 16,
+    "classes_with_echt": {
+      "GREEN_DOT": 42,
+      "EUROPEAN_V_LABEL_VEGAN": 13,
+      "FOREST_STEWARDSHIP_COUNCIL_MIX": 17,
+      "EU_ORGANIC_FARMING": 3
+    },
+    "gap": "REAL labelled keurmerk crops are scarce: only these 4 classes locally + ~9 ECHT proof-slice in DB. The dataset must be CREATED (human labelling), not consolidated."
+  },
+  "records": [
+    {
+      "id": "fe9e1521-d4c7-48ac-9fe2-571d8db0f4e4",
+      "label": "VALS",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.5062277760582898,
+      "gtin": "00727452001064",
+      "method": "embedding",
+      "cropPath": "artwork-crops/00727452001064/2086ce5ccbbb.png",
+      "sourceFile": "artwork/00727452001064/1ea172fa388d9c5d4aff0e6f9d31192be53660c55376b45ac18f0c91d447021c_converted-0.png",
+      "bbox": {
+        "x": 2308,
+        "y": 148,
+        "width": 70,
+        "height": 70
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "5b16d676-6870-428d-9e7c-458e461c3dd2",
+      "label": "ECHT",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.6699523884886958,
+      "gtin": "03059946316376",
+      "method": "embedding",
+      "cropPath": "artwork-crops/03059946316376/44c288210bea.png",
+      "sourceFile": "artwork/03059946316376/74f54da124969bdcd5305224a50930e22d3e8a77e41df931280ed76ffd92d21e_converted-0.png",
+      "bbox": {
+        "x": 613,
+        "y": 1341,
+        "width": 77,
+        "height": 77
+      },
+      "reason": "Confidence onder drempel (0.67 < 0.80)"
+    },
+    {
+      "id": "3541996e-3585-47f5-8341-85741bcad7b1",
+      "label": "ECHT",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.6951493539175705,
+      "gtin": "04001724023784",
+      "method": "embedding",
+      "cropPath": "artwork-crops/04001724023784/7c56ac97b5c5.png",
+      "sourceFile": "artwork/04001724023784/4b9b209deef8c82ed370e671df730d050caf9e2bae706eecd09d8ea4b433a0b3_converted-0.png",
+      "bbox": {
+        "x": 1682,
+        "y": 783,
+        "width": 151,
+        "height": 151
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "49b65813-b16e-4596-b1c4-aa8cddec4f5d",
+      "label": "ECHT",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.6604961808209439,
+      "gtin": "04001724023814",
+      "method": "embedding",
+      "cropPath": "artwork-crops/04001724023814/16bb30a21d25.png",
+      "sourceFile": "artwork/04001724023814/4b26fc9082de0fc4be27395fffa5daa50c81bce9692ff470d7f440ae9c07ecda_converted-0.png",
+      "bbox": {
+        "x": 1778,
+        "y": 783,
+        "width": 151,
+        "height": 151
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "b34a2eee-e3bb-4b29-8719-8172a5cdc934",
+      "label": "ECHT",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.6604962160697615,
+      "gtin": "04001724023845",
+      "method": "embedding",
+      "cropPath": "artwork-crops/04001724023845/6e5a2e2aed34.png",
+      "sourceFile": "artwork/04001724023845/829bb1086be16211ad59e9ccc2833cce9863a91012fdc8521de94937fbc09c7d_converted-0.png",
+      "bbox": {
+        "x": 1778,
+        "y": 783,
+        "width": 151,
+        "height": 151
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "7662acbd-873d-4db4-b3aa-39e4d8c3a3f6",
+      "label": "ECHT",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.6604962160697615,
+      "gtin": "04001724023876",
+      "method": "embedding",
+      "cropPath": "artwork-crops/04001724023876/704d0bc6861f.png",
+      "sourceFile": "artwork/04001724023876/d6c34e4f7d830a815bfdcd77bd26673431ab5b84af8fc76a7b2a9567998111da_converted-0.png",
+      "bbox": {
+        "x": 1778,
+        "y": 783,
+        "width": 151,
+        "height": 151
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "627fcf70-bdfe-45cd-bfcb-d059f265021d",
+      "label": "ECHT",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.6604962160697615,
+      "gtin": "04001724023906",
+      "method": "embedding",
+      "cropPath": "artwork-crops/04001724023906/c0e6e3ebc79d.png",
+      "sourceFile": "artwork/04001724023906/8ba043ef9db170f0dc70fc8eae69c47c130a3a5fa684836e80ebb32a7fbf1828_converted-0.png",
+      "bbox": {
+        "x": 1778,
+        "y": 783,
+        "width": 151,
+        "height": 151
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "c76ed135-2daf-41ea-8db0-1a3f4961ba49",
+      "label": "ECHT",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.6574027055816623,
+      "gtin": "04001724023937",
+      "method": "embedding",
+      "cropPath": "artwork-crops/04001724023937/7a3bcf8625a6.png",
+      "sourceFile": "artwork/04001724023937/ace514348bb05dc5c2e0dcbdfed61abefb2744533f717336770c90fbfab59166_converted-0.png",
+      "bbox": {
+        "x": 1778,
+        "y": 783,
+        "width": 151,
+        "height": 151
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "077e856f-3e91-47fa-b9bd-1a5335e544e7",
+      "label": "ECHT",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.70592970069771,
+      "gtin": "04001724026594",
+      "method": "embedding",
+      "cropPath": "artwork-crops/04001724026594/0533775ef96e.png",
+      "sourceFile": "artwork/04001724026594/ba4fceb5c915e5ccb7ca463c513af5702eecd42dcde0e875fafc901225f741e8_converted-0.png",
+      "bbox": {
+        "x": 2215,
+        "y": 1449,
+        "width": 166,
+        "height": 166
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "eaa373a9-c2b6-4bb3-8528-c85dbcbb7e6f",
+      "label": "ECHT",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.7059296982335809,
+      "gtin": "04001724035435",
+      "method": "embedding",
+      "cropPath": "artwork-crops/04001724035435/50307e714be1.png",
+      "sourceFile": "artwork/04001724035435/925ac71a0fca6557cda5cd6486d5a7c40a69fe9ee4fc9b2efc612bc123d1e259_converted-0.png",
+      "bbox": {
+        "x": 2215,
+        "y": 1449,
+        "width": 166,
+        "height": 166
+      },
+      "reason": "Gevonden maar niet verwacht (niet gedeclareerd in T3777 voor GTIN 04001724035435)"
+    },
+    {
+      "id": "e3b29f93-3b1a-47b9-82bf-13ffd932820a",
+      "label": "ECHT",
+      "t3777Code": "EUROPEAN_V_LABEL_VEGAN",
+      "confidence": 0.9529618333907092,
+      "gtin": "04001724043393",
+      "method": "embedding",
+      "cropPath": "artwork-crops/04001724043393/1148d1e059ce.png",
+      "sourceFile": "artwork/04001724043393/ccf7aecfb2df1d9e19c660991155c7a9c4fbe2f596b4687909c83c4ccbad47bf_converted.png",
+      "bbox": {
+        "x": 3090,
+        "y": 3101,
+        "width": 201,
+        "height": 267
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "baf00a3a-ff91-4443-a68f-81ebf72c8a5f",
+      "label": "ECHT",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.6951493717703923,
+      "gtin": "04001724044901",
+      "method": "embedding",
+      "cropPath": "artwork-crops/04001724044901/ff216b5880e6.png",
+      "sourceFile": "artwork/04001724044901/3e1a9f2d87e443b60ddc21807124d8f0a896bf0ec448ab14f8cf235ff162996c_converted-0.png",
+      "bbox": {
+        "x": 1682,
+        "y": 783,
+        "width": 151,
+        "height": 151
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "ec9f1a00-f3a9-4b67-970f-2f1fb1bd9202",
+      "label": "ECHT",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.6604962160697615,
+      "gtin": "04001724046790",
+      "method": "embedding",
+      "cropPath": "artwork-crops/04001724046790/7b5b09a18a21.png",
+      "sourceFile": "artwork/04001724046790/5d3a56e31c1c8c0dfaf128dc8ea39e371a252dc1f85d8b69887aebe019b272e5_converted-0.png",
+      "bbox": {
+        "x": 1778,
+        "y": 783,
+        "width": 151,
+        "height": 151
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "c04234a8-18f3-425b-a481-99cff80c3a3f",
+      "label": "ECHT",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.5334035133435112,
+      "gtin": "04072600715161",
+      "method": "embedding",
+      "cropPath": "artwork-crops/04072600715161/bfbca21036e9.png",
+      "sourceFile": "artwork/04072600715161/31815084e0644fbd2aeb6b715105fa18c7d61065e21daf8100d8d0d2441c48ae_converted-0.png",
+      "bbox": {
+        "x": 1293,
+        "y": 3961,
+        "width": 77,
+        "height": 77
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "31e2db3c-158c-4ce3-a346-03d79de431c6",
+      "label": "ECHT",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.7234154026387873,
+      "gtin": "04743318104188",
+      "method": "embedding",
+      "cropPath": "artwork-crops/04743318104188/0f022c4ec41c.png",
+      "sourceFile": "artwork/04743318104188/f82eaaa553e9a1031048ef91f41506060a38317edd76694225761c4c85236c83_converted-0.png",
+      "bbox": {
+        "x": 912,
+        "y": 1802,
+        "width": 94,
+        "height": 94
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "fcb26627-1ecd-4081-bcb1-f1b98321b579",
+      "label": "ECHT",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.7408547459504098,
+      "gtin": "04743318104195",
+      "method": "embedding",
+      "cropPath": "artwork-crops/04743318104195/0e31c397106c.png",
+      "sourceFile": "artwork/04743318104195/7f84c067d2a97f1578d01edf6cfcf95cfe568a6f7dbb6c486797668d6cbe6322_converted-0.png",
+      "bbox": {
+        "x": 855,
+        "y": 1792,
+        "width": 94,
+        "height": 94
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "59bfdd9b-6ca2-490b-9645-dc3a02f20f14",
+      "label": "ECHT",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.7508709866708023,
+      "gtin": "04743318104201",
+      "method": "embedding",
+      "cropPath": "artwork-crops/04743318104201/5fd7f0d3040f.png",
+      "sourceFile": "artwork/04743318104201/e34ce6381a53c990102c4bc73f06c801a2a53d2efd7471b42728a1069aa3f194_converted-0.png",
+      "bbox": {
+        "x": 1058,
+        "y": 1802,
+        "width": 94,
+        "height": 94
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "50dec378-b96b-4324-a0d5-56fc6634bb2c",
+      "label": "ECHT",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.6798889086918758,
+      "gtin": "04743318105185",
+      "method": "embedding",
+      "cropPath": "artwork-crops/04743318105185/c66c3ff5bb83.png",
+      "sourceFile": "artwork/04743318105185/8319b0cdcc85aabb970a529247dce234ea973676d6905ffa2d3e8cfaf3d60ae8_converted-0.png",
+      "bbox": {
+        "x": 912,
+        "y": 1792,
+        "width": 94,
+        "height": 94
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "6c89face-391b-47b8-9ceb-3fed9b78b29b",
+      "label": "ECHT",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.7247521954328945,
+      "gtin": "04743318106199",
+      "method": "embedding",
+      "cropPath": "artwork-crops/04743318106199/8be653731d42.png",
+      "sourceFile": "artwork/04743318106199/74cdbdff73414124a91f4737e889d75891368ccd88d477d435e21607a49ad31f_converted-0.png",
+      "bbox": {
+        "x": 1990,
+        "y": 2268,
+        "width": 94,
+        "height": 94
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "9fe5e4ef-164d-4935-a7a8-3a0f7a96b99c",
+      "label": "ECHT",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.6562418187723743,
+      "gtin": "04743318106205",
+      "method": "embedding",
+      "cropPath": "artwork-crops/04743318106205/8c253288b6d9.png",
+      "sourceFile": "artwork/04743318106205/7a96de21c41436033e97c0a5c40401364f49876299f68a3e843b968c6808a9c1_converted-0.png",
+      "bbox": {
+        "x": 1920,
+        "y": 2216,
+        "width": 94,
+        "height": 94
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "41937b96-520b-45ff-91f8-51e81eec57d7",
+      "label": "ECHT",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.6695318535211413,
+      "gtin": "04743318106212",
+      "method": "embedding",
+      "cropPath": "artwork-crops/04743318106212/9e2397f461bd.png",
+      "sourceFile": "artwork/04743318106212/4cebdbac500fa3826ab357110db163dce252347bfee914c9079f03d6b5ff0c83_converted-0.png",
+      "bbox": {
+        "x": 1939,
+        "y": 2239,
+        "width": 94,
+        "height": 94
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "aed3b949-4b98-4d6f-b233-bde541eb09bf",
+      "label": "ECHT",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.6165791743856254,
+      "gtin": "04743318106229",
+      "method": "embedding",
+      "cropPath": "artwork-crops/04743318106229/8deb92f94e8c.png",
+      "sourceFile": "artwork/04743318106229/95700ead2464e51691051afc985e54a972107c98aade889c0e906db3c4a713ba_converted-0.png",
+      "bbox": {
+        "x": 1920,
+        "y": 2216,
+        "width": 94,
+        "height": 94
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "f4c7b3b4-03db-4e86-bda0-185c143df6be",
+      "label": "ECHT",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.6702975754593523,
+      "gtin": "04743318106236",
+      "method": "embedding",
+      "cropPath": "artwork-crops/04743318106236/652c882ddd71.png",
+      "sourceFile": "artwork/04743318106236/0bf7de64ef688c05ad4816a773455e336204408dc65a04ee2672889463cddd21_converted-0.png",
+      "bbox": {
+        "x": 1920,
+        "y": 2218,
+        "width": 94,
+        "height": 94
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "1fde1e4e-134f-4fa8-b288-e66138b82589",
+      "label": "ECHT",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.6862034711199411,
+      "gtin": "05000267116686",
+      "method": "embedding",
+      "cropPath": "artwork-crops/05000267116686/7ca54a946121.png",
+      "sourceFile": "artwork/05000267116686/3877a4728938a96b040a8232845c8e3e2416d7a022ef974459f47725743eb185_converted-0.png",
+      "bbox": {
+        "x": 2282,
+        "y": 2103,
+        "width": 166,
+        "height": 166
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "ba5325da-c126-4296-a7fe-8782f8661eff",
+      "label": "ECHT",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.6286078147485746,
+      "gtin": "05014271794013",
+      "method": "embedding",
+      "cropPath": "artwork-crops/05014271794013/7ca82c3284ed.png",
+      "sourceFile": "artwork/05014271794013/b0c65698bcf55ea5aa489188d91d9b82ae99b868a89f45980d3a574df3823042_converted-0.png",
+      "bbox": {
+        "x": 2297,
+        "y": 1543,
+        "width": 77,
+        "height": 77
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "58023c04-4719-4604-95f6-bb357ace6dd1",
+      "label": "ECHT",
+      "t3777Code": "FOREST_STEWARDSHIP_COUNCIL_MIX",
+      "confidence": 0.7662516208578151,
+      "gtin": "05060503504929",
+      "method": "embedding",
+      "cropPath": "artwork-crops/05060503504929/83r-58023c044719.png",
+      "sourceFile": "artwork/05060503504929/05060925294569.png",
+      "bbox": {
+        "x": 270,
+        "y": 50,
+        "width": 110,
+        "height": 110
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "e5bbe73e-6d95-415c-9488-c5283fb0a078",
+      "label": "ECHT",
+      "t3777Code": "EUROPEAN_V_LABEL_VEGAN",
+      "confidence": 0.7594735818197679,
+      "gtin": "05060503504929",
+      "method": "embedding",
+      "cropPath": "artwork-crops/05060503504929/83r-e5bbe73e6d95.png",
+      "sourceFile": "artwork/05060503504929/05060925294569.png",
+      "bbox": {
+        "x": 50,
+        "y": 50,
+        "width": 110,
+        "height": 146
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "ae6c5ef2-12d4-4e2c-bb96-726a4764b23c",
+      "label": "ECHT",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.5071597776774514,
+      "gtin": "05400141355451",
+      "method": "embedding",
+      "cropPath": "artwork-crops/05400141355451/121f587814e1.png",
+      "sourceFile": "artwork/05400141355451/4ba870158116182b4f6b6ede45db4084d2c846bb02e4727e148698974949d546_converted.png",
+      "bbox": {
+        "x": 502,
+        "y": 1189,
+        "width": 77,
+        "height": 77
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "8be32578-4cf1-4206-96e1-d4c3c6dae9fd",
+      "label": "ECHT",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.7145459179524886,
+      "gtin": "05410056181168",
+      "method": "embedding",
+      "cropPath": "artwork-crops/05410056181168/89a2593972b1.png",
+      "sourceFile": "artwork/05410056181168/2099a7cf866db23f0dd6436d3550fe4c207560cbbc6ccc8006008ecb488e34cd_converted-0.png",
+      "bbox": {
+        "x": 686,
+        "y": 484,
+        "width": 94,
+        "height": 94
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "ad18865b-be15-4ea8-a666-007de04162a4",
+      "label": "ECHT",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.7221148678447826,
+      "gtin": "05410293012270",
+      "method": "embedding",
+      "cropPath": "artwork-crops/05410293012270/3332ed64c94a.png",
+      "sourceFile": "artwork/05410293012270/01d560c68d82875cbe28af0ef2e3609eeff2fdad504450efcdfd75157afee051_converted-0.png",
+      "bbox": {
+        "x": 929,
+        "y": 426,
+        "width": 113,
+        "height": 113
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "8c256dbb-2e48-476a-8269-ef1be5545b13",
+      "label": "ECHT",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.734545334335911,
+      "gtin": "05410293141017",
+      "method": "embedding",
+      "cropPath": "artwork-crops/05410293141017/baecb43e8835.png",
+      "sourceFile": "artwork/05410293141017/87ff65489907ac01eaffa1562f5817b1243ec3f7c2b39c50d0b2200e36cd50d9_converted-0.png",
+      "bbox": {
+        "x": 949,
+        "y": 426,
+        "width": 113,
+        "height": 113
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "c2e8a84c-ad3b-49aa-bb91-21bacb30b96b",
+      "label": "ECHT",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.7444895962502268,
+      "gtin": "05410293241014",
+      "method": "embedding",
+      "cropPath": "artwork-crops/05410293241014/c3390968554b.png",
+      "sourceFile": "artwork/05410293241014/2c33337f049c7e8f88660cc7b23bc3f2341a9f78fde7c36a8879d5a52118c99b_converted-0.png",
+      "bbox": {
+        "x": 946,
+        "y": 426,
+        "width": 113,
+        "height": 113
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "8a473ca7-0454-47b1-bfe0-bea14362cfed",
+      "label": "ECHT",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.557971108641199,
+      "gtin": "05410293752411",
+      "method": "embedding",
+      "cropPath": "artwork-crops/05410293752411/ae5cd200f77c.png",
+      "sourceFile": "artwork/05410293752411/f1145363b8ff12ebb44d6d61fc9f144e22f13d62031cf508e357beb81444de2c_converted.png",
+      "bbox": {
+        "x": 1208,
+        "y": 2479,
+        "width": 85,
+        "height": 85
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "9dc539b2-b61d-4845-9371-7077d8009228",
+      "label": "ECHT",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.6267026821922771,
+      "gtin": "07046110035658",
+      "method": "embedding",
+      "cropPath": "artwork-crops/07046110035658/4ba7fd2d524c.png",
+      "sourceFile": "artwork/07046110035658/cc9a2b81242274ebd1ce1946832a87f4a7a65042bab92962c00839900aae59fb_converted-0.png",
+      "bbox": {
+        "x": 975,
+        "y": 1572,
+        "width": 77,
+        "height": 77
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "879cd69e-db5f-4e67-933b-e0dc8e87fd2d",
+      "label": "ECHT",
+      "t3777Code": "FOREST_STEWARDSHIP_COUNCIL_MIX",
+      "confidence": 0.8381200290639946,
+      "gtin": "07046110063460",
+      "method": "embedding",
+      "cropPath": "artwork-crops/07046110063460/1014d99eabe9.png",
+      "sourceFile": "artwork/07046110063460/281cb98ccd1a18dd731e70c71b91a19708048ab88de2042d031dad9f1c22d520_converted-0.png",
+      "bbox": {
+        "x": 42,
+        "y": 759,
+        "width": 183,
+        "height": 183
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "322d9a96-7223-46cb-bfea-136a3ca3dd34",
+      "label": "ECHT",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.6768540581014231,
+      "gtin": "07046110063460",
+      "method": "embedding",
+      "cropPath": "artwork-crops/07046110063460/94bc7eb00057.png",
+      "sourceFile": "artwork/07046110063460/281cb98ccd1a18dd731e70c71b91a19708048ab88de2042d031dad9f1c22d520_converted-0.png",
+      "bbox": {
+        "x": 1684,
+        "y": 2073,
+        "width": 103,
+        "height": 103
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "eae3428c-0edf-40b5-a6f7-c54f037ff155",
+      "label": "ECHT",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.6491598470165775,
+      "gtin": "07310610021252",
+      "method": "embedding",
+      "cropPath": "artwork-crops/07310610021252/acc5b682649a.png",
+      "sourceFile": "artwork/07310610021252/6f33bc3b36dc9fe40e8f4e156a2d910daf521e2ac419a2e894f6c1066da92c4f_converted-0.png",
+      "bbox": {
+        "x": 1305,
+        "y": 3022,
+        "width": 94,
+        "height": 94
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "29c89077-406e-496c-916e-4b0a5392159c",
+      "label": "ECHT",
+      "t3777Code": "FOREST_STEWARDSHIP_COUNCIL_MIX",
+      "confidence": 0.6091874572690937,
+      "gtin": "07350121255975",
+      "method": "embedding",
+      "cropPath": "artwork-crops/07350121255975/0e6fd0cd2178.png",
+      "sourceFile": "artwork/07350121255975/25c5e668b0c3f15150e8d7e8fcc2bfce4b89ac314077fcd1fe5545e026ef880d.jpg",
+      "bbox": {
+        "x": 943,
+        "y": 1585,
+        "width": 103,
+        "height": 103
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "455bee08-0033-4765-9e4a-7e79b5696939",
+      "label": "ECHT",
+      "t3777Code": "FOREST_STEWARDSHIP_COUNCIL_MIX",
+      "confidence": 0.6091875651326073,
+      "gtin": "07350121256019",
+      "method": "embedding",
+      "cropPath": "artwork-crops/07350121256019/7afd90e04444.png",
+      "sourceFile": "artwork/07350121256019/36f6a0e3bef93690165d38953654c8aa222504e2ee44cc63e674cbb593fc09ba.jpg",
+      "bbox": {
+        "x": 943,
+        "y": 1585,
+        "width": 103,
+        "height": 103
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "6b94212c-e43a-4c88-b1c8-a34471bb28ae",
+      "label": "ECHT",
+      "t3777Code": "FOREST_STEWARDSHIP_COUNCIL_MIX",
+      "confidence": 0.6091874572690937,
+      "gtin": "07350121256057",
+      "method": "embedding",
+      "cropPath": "artwork-crops/07350121256057/17026b4d0513.png",
+      "sourceFile": "artwork/07350121256057/83229ce94f2b19706028e18540bf265f9ede1c4a347afc3e2d949002cc81617e.jpg",
+      "bbox": {
+        "x": 943,
+        "y": 1585,
+        "width": 103,
+        "height": 103
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "4c97474a-00b8-4688-b0c8-ddc0cf4afb3e",
+      "label": "ECHT",
+      "t3777Code": "FOREST_STEWARDSHIP_COUNCIL_MIX",
+      "confidence": 0.6091875651326073,
+      "gtin": "07350121256095",
+      "method": "embedding",
+      "cropPath": "artwork-crops/07350121256095/26972bc690b9.png",
+      "sourceFile": "artwork/07350121256095/94efded88c5260edcc5eb6cc2fdcf0fb4a57923430c06aca2fae9de34b69c93e.jpg",
+      "bbox": {
+        "x": 943,
+        "y": 1585,
+        "width": 103,
+        "height": 103
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "f64b6cb0-7cb0-4290-abad-23fa69fe0cd0",
+      "label": "ECHT",
+      "t3777Code": "FOREST_STEWARDSHIP_COUNCIL_MIX",
+      "confidence": 0.6091875651326073,
+      "gtin": "07350121256132",
+      "method": "embedding",
+      "cropPath": "artwork-crops/07350121256132/604607eb9327.png",
+      "sourceFile": "artwork/07350121256132/2d5841ee88303404b55bdca5d58ebf6eccbf9a9a3ca48164d1a073599c469a8d.jpg",
+      "bbox": {
+        "x": 943,
+        "y": 1585,
+        "width": 103,
+        "height": 103
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "63483c49-6b65-44b5-ad49-0b757cc7ab1f",
+      "label": "ECHT",
+      "t3777Code": "FOREST_STEWARDSHIP_COUNCIL_MIX",
+      "confidence": 0.6091875651326073,
+      "gtin": "07350121256200",
+      "method": "embedding",
+      "cropPath": "artwork-crops/07350121256200/1dc6d7df5ad0.png",
+      "sourceFile": "artwork/07350121256200/ed042bbe64fd0020757020ecd0b9c6cf8f7b2dcfcd81ad6f8d56f36bdf4dd023.jpg",
+      "bbox": {
+        "x": 943,
+        "y": 1585,
+        "width": 103,
+        "height": 103
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "efe8c69f-50d2-4c21-b1c5-0381c2c73279",
+      "label": "ECHT",
+      "t3777Code": "FOREST_STEWARDSHIP_COUNCIL_MIX",
+      "confidence": 0.5431164092785605,
+      "gtin": "07350121256712",
+      "method": "embedding",
+      "cropPath": "artwork-crops/07350121256712/64c5be26f1c9.png",
+      "sourceFile": "artwork/07350121256712/f3535a3d1dcf71904628ed16eb99a387f6505db9f224a28feee4598a1075e0b0.jpg",
+      "bbox": {
+        "x": 951,
+        "y": 1583,
+        "width": 103,
+        "height": 103
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "cbd37f23-5622-46b6-8dfa-57552afb33e3",
+      "label": "ECHT",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.6788554062686627,
+      "gtin": "08000146029059",
+      "method": "embedding",
+      "cropPath": "artwork-crops/08000146029059/93bdf73d616b.png",
+      "sourceFile": "artwork/08000146029059/0325ec7f4bfb31b3bc4d4000d7c75c2d34eed2987af6b59b0adf9aafa7954f76_converted.png",
+      "bbox": {
+        "x": 2573,
+        "y": 863,
+        "width": 94,
+        "height": 94
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "d620d2d9-4ce8-4a81-8314-758bf8a8a3b5",
+      "label": "ECHT",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.6206282704518277,
+      "gtin": "08000146029349",
+      "method": "embedding",
+      "cropPath": "artwork-crops/08000146029349/30cbcc75d29d.png",
+      "sourceFile": "artwork/08000146029349/4020fb47c85e1cc9b85acbf970d74bcffa22cf09804b55c9956f47e1a66799d8_converted.png",
+      "bbox": {
+        "x": 2297,
+        "y": 496,
+        "width": 64,
+        "height": 64
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "3d894c85-6bc3-4638-92c7-3f409ad955d1",
+      "label": "ECHT",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.569261417060867,
+      "gtin": "08033413430005",
+      "method": "embedding",
+      "cropPath": "artwork-crops/08033413430005/b3b375ddaf32.png",
+      "sourceFile": "artwork/08033413430005/73038d8bfe151b0b45537eee76db512b903a73040d9933b13fa03798f5831fa6.png",
+      "bbox": {
+        "x": 1723,
+        "y": 2889,
+        "width": 77,
+        "height": 77
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "c784c26e-1d4e-4396-a455-529f838f24bf",
+      "label": "ECHT",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.7977802440829285,
+      "gtin": "08436048965582",
+      "method": "embedding",
+      "cropPath": "artwork-crops/08436048965582/572e2306a934.png",
+      "sourceFile": "artwork/08436048965582/1864f27d4810d2fecfd2e8b300e2220f916170c76430578441de84bd5c40eecd_converted-0.png",
+      "bbox": {
+        "x": 5607,
+        "y": 1274,
+        "width": 113,
+        "height": 113
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "e4100d41-4e60-4ce5-a3a6-c797631df746",
+      "label": "ECHT",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.7409679045761524,
+      "gtin": "08436048966718",
+      "method": "embedding",
+      "cropPath": "artwork-crops/08436048966718/046b904a877a.png",
+      "sourceFile": "artwork/08436048966718/5fa5fd4e7f969a4c3f88e330c45941fb81351bcf5654680c8b281c85e1317d9a_converted-0.png",
+      "bbox": {
+        "x": 5421,
+        "y": 1275,
+        "width": 113,
+        "height": 113
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "e6ce4fa6-824f-4b95-bce4-9bae0a3a54b5",
+      "label": "ECHT",
+      "t3777Code": "FOREST_STEWARDSHIP_COUNCIL_MIX",
+      "confidence": 0.7263718110523348,
+      "gtin": "08711138180459",
+      "method": "embedding",
+      "cropPath": "artwork-crops/08711138180459/b275b9458a8f.png",
+      "sourceFile": "artwork/08711138180459/b0dfc909eb13cadbe9cabb35f39d43f5ae3e903d54e2a234ee719a2cceb0afc4_converted.png",
+      "bbox": {
+        "x": 1158,
+        "y": 2821,
+        "width": 94,
+        "height": 94
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "82e4f1f5-fc22-49cb-a0be-4e7a31740bce",
+      "label": "ECHT",
+      "t3777Code": "FOREST_STEWARDSHIP_COUNCIL_MIX",
+      "confidence": 0.7263717017920093,
+      "gtin": "08711138180466",
+      "method": "embedding",
+      "cropPath": "artwork-crops/08711138180466/9bb68707af61.png",
+      "sourceFile": "artwork/08711138180466/d978fa252cc066ca08948752f562e217a7ebd022c0abf7f68176b6769193b531_converted.png",
+      "bbox": {
+        "x": 1158,
+        "y": 2821,
+        "width": 94,
+        "height": 94
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "a9246098-bb5d-4e38-a3dc-d88f95ce0546",
+      "label": "ECHT",
+      "t3777Code": "FOREST_STEWARDSHIP_COUNCIL_MIX",
+      "confidence": 0.7261682653436998,
+      "gtin": "08711138180473",
+      "method": "embedding",
+      "cropPath": "artwork-crops/08711138180473/c3b6862a85a4.png",
+      "sourceFile": "artwork/08711138180473/22d02e7a25844b6a58fb08f6224e823e06ff9c991342d9ed4f0c439885234e04_converted.png",
+      "bbox": {
+        "x": 1158,
+        "y": 2821,
+        "width": 94,
+        "height": 94
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "1bde85b8-8ad1-4d97-a78c-b22d48eead2d",
+      "label": "ECHT",
+      "t3777Code": "FOREST_STEWARDSHIP_COUNCIL_MIX",
+      "confidence": 0.6759462612510216,
+      "gtin": "08711138186710",
+      "method": "embedding",
+      "cropPath": "artwork-crops/08711138186710/f813d1154845.png",
+      "sourceFile": "artwork/08711138186710/d1f5d77e248e200b4acfc9f70c1a6fd50d8499010f82c00b79c9ce6040bb35e7_converted.png",
+      "bbox": {
+        "x": 928,
+        "y": 2583,
+        "width": 94,
+        "height": 94
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "543f15c7-f27b-450f-bd01-68c28f649c7f",
+      "label": "ECHT",
+      "t3777Code": "FOREST_STEWARDSHIP_COUNCIL_MIX",
+      "confidence": 0.6759462612510216,
+      "gtin": "08711138186727",
+      "method": "embedding",
+      "cropPath": "artwork-crops/08711138186727/e2bd4dc7da4a.png",
+      "sourceFile": "artwork/08711138186727/b8697fb5cca5f7dd11ca3ff75511b3cbb4114003edf1150cfcc7342de595fad4_converted.png",
+      "bbox": {
+        "x": 928,
+        "y": 2583,
+        "width": 94,
+        "height": 94
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "97be3df3-f51f-48d2-88e8-0e2a5a0f9c09",
+      "label": "ECHT",
+      "t3777Code": "FOREST_STEWARDSHIP_COUNCIL_MIX",
+      "confidence": 0.6759462165496835,
+      "gtin": "08711138186734",
+      "method": "embedding",
+      "cropPath": "artwork-crops/08711138186734/9d49c4242612.png",
+      "sourceFile": "artwork/08711138186734/d330bd4b38c513339d9d9bc37a72056fda49d26c9c996c4d7a43a4d04766c1ad_converted.png",
+      "bbox": {
+        "x": 928,
+        "y": 2583,
+        "width": 94,
+        "height": 94
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "ba02304b-96c2-4b3e-80dd-b33e1a59b63b",
+      "label": "ECHT",
+      "t3777Code": "EUROPEAN_V_LABEL_VEGAN",
+      "confidence": 0.9282471663510958,
+      "gtin": "08711200368068",
+      "method": "embedding",
+      "cropPath": "artwork-crops/08711200368068/ddc47cbfbf41.png",
+      "sourceFile": "artwork/08711200368068/d205ef37740acdda24447353ddcd82dfbe1925deec50dcbc9c9e933c9ff2d370_converted.png",
+      "bbox": {
+        "x": 3900,
+        "y": 1234,
+        "width": 137,
+        "height": 183
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "3c7c2a88-b074-4e5e-9675-31857d8d9fed",
+      "label": "VALS",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.5308790319418113,
+      "gtin": "08711327617186",
+      "method": "embedding",
+      "cropPath": "artwork-crops/08711327617186/f61c841f419b.png",
+      "sourceFile": "artwork/08711327617186/e9fedf5f49728e7dff24638d4e553b9301cc1a610bdba4868e6120f0ad792003_converted.png",
+      "bbox": {
+        "x": 3842,
+        "y": 838,
+        "width": 70,
+        "height": 70
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "10c7e4e7-8409-450a-84c9-88cb17c15632",
+      "label": "VALS",
+      "t3777Code": "FOREST_STEWARDSHIP_COUNCIL_MIX",
+      "confidence": 0.5705020336931593,
+      "gtin": "08711744057404",
+      "method": "embedding",
+      "cropPath": "artwork-crops/08711744057404/21e108e280ca.png",
+      "sourceFile": "artwork/08711744057404/39695efa848fdc038087d2a17a382aebea4f7845cfce0576d75b794f4bdf52f6_converted.png",
+      "bbox": {
+        "x": 820,
+        "y": 673,
+        "width": 70,
+        "height": 70
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "092723a2-ce20-451a-9edc-e3830cd91627",
+      "label": "VALS",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.530484250659166,
+      "gtin": "08712092802623",
+      "method": "embedding",
+      "cropPath": "artwork-crops/08712092802623/3e24fb028feb.png",
+      "sourceFile": "artwork/08712092802623/3ca12b57e78a23ff365f15197df35f01dd833ef8d844a7f6dc0cb13a629f81b7_converted-0.png",
+      "bbox": {
+        "x": 762,
+        "y": 1613,
+        "width": 151,
+        "height": 151
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "6e5d8d44-f93f-4ddb-b8b6-7564f0adaf9c",
+      "label": "VALS",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.5111900752455343,
+      "gtin": "08712404002550",
+      "method": "embedding",
+      "cropPath": "artwork-crops/08712404002550/6e6e0143fe2e.png",
+      "sourceFile": "artwork/08712404002550/e9bf60fe77f93d73cd0d2ef772dc3f70f1077295cdac228e8cffe5f3c3511d05_converted-0.png",
+      "bbox": {
+        "x": 1008,
+        "y": 1151,
+        "width": 70,
+        "height": 70
+      },
+      "reason": "Confidence onder drempel (0.51 < 0.80)"
+    },
+    {
+      "id": "9a3c6a9e-609d-46fb-bfde-aac866d0058a",
+      "label": "ECHT",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.6075006333714188,
+      "gtin": "08712941104250",
+      "method": "embedding",
+      "cropPath": "artwork-crops/08712941104250/972d2397ed7f.png",
+      "sourceFile": "artwork/08712941104250/945269de17b3ba13a1c5b6b52304bb2af77bd5ab7cbffdd3ebe035faed20e78a_converted-0.png",
+      "bbox": {
+        "x": 1777,
+        "y": 1894,
+        "width": 94,
+        "height": 94
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "8b26a3cb-ab4c-416e-b245-b0fa7070a8be",
+      "label": "ECHT",
+      "t3777Code": "FOREST_STEWARDSHIP_COUNCIL_MIX",
+      "confidence": 0.7686500091157559,
+      "gtin": "08713969801398",
+      "method": "embedding",
+      "cropPath": "artwork-crops/08713969801398/a653091c8abd.png",
+      "sourceFile": "artwork/08713969801398/4716b4e4fda3499632dc8232c34ca93cf4a65d358b6bc63bc1e8a8c3f135b589_converted-0.png",
+      "bbox": {
+        "x": 113,
+        "y": 532,
+        "width": 166,
+        "height": 166
+      },
+      "reason": "Confidence onder drempel (0.77 < 0.80)"
+    },
+    {
+      "id": "f38d09fb-1a18-416a-9d15-83914d97a958",
+      "label": "ECHT",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.7220422236736975,
+      "gtin": "08713969801398",
+      "method": "embedding",
+      "cropPath": "artwork-crops/08713969801398/2a40af757036.png",
+      "sourceFile": "artwork/08713969801398/4716b4e4fda3499632dc8232c34ca93cf4a65d358b6bc63bc1e8a8c3f135b589_converted-0.png",
+      "bbox": {
+        "x": 1722,
+        "y": 2933,
+        "width": 64,
+        "height": 64
+      },
+      "reason": "Confidence onder drempel (0.72 < 0.80)"
+    },
+    {
+      "id": "420fa68b-c4c6-40c3-86f8-a3885a7dd273",
+      "label": "ECHT",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.7167776083531119,
+      "gtin": "08714024326573",
+      "method": "embedding",
+      "cropPath": "artwork-crops/08714024326573/d0745f46d6f7.png",
+      "sourceFile": "artwork/08714024326573/b19b3cb257a7229dfa885c3ce25eb736997dd704eeb22317c2a8ef516a816461_converted-0.png",
+      "bbox": {
+        "x": 1129,
+        "y": 2956,
+        "width": 103,
+        "height": 103
+      },
+      "reason": "Confidence onder drempel (0.72 < 0.80)"
+    },
+    {
+      "id": "6c1cb49f-07f7-49f9-b06c-573e07af6148",
+      "label": "VALS",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.5234063966590408,
+      "gtin": "08717774269480",
+      "method": "embedding",
+      "cropPath": "artwork-crops/08717774269480/f4c07af3d0b8.png",
+      "sourceFile": "artwork/08717774269480/4aa5196dbb5f793f31ca5fcfeee2f2f7e11a22952185cf910f630360899cd111_converted-0.png",
+      "bbox": {
+        "x": 1500,
+        "y": 1406,
+        "width": 113,
+        "height": 113
+      },
+      "reason": "Gevonden maar niet verwacht (niet gedeclareerd in T3777 voor GTIN 08717774269480)"
+    },
+    {
+      "id": "833cd578-9707-4da2-922f-a3906452029d",
+      "label": "VALS",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.6772592705488977,
+      "gtin": "08718503364612",
+      "method": "embedding",
+      "cropPath": "artwork-crops/08718503364612/5595b5e8b2f3.png",
+      "sourceFile": "artwork/08718503364612/40102af1f775f5053b480e853b4328bc641bce4d40fb65542db3790c02efe011_converted-0.png",
+      "bbox": {
+        "x": 1917,
+        "y": 1234,
+        "width": 137,
+        "height": 137
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "67127adf-d253-4cd0-9765-6fbcdac334e2",
+      "label": "VALS",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.6665240128282063,
+      "gtin": "08718503364612",
+      "method": "embedding",
+      "cropPath": "artwork-crops/08718503364612/0f23c68ab52c.png",
+      "sourceFile": "artwork/08718503364612/40102af1f775f5053b480e853b4328bc641bce4d40fb65542db3790c02efe011_converted-0.png",
+      "bbox": {
+        "x": 1917,
+        "y": 179,
+        "width": 137,
+        "height": 137
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "c9c1f0ec-6b36-40b4-9b40-391b275689a7",
+      "label": "VALS",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.6649263887968904,
+      "gtin": "08718503364612",
+      "method": "embedding",
+      "cropPath": "artwork-crops/08718503364612/4308f1018c26.png",
+      "sourceFile": "artwork/08718503364612/40102af1f775f5053b480e853b4328bc641bce4d40fb65542db3790c02efe011_converted-0.png",
+      "bbox": {
+        "x": 3664,
+        "y": 1342,
+        "width": 125,
+        "height": 125
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "ad88dde8-f2bb-44c1-96e7-c1a0f77ee1d1",
+      "label": "VALS",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.5444783188306339,
+      "gtin": "08718503366074",
+      "method": "embedding",
+      "cropPath": "artwork-crops/08718503366074/65ac3eb49130.png",
+      "sourceFile": "artwork/08718503366074/dec15626ed5511986824d737ad10d0f3b597eae79b5134fe6e7d4c3a583734d6_converted-0.png",
+      "bbox": {
+        "x": 3644,
+        "y": 1442,
+        "width": 166,
+        "height": 166
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "048c6059-8cd7-49a7-b9de-a0ec99239635",
+      "label": "VALS",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.5275498119090364,
+      "gtin": "08718503366074",
+      "method": "embedding",
+      "cropPath": "artwork-crops/08718503366074/e83b8ab8ea6b.png",
+      "sourceFile": "artwork/08718503366074/dec15626ed5511986824d737ad10d0f3b597eae79b5134fe6e7d4c3a583734d6_converted-0.png",
+      "bbox": {
+        "x": 1931,
+        "y": 157,
+        "width": 166,
+        "height": 166
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "d079522e-a140-4f31-9fdb-dbb1b7645ad5",
+      "label": "VALS",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.5228582633617466,
+      "gtin": "08718503366074",
+      "method": "embedding",
+      "cropPath": "artwork-crops/08718503366074/959e8fa10a06.png",
+      "sourceFile": "artwork/08718503366074/dec15626ed5511986824d737ad10d0f3b597eae79b5134fe6e7d4c3a583734d6_converted-0.png",
+      "bbox": {
+        "x": 1931,
+        "y": 1441,
+        "width": 166,
+        "height": 166
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "d3945d27-7b1b-41de-8511-b3aa0a4dfa58",
+      "label": "VALS",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.5217152756639659,
+      "gtin": "08718503366074",
+      "method": "embedding",
+      "cropPath": "artwork-crops/08718503366074/376d0ec9aeb8.png",
+      "sourceFile": "artwork/08718503366074/dec15626ed5511986824d737ad10d0f3b597eae79b5134fe6e7d4c3a583734d6_converted-0.png",
+      "bbox": {
+        "x": 3644,
+        "y": 157,
+        "width": 166,
+        "height": 166
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "796d838c-9973-4166-9840-f056e9c07913",
+      "label": "ECHT",
+      "t3777Code": "EU_ORGANIC_FARMING",
+      "confidence": 0.6182607404648883,
+      "gtin": "08718503367200",
+      "method": "embedding",
+      "cropPath": "artwork-crops/08718503367200/33504644adf1.png",
+      "sourceFile": "artwork/08718503367200/da4d44cdd4144f02de7c216eb8470a67d953b7478a6bddb520b0987984504a4e_converted.png",
+      "bbox": {
+        "x": 191,
+        "y": 1558,
+        "width": 125,
+        "height": 84
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "d39f8aed-7491-48f0-9fd3-f9dfcf2dbd53",
+      "label": "ECHT",
+      "t3777Code": "EU_ORGANIC_FARMING",
+      "confidence": 0.6182607404648883,
+      "gtin": "08718503367224",
+      "method": "embedding",
+      "cropPath": "artwork-crops/08718503367224/cce6a6182f9c.png",
+      "sourceFile": "artwork/08718503367224/d12dca425612081b8a9d9a70d4cac5c78098bdd4c06f285029b8c516abe16a9f_converted.png",
+      "bbox": {
+        "x": 191,
+        "y": 1558,
+        "width": 125,
+        "height": 84
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "de355fa4-3ad0-45fd-8029-f19162bedc17",
+      "label": "ECHT",
+      "t3777Code": "EU_ORGANIC_FARMING",
+      "confidence": 0.6182607404648883,
+      "gtin": "08718503367248",
+      "method": "embedding",
+      "cropPath": "artwork-crops/08718503367248/c4340a473aba.png",
+      "sourceFile": "artwork/08718503367248/1e3fe3e0e9869ccf785afd5c4f4163bbe125e919911eec81eddde4cfbfef0a1e_converted.png",
+      "bbox": {
+        "x": 191,
+        "y": 1558,
+        "width": 125,
+        "height": 84
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "2d875041-8d6e-4b68-b984-6bed203ee283",
+      "label": "VALS",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.5115677088657932,
+      "gtin": "08718989021221",
+      "method": "embedding",
+      "cropPath": "artwork-crops/08718989021221/830b0b3431dc.png",
+      "sourceFile": "artwork/08718989021221/08718989021221.page-1.png",
+      "bbox": {
+        "x": 916,
+        "y": 2479,
+        "width": 113,
+        "height": 113
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "fa77cad9-8428-4531-9023-6922ee66a898",
+      "label": "ECHT",
+      "t3777Code": "FOREST_STEWARDSHIP_COUNCIL_MIX",
+      "confidence": 0.8990094837830342,
+      "gtin": "08718989061722",
+      "method": "embedding",
+      "cropPath": "artwork-crops/08718989061722/2096b7e3f599.png",
+      "sourceFile": "artwork/08718989061722/55bb2fdfd6e893cb389d4de25aefa2be8bba89cf877b3736ad72407124912b37_converted.png",
+      "bbox": {
+        "x": 4124,
+        "y": 2160,
+        "width": 201,
+        "height": 201
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "bd5cfc35-2a17-41e1-8a70-e372a57e4d14",
+      "label": "ECHT",
+      "t3777Code": "EUROPEAN_V_LABEL_VEGAN",
+      "confidence": 0.6762907037662292,
+      "gtin": "08719189416244",
+      "method": "embedding",
+      "cropPath": "artwork-crops/08719189416244/7b688a0ca363.png",
+      "sourceFile": "artwork/08719189416244/52f02e32817c3312069833b1d00ab36ba8718e16d70b8382262d204238da9f94_converted-0.png",
+      "bbox": {
+        "x": 123,
+        "y": 332,
+        "width": 182,
+        "height": 243
+      },
+      "reason": "Gevonden maar niet verwacht (niet gedeclareerd in T3777 voor GTIN 08719189416244)"
+    },
+    {
+      "id": "7f5118a9-3b94-47c4-bfc6-6615cb0981ca",
+      "label": "ECHT",
+      "t3777Code": "EUROPEAN_V_LABEL_VEGAN",
+      "confidence": 0.6621779169694965,
+      "gtin": "08719189416435",
+      "method": "embedding",
+      "cropPath": "artwork-crops/08719189416435/42e3dac9589a.png",
+      "sourceFile": "artwork/08719189416435/391f40cd477ac9747cd3a24edfd3adc5f9b2f13d8c1a9e3c15b0be1b26225816_converted-0.png",
+      "bbox": {
+        "x": 101,
+        "y": 522,
+        "width": 182,
+        "height": 243
+      },
+      "reason": "Gevonden maar niet verwacht (niet gedeclareerd in T3777 voor GTIN 08719189416435)"
+    },
+    {
+      "id": "3e6aa83d-1080-4d95-b63c-3f958e78056b",
+      "label": "ECHT",
+      "t3777Code": "EUROPEAN_V_LABEL_VEGAN",
+      "confidence": 0.8094329935345322,
+      "gtin": "08720182810007",
+      "method": "embedding",
+      "cropPath": "artwork-crops/08720182810007/fbb4e0834176.png",
+      "sourceFile": "artwork/08720182810007/dae4373e27c1c45e0c742f4ba3792ad70823501b46f31045572d2f50b0219c41_converted-0.png",
+      "bbox": {
+        "x": 2100,
+        "y": 1453,
+        "width": 137,
+        "height": 183
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "5ac5dd88-eb2d-48c6-9a92-7ace19039bbc",
+      "label": "ECHT",
+      "t3777Code": "EUROPEAN_V_LABEL_VEGAN",
+      "confidence": 0.8861777022278771,
+      "gtin": "08720326083687",
+      "method": "embedding",
+      "cropPath": "artwork-crops/08720326083687/995d6363a65d.png",
+      "sourceFile": "artwork/08720326083687/4786f6e2f8130e1068005f5558be6af13728378b30aa2faf5a9cdf03fdbc0453_converted.png",
+      "bbox": {
+        "x": 988,
+        "y": 2287,
+        "width": 151,
+        "height": 201
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "495a04e1-0e42-44c5-931c-be4bcec71d5b",
+      "label": "VALS",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.5115677088657932,
+      "gtin": "08720326130763",
+      "method": "embedding",
+      "cropPath": "artwork-crops/08720326130763/e8e822e78156.png",
+      "sourceFile": "artwork/08720326130763/08720326130763.page-1.png",
+      "bbox": {
+        "x": 916,
+        "y": 2479,
+        "width": 113,
+        "height": 113
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "c2f342ac-776d-4d08-beb0-28cda97a3844",
+      "label": "ECHT",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.6343185088096361,
+      "gtin": "08721082004565",
+      "method": "embedding",
+      "cropPath": "artwork-crops/08721082004565/f7b9b09f3d86.png",
+      "sourceFile": "artwork/08721082004565/044d333c730f11ecec4f4395fd2c651ea3a783f0c74c543221bbeeb4401582b0_converted-0.png",
+      "bbox": {
+        "x": 2185,
+        "y": 2292,
+        "width": 77,
+        "height": 77
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "6f00676d-3e84-4cc8-a54e-c2b3ee0aaba1",
+      "label": "VALS",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.5007359480786447,
+      "gtin": "08721516201232",
+      "method": "embedding",
+      "cropPath": "artwork-crops/08721516201232/33418c71d450.png",
+      "sourceFile": "artwork/08721516201232/7c21fb5937c073cf59bbc262bf3a4bb0a262c0f3388448fa998751e9e2fa3682_converted-0.png",
+      "bbox": {
+        "x": 861,
+        "y": 907,
+        "width": 70,
+        "height": 70
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "a562d6f8-517e-4033-9c91-021aecab4c11",
+      "label": "ECHT",
+      "t3777Code": "EUROPEAN_V_LABEL_VEGAN",
+      "confidence": 0.6245644642209851,
+      "gtin": "08721516201294",
+      "method": "embedding",
+      "cropPath": "artwork-crops/08721516201294/8e0e921c6261.png",
+      "sourceFile": "artwork/08721516201294/18d8fb8067702ae9c02c8541a8e0672f69a24612bc69759e10a2f961656615ae_converted-0.png",
+      "bbox": {
+        "x": 87,
+        "y": 843,
+        "width": 151,
+        "height": 201
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "450c9770-eeb8-4f37-b494-ed9512ad2513",
+      "label": "ECHT",
+      "t3777Code": "EUROPEAN_V_LABEL_VEGAN",
+      "confidence": 0.678557581601803,
+      "gtin": "08721516201317",
+      "method": "embedding",
+      "cropPath": "artwork-crops/08721516201317/c38f4e1825f1.png",
+      "sourceFile": "artwork/08721516201317/cda1e33d1bbec569df5d091a083b70e38bf6de5bf0f24c66415c0cd3b310a710_converted-0.png",
+      "bbox": {
+        "x": 101,
+        "y": 522,
+        "width": 182,
+        "height": 243
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "406e822e-8a46-4673-b789-656359b7f754",
+      "label": "ECHT",
+      "t3777Code": "EUROPEAN_V_LABEL_VEGAN",
+      "confidence": 0.7079070717011589,
+      "gtin": "08721516201331",
+      "method": "embedding",
+      "cropPath": "artwork-crops/08721516201331/a0b620cef65f.png",
+      "sourceFile": "artwork/08721516201331/97c8027fe738ad749f81b1337faca59e8edfdb5cdd0fe78251c4f216613a595d_converted-0.png",
+      "bbox": {
+        "x": 211,
+        "y": 657,
+        "width": 243,
+        "height": 323
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "cec69e5d-1097-4d58-9bc4-31532cde4ea5",
+      "label": "ECHT",
+      "t3777Code": "EUROPEAN_V_LABEL_VEGAN",
+      "confidence": 0.7449548205715754,
+      "gtin": "08721516201355",
+      "method": "embedding",
+      "cropPath": "artwork-crops/08721516201355/e8bb69c3d500.png",
+      "sourceFile": "artwork/08721516201355/435559c3dc861da476ad8e70e095f2d62d17516957225c682538b61123ac2e4e_converted-0.png",
+      "bbox": {
+        "x": 87,
+        "y": 843,
+        "width": 151,
+        "height": 201
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "953d783a-b095-4e23-a9c9-628ac0724d65",
+      "label": "ECHT",
+      "t3777Code": "EUROPEAN_V_LABEL_VEGAN",
+      "confidence": 0.7809403929323789,
+      "gtin": "08721516201379",
+      "method": "embedding",
+      "cropPath": "artwork-crops/08721516201379/29a35fb078c4.png",
+      "sourceFile": "artwork/08721516201379/1b02bcd166170c23d2ee521787e6325adffd9e194d8066efc6ad6e3440786cb9_converted-0.png",
+      "bbox": {
+        "x": 101,
+        "y": 522,
+        "width": 182,
+        "height": 243
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "af0d2d8c-0552-4592-9328-0d173150a412",
+      "label": "ECHT",
+      "t3777Code": "EUROPEAN_V_LABEL_VEGAN",
+      "confidence": 0.7867642476311083,
+      "gtin": "08721516201393",
+      "method": "embedding",
+      "cropPath": "artwork-crops/08721516201393/733f20fdb45f.png",
+      "sourceFile": "artwork/08721516201393/2ec7b8f9d91c434a894df4bc9ac33c79b012c09171231be5607c5f5f69ccc90a_converted-0.png",
+      "bbox": {
+        "x": 211,
+        "y": 657,
+        "width": 243,
+        "height": 323
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    },
+    {
+      "id": "af9303c0-0c66-48da-a76e-9de50bacec32",
+      "label": "ECHT",
+      "t3777Code": "GREEN_DOT",
+      "confidence": 0.5831349350142211,
+      "gtin": "09000143235650",
+      "method": "embedding",
+      "cropPath": "artwork-crops/09000143235650/c2a16fd4af96.png",
+      "sourceFile": "artwork/09000143235650/26157c1acbb5883c99b3992e1f4cb40431f29744efa112be5fb1c7229160afee_converted.png",
+      "bbox": {
+        "x": 1751,
+        "y": 1406,
+        "width": 94,
+        "height": 94
+      },
+      "reason": "Geen T3777-declaratie beschikbaar \u2014 verwacht handmatige review"
+    }
+  ]
+}
