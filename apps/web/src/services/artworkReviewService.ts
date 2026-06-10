@@ -50,8 +50,10 @@ export interface ProcessAcceptedResult {
 }
 
 /** Fetch all open artwork review items (newest first, server-ordered). */
-export const fetchReviewQueue = async (): Promise<ArtworkReviewItem[]> => {
-  const response = await apiClient.get('/artwork/review-queue');
+export const fetchReviewQueue = async (
+  params?: { q?: string; take?: number }
+): Promise<ArtworkReviewItem[]> => {
+  const response = await apiClient.get('/artwork/review-queue', { params });
   return response.data?.data ?? [];
 };
 

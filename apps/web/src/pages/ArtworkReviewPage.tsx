@@ -11,7 +11,18 @@
  * read-only queue (actions disabled; the backend is the real guard).
  */
 import React, { useCallback, useEffect, useState } from 'react';
-import { Typography, Space, Empty, Spin, Alert, Button, Tag, Card, message } from 'antd';
+import {
+  Typography,
+  Space,
+  Empty,
+  Spin,
+  Alert,
+  Button,
+  Tag,
+  Card,
+  message,
+  Segmented,
+} from 'antd';
 import { ReloadOutlined, SyncOutlined, LoginOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -37,6 +48,9 @@ const ArtworkReviewPage: React.FC = () => {
   const { isAdmin } = useCurrentUser();
   // Tighter padding and full-width header actions on phones; desktop unchanged.
   const isMobile = useMediaQuery('(max-width: 768px)');
+  // Focus filter: default to the 12.6 keurmerk acceptance candidates so the queue
+  // is immediately usable, instead of the thousands of bulk-run items.
+  const [filter, setFilter] = useState<'km' | 'all'>('km');
   const [items, setItems] = useState<ArtworkReviewItem[]>([]);
   const [uncertain, setUncertain] = useState<UncertainPrediction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,7 +70,7 @@ const ArtworkReviewPage: React.FC = () => {
       // alongside it (Story 8.5 Task 2 — one page, two source-labeled sections).
       // The uncertainty fetch is best-effort: it must not break the page.
       const [artwork, uncertainItems] = await Promise.all([
-        fetchReviewQueue(),
+        fetchReviewQueue(filter === 'km' ? { q: '12.6' } : undefined),
         fetchUncertainPredictions().catch(() => [] as UncertainPrediction[]),
       ]);
       setItems(artwork);
@@ -74,7 +88,7 @@ const ArtworkReviewPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [t, filter]);
 
   useEffect(() => {
     load();
@@ -179,7 +193,16 @@ const ArtworkReviewPage: React.FC = () => {
             })}
           </Paragraph>
         </div>
-        <Space>
+        <Space wrap>
+          <Segmented
+            value={filter}
+            onChange={(v) => setFilter(v as 'km' | 'all')}
+            data-testid="review-filter"
+            options={[
+              { label: t('review.filterKeurmerk', { defaultValue: 'Keurmerk-kandidaten' }), value: 'km' },
+              { label: t('review.filterAll', { defaultValue: 'Alle items' }), value: 'all' },
+            ]}
+          />
           <Button
             icon={<ReloadOutlined />}
             onClick={load}

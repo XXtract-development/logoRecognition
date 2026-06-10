@@ -668,13 +668,23 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
    * GET /artwork/review-queue
    * Fetch all open artwork review items (for the combined review UI).
    */
-  fastify.get(
+  fastify.get<{ Querystring: { q?: string; take?: string } }>(
     '/artwork/review-queue',
     { preHandler: authMiddleware },
-    async (_request: FastifyRequest, reply: FastifyReply) => {
+    async (
+      request: FastifyRequest<{ Querystring: { q?: string; take?: string } }>,
+      reply: FastifyReply
+    ) => {
+      // Optional focus filter: `q` matches a substring of `reason` (e.g. "12.6"
+      // to show only the keurmerk acceptance candidates instead of the whole
+      // bulk-run queue). `take` bounds the payload (default 1000). Highest
+      // confidence first so the most-likely-real crops surface at the top.
+      const { q, take } = request.query;
+      const limit = Math.min(Math.max(parseInt(String(take ?? '1000'), 10) || 1000, 1), 5000);
       const items = await prisma.artworkReviewItem.findMany({
-        where: { status: 'open' },
-        orderBy: { createdAt: 'desc' },
+        where: { status: 'open', ...(q ? { reason: { contains: q } } : {}) },
+        orderBy: [{ confidence: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }],
+        take: limit,
       });
 
       return reply.status(200).send({ data: items });
