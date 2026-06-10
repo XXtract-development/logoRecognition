@@ -1,0 +1,87 @@
+{
+  "meta": {
+    "source": "GS1-Benelux datamodel (benelux-fmcg-data-model-31353), 123 codelijsten gecontroleerd 2026-06-10",
+    "caveat": "Mongo codes-collectie niet direct gequeryd (geen connectiestring/timeout); xlsx is de autoritaire spiegel."
+  },
+  "recognizable_fields": [
+    {
+      "codelist": "PackagingMarkedLabelAccreditationCode",
+      "gs1_field": "packagingMarkedLabelAccreditationCode",
+      "t3777": true,
+      "fieldType": "ACCREDITATION",
+      "codes": 894,
+      "logo": "yes",
+      "in_system": "seeded",
+      "note": "keurmerk-logos; gluten/halal/organic/CE"
+    },
+    {
+      "codelist": "NutritionalProgramCode",
+      "gs1_field": "nutritionalScore",
+      "fieldType": "NUTRITIONAL",
+      "codes": 10,
+      "logo": "yes",
+      "in_system": "bootstrap",
+      "note": "Nutri-Score A-E"
+    },
+    {
+      "codelist": "GHSSymbolDescriptionCode",
+      "gs1_field": "gHSSymbolDescriptionCode",
+      "fieldType": "GHS_SYMBOL",
+      "codes": 10,
+      "logo": "yes",
+      "in_system": "no",
+      "note": "gevaarpictogrammen"
+    },
+    {
+      "codelist": "EU_consumerUsageLabelCodeList",
+      "gs1_field": "enumerationValue",
+      "fieldType": "CONSUMER_USAGE",
+      "codes": 20,
+      "logo": "yes",
+      "in_system": "no",
+      "note": "AISE-pictogrammen"
+    }
+  ],
+  "partial_fields": [
+    {
+      "codelist": "DietTypeCode",
+      "gs1_field": "dietTypeCode",
+      "fieldType": "DIET",
+      "codes": 34,
+      "logo": "partial",
+      "in_system": "no",
+      "note": "lactosevrij/vegan/keto = data; logo-variant vaak in T3777; LACTOSE_FREE heeft GEEN T3777-logo"
+    },
+    {
+      "codelist": "PackagingRecyclingSchemeCode",
+      "gs1_field": "packagingRecyclingScheme",
+      "fieldType": null,
+      "codes": 39,
+      "logo": "partial",
+      "in_system": "no",
+      "note": "overlap met T3777 (Green Dot/Triman)"
+    }
+  ],
+  "data_only_no_logo": [
+    {
+      "codelist": "ClaimTypeCode",
+      "codes": 61,
+      "note": "FREE_FROM-claim (tekst)"
+    },
+    {
+      "codelist": "ClaimElementCode",
+      "codes": 292,
+      "note": "claim-element (LACTOSE,PEANUTS)"
+    },
+    {
+      "codelist": "AllergenTypeCode",
+      "codes": 276,
+      "note": "allergenen-data (ML=lactose)"
+    },
+    {
+      "codelist": "GHSSignalWordsCode",
+      "codes": 4,
+      "note": "DANGER/WARNING tekst"
+    }
+  ]
+}
