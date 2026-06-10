@@ -49,6 +49,16 @@ assembler vult die queue gericht met top-N-kandidaten; geaccepteerde ECHT-crops 
 - **Volgende:** PO labelt review.html → geaccepteerde ECHT → `dataset-v1.json` (≥15/code-doel), bevriezen
   + id-exclusie. Dat ontgrendelt fine-tuning-iteratie 2 (12.3) met realistische, echte positieven.
 
+## Annotatie voorbereid 2026-06-10 — klaar voor de PO
+
+- **Interactief annotatie-instrument** `review-queue/annotate.html` (zelfstandig, geen backend): per crop
+  ECHT/VALS klikken of E/V-toets, voortgang in localStorage, knop **"Exporteer dataset-v1.json"** in het
+  canonieke schema. JS-syntax geverifieerd (`node --check`). 389 kandidaten (top-25/code), conf-gesorteerd.
+- **Annotatie-brief** `review-queue/ANNOTATIE-BRIEF.md` — instructie, doel (≥15 ECHT/code), bij-twijfel-VALS,
+  bbox niet vereist (crop accept/reject volstaat voor embedding-training; strak bijsnijden = 12.4).
+- **Hand-off:** de enige resterende blokker is mensenwerk (PO/annotator). Output `dataset-v1.json` →
+  bevriezen + id-exclusie → input voor 12.3-iter2 (realistische positieven) én 12.5-acceptatienorm.
+
 ## Story
 
 Als ML-eigenaar,
