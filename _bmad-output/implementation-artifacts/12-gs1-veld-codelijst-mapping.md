@@ -5,24 +5,25 @@ Datum 2026-06-10. Gecontroleerd tegen het **GS1-Benelux-datamodel** (`benelux-fm
 **visuele herkenning** zinvol is (staat er een gestandaardiseerd logo op de verpakking?) en op welk
 GS1-veld + `fieldType` het resultaat hoort te worden opgeslagen.
 
-> De `fieldType`-enum die het systeem al kent (`reference_logos.fieldType`, Story 12.1):
-> `ACCREDITATION | DIET | NUTRITIONAL | GHS_SYMBOL | CONSUMER_USAGE`. Die dekt precies de
-> hieronder gemarkeerde herkenbare velden.
+> **`reference_logos.fieldType` = de GS1-codelijstnaam (1:1 met GS1; migratie 0010)** —
+> `PackagingMarkedLabelAccreditationCode | NutritionalProgramCode | DietTypeCode |
+> GHSSymbolDescriptionCode | EU_consumerUsageLabelCodeList`. Daarnaast `gs1_field` = het
+> GS1-declaratieveld (XML-element) voor de crosscheck.
 
 ## Herkenbaar (gestandaardiseerd logo/pictogram → zinvol om te detecteren)
 
 | Codelijst (GS1) | #codes | `fieldType` | Logo? | In systeem | Voorbeelden |
 |---|---:|---|---|---|---|
-| **PackagingMarkedLabelAccreditationCode** (T3777) | 894 | `ACCREDITATION` | ✅ gestandaardiseerde keurmerk-logo's | ✅ geseed (top-N + free-from + halal) | GREEN_DOT, FSC, EU_ORGANIC, CROSSED_GRAIN (glutenvrij), HALAL_CORRECT, TRIMAN, BETER_LEVEN |
-| **NutritionalProgramCode** | 10 | `NUTRITIONAL` | ✅ Nutri-Score A–E (vaste vorm) | 🔄 synthetische bootstrap geseed | NUTRISCORE_A…E |
-| **GHSSymbolDescriptionCode** | 10 | `GHS_SYMBOL` | ✅ GHS-gevaarpictogrammen (ruit-symbolen) | ❌ nog niet | vlam, doodshoofd, corrosief |
-| **EU_consumerUsageLabelCodeList** | 20 | `CONSUMER_USAGE` | ✅ AISE-consumentenpictogrammen | ❌ nog niet | wasvoorschrift-achtige iconen |
+| **PackagingMarkedLabelAccreditationCode** (T3777) | 894 | `PackagingMarkedLabelAccreditationCode` | ✅ gestandaardiseerde keurmerk-logo's | ✅ geseed (top-N + free-from + halal) | GREEN_DOT, FSC, EU_ORGANIC, CROSSED_GRAIN (glutenvrij), HALAL_CORRECT, TRIMAN, BETER_LEVEN |
+| **NutritionalProgramCode** | 10 | `NutritionalProgramCode` | ✅ Nutri-Score A–E (vaste vorm) | 🔄 synthetische bootstrap geseed | NUTRISCORE_A…E |
+| **GHSSymbolDescriptionCode** | 10 | `GHSSymbolDescriptionCode` | ✅ GHS-gevaarpictogrammen (ruit-symbolen) | ❌ nog niet | vlam, doodshoofd, corrosief |
+| **EU_consumerUsageLabelCodeList** | 20 | `EU_consumerUsageLabelCodeList` | ✅ AISE-consumentenpictogrammen | ❌ nog niet | wasvoorschrift-achtige iconen |
 
 ## Deels herkenbaar (varieert / geen vaste mark)
 
 | Codelijst | #codes | `fieldType` | Logo? | Opmerking |
 |---|---:|---|---|---|
-| **DietTypeCode** | 34 | `DIET` | ⚠️ deels — generieke/merk-iconen, géén vaste mark | LACTOSE_FREE, FREE_FROM_GLUTEN, VEGAN, VEGETARIAN, HALAL, KOSHER, ORGANIC, KETO… De *logo*-variant zit vaak in T3777 (bv. glutenvrij = CROSSED_GRAIN, halal = HALAL_CORRECT); de DietType is de **data-claim**. **Lactosevrij hééft geen T3777-logo** → alleen generiek icoon. |
+| **DietTypeCode** | 34 | `DietTypeCode` | ⚠️ deels — generieke/merk-iconen, géén vaste mark | LACTOSE_FREE, FREE_FROM_GLUTEN, VEGAN, VEGETARIAN, HALAL, KOSHER, ORGANIC, KETO… De *logo*-variant zit vaak in T3777 (bv. glutenvrij = CROSSED_GRAIN, halal = HALAL_CORRECT); de DietType is de **data-claim**. **Lactosevrij hééft geen T3777-logo** → alleen generiek icoon. |
 | **PackagingRecyclingSchemeCode** | 39 | (recycling) | ⚠️ deels | overlapt met T3777 (Green Dot, Triman zitten in T3777) |
 | **GHSSignalWordsCode** | 4 | (tekst) | ❌ tekst | DANGER / WARNING — tekst, geen pictogram |
 
@@ -41,9 +42,9 @@ Deze codelijsten zijn **declaratie-data**, geen marks op de verpakking → niet 
 
 ## Conclusies
 
-1. **Visuele herkenning is zinvol voor 4 velden:** `ACCREDITATION` (T3777, kern — gedaan),
-   `NUTRITIONAL` (Nutri-Score — bootstrap), `GHS_SYMBOL` (gevaarpictogrammen — nieuw spoor),
-   `CONSUMER_USAGE` (AISE-pictogrammen — nieuw spoor). Elk = een **veld-spoor** (referenties seeden +
+1. **Visuele herkenning is zinvol voor 4 velden:** `PackagingMarkedLabelAccreditationCode` (T3777, kern — gedaan),
+   `NutritionalProgramCode` (Nutri-Score — bootstrap), `GHSSymbolDescriptionCode` (gevaarpictogrammen — nieuw spoor),
+   `EU_consumerUsageLabelCodeList` (AISE-pictogrammen — nieuw spoor). Elk = een **veld-spoor** (referenties seeden +
    declaratie-parser + crosscheck-routing op `fieldType`), zoals besproken.
 2. **DietTypeCode (lactosevrij, vegan, keto…) is grotendeels data, geen vaste mark.** Waar wél een
    logo bestaat, zit dat meestal in **T3777** (glutenvrij, halal, kosher, organic). **Lactosevrij is

@@ -246,9 +246,13 @@ model ReferenceLogo {
   variantLabel String   @map("variant_label") @db.VarChar(100)
   source       String?
   storagePath  String   @map("storage_path") @db.VarChar(500)
-  // Story 12.1: welk GS1-veld de code beschrijft (ACCREDITATION | DIET | NUTRITIONAL
-  // | GHS_SYMBOL | CONSUMER_USAGE). Default ACCREDITATION (T3777) — de bestaande set.
-  fieldType    String   @default("ACCREDITATION") @map("field_type") @db.VarChar(30)
+  // GS1-codelijstnaam (1:1 met GS1) die de code beschrijft, bv.
+  // PackagingMarkedLabelAccreditationCode (T3777), NutritionalProgramCode (Nutri-Score),
+  // DietTypeCode, GHSSymbolDescriptionCode, EU_consumerUsageLabelCodeList. (migratie 0010)
+  fieldType    String   @default("PackagingMarkedLabelAccreditationCode") @map("field_type") @db.VarChar(60)
+  // GS1-declaratieveld (XML-element) voor de crosscheck, bv.
+  // packagingMarkedLabelAccreditationCode, nutritionalScore, dietTypeCode.
+  gs1Field     String?  @map("gs1_field") @db.VarChar(60)
   active       Boolean  @default(true)
   logoId       String?  @map("logo_id") @db.Uuid
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz

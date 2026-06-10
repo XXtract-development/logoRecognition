@@ -29,6 +29,15 @@ function buildStoragePath(t3777Code, variantLabel) {
   return `reference-logos/${t3777Code}/${variantLabel}.png`;
 }
 
+// GS1-codelijstnaam (fieldType) -> GS1-declaratieveld (gs1Field, voor de crosscheck).
+const GS1_FIELD = {
+  PackagingMarkedLabelAccreditationCode: 'packagingMarkedLabelAccreditationCode',
+  NutritionalProgramCode: 'nutritionalScore',
+  DietTypeCode: 'dietTypeCode',
+  GHSSymbolDescriptionCode: 'gHSSymbolDescriptionCode',
+  EU_consumerUsageLabelCodeList: 'enumerationValue',
+};
+
 async function main() {
   const root = process.argv[2] || '/tmp/refseed';
   const { uploadReferenceLogo } = require('/app/dist/services/storage.js');
@@ -47,6 +56,9 @@ async function main() {
       const storagePath = buildStoragePath(e.code, variantLabel);
       const buf = fs.readFileSync(path.join(root, e.file));
       await uploadReferenceLogo(buf, storagePath, 'image/png');
+      // fieldType = GS1-codelijstnaam (1:1 met GS1); gs1Field = GS1-declaratieveld.
+      const fieldType = e.fieldType || 'PackagingMarkedLabelAccreditationCode';
+      const gs1Field = e.gs1Field || GS1_FIELD[fieldType] || 'packagingMarkedLabelAccreditationCode';
       await prisma.referenceLogo.upsert({
         where: { t3777Code_variantLabel: { t3777Code: e.code, variantLabel } },
         create: {
@@ -54,13 +66,15 @@ async function main() {
           variantLabel,
           source: e.source || 'gs1-packaging-label-guide',
           storagePath,
-          fieldType: e.fieldType || 'ACCREDITATION',
+          fieldType,
+          gs1Field,
           active: true,
         },
         update: {
           source: e.source || 'gs1-packaging-label-guide',
           storagePath,
-          fieldType: e.fieldType || 'ACCREDITATION',
+          fieldType,
+          gs1Field,
           active: true,
         },
       });

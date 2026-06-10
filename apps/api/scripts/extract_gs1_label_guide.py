@@ -30,7 +30,8 @@ MIN_RES = 200          # 7.3 upload floor; flagged, not rejected (seeds may be s
 PLACEHOLDER_MAX = 4    # px; images this small (or width==1) are placeholders
 NEIGHBOR_WINDOW = 2    # rows to scan upward for a code when the anchor row's col A is empty
 SHEET = "Labels_Packaging"
-FIELD_TYPE = "ACCREDITATION"   # Labels_Packaging == T3777 accreditation marks
+FIELD_TYPE = "PackagingMarkedLabelAccreditationCode"  # GS1-codelijstnaam (Labels_Packaging == T3777)
+GS1_FIELD = "packagingMarkedLabelAccreditationCode"   # GS1-declaratieveld (crosscheck)
 
 
 def _load_image_bytes(img):
@@ -156,6 +157,7 @@ def main() -> int:
             manifest.append({
                 "code": code,
                 "fieldType": FIELD_TYPE,
+                "gs1Field": GS1_FIELD,
                 "variant": variant,
                 "file": os.path.relpath(fpath, out),
                 "width": w, "height": h,

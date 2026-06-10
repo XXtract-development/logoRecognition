@@ -8,7 +8,7 @@
       "codelist": "PackagingMarkedLabelAccreditationCode",
       "gs1_field": "packagingMarkedLabelAccreditationCode",
       "t3777": true,
-      "fieldType": "ACCREDITATION",
+      "fieldType": "PackagingMarkedLabelAccreditationCode",
       "codes": 894,
       "logo": "yes",
       "in_system": "seeded",
@@ -17,7 +17,7 @@
     {
       "codelist": "NutritionalProgramCode",
       "gs1_field": "nutritionalScore",
-      "fieldType": "NUTRITIONAL",
+      "fieldType": "NutritionalProgramCode",
       "codes": 10,
       "logo": "yes",
       "in_system": "bootstrap",
@@ -26,7 +26,7 @@
     {
       "codelist": "GHSSymbolDescriptionCode",
       "gs1_field": "gHSSymbolDescriptionCode",
-      "fieldType": "GHS_SYMBOL",
+      "fieldType": "GHSSymbolDescriptionCode",
       "codes": 10,
       "logo": "yes",
       "in_system": "no",
@@ -35,7 +35,7 @@
     {
       "codelist": "EU_consumerUsageLabelCodeList",
       "gs1_field": "enumerationValue",
-      "fieldType": "CONSUMER_USAGE",
+      "fieldType": "EU_consumerUsageLabelCodeList",
       "codes": 20,
       "logo": "yes",
       "in_system": "no",
@@ -46,7 +46,7 @@
     {
       "codelist": "DietTypeCode",
       "gs1_field": "dietTypeCode",
-      "fieldType": "DIET",
+      "fieldType": "DietTypeCode",
       "codes": 34,
       "logo": "partial",
       "in_system": "no",
