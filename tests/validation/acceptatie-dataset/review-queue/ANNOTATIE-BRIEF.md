@@ -14,8 +14,10 @@ trainingsronde (12.3) en de endpoint-acceptatietest (12.5).
    - **ECHT** = ja, het juiste keurmerk-logo staat op de crop.
    - **VALS** = nee: geen keurmerk, of een ánder keurmerk dan de titel.
 3. **Bedienen:** klik een crop — 1× = ECHT (groen), 2× = VALS (rood), 3× = leeg. Of: muis op de crop +
-   toets **E** (echt) / **V** (vals). Voortgang wordt automatisch lokaal bewaard (je kunt stoppen en later
-   verder).
+   toets **E** (echt) / **V** (vals). Voortgang wordt automatisch lokaal bewaard (localStorage).
+   - **Tussentijds opslaan (aanbevolen op iPhone):** klik **"Tussentijds opslaan"** → downloadt een klein
+     `voortgang.json`. Bewaar dat. Later/op een ander apparaat: open de pagina, klik **"Laden"**, kies dat
+     bestand → je gaat verder waar je was. Zo ben je niet afhankelijk van de browser-opslag.
 4. **Volgorde:** begin per code bovenaan — die zijn op confidence gesorteerd, dus de **hoogste kans op
    ECHT staat boven** (groen = ≥0,75). De meeste lage crops zijn VALS → snel afwijzen.
 5. **Doel:** **≥15 ECHT per code**. De balk bovenaan telt mee hoeveel codes het doel halen.

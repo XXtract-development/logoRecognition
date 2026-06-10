@@ -53,7 +53,7 @@ function renderBar(){
   let e=0,v=0;Object.values(store).forEach(s=>{if(s==='ECHT')e++;if(s==='VALS')v++});
   const done=codes.filter(code=>byCode[code].filter(d=>store[d.id]==='ECHT').length>=TARGET).length;
   document.getElementById('bar').innerHTML='ECHT: <b>'+e+'</b> &nbsp; VALS: '+v+' &nbsp; codes ≥'+TARGET+' ECHT: <b>'+done+'</b>/'+codes.length+
-    ' &nbsp; <button class=exp onclick=exportJSON()>Exporteer dataset-v1.json</button> <button class=rst onclick="if(confirm(\'Alle labels wissen?\')){localStorage.removeItem(\'kmlabels12_6\');location.reload()}">Reset</button>';
+    ' &nbsp; <button class=exp onclick=exportJSON()>Exporteer dataset-v1.json</button> <button class=exp onclick=saveProgress()>Tussentijds opslaan</button> <label class=rst style="cursor:pointer;padding:7px 12px">Laden<input type=file accept=.json onchange=loadProgress(this) style=display:none></label> <button class=rst onclick="if(confirm(\'Alle labels wissen?\')){localStorage.removeItem(\'kmlabels12_6\');location.reload()}">Reset</button>';
   codes.forEach(code=>{const n=byCode[code].filter(d=>store[d.id]==='ECHT').length;const el=document.getElementById('ok_'+code);if(el){el.textContent=n;el.style.color=n>=TARGET?'#B7D945':'#D64545'}});
 }
 function exportJSON(){
@@ -63,4 +63,7 @@ function exportJSON(){
   const b=new Blob([JSON.stringify(out,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='dataset-v1.json';a.click();
 }
 renderBar();
+function refreshAll(){document.querySelectorAll('.c').forEach(c=>{const s=store[c.dataset.id];c.classList.toggle('echt',s==='ECHT');c.classList.toggle('vals',s==='VALS');c.querySelector('.st').textContent=s||'';});renderBar();}
+function saveProgress(){const b=new Blob([JSON.stringify({v:'12.6-progress',labels:store})],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='voortgang.json';a.click();}
+function loadProgress(inp){const f=inp.files[0];if(!f)return;const r=new FileReader();r.onload=function(){try{const o=JSON.parse(r.result);const m=o.labels||o;Object.keys(store).forEach(k=>delete store[k]);Object.assign(store,m);save();refreshAll();alert('Voortgang geladen: '+Object.keys(store).length+' labels');}catch(e){alert('Kon bestand niet lezen');}};r.readAsText(f);}
 </script></html>
