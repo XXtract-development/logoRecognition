@@ -31,6 +31,24 @@ assembler vult die queue gericht met top-N-kandidaten; geaccepteerde ECHT-crops 
 - **Proces:** (0) **eerst de top-N referentielogo's seeden** (12.1-seed-runner) — de assembler classificeert tegen de actieve `reference_logos`; nu staan er 10, de top-N vergt alle 20 geseed, anders surfacet hij alleen de geseede codes. (1) assembler draaien over de ~2000 geïmporteerde artworks per top-N-code → kandidaat-queue. (2) PO labelt accept/reject + bbox-correctie via de review-UI. (3) export geaccepteerde ECHT → vN. (4) bevriezen + id-exclusie uit alle training (12.3-anti-leakage).
 - **Eigenaar labelwerk:** Product Owner (Sasha Roest) / aangewezen annotator — menselijke taak, geen modeltaak.
 
+## Uitgevoerd 2026-06-10 — top-N geseed + assembler gedraaid
+
+- **Top-N referenties geseed:** de 10 ontbrekende codes via de 12.1-seed-runner → **ACC-referentie-
+  bibliotheek 10 → 20 actieve codes** (22 embeddings herbouwd). De assembler classificeert nu tegen alle 20.
+- **Assembler gedraaid** over 150 echte artworks (van 3502 geïmporteerd) → **3164 kandidaten over alle 20
+  codes** (`review-queue/candidates-top25.json` = top-25/code). Artefact + crops + review-sheet in
+  `tests/validation/acceptatie-dataset/review-queue/` (`review.html`).
+- **Eerlijke bevinding (her-bevestigt het embedding-knelpunt):** bij floor 0,45 is de wachtrij
+  **ruis-gedomineerd** — ~21 kandidaten/artwork vs ~1–3 echte marks. Van de 3164 zijn er maar **47 ≥0,75**
+  en **331 ≥0,65**. Hoog-conf = écht (geverifieerd: top BETER_LEVEN @0,94 is een echt Beter-Leven-logo),
+  maar échte marks zakken vaak onder 0,75 (zelfde 17 %-probleem). → **Kip-ei:** labelen is nodig om de
+  embedding te fixen, maar de zwakke embedding maakt de wachtrij rumoerig.
+- **Werkbare labelstrategie voor de PO:** review.html toont per code de top-25 conf-gesorteerd
+  (groen ≥0,75 = hoogste ECHT-kans). Begin hoog-conf-eerst (~47–331 crops, behapbaar); vul aan met de
+  mid-band (0,6–0,75) waar échte marks zitten. De volledige 3164 is niet bedoeld om handmatig te doen.
+- **Volgende:** PO labelt review.html → geaccepteerde ECHT → `dataset-v1.json` (≥15/code-doel), bevriezen
+  + id-exclusie. Dat ontgrendelt fine-tuning-iteratie 2 (12.3) met realistische, echte positieven.
+
 ## Story
 
 Als ML-eigenaar,
