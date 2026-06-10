@@ -32,6 +32,17 @@ import {
   type ArtworkReviewItem,
 } from '@/services/artworkReviewService';
 import { KEURMERK_CODES } from '@/data/keurmerk-codes';
+import { isBeneluxCode } from '@/data/benelux-codes';
+
+/** Small flag tag marking a Benelux-relevant keurmerk. */
+const BeneluxTag: React.FC<{ small?: boolean }> = ({ small }) => (
+  <Tag
+    color="#2F5A7A"
+    style={{ marginLeft: 6, marginRight: 0, fontSize: small ? 10 : 11, lineHeight: '16px', padding: '0 6px' }}
+  >
+    🇧🇪🇳🇱 Benelux
+  </Tag>
+);
 
 const { Text } = Typography;
 type Label = 'ECHT' | 'VALS';
@@ -318,7 +329,10 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
   const pickPred = cur!.t3777Code;
   const pickList = [
     ...(pickFiltered.includes(pickPred) ? [pickPred] : []),
-    ...pickFiltered.filter((c) => c !== pickPred),
+    // Benelux-relevant codes first (stable → keeps alphabetical within each group).
+    ...pickFiltered
+      .filter((c) => c !== pickPred)
+      .sort((a, b) => Number(isBeneluxCode(b)) - Number(isBeneluxCode(a))),
   ].slice(0, 80);
   const tint = drag > 40 ? '#B7D945' : drag < -40 ? '#D64545' : decision === 'ECHT' ? '#B7D945' : decision === 'VALS' ? '#D64545' : '#E2E8F0';
 
@@ -360,6 +374,7 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, gap: 8 }}>
           <Text strong style={{ color: relabeled ? '#2F5A7A' : '#1E293B', fontSize: 16 }}>
             {shownCode}
+            {isBeneluxCode(shownCode) && <BeneluxTag />}
             {relabeled && (
               <Text type="secondary" style={{ fontSize: 11, fontWeight: 400, marginLeft: 6 }}>
                 {t('review.corrected', { defaultValue: '(gecorrigeerd)' })}
@@ -511,6 +526,7 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
               }}
             >
               {c}
+              {isBeneluxCode(c) && <BeneluxTag small />}
               {c === cur!.t3777Code && (
                 <Text type="secondary" style={{ fontSize: 11, marginLeft: 8 }}>
                   {t('review.predicted', { defaultValue: '(voorspeld)' })}

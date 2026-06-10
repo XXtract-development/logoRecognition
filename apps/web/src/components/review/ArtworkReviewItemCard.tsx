@@ -16,6 +16,7 @@ import {
   type ArtworkReviewItem,
 } from '@/services/artworkReviewService';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { isBeneluxCode } from '@/data/benelux-codes';
 
 const { Text } = Typography;
 
@@ -138,6 +139,11 @@ const ArtworkReviewItemCard: React.FC<ArtworkReviewItemCardProps> = ({
             <Text strong style={{ color: '#1E293B', fontSize: 15 }}>
               {item.t3777Code}
             </Text>
+            {isBeneluxCode(item.t3777Code) && (
+              <Tag color="#2F5A7A" data-testid="review-item-benelux">
+                🇧🇪🇳🇱 Benelux
+              </Tag>
+            )}
             <Tag color={confidenceColor(item.confidence)} data-testid="review-item-confidence">
               {t('review.confidence', { defaultValue: 'Confidence' })}: {confidenceText}
             </Tag>

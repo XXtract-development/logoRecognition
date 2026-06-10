@@ -1,0 +1,60 @@
+{
+  "meta": {
+    "name": "benelux-scope",
+    "version": "v1",
+    "basis": "declaratie-frequentie op 131 Benelux-artwork-leveranciers (keurmerk-declaratie-frequentie.md) + bekende NL/BE-keurmerken + naam-gebaseerde NL-markers + consument free-from/Nutri-Score",
+    "caveat": "Live prod-Mongo pull niet beschikbaar (connectie time-out); te verfijnen met de volledige declaratie-distributie zodra Mongo bereikbaar is. Declaratie != visuele aanwezigheid.",
+    "total_benelux": 40,
+    "universe_total": 889
+  },
+  "benelux_by_basis": {
+    "declared_benelux": [
+      "AISE_2020_COMPANY",
+      "CERTIFIED_B_CORPORATION",
+      "CONFORMITE_EUROPEENNE",
+      "CRUELTY_FREE_PETA",
+      "EUROPEAN_V_LABEL_VEGAN",
+      "EUROPEAN_V_LABEL_VEGETARIAN",
+      "EU_ORGANIC_FARMING",
+      "FAIRTRADE_COCOA",
+      "FAIR_TRADE_MARK",
+      "FOREST_STEWARDSHIP_COUNCIL_MIX",
+      "GREEN_DOT",
+      "MARINE_STEWARDSHIP_COUNCIL_LABEL",
+      "OU_KOSHER",
+      "PEFC_CERTIFIED",
+      "RAINFOREST_ALLIANCE",
+      "RAINFOREST_ALLIANCE_PEOPLE_NATURE",
+      "RECYCLABLE_GENERAL_CLAIM",
+      "SEPARATE_COLLECTION",
+      "TRIMAN",
+      "VEGAN_SOCIETY_VEGAN_LOGO"
+    ],
+    "free_from": [
+      "ALLERGYCERTIFIED",
+      "CCA_GLUTEN_FREE",
+      "CROSSED_GRAIN_SYMBOL",
+      "DZG_GLUTEN_FREE",
+      "NSF_GLUTEN_FREE"
+    ],
+    "nl_be_origin": [
+      "BETER_LEVEN_1_STER",
+      "BETER_LEVEN_2_STER",
+      "BETER_LEVEN_3_STER",
+      "EKO",
+      "HALAL_CORRECT",
+      "MILIEUKEUR",
+      "ON_THE_WAY_TO_PLANETPROOF",
+      "RETURNABLE_CAN_NL",
+      "RETURNABLE_PET_BOTTLE_NL",
+      "WEIDEMELK"
+    ],
+    "nutri_score": [
+      "NUTRISCORE_A",
+      "NUTRISCORE_B",
+      "NUTRISCORE_C",
+      "NUTRISCORE_D",
+      "NUTRISCORE_E"
+    ]
+  }
+}

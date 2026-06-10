@@ -38,6 +38,7 @@ import {
 } from '@/services/artworkReviewService';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { isBeneluxCode } from '@/data/benelux-codes';
 import ArtworkReviewItemCard from '@/components/review/ArtworkReviewItemCard';
 import MobileReviewDeck from '@/components/review/MobileReviewDeck';
 
@@ -74,7 +75,14 @@ const ArtworkReviewPage: React.FC = () => {
         fetchReviewQueue(filter === 'km' ? { q: '12.6' } : undefined),
         fetchUncertainPredictions().catch(() => [] as UncertainPrediction[]),
       ]);
-      setItems(artwork);
+      // Automatic queue focus: Benelux-scope keurmerken first, then the rest;
+      // within each group keep the API's confidence-desc order.
+      const beneluxFirst = [...artwork].sort(
+        (a, b) =>
+          Number(isBeneluxCode(b.t3777Code)) - Number(isBeneluxCode(a.t3777Code)) ||
+          (b.confidence ?? 0) - (a.confidence ?? 0)
+      );
+      setItems(beneluxFirst);
       setUncertain(uncertainItems);
     } catch (err) {
       // A 401 means the session expired / the user is not logged in: show a
