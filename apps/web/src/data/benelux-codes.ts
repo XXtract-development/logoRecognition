@@ -17,6 +17,17 @@ export const BENELUX_CODES = new Set<string>([
 "CRUELTY_FREE_PETA",
 "DZG_GLUTEN_FREE",
 "EKO",
+// DietTypeCode free-from / dieet-claims prevalent op Benelux-verpakkingen (geen
+// T3777-logo, maar consument-facing marks — zie spoor-codes.ts / DietTypeCode).
+"LACTOSE_FREE",
+"FREE_FROM_GLUTEN",
+"VEGAN",
+"VEGETARIAN",
+"HALAL",
+"KOSHER",
+"ORGANIC",
+"PLANT_BASED",
+"NIX18",
 "EUROPEAN_V_LABEL_VEGAN",
 "EUROPEAN_V_LABEL_VEGETARIAN",
 "EU_ORGANIC_FARMING",

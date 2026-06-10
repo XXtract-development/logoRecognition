@@ -1,5 +1,14 @@
 # Versiegeschiedenis
 
+## 2026-06-10 (lactosevrij en alle dieet-/free-from-codes koppelbaar in review)
+
+### Volledige keuzelijst bij "ander keurmerk koppelen"
+- In het reviewscherm kun je een uitsnede nu ook koppelen aan lactosevrij, glutenvrij, vegan, vegetarisch, halal, koosjer en alle andere dieet-/free-from-claims — die ontbraken eerder omdat er voor lactosevrij geen apart keurmerk-logo bestaat
+- Ook GHS-gevaarpictogrammen en consumenten-waarschuwingspictogrammen (o.a. NIX18) zijn nu koppelbaar
+- Elke optie toont een label met het type (Keurmerk, Dieet / free-from, Nutri-Score, GHS-pictogram of Consumentenpictogram), zodat je in één oogopslag ziet bij welk GS1-veld een code hoort
+- De lijst is 1-op-1 gevuld vanuit de officiële GS1-Benelux-codelijsten
+
+
 ## 2026-06-07 (automatische keurmerk-detectie + veel minder valse meldingen)
 
 ### Keurmerk-detectie draait nu vanzelf

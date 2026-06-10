@@ -33,6 +33,7 @@ import {
 } from '@/services/artworkReviewService';
 import { KEURMERK_CODES } from '@/data/keurmerk-codes';
 import { isBeneluxCode } from '@/data/benelux-codes';
+import { EXTRA_SPOOR_CODES, spoorLabelForCode, fieldTypeForCode } from '@/data/spoor-codes';
 
 /** Small flag tag marking a Benelux-relevant keurmerk. */
 const BeneluxTag: React.FC<{ small?: boolean }> = ({ small }) => (
@@ -77,11 +78,15 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   const cache = useRef<Record<string, string>>({});
 
-  // The FULL keurmerk code universe (884 T3777 + Nutri-Score), plus any code
-  // present in the queue — so any crop can be coupled to the correct code,
-  // not only the few predicted in this queue.
+  // The FULL code universe across ALL recognised GS1 sporen — 884 T3777 +
+  // Nutri-Score (keurmerk-codes.ts) PLUS DietTypeCode (incl. LACTOSE_FREE), GHS
+  // and consumer-usage codes (spoor-codes.ts) — plus any code present in the
+  // queue, so any crop can be coupled to the correct code regardless of spoor.
   const codes = useMemo(
-    () => Array.from(new Set([...KEURMERK_CODES, ...queue.map((q) => q.t3777Code)])).sort(),
+    () =>
+      Array.from(
+        new Set([...KEURMERK_CODES, ...EXTRA_SPOOR_CODES, ...queue.map((q) => q.t3777Code)])
+      ).sort(),
     [queue]
   );
 
@@ -526,6 +531,12 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
               }}
             >
               {c}
+              <Tag
+                color={fieldTypeForCode(c) === 'PackagingMarkedLabelAccreditationCode' ? 'default' : '#54949E'}
+                style={{ marginLeft: 8, fontSize: 10, lineHeight: '16px', padding: '0 6px' }}
+              >
+                {spoorLabelForCode(c)}
+              </Tag>
               {isBeneluxCode(c) && <BeneluxTag small />}
               {c === cur!.t3777Code && (
                 <Text type="secondary" style={{ fontSize: 11, marginLeft: 8 }}>
