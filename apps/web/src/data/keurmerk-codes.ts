@@ -1,6 +1,8 @@
 // Full GS1 keurmerk code universe for the relabel picker (Story 12.6).
 // 884 T3777 (packagingMarkedLabelAccreditationCode) codes from the GS1 Packaging
-// Label Guide + the 5 NUTRITIONAL Nutri-Score codes. Source of truth for "ander
+// Label Guide + the 5 Nutri-Score codes (NutritionalScore codelist, A–E). The
+// other GS1 sporen (DietTypeCode incl. lactose-free, GHS, consumer-usage) live in
+// spoor-codes.ts and are merged in by the picker. Source of truth for "ander
 // keurmerk koppelen" so any crop can be labelled to the correct code.
 export const KEURMERK_CODES: string[] = [
 "100_PERCENT_CANADIAN_MILK",

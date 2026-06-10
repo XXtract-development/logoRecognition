@@ -32,7 +32,7 @@ function buildStoragePath(t3777Code, variantLabel) {
 // GS1-codelijstnaam (fieldType) -> GS1-declaratieveld (gs1Field, voor de crosscheck).
 const GS1_FIELD = {
   PackagingMarkedLabelAccreditationCode: 'packagingMarkedLabelAccreditationCode',
-  NutritionalProgramCode: 'nutritionalScore',
+  NutritionalScore: 'nutritionalScore', // Nutri-Score A–E live in the NutritionalScore codelist
   DietTypeCode: 'dietTypeCode',
   GHSSymbolDescriptionCode: 'gHSSymbolDescriptionCode',
   EU_consumerUsageLabelCodeList: 'enumerationValue',

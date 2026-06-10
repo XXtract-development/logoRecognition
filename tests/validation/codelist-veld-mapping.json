@@ -15,13 +15,13 @@
       "note": "keurmerk-logos; gluten/halal/organic/CE"
     },
     {
-      "codelist": "NutritionalProgramCode",
+      "codelist": "NutritionalScore",
       "gs1_field": "nutritionalScore",
-      "fieldType": "NutritionalProgramCode",
-      "codes": 10,
+      "fieldType": "NutritionalScore",
+      "codes": 5,
       "logo": "yes",
       "in_system": "bootstrap",
-      "note": "Nutri-Score A-E"
+      "note": "Nutri-Score A-E (grades). NB: NutritionalProgramCode is een ANDERE codelijst (program-id 1-10), niet de A-E score."
     },
     {
       "codelist": "GHSSymbolDescriptionCode",

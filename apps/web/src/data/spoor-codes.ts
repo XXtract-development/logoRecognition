@@ -98,7 +98,7 @@ const NUTRISCORE_CODES = ['NUTRISCORE_A', 'NUTRISCORE_B', 'NUTRISCORE_C', 'NUTRI
 /** GS1-codelijstnaam (= reference_logos.fieldType) → korte, leesbare spoor-naam. */
 export const SPOOR_LABEL: Record<string, string> = {
   PackagingMarkedLabelAccreditationCode: 'Keurmerk',
-  NutritionalProgramCode: 'Nutri-Score',
+  NutritionalScore: 'Nutri-Score',
   DietTypeCode: 'Dieet / free-from',
   GHSSymbolDescriptionCode: 'GHS-pictogram',
   EU_consumerUsageLabelCodeList: 'Consumentenpictogram',
@@ -108,7 +108,8 @@ const FIELD_TYPE_BY_CODE: Record<string, string> = {};
 for (const c of DIET_TYPE_CODES) FIELD_TYPE_BY_CODE[c] = 'DietTypeCode';
 for (const c of GHS_SYMBOL_CODES) FIELD_TYPE_BY_CODE[c] = 'GHSSymbolDescriptionCode';
 for (const c of CONSUMER_USAGE_CODES) FIELD_TYPE_BY_CODE[c] = 'EU_consumerUsageLabelCodeList';
-for (const c of NUTRISCORE_CODES) FIELD_TYPE_BY_CODE[c] = 'NutritionalProgramCode';
+// Nutri-Score A–E live in the GS1 codelist NutritionalScore (gs1Field nutritionalScore).
+for (const c of NUTRISCORE_CODES) FIELD_TYPE_BY_CODE[c] = 'NutritionalScore';
 
 /** Non-T3777 codes from our other GS1 sporen — merged into the relabel picker. */
 export const EXTRA_SPOOR_CODES = [...DIET_TYPE_CODES, ...GHS_SYMBOL_CODES, ...CONSUMER_USAGE_CODES];

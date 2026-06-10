@@ -247,8 +247,8 @@ model ReferenceLogo {
   source       String?
   storagePath  String   @map("storage_path") @db.VarChar(500)
   // GS1-codelijstnaam (1:1 met GS1) die de code beschrijft, bv.
-  // PackagingMarkedLabelAccreditationCode (T3777), NutritionalProgramCode (Nutri-Score),
-  // DietTypeCode, GHSSymbolDescriptionCode, EU_consumerUsageLabelCodeList. (migratie 0010)
+  // PackagingMarkedLabelAccreditationCode (T3777), NutritionalScore (Nutri-Score A–E),
+  // DietTypeCode, GHSSymbolDescriptionCode, EU_consumerUsageLabelCodeList. (migratie 0010/0011)
   fieldType    String   @default("PackagingMarkedLabelAccreditationCode") @map("field_type") @db.VarChar(60)
   // GS1-declaratieveld (XML-element) voor de crosscheck, bv.
   // packagingMarkedLabelAccreditationCode, nutritionalScore, dietTypeCode.

@@ -5,17 +5,18 @@ Datum 2026-06-10. Gecontroleerd tegen het **GS1-Benelux-datamodel** (`benelux-fm
 **visuele herkenning** zinvol is (staat er een gestandaardiseerd logo op de verpakking?) en op welk
 GS1-veld + `fieldType` het resultaat hoort te worden opgeslagen.
 
-> **`reference_logos.fieldType` = de GS1-codelijstnaam (1:1 met GS1; migratie 0010)** —
-> `PackagingMarkedLabelAccreditationCode | NutritionalProgramCode | DietTypeCode |
+> **`reference_logos.fieldType` = de GS1-codelijstnaam (1:1 met GS1; migratie 0010/0011)** —
+> `PackagingMarkedLabelAccreditationCode | NutritionalScore | DietTypeCode |
 > GHSSymbolDescriptionCode | EU_consumerUsageLabelCodeList`. Daarnaast `gs1_field` = het
-> GS1-declaratieveld (XML-element) voor de crosscheck.
+> GS1-declaratieveld (XML-element) voor de crosscheck. **Let op:** Nutri-Score A–E zit in
+> codelijst `NutritionalScore` (waarden A–E), níét in `NutritionalProgramCode` (program-id 1–10).
 
 ## Herkenbaar (gestandaardiseerd logo/pictogram → zinvol om te detecteren)
 
 | Codelijst (GS1) | #codes | `fieldType` | Logo? | In systeem | Voorbeelden |
 |---|---:|---|---|---|---|
 | **PackagingMarkedLabelAccreditationCode** (T3777) | 894 | `PackagingMarkedLabelAccreditationCode` | ✅ gestandaardiseerde keurmerk-logo's | ✅ geseed (top-N + free-from + halal) | GREEN_DOT, FSC, EU_ORGANIC, CROSSED_GRAIN (glutenvrij), HALAL_CORRECT, TRIMAN, BETER_LEVEN |
-| **NutritionalProgramCode** | 10 | `NutritionalProgramCode` | ✅ Nutri-Score A–E (vaste vorm) | 🔄 synthetische bootstrap geseed | NUTRISCORE_A…E |
+| **NutritionalScore** | 5 | `NutritionalScore` | ✅ Nutri-Score A–E (vaste vorm) | 🔄 synthetische bootstrap geseed | NUTRISCORE_A…E (codelijst-waarden A–E) |
 | **GHSSymbolDescriptionCode** | 10 | `GHSSymbolDescriptionCode` | ✅ GHS-gevaarpictogrammen (ruit-symbolen) | ❌ nog niet | vlam, doodshoofd, corrosief |
 | **EU_consumerUsageLabelCodeList** | 20 | `EU_consumerUsageLabelCodeList` | ✅ AISE-consumentenpictogrammen | ❌ nog niet | wasvoorschrift-achtige iconen |
 
@@ -43,7 +44,7 @@ Deze codelijsten zijn **declaratie-data**, geen marks op de verpakking → niet 
 ## Conclusies
 
 1. **Visuele herkenning is zinvol voor 4 velden:** `PackagingMarkedLabelAccreditationCode` (T3777, kern — gedaan),
-   `NutritionalProgramCode` (Nutri-Score — bootstrap), `GHSSymbolDescriptionCode` (gevaarpictogrammen — nieuw spoor),
+   `NutritionalScore` (Nutri-Score A–E — bootstrap), `GHSSymbolDescriptionCode` (gevaarpictogrammen — nieuw spoor),
    `EU_consumerUsageLabelCodeList` (AISE-pictogrammen — nieuw spoor). Elk = een **veld-spoor** (referenties seeden +
    declaratie-parser + crosscheck-routing op `fieldType`), zoals besproken.
 2. **DietTypeCode (lactosevrij, vegan, keto…) is grotendeels data, geen vaste mark.** Waar wél een
