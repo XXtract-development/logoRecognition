@@ -26,6 +26,7 @@ import {
   type UncertainPrediction,
 } from '@/services/artworkReviewService';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import ArtworkReviewItemCard from '@/components/review/ArtworkReviewItemCard';
 
 const { Title, Paragraph } = Typography;
@@ -34,6 +35,8 @@ const ArtworkReviewPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { isAdmin } = useCurrentUser();
+  // Tighter padding and full-width header actions on phones; desktop unchanged.
+  const isMobile = useMediaQuery('(max-width: 768px)');
   const [items, setItems] = useState<ArtworkReviewItem[]>([]);
   const [uncertain, setUncertain] = useState<UncertainPrediction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -149,13 +152,24 @@ const ArtworkReviewPage: React.FC = () => {
   }, [t]);
 
   return (
-    <div data-testid="artwork-review-page" style={{ padding: 24, color: '#1E293B' }}>
+    <div
+      data-testid="artwork-review-page"
+      style={{ padding: isMobile ? 12 : 24, color: '#1E293B' }}
+    >
       <Space
         align="start"
-        style={{ justifyContent: 'space-between', width: '100%', flexWrap: 'wrap' }}
+        style={{
+          justifyContent: 'space-between',
+          width: '100%',
+          flexWrap: 'wrap',
+          gap: 8,
+        }}
       >
         <div>
-          <Title level={2} style={{ color: '#2F5A7A', marginBottom: 4 }}>
+          <Title
+            level={2}
+            style={{ color: '#2F5A7A', marginBottom: 4, fontSize: isMobile ? 22 : undefined }}
+          >
             {t('review.title', { defaultValue: 'Artwork-review' })}
           </Title>
           <Paragraph type="secondary" style={{ maxWidth: 640 }}>

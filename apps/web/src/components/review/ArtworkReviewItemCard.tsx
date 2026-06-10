@@ -15,6 +15,7 @@ import {
   fetchReviewItemCropUrl,
   type ArtworkReviewItem,
 } from '@/services/artworkReviewService';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 const { Text } = Typography;
 
@@ -65,6 +66,9 @@ const ArtworkReviewItemCard: React.FC<ArtworkReviewItemCardProps> = ({
   onReject,
 }) => {
   const { t } = useTranslation();
+  // Responsive: on phones we give the crop more room and turn the accept/reject
+  // controls into large, thumb-friendly full-width buttons. Desktop is unchanged.
+  const isMobile = useMediaQuery('(max-width: 768px)');
   const [expanded, setExpanded] = useState(false);
   const [cropUrl, setCropUrl] = useState<string | null>(null);
   const [cropLoading, setCropLoading] = useState(false);
@@ -144,15 +148,17 @@ const ArtworkReviewItemCard: React.FC<ArtworkReviewItemCardProps> = ({
             )}
           </Space>
           <Button
-            type="link"
-            size="small"
+            type={isMobile ? 'default' : 'link'}
+            size={isMobile ? 'middle' : 'small'}
             onClick={() => setExpanded((v) => !v)}
             data-testid="review-item-toggle"
-            style={{ color: '#54949E' }}
+            style={isMobile ? { color: '#2F5A7A', marginTop: 4 } : { color: '#54949E' }}
           >
             {expanded
               ? t('review.hideDetails', { defaultValue: 'Verberg details' })
-              : t('review.showDetails', { defaultValue: 'Toon herkomst' })}
+              : isMobile
+                ? t('review.showCrop', { defaultValue: 'Toon crop & herkomst' })
+                : t('review.showDetails', { defaultValue: 'Toon herkomst' })}
           </Button>
         </Space>
 
@@ -173,13 +179,14 @@ const ArtworkReviewItemCard: React.FC<ArtworkReviewItemCardProps> = ({
               paddingTop: 12,
               display: 'flex',
               gap: 16,
+              flexDirection: isMobile ? 'column' : 'row',
               flexWrap: 'wrap',
             }}
           >
             <div
               style={{
-                width: 160,
-                minHeight: 120,
+                width: isMobile ? '100%' : 160,
+                minHeight: isMobile ? 200 : 120,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -195,7 +202,11 @@ const ArtworkReviewItemCard: React.FC<ArtworkReviewItemCardProps> = ({
                   data-testid="review-item-crop"
                   src={cropUrl}
                   alt={`${item.t3777Code} crop`}
-                  style={{ maxWidth: '100%', maxHeight: 140, objectFit: 'contain' }}
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight: isMobile ? 300 : 140,
+                    objectFit: 'contain',
+                  }}
                 />
               ) : (
                 <Text type="secondary" style={{ fontSize: 12 }}>
@@ -232,8 +243,16 @@ const ArtworkReviewItemCard: React.FC<ArtworkReviewItemCardProps> = ({
           </div>
         )}
 
-        {/* Accept / reject actions (ADMIN only) */}
-        <Space>
+        {/* Accept / reject actions (ADMIN only) — full-width thumb targets on mobile */}
+        <div
+          style={{
+            display: 'flex',
+            gap: 8,
+            width: isMobile ? '100%' : 'auto',
+            marginTop: isMobile ? 4 : 0,
+          }}
+        >
+          <div style={{ flex: isMobile ? 1 : '0 0 auto' }}>
           <Tooltip
             title={
               canMutate
@@ -255,7 +274,8 @@ const ArtworkReviewItemCard: React.FC<ArtworkReviewItemCardProps> = ({
             >
               <Button
                 type="primary"
-                size="small"
+                size={isMobile ? 'large' : 'small'}
+                block={isMobile}
                 icon={<CheckOutlined />}
                 loading={busy}
                 disabled={!canMutate}
@@ -270,7 +290,9 @@ const ArtworkReviewItemCard: React.FC<ArtworkReviewItemCardProps> = ({
               </Button>
             </Popconfirm>
           </Tooltip>
+          </div>
 
+          <div style={{ flex: isMobile ? 1 : '0 0 auto' }}>
           <Tooltip
             title={
               canMutate
@@ -289,7 +311,8 @@ const ArtworkReviewItemCard: React.FC<ArtworkReviewItemCardProps> = ({
             >
               <Button
                 danger
-                size="small"
+                size={isMobile ? 'large' : 'small'}
+                block={isMobile}
                 icon={<CloseOutlined />}
                 loading={busy}
                 disabled={!canMutate}
@@ -299,7 +322,8 @@ const ArtworkReviewItemCard: React.FC<ArtworkReviewItemCardProps> = ({
               </Button>
             </Popconfirm>
           </Tooltip>
-        </Space>
+          </div>
+        </div>
       </Space>
     </Card>
   );
