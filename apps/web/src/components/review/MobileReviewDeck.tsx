@@ -13,14 +13,15 @@
  *   - "Overzicht" shows everything decided this session with thumbnails; tap one
  *     to jump back to it.
  */
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Button, Tag, Typography, Spin, Empty, Drawer, message } from 'antd';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Button, Tag, Typography, Spin, Empty, Drawer, Input, message } from 'antd';
 import {
   CheckOutlined,
   CloseOutlined,
   LeftOutlined,
   RightOutlined,
   UnorderedListOutlined,
+  TagsOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import {
@@ -56,8 +57,19 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
   const [busy, setBusy] = useState(false);
   const [drag, setDrag] = useState(0);
   const [overview, setOverview] = useState(false);
+  // Code correction: when a crop is a real keurmerk but a DIFFERENT one than
+  // predicted, the picker assigns the right code and accepts under it.
+  const [assignedCode, setAssignedCode] = useState<Record<string, string>>({});
+  const [picker, setPicker] = useState(false);
+  const [search, setSearch] = useState('');
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   const cache = useRef<Record<string, string>>({});
+
+  // The distinct keurmerk codes present in the queue = the quick-pick options.
+  const codes = useMemo(
+    () => Array.from(new Set(queue.map((q) => q.t3777Code))).sort(),
+    [queue]
+  );
 
   const cur: ArtworkReviewItem | undefined = queue[idx];
 
@@ -124,6 +136,11 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
             delete next[cur.id];
             return next;
           });
+          setAssignedCode((a) => {
+            const next = { ...a };
+            delete next[cur.id];
+            return next;
+          });
           message.success(t('review.undone', { defaultValue: 'Ongedaan gemaakt' }));
           setDrag(0);
           return;
@@ -135,6 +152,39 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
         if (label === 'ECHT') await acceptReviewItem(cur.id);
         else await rejectReviewItem(cur.id);
         setDecisions((d) => ({ ...d, [cur.id]: label }));
+        if (!prev) goto(idx + 1);
+        else setDrag(0);
+      } catch {
+        message.error(t('review.actionError', { defaultValue: 'Actie mislukt — probeer opnieuw' }));
+      } finally {
+        setBusy(false);
+      }
+    },
+    [cur, busy, canMutate, decisions, idx, goto, t]
+  );
+
+  // Accept the crop under a corrected keurmerk code (different from predicted).
+  const relabel = useCallback(
+    async (code: string) => {
+      if (!cur || busy) return;
+      if (!canMutate) {
+        message.info(
+          t('review.adminOnly', { defaultValue: 'Alleen een beheerder kan reviewitems beoordelen' })
+        );
+        return;
+      }
+      const prev = decisions[cur.id];
+      setBusy(true);
+      try {
+        if (prev) await reopenReviewItem(cur.id);
+        await acceptReviewItem(cur.id, code);
+        setDecisions((d) => ({ ...d, [cur.id]: 'ECHT' }));
+        setAssignedCode((a) => ({ ...a, [cur.id]: code }));
+        setPicker(false);
+        setSearch('');
+        message.success(
+          t('review.relabeled', { defaultValue: 'Gekoppeld aan {{code}}', code })
+        );
         if (!prev) goto(idx + 1);
         else setDrag(0);
       } catch {
@@ -216,12 +266,18 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
                   />
                 ) : (
                   <Text type="secondary" style={{ fontSize: 11 }}>
-                    {it.t3777Code}
+                    {assignedCode[it.id] ?? it.t3777Code}
                   </Text>
                 )}
               </div>
+              <Text
+                style={{ fontSize: 9, color: '#64748b', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+              >
+                {assignedCode[it.id] ?? it.t3777Code}
+              </Text>
               <Text style={{ fontSize: 10, color: label === 'ECHT' ? '#5a8a00' : '#D64545', fontWeight: 700 }}>
                 {label}
+                {assignedCode[it.id] ? ` · ${t('review.corrected', { defaultValue: '(gecorrigeerd)' })}` : ''}
               </Text>
             </div>
           ))}
@@ -250,6 +306,8 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
   }
 
   const decision = decisions[cur!.id];
+  const shownCode = assignedCode[cur!.id] ?? cur!.t3777Code;
+  const relabeled = Boolean(assignedCode[cur!.id]);
   const tint = drag > 40 ? '#B7D945' : drag < -40 ? '#D64545' : decision === 'ECHT' ? '#B7D945' : decision === 'VALS' ? '#D64545' : '#E2E8F0';
 
   return (
@@ -287,9 +345,14 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
             {decision}
           </Tag>
         )}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-          <Text strong style={{ color: '#1E293B', fontSize: 16 }}>
-            {cur!.t3777Code}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, gap: 8 }}>
+          <Text strong style={{ color: relabeled ? '#2F5A7A' : '#1E293B', fontSize: 16 }}>
+            {shownCode}
+            {relabeled && (
+              <Text type="secondary" style={{ fontSize: 11, fontWeight: 400, marginLeft: 6 }}>
+                {t('review.corrected', { defaultValue: '(gecorrigeerd)' })}
+              </Text>
+            )}
           </Text>
           <Tag color={confidenceColor(cur!.confidence)} style={{ marginRight: 0 }}>
             {typeof cur!.confidence === 'number' ? `${Math.round(cur!.confidence * 100)}%` : '—'}
@@ -377,11 +440,72 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
           aria-label={t('review.next', { defaultValue: 'Volgende' })}
         />
       </div>
+      <Button
+        block
+        icon={<TagsOutlined />}
+        onClick={() => {
+          setSearch('');
+          setPicker(true);
+        }}
+        disabled={!canMutate}
+        data-testid="deck-relabel-open"
+        style={{ marginTop: 8, height: 44, color: '#2F5A7A', borderColor: '#54949E' }}
+      >
+        {t('review.relabel', { defaultValue: 'Ander keurmerk koppelen' })}
+      </Button>
+
       <Text type="secondary" style={{ fontSize: 11, textAlign: 'center', display: 'block', marginTop: 8 }}>
         {decision
           ? t('review.changeHint', { defaultValue: 'Tik de gekozen knop nogmaals om ongedaan te maken' })
           : t('review.swipeHint', { defaultValue: 'swipe → Accepteer · ← Wijs af · ‹ › navigeren' })}
       </Text>
+
+      <Drawer
+        title={t('review.relabelTitle', { defaultValue: 'Koppel het juiste keurmerk' })}
+        placement="bottom"
+        height="72%"
+        open={picker}
+        onClose={() => setPicker(false)}
+        data-testid="deck-relabel"
+      >
+        <Input.Search
+          allowClear
+          autoFocus
+          placeholder={t('review.relabelSearch', { defaultValue: 'Zoek keurmerk…' })}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{ marginBottom: 12 }}
+        />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {codes
+            .filter((c) => c.toLowerCase().includes(search.trim().toLowerCase()))
+            .map((c) => (
+              <Button
+                key={c}
+                block
+                size="large"
+                loading={busy}
+                onClick={() => relabel(c)}
+                data-testid="deck-relabel-option"
+                style={{
+                  height: 52,
+                  textAlign: 'left',
+                  justifyContent: 'flex-start',
+                  fontWeight: c === cur!.t3777Code ? 700 : 500,
+                  borderColor: c === shownCode ? '#7BA428' : '#E2E8F0',
+                }}
+              >
+                {c}
+                {c === cur!.t3777Code && (
+                  <Text type="secondary" style={{ fontSize: 11, marginLeft: 8 }}>
+                    {t('review.predicted', { defaultValue: '(voorspeld)' })}
+                  </Text>
+                )}
+              </Button>
+            ))}
+        </div>
+      </Drawer>
+
       {overviewDrawer}
     </div>
   );

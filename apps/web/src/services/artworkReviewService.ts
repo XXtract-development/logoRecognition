@@ -93,8 +93,14 @@ export const fetchReviewItemCropBlob = async (id: string): Promise<string | null
 };
 
 /** Accept an item → push to training-data registration (ADMIN). */
-export const acceptReviewItem = async (id: string): Promise<AcceptResult> => {
-  const response = await apiClient.patch(`/artwork/review-items/${id}/accept`);
+export const acceptReviewItem = async (
+  id: string,
+  t3777Code?: string
+): Promise<AcceptResult> => {
+  const response = await apiClient.patch(
+    `/artwork/review-items/${id}/accept`,
+    t3777Code ? { t3777Code } : {}
+  );
   return response.data;
 };
 

@@ -753,11 +753,18 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
    * if it lacks crop/source references it is accepted but reported as skipped so
    * a datamanager can complete it. Requires ADMIN.
    */
-  fastify.patch<{ Params: { id: string } }>(
+  fastify.patch<{ Params: { id: string }; Body: { t3777Code?: string } }>(
     '/artwork/review-items/:id/accept',
     { preHandler: REQUIRE_ADMIN },
-    async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+    async (
+      request: FastifyRequest<{ Params: { id: string }; Body: { t3777Code?: string } }>,
+      reply: FastifyReply
+    ) => {
       const { id } = request.params;
+      // Optional correction: accept the crop under a DIFFERENT keurmerk code than
+      // predicted (the assembler's prediction is noisy). The crop is then
+      // registered under the corrected label.
+      const override = request.body?.t3777Code?.trim();
 
       const item = await prisma.artworkReviewItem.findUnique({ where: { id } });
       if (!item) {
@@ -767,14 +774,17 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
         return reply.status(409).send({ error: 'Review item is al geregistreerd' });
       }
 
-      // Mark accepted first so a crop-less item still leaves the open queue and
-      // is picked up by a later catch-up once its crop is supplied.
-      await prisma.artworkReviewItem.update({
+      // Mark accepted (and apply the code correction) first so a crop-less item
+      // still leaves the open queue and is picked up by a later catch-up.
+      const accepted = await prisma.artworkReviewItem.update({
         where: { id },
-        data: { status: 'accepted' },
+        data: {
+          status: 'accepted',
+          ...(override && override !== item.t3777Code ? { t3777Code: override } : {}),
+        },
       });
 
-      const result = await processAcceptedReviewItems([item]);
+      const result = await processAcceptedReviewItems([accepted]);
 
       logger.info('Review item accepted', {
         reviewItemId: id,
