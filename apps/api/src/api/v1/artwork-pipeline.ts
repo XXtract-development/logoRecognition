@@ -817,6 +817,41 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
   );
 
   /**
+   * PATCH /artwork/review-items/:id/reopen
+   * Undo a previous accept/reject: set the item back to 'open'. If it had been
+   * accepted, the training-data row(s) created from its crop (matched by the
+   * shared cropPath, Story 8.6) are deactivated so the correction also removes
+   * the crop from training. Idempotent. Requires ADMIN.
+   */
+  fastify.patch<{ Params: { id: string } }>(
+    '/artwork/review-items/:id/reopen',
+    { preHandler: REQUIRE_ADMIN },
+    async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+      const { id } = request.params;
+
+      const item = await prisma.artworkReviewItem.findUnique({ where: { id } });
+      if (!item) {
+        return reply.status(404).send({ error: 'Review item niet gevonden' });
+      }
+
+      let deactivated = 0;
+      if (item.cropPath) {
+        const result = await prisma.trainingData.updateMany({
+          where: { cropPath: item.cropPath, active: true },
+          data: { active: false },
+        });
+        deactivated = result.count;
+      }
+
+      await prisma.artworkReviewItem.update({ where: { id }, data: { status: 'open' } });
+
+      logger.info('Review item reopened', { reviewItemId: id, deactivatedTrainingData: deactivated });
+
+      return reply.status(200).send({ status: 'open', deactivatedTrainingData: deactivated });
+    }
+  );
+
+  /**
    * POST /artwork/review-items/process-accepted
    * Catch-up doorzet (Story 8.6): register all 'accepted' review items that
    * were accepted before this flow existed (or were skipped for missing crops

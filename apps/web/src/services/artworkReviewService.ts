@@ -68,6 +68,18 @@ export const fetchReviewItemCropUrl = async (id: string): Promise<string | null>
 };
 
 /**
+ * Reopen a previously accepted/rejected item (set back to 'open'); deactivates
+ * any training-data row created from its crop. Used by the mobile deck's undo /
+ * change-decision controls.
+ */
+export const reopenReviewItem = async (
+  id: string
+): Promise<{ status: string; deactivatedTrainingData: number }> => {
+  const response = await apiClient.patch(`/artwork/review-items/${id}/reopen`);
+  return response.data;
+};
+
+/**
  * Fetch the crop as an authenticated blob and return an object URL. Loading the
  * bytes through apiClient (cookie auth + correct baseURL) guarantees the image
  * renders regardless of how an <img> would handle auth/origin. The caller is

@@ -1,26 +1,38 @@
 /**
  * MobileReviewDeck (Story 12.6)
  *
- * A phone-first, one-card-at-a-time review experience for the artwork queue:
- * the crop fills the screen, swipe right = accept (ECHT), left = reject (VALS),
- * or use the large thumb buttons. Auto-advances. The crop is loaded as an
- * authenticated blob (cookie auth via apiClient) so it always renders.
+ * Phone-first, one-card-at-a-time review of the artwork queue. The crop fills
+ * the screen (loaded as an authenticated blob so it always renders). Swipe
+ * right = accept (ECHT), left = reject (VALS), or use the large buttons.
  *
- * Owns its own cursor over a snapshot of the items and calls accept/reject
- * directly, so it is decoupled from the list's optimistic-removal state.
+ * Navigation + correction:
+ *   - ‹ / › step back and forth through the queue (decisions are remembered).
+ *   - On an already-decided card, tapping the OTHER choice changes it (the
+ *     previous accept is reopened server-side first, deactivating its training
+ *     data); tapping the SAME choice undoes it (back to undecided).
+ *   - "Overzicht" shows everything decided this session with thumbnails; tap one
+ *     to jump back to it.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Button, Tag, Typography, Spin, Empty, message } from 'antd';
-import { CheckOutlined, CloseOutlined, StepForwardOutlined } from '@ant-design/icons';
+import { Button, Tag, Typography, Spin, Empty, Drawer, message } from 'antd';
+import {
+  CheckOutlined,
+  CloseOutlined,
+  LeftOutlined,
+  RightOutlined,
+  UnorderedListOutlined,
+} from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import {
   acceptReviewItem,
   rejectReviewItem,
+  reopenReviewItem,
   fetchReviewItemCropBlob,
   type ArtworkReviewItem,
 } from '@/services/artworkReviewService';
 
 const { Text } = Typography;
+type Label = 'ECHT' | 'VALS';
 
 interface MobileReviewDeckProps {
   items: ArtworkReviewItem[];
@@ -36,144 +48,221 @@ function confidenceColor(c: number | null): string {
 
 const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate }) => {
   const { t } = useTranslation();
-  // Snapshot the queue once; the deck drives its own cursor.
   const [queue] = useState<ArtworkReviewItem[]>(items);
   const [idx, setIdx] = useState(0);
-  const [echt, setEcht] = useState(0);
-  const [vals, setVals] = useState(0);
+  const [decisions, setDecisions] = useState<Record<string, Label>>({});
   const [cropUrl, setCropUrl] = useState<string | null>(null);
   const [cropLoading, setCropLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [drag, setDrag] = useState(0);
+  const [overview, setOverview] = useState(false);
   const touchStart = useRef<{ x: number; y: number } | null>(null);
-  const urlRef = useRef<string | null>(null);
+  const cache = useRef<Record<string, string>>({});
 
-  const cur = queue[idx];
+  const cur: ArtworkReviewItem | undefined = queue[idx];
 
-  // Load the current crop as a blob (revoking the previous object URL).
-  useEffect(() => {
-    if (!cur) return;
-    let active = true;
+  const loadCrop = useCallback((id: string) => {
+    if (cache.current[id]) {
+      setCropUrl(cache.current[id]);
+      setCropLoading(false);
+      return;
+    }
     setCropLoading(true);
     setCropUrl(null);
-    fetchReviewItemCropBlob(cur.id)
+    let active = true;
+    fetchReviewItemCropBlob(id)
       .then((url) => {
-        if (!active) {
-          if (url) URL.revokeObjectURL(url);
-          return;
+        if (url) cache.current[id] = url;
+        if (active) {
+          setCropUrl(url);
+          setCropLoading(false);
         }
-        if (urlRef.current) URL.revokeObjectURL(urlRef.current);
-        urlRef.current = url;
-        setCropUrl(url);
-        setCropLoading(false);
       })
       .catch(() => active && setCropLoading(false));
     return () => {
       active = false;
     };
-  }, [cur]);
+  }, []);
 
+  useEffect(() => {
+    if (cur) loadCrop(cur.id);
+  }, [cur, loadCrop]);
+
+  // Revoke all cached object URLs on unmount.
   useEffect(
     () => () => {
-      if (urlRef.current) URL.revokeObjectURL(urlRef.current);
+      Object.values(cache.current).forEach((u) => URL.revokeObjectURL(u));
     },
     []
   );
 
-  const advance = useCallback(() => {
-    setDrag(0);
-    setIdx((i) => i + 1);
-  }, []);
+  const goto = useCallback(
+    (i: number) => {
+      setDrag(0);
+      setIdx(Math.max(0, Math.min(queue.length, i)));
+    },
+    [queue.length]
+  );
 
-  const decide = useCallback(
-    async (label: 'ECHT' | 'VALS') => {
+  const applyDecision = useCallback(
+    async (label: Label) => {
       if (!cur || busy) return;
       if (!canMutate) {
         message.info(
-          t('review.adminOnly', {
-            defaultValue: 'Alleen een beheerder kan reviewitems beoordelen',
-          })
+          t('review.adminOnly', { defaultValue: 'Alleen een beheerder kan reviewitems beoordelen' })
         );
         return;
       }
+      const prev = decisions[cur.id];
       setBusy(true);
       try {
-        if (label === 'ECHT') {
-          await acceptReviewItem(cur.id);
-          setEcht((n) => n + 1);
-        } else {
-          await rejectReviewItem(cur.id);
-          setVals((n) => n + 1);
+        if (prev === label) {
+          // Same choice again → undo (back to undecided).
+          await reopenReviewItem(cur.id);
+          setDecisions((d) => {
+            const next = { ...d };
+            delete next[cur.id];
+            return next;
+          });
+          message.success(t('review.undone', { defaultValue: 'Ongedaan gemaakt' }));
+          setDrag(0);
+          return;
         }
-        advance();
+        if (prev) {
+          // Changing a previous decision → reopen first (clears training data).
+          await reopenReviewItem(cur.id);
+        }
+        if (label === 'ECHT') await acceptReviewItem(cur.id);
+        else await rejectReviewItem(cur.id);
+        setDecisions((d) => ({ ...d, [cur.id]: label }));
+        if (!prev) goto(idx + 1);
+        else setDrag(0);
       } catch {
         message.error(t('review.actionError', { defaultValue: 'Actie mislukt — probeer opnieuw' }));
       } finally {
         setBusy(false);
       }
     },
-    [cur, busy, canMutate, advance, t]
+    [cur, busy, canMutate, decisions, idx, goto, t]
   );
 
-  // Swipe handling: right = ECHT, left = VALS, up = skip.
   const onTouchStart = (e: React.TouchEvent) => {
     touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
   };
   const onTouchMove = (e: React.TouchEvent) => {
-    if (!touchStart.current) return;
-    setDrag(e.touches[0].clientX - touchStart.current.x);
+    if (touchStart.current) setDrag(e.touches[0].clientX - touchStart.current.x);
   };
   const onTouchEnd = (e: React.TouchEvent) => {
     if (!touchStart.current) return;
     const dx = e.changedTouches[0].clientX - touchStart.current.x;
     const dy = e.changedTouches[0].clientY - touchStart.current.y;
     touchStart.current = null;
-    if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy)) {
-      decide(dx > 0 ? 'ECHT' : 'VALS');
-    } else if (dy < -70 && Math.abs(dy) > Math.abs(dx)) {
-      advance();
-    } else {
-      setDrag(0);
-    }
+    if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy)) applyDecision(dx > 0 ? 'ECHT' : 'VALS');
+    else setDrag(0);
   };
+
+  const echt = Object.values(decisions).filter((d) => d === 'ECHT').length;
+  const vals = Object.values(decisions).filter((d) => d === 'VALS').length;
+  const decidedList = queue
+    .map((it, i) => ({ it, i, label: decisions[it.id] }))
+    .filter((x) => x.label);
+
+  const OverviewBtn = (
+    <Button
+      icon={<UnorderedListOutlined />}
+      size="small"
+      onClick={() => setOverview(true)}
+      data-testid="deck-overview-open"
+    >
+      {t('review.overview', { defaultValue: 'Overzicht' })} ({decidedList.length})
+    </Button>
+  );
+
+  const overviewDrawer = (
+    <Drawer
+      title={t('review.overviewTitle', { defaultValue: 'Wat je hebt gedaan' })}
+      placement="bottom"
+      height="70%"
+      open={overview}
+      onClose={() => setOverview(false)}
+      data-testid="deck-overview"
+    >
+      {decidedList.length === 0 ? (
+        <Empty description={t('review.overviewEmpty', { defaultValue: 'Nog niets beoordeeld' })} />
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+          {decidedList.map(({ it, i, label }) => (
+            <div
+              key={it.id}
+              onClick={() => {
+                setOverview(false);
+                goto(i);
+              }}
+              style={{
+                border: `2px solid ${label === 'ECHT' ? '#B7D945' : '#D64545'}`,
+                borderRadius: 8,
+                padding: 4,
+                textAlign: 'center',
+                cursor: 'pointer',
+                background: '#fff',
+              }}
+            >
+              <div style={{ height: 84, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {cache.current[it.id] ? (
+                  <img
+                    src={cache.current[it.id]}
+                    alt={it.t3777Code}
+                    style={{ maxWidth: '100%', maxHeight: 84, objectFit: 'contain' }}
+                  />
+                ) : (
+                  <Text type="secondary" style={{ fontSize: 11 }}>
+                    {it.t3777Code}
+                  </Text>
+                )}
+              </div>
+              <Text style={{ fontSize: 10, color: label === 'ECHT' ? '#5a8a00' : '#D64545', fontWeight: 700 }}>
+                {label}
+              </Text>
+            </div>
+          ))}
+        </div>
+      )}
+    </Drawer>
+  );
 
   if (idx >= queue.length) {
     return (
-      <Empty
-        data-testid="review-deck-done"
-        description={t('review.deckDone', {
-          defaultValue: `Klaar — ${echt} geaccepteerd, ${vals} afgewezen`,
-        })}
-      />
+      <div data-testid="review-deck-done">
+        <Empty
+          description={t('review.deckDone', {
+            defaultValue: `Klaar — ${echt} geaccepteerd, ${vals} afgewezen`,
+          })}
+        />
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 12 }}>
+          <Button icon={<LeftOutlined />} onClick={() => goto(idx - 1)}>
+            {t('review.back', { defaultValue: 'Terug' })}
+          </Button>
+          {OverviewBtn}
+        </div>
+        {overviewDrawer}
+      </div>
     );
   }
 
-  const tint = drag > 40 ? '#B7D945' : drag < -40 ? '#D64545' : '#E2E8F0';
+  const decision = decisions[cur!.id];
+  const tint = drag > 40 ? '#B7D945' : drag < -40 ? '#D64545' : decision === 'ECHT' ? '#B7D945' : decision === 'VALS' ? '#D64545' : '#E2E8F0';
 
   return (
     <div data-testid="mobile-review-deck">
-      {/* Progress */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 8,
-          fontSize: 13,
-        }}
-      >
-        <Text type="secondary">
-          {idx + 1} / {queue.length}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <Text type="secondary" style={{ fontSize: 13 }}>
+          {idx + 1} / {queue.length} &nbsp;·&nbsp;
+          <span style={{ color: '#5a8a00', fontWeight: 700 }}>{echt}</span> ✓ &nbsp;
+          <span style={{ color: '#D64545' }}>{vals}</span> ✗
         </Text>
-        <Text type="secondary">
-          <span style={{ color: '#5a8a00', fontWeight: 700 }}>{echt}</span>{' '}
-          {t('review.accept', { defaultValue: 'Accepteer' })} ·{' '}
-          <span style={{ color: '#D64545' }}>{vals}</span>{' '}
-          {t('review.reject', { defaultValue: 'Wijs af' })}
-        </Text>
+        {OverviewBtn}
       </div>
 
-      {/* Card */}
       <div
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
@@ -187,28 +276,30 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
           transition: touchStart.current ? 'none' : 'transform .15s, border-color .15s',
           boxShadow: '0 6px 24px #0002',
           touchAction: 'pan-y',
+          position: 'relative',
         }}
       >
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 8,
-          }}
-        >
+        {decision && (
+          <Tag
+            color={decision === 'ECHT' ? '#B7D945' : '#D64545'}
+            style={{ position: 'absolute', top: 16, right: 16, zIndex: 2, fontWeight: 700, color: decision === 'ECHT' ? '#1E293B' : '#fff' }}
+          >
+            {decision}
+          </Tag>
+        )}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
           <Text strong style={{ color: '#1E293B', fontSize: 16 }}>
-            {cur.t3777Code}
+            {cur!.t3777Code}
           </Text>
-          <Tag color={confidenceColor(cur.confidence)} style={{ marginRight: 0 }}>
-            {typeof cur.confidence === 'number' ? `${Math.round(cur.confidence * 100)}%` : '—'}
+          <Tag color={confidenceColor(cur!.confidence)} style={{ marginRight: 0 }}>
+            {typeof cur!.confidence === 'number' ? `${Math.round(cur!.confidence * 100)}%` : '—'}
           </Tag>
         </div>
         <div
           style={{
             width: '100%',
-            height: '52vh',
-            maxHeight: 460,
+            height: '48vh',
+            maxHeight: 440,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -224,7 +315,7 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
             <img
               data-testid="deck-crop"
               src={cropUrl}
-              alt={`${cur.t3777Code} crop`}
+              alt={`${cur!.t3777Code} crop`}
               style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
             />
           ) : (
@@ -232,33 +323,33 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
           )}
         </div>
         <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 8 }}>
-          GTIN {cur.gtin}
+          GTIN {cur!.gtin}
         </Text>
       </div>
 
-      {/* Actions */}
-      <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+      <div style={{ display: 'flex', gap: 8, marginTop: 12, alignItems: 'stretch' }}>
         <Button
-          danger
+          icon={<LeftOutlined />}
+          disabled={idx === 0}
+          onClick={() => goto(idx - 1)}
+          data-testid="deck-back"
+          style={{ height: 56, flex: '0 0 48px' }}
+          aria-label={t('review.back', { defaultValue: 'Terug' })}
+        />
+        <Button
+          danger={decision !== 'VALS'}
+          type={decision === 'VALS' ? 'primary' : 'default'}
           size="large"
           block
           icon={<CloseOutlined />}
           loading={busy}
           disabled={!canMutate}
-          onClick={() => decide('VALS')}
+          onClick={() => applyDecision('VALS')}
           data-testid="deck-reject"
-          style={{ height: 56, fontSize: 16, fontWeight: 600 }}
+          style={{ height: 56, fontSize: 16, fontWeight: 600, ...(decision === 'VALS' ? { background: '#D64545', borderColor: '#D64545' } : {}) }}
         >
           {t('review.reject', { defaultValue: 'Wijs af' })}
         </Button>
-        <Button
-          size="large"
-          icon={<StepForwardOutlined />}
-          onClick={advance}
-          data-testid="deck-skip"
-          style={{ height: 56, flex: '0 0 64px' }}
-          aria-label={t('review.skip', { defaultValue: 'Sla over' })}
-        />
         <Button
           type="primary"
           size="large"
@@ -266,25 +357,32 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
           icon={<CheckOutlined />}
           loading={busy}
           disabled={!canMutate}
-          onClick={() => decide('ECHT')}
+          onClick={() => applyDecision('ECHT')}
           data-testid="deck-accept"
           style={{
             height: 56,
             fontSize: 16,
             fontWeight: 700,
-            background: canMutate ? '#7BA428' : undefined,
-            borderColor: canMutate ? '#7BA428' : undefined,
+            background: canMutate ? (decision === 'ECHT' ? '#5a8a00' : '#7BA428') : undefined,
+            borderColor: canMutate ? (decision === 'ECHT' ? '#5a8a00' : '#7BA428') : undefined,
           }}
         >
           {t('review.accept', { defaultValue: 'Accepteer' })}
         </Button>
+        <Button
+          icon={<RightOutlined />}
+          onClick={() => goto(idx + 1)}
+          data-testid="deck-next"
+          style={{ height: 56, flex: '0 0 48px' }}
+          aria-label={t('review.next', { defaultValue: 'Volgende' })}
+        />
       </div>
-      <Text
-        type="secondary"
-        style={{ fontSize: 11, textAlign: 'center', display: 'block', marginTop: 8 }}
-      >
-        {t('review.swipeHint', { defaultValue: 'swipe → Accepteer · ← Wijs af · ↑ Sla over' })}
+      <Text type="secondary" style={{ fontSize: 11, textAlign: 'center', display: 'block', marginTop: 8 }}>
+        {decision
+          ? t('review.changeHint', { defaultValue: 'Tik de gekozen knop nogmaals om ongedaan te maken' })
+          : t('review.swipeHint', { defaultValue: 'swipe → Accepteer · ← Wijs af · ‹ › navigeren' })}
       </Text>
+      {overviewDrawer}
     </div>
   );
 };
