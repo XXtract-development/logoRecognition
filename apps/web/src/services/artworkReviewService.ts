@@ -67,6 +67,19 @@ export const fetchReviewItemCropUrl = async (id: string): Promise<string | null>
   return response.data?.cropUrl ?? null;
 };
 
+/**
+ * Fetch the crop as an authenticated blob and return an object URL. Loading the
+ * bytes through apiClient (cookie auth + correct baseURL) guarantees the image
+ * renders regardless of how an <img> would handle auth/origin. The caller is
+ * responsible for URL.revokeObjectURL when the URL is no longer needed.
+ */
+export const fetchReviewItemCropBlob = async (id: string): Promise<string | null> => {
+  const response = await apiClient.get(`/artwork/review-items/${id}/crop`, {
+    responseType: 'blob',
+  });
+  return response.data ? URL.createObjectURL(response.data as Blob) : null;
+};
+
 /** Accept an item → push to training-data registration (ADMIN). */
 export const acceptReviewItem = async (id: string): Promise<AcceptResult> => {
   const response = await apiClient.patch(`/artwork/review-items/${id}/accept`);

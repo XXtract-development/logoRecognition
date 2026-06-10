@@ -39,6 +39,7 @@ import {
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import ArtworkReviewItemCard from '@/components/review/ArtworkReviewItemCard';
+import MobileReviewDeck from '@/components/review/MobileReviewDeck';
 
 const { Title, Paragraph } = Typography;
 
@@ -298,6 +299,13 @@ const ArtworkReviewPage: React.FC = () => {
                 description={t('review.noArtworkItems', {
                   defaultValue: 'Geen openstaande artwork-reviewitems',
                 })}
+              />
+            ) : isMobile ? (
+              // Phone: one-card swipe deck (crop front-and-centre, swipe to label).
+              <MobileReviewDeck
+                key={`deck-${filter}-${items[0]?.id ?? 'none'}`}
+                items={items}
+                canMutate={isAdmin}
               />
             ) : (
               <Space direction="vertical" size="middle" style={{ width: '100%' }}>
