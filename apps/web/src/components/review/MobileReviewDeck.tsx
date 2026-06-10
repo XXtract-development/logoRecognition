@@ -31,6 +31,7 @@ import {
   fetchReviewItemCropBlob,
   type ArtworkReviewItem,
 } from '@/services/artworkReviewService';
+import { KEURMERK_CODES } from '@/data/keurmerk-codes';
 
 const { Text } = Typography;
 type Label = 'ECHT' | 'VALS';
@@ -65,9 +66,11 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   const cache = useRef<Record<string, string>>({});
 
-  // The distinct keurmerk codes present in the queue = the quick-pick options.
+  // The FULL keurmerk code universe (884 T3777 + Nutri-Score), plus any code
+  // present in the queue — so any crop can be coupled to the correct code,
+  // not only the few predicted in this queue.
   const codes = useMemo(
-    () => Array.from(new Set(queue.map((q) => q.t3777Code))).sort(),
+    () => Array.from(new Set([...KEURMERK_CODES, ...queue.map((q) => q.t3777Code)])).sort(),
     [queue]
   );
 
@@ -308,6 +311,15 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
   const decision = decisions[cur!.id];
   const shownCode = assignedCode[cur!.id] ?? cur!.t3777Code;
   const relabeled = Boolean(assignedCode[cur!.id]);
+  // Searchable pick list over the FULL code universe: filter by query, pin the
+  // predicted code on top, cap the rendered count so 889 codes stay fast.
+  const pickQuery = search.trim().toLowerCase();
+  const pickFiltered = pickQuery ? codes.filter((c) => c.toLowerCase().includes(pickQuery)) : codes;
+  const pickPred = cur!.t3777Code;
+  const pickList = [
+    ...(pickFiltered.includes(pickPred) ? [pickPred] : []),
+    ...pickFiltered.filter((c) => c !== pickPred),
+  ].slice(0, 80);
   const tint = drag > 40 ? '#B7D945' : drag < -40 ? '#D64545' : decision === 'ECHT' ? '#B7D945' : decision === 'VALS' ? '#D64545' : '#E2E8F0';
 
   return (
@@ -476,33 +488,44 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
           onChange={(e) => setSearch(e.target.value)}
           style={{ marginBottom: 12 }}
         />
+        <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>
+          {pickQuery
+            ? t('review.relabelCount', { defaultValue: '{{n}} resultaten', n: pickFiltered.length })
+            : t('review.relabelTotal', { defaultValue: '{{n}} keurmerken — typ om te zoeken', n: codes.length })}
+        </Text>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {codes
-            .filter((c) => c.toLowerCase().includes(search.trim().toLowerCase()))
-            .map((c) => (
-              <Button
-                key={c}
-                block
-                size="large"
-                loading={busy}
-                onClick={() => relabel(c)}
-                data-testid="deck-relabel-option"
-                style={{
-                  height: 52,
-                  textAlign: 'left',
-                  justifyContent: 'flex-start',
-                  fontWeight: c === cur!.t3777Code ? 700 : 500,
-                  borderColor: c === shownCode ? '#7BA428' : '#E2E8F0',
-                }}
-              >
-                {c}
-                {c === cur!.t3777Code && (
-                  <Text type="secondary" style={{ fontSize: 11, marginLeft: 8 }}>
-                    {t('review.predicted', { defaultValue: '(voorspeld)' })}
-                  </Text>
-                )}
-              </Button>
-            ))}
+          {pickList.map((c) => (
+            <Button
+              key={c}
+              block
+              size="large"
+              loading={busy}
+              onClick={() => relabel(c)}
+              data-testid="deck-relabel-option"
+              style={{
+                height: 52,
+                textAlign: 'left',
+                justifyContent: 'flex-start',
+                fontWeight: c === cur!.t3777Code ? 700 : 500,
+                borderColor: c === shownCode ? '#7BA428' : '#E2E8F0',
+              }}
+            >
+              {c}
+              {c === cur!.t3777Code && (
+                <Text type="secondary" style={{ fontSize: 11, marginLeft: 8 }}>
+                  {t('review.predicted', { defaultValue: '(voorspeld)' })}
+                </Text>
+              )}
+            </Button>
+          ))}
+          {pickFiltered.length > pickList.length && (
+            <Text type="secondary" style={{ fontSize: 11, textAlign: 'center' }}>
+              {t('review.relabelMore', {
+                defaultValue: '…{{n}} meer — verfijn je zoekopdracht',
+                n: pickFiltered.length - pickList.length,
+              })}
+            </Text>
+          )}
         </div>
       </Drawer>
 
