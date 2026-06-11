@@ -1,5 +1,13 @@
 # Versiegeschiedenis
 
+## 2026-06-11 (review: "bekijk in context" voor onleesbare uitsnedes)
+
+### Afgesneden uitsnedes nu te begrijpen
+- In het reviewscherm kun je met de knop "🔍 Bekijk in context" de uitsnede op het volledige artwork bekijken, met de gevonden locatie rood gemarkeerd
+- Zo zie je ook bij een krap of half afgesneden logo (bijvoorbeeld een gedeeltelijke Nutri-Score-balk) meteen wélk keurmerk het werkelijk is
+- Met "Toon uitsnede" schakel je terug naar de close-up
+
+
 ## 2026-06-10 (review toont nu wat er op de verpakking is gedeclareerd)
 
 ### Slimmer labelvoorstel op basis van de GS1-declaratie

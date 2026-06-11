@@ -125,6 +125,22 @@ export const fetchDeclaredMarks = async (gtin: string): Promise<DeclaredMarksRes
   }
 };
 
+/**
+ * Fetch the FULL source artwork as an authenticated blob (object URL). The deck
+ * overlays the item's bbox on this so partial/tight crops stay interpretable
+ * ("bekijk in context"). Caller revokes the URL when done.
+ */
+export const fetchReviewItemSourceBlob = async (id: string): Promise<string | null> => {
+  try {
+    const response = await apiClient.get(`/artwork/review-items/${id}/source`, {
+      responseType: 'blob',
+    });
+    return response.data ? URL.createObjectURL(response.data as Blob) : null;
+  } catch {
+    return null;
+  }
+};
+
 /** Accept an item → push to training-data registration (ADMIN). */
 export const acceptReviewItem = async (
   id: string,

@@ -29,6 +29,7 @@ import {
   rejectReviewItem,
   reopenReviewItem,
   fetchReviewItemCropBlob,
+  fetchReviewItemSourceBlob,
   fetchDeclaredMarks,
   type ArtworkReviewItem,
 } from '@/services/artworkReviewService';
@@ -86,6 +87,13 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
     has: false,
   });
   const declaredCache = useRef<Record<string, { codes: string[]; has: boolean }>>({});
+  // "Bekijk in context": show the full source artwork with the bbox highlighted,
+  // so partial/tight crops (cut exactly on the proposed box) stay interpretable.
+  const [context, setContext] = useState(false);
+  const [srcUrl, setSrcUrl] = useState<string | null>(null);
+  const [srcLoading, setSrcLoading] = useState(false);
+  const [srcNat, setSrcNat] = useState<{ w: number; h: number } | null>(null);
+  const srcCache = useRef<Record<string, string>>({});
 
   // The FULL code universe across ALL recognised GS1 sporen — 884 T3777 +
   // Nutri-Score (keurmerk-codes.ts) PLUS DietTypeCode (incl. LACTOSE_FREE), GHS
@@ -151,6 +159,46 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
       active = false;
     };
   }, [cur?.gtin]);
+
+  // Load the source artwork (for the context overlay) only when context view is
+  // on. Cached per item; the bbox overlay is computed from the loaded natural
+  // size so it lines up regardless of display scale.
+  useEffect(() => {
+    if (!context || !cur) {
+      setSrcUrl(null);
+      setSrcNat(null);
+      return;
+    }
+    const id = cur.id;
+    if (srcCache.current[id]) {
+      setSrcUrl(srcCache.current[id]);
+      return;
+    }
+    setSrcLoading(true);
+    setSrcUrl(null);
+    setSrcNat(null);
+    let active = true;
+    fetchReviewItemSourceBlob(id)
+      .then((url) => {
+        if (url) srcCache.current[id] = url;
+        if (active) {
+          setSrcUrl(url);
+          setSrcLoading(false);
+        }
+      })
+      .catch(() => active && setSrcLoading(false));
+    return () => {
+      active = false;
+    };
+  }, [context, cur?.id]);
+
+  // Revoke cached source object URLs on unmount.
+  useEffect(
+    () => () => {
+      Object.values(srcCache.current).forEach((u) => URL.revokeObjectURL(u));
+    },
+    []
+  );
 
   // Revoke all cached object URLs on unmount.
   useEffect(
@@ -442,21 +490,70 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
             )}
           </div>
         )}
+        {/* "Bekijk in context": only when the item carries a usable bbox. */}
+        {cur!.bbox && typeof cur!.bbox.width === 'number' && (cur!.bbox.width ?? 0) > 0 && (
+          <div style={{ textAlign: 'right', marginBottom: 6 }}>
+            <Button
+              size="small"
+              type={context ? 'primary' : 'default'}
+              onClick={() => setContext((v) => !v)}
+              data-testid="deck-context-toggle"
+            >
+              {context
+                ? t('review.showCrop', { defaultValue: 'Toon uitsnede' })
+                : t('review.showContext', { defaultValue: '🔍 Bekijk in context' })}
+            </Button>
+          </div>
+        )}
         <div
           style={{
             width: '100%',
             height: '48vh',
             maxHeight: 440,
             display: 'flex',
-            alignItems: 'center',
+            alignItems: context ? 'flex-start' : 'center',
             justifyContent: 'center',
             background: '#F8FAFC',
             border: '1px solid #E2E8F0',
             borderRadius: 10,
-            overflow: 'hidden',
+            overflow: context ? 'auto' : 'hidden',
           }}
         >
-          {cropLoading ? (
+          {context ? (
+            srcLoading ? (
+              <Spin style={{ marginTop: 24 }} />
+            ) : srcUrl ? (
+              <div style={{ position: 'relative', width: '100%' }} data-testid="deck-context">
+                <img
+                  src={srcUrl}
+                  alt={`${cur!.t3777Code} bron`}
+                  onLoad={(e) =>
+                    setSrcNat({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })
+                  }
+                  style={{ width: '100%', display: 'block' }}
+                />
+                {srcNat && srcNat.w > 0 && srcNat.h > 0 && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      left: `${((cur!.bbox.x ?? 0) / srcNat.w) * 100}%`,
+                      top: `${((cur!.bbox.y ?? 0) / srcNat.h) * 100}%`,
+                      width: `${((cur!.bbox.width ?? 0) / srcNat.w) * 100}%`,
+                      height: `${((cur!.bbox.height ?? 0) / srcNat.h) * 100}%`,
+                      border: '3px solid #D64545',
+                      outline: '2px solid #fff',
+                      boxSizing: 'border-box',
+                      pointerEvents: 'none',
+                    }}
+                  />
+                )}
+              </div>
+            ) : (
+              <Text type="secondary" style={{ marginTop: 24 }}>
+                {t('review.sourceError', { defaultValue: 'Bronafbeelding niet beschikbaar' })}
+              </Text>
+            )
+          ) : cropLoading ? (
             <Spin />
           ) : cropUrl ? (
             <img

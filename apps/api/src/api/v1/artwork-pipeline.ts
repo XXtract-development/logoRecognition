@@ -766,6 +766,36 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
   );
 
   /**
+   * GET /artwork/review-items/:id/source
+   * Streams the FULL source-artwork bytes (sourceFile = the artwork storage key,
+   * TRAINING bucket under artwork/). The review UI overlays the item's bbox on
+   * this so partial/tight crops stay interpretable ("bekijk in context").
+   * 404 when the item or its source object is missing. Read-only.
+   */
+  fastify.get<{ Params: { id: string } }>(
+    '/artwork/review-items/:id/source',
+    { preHandler: authMiddleware },
+    async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+      const { id } = request.params;
+
+      const item = await prisma.artworkReviewItem.findUnique({ where: { id } });
+      if (!item || !item.sourceFile) {
+        return reply.status(404).send({ error: 'Geen bronafbeelding voor dit reviewitem' });
+      }
+
+      const buffer = await downloadTrainingObject(item.sourceFile);
+      if (!buffer) {
+        return reply.status(404).send({ error: 'Bronafbeelding niet gevonden in opslag' });
+      }
+
+      const ext = item.sourceFile.split('.').pop()?.toLowerCase();
+      const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : 'image/png';
+      reply.header('Cache-Control', 'private, max-age=300');
+      return reply.type(mime).send(buffer);
+    }
+  );
+
+  /**
    * PATCH /artwork/review-items/:id/accept
    * Accept an open review item and push it straight to training-data
    * registration (Story 8.6 doorzet). On success the item becomes 'registered';
