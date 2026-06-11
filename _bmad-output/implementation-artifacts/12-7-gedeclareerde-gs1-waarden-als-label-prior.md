@@ -3,11 +3,12 @@
 Status: **spike GO 2026-06-10** (Fase A uitgevoerd → `12-7-spike-resultaten.md`). Idee van de PO,
 bewezen op echte prod-data. Resteert: Fase B implementatie.
 
-> **Spike-uitkomst (kort):** op de gelabelde gold-set staan **alle 16 valse detecties out-of-declared-set**
-> (100% geflagd) terwijl **97% van de echte in-set** blijft → precisie 96%→100% op records mét declaratie,
-> 0% recall-verlies. Live queue: **54% dekking** (declaratie aanwezig); van de hoog-conf detecties daar is
-> **65% out-of-set** (incl. de bekende RECYCLABLE@1.00-degeneraties). → **re-ranker/auto-flag met graceful
-> fallback, geen harde filter.**
+> **Spike-uitkomst (kort):** op de gelabelde gold-set is **0% van de valse detecties gedeclareerd** en
+> **97% van de echte wél** → schone scheiding; precisie 96%→100% op records mét declaratie, 0% recall-verlies.
+> Onder de aanbevolen graceful fallback vangt de prior **3/16 valse** (de overige 13 valse zitten op GTINs
+> zónder declaratie → geen signaal). Live queue: **~54% dekking**; van de hoog-conf detecties dáár is
+> **65% out-of-set** (incl. de bekende RECYCLABLE@1.00-degeneraties). → **dekking is de bepalende variabele;
+> re-ranker/auto-flag met graceful fallback, geen harde filter.**
 Hoort bij Epic 12 (brede keurmerk-dekking) als **precisie-hefboom** die het embedding-knelpunt
 (Story 12.2/12.3: zwakke discriminatie over honderden klassen) grotendeels omzeilt.
 

@@ -14,16 +14,22 @@ Datum 2026-06-10. Fase A (spike) uitgevoerd. **Conclusie: GO**, met een duidelij
 
 ## Resultaat 1 — gold-set (mét grondwaarheid): clean separatie
 
-| | aantal | in declared set | out-of-set |
-|---|---:|---:|---:|
-| **ECHT** | 75 | **73 (97%)** | 2 (beide op GTINs zónder declaratie) |
-| **VALS** | 16 | **0 (0%)** | 16 (100%) |
+| | aantal | in declared set | out-of-set | waarvan op GTIN **zónder** declaratie |
+|---|---:|---:|---:|---:|
+| **ECHT** | 75 | **73 (97%)** | 2 | 2 |
+| **VALS** | 16 | **0 (0%)** | 16 | 13 |
 
-- **Alle 16 valse detecties staan buiten de gedeclareerde set** → de prior flagt ze allemaal.
-- **Geen enkele ECHT wordt out-of-set geflagd wanneer er een declaratie is** (de 2 ECHT-uitschieters
-  zitten op GTINs zónder declaratie → met graceful fallback worden die niet geflagd).
-- **Precisie-lift op de 76 records mét declaratie:** 96% → **100%**, met **0% recall-verlies**
-  (73/73 ECHT behouden, 3/3 covered VALS verwijderd).
+- **Geen enkele valse detectie is gedeclareerd** (VALS in-set = 0%) en **97% van de echte is
+  gedeclareerd** → schone scheiding op het signaal zelf.
+- **Onder de aanbevolen graceful fallback** (alleen flaggen als er een declaratie ís én de code
+  out-of-set is) vangt de prior **3/16 valse detecties** — namelijk de 3 die op een GTIN mét declaratie
+  zitten. De andere **13 valse zitten op GTINs zónder declaratie** → géén signaal (geen actie). Idem de
+  2 ECHT-uitschieters (ook zonder declaratie) → die worden dus **niet** ten onrechte geflagd.
+- **Precisie-lift op de records mét declaratie:** 96% → **100%**, met **0% recall-verlies**
+  (73/73 ECHT behouden, 3/3 covered VALS verwijderd). Buiten die dekking: geen effect.
+- ⚠️ Een eerdere lezing ("16/16 geflagd") telde *geen-declaratie* mee als out-of-set; dat zou flaggen-
+  zonder-declaratie vereisen en botst met de fallback. De policy-consistente vangst is **3/16**.
+  **Dekking — niet de 100% — is dus de bepalende variabele.**
 
 **Asymmetrie (kernmechanisme):** "out-of-set" is een **sterk negatief** signaal (vrijwel alleen valse
 detecties); "in-set" is een **zwakke bevestiging** (veelvoorkomende codes als RECYCLABLE/GREEN_DOT zijn
@@ -32,8 +38,10 @@ positief bewijs.
 
 ## Resultaat 2 — live queue (zonder labels, proxy): flagt de ruis
 
-- **Dekking: 54% van de queue-items heeft een bruikbare declaratie** (215/400). De rest: GTIN niet in
-  prod óf geen mark-velden gevuld. → **Dit is de belangrijkste beperking; fallback is verplicht.**
+- **Dekking: ~54% van de queue-items heeft een bruikbare declaratie** (215/400; iets hóger, want de
+  grouped-aggregatie raakte de 100-doc-cap — 106 GTINs hadden marks, 100 teruggegeven, dus ~6 GTINs
+  met declaratie zijn als "geen declaratie" geteld). De rest: GTIN niet in prod óf geen mark-velden
+  gevuld. → **Dit is de belangrijkste beperking; fallback is verplicht.**
 - **In-set rate (alleen items mét declaratie): 26%** → 74% out-of-set. Onder hoog-conf (≥0,65):
   **65% out-of-set** → die zou de prior flaggen.
 - **Kwalitatief sterk signaal:** vrijwel alle geflagde hoog-conf detecties zijn
@@ -44,8 +52,8 @@ positief bewijs.
 ## Interpretatie / go-no-go
 
 - **GO.** Het mechanisme klopt: gedeclareerde waarden scheiden echt/vals schoon op de grondwaarheid
-  (alle valse out-of-set, recall behouden) en flaggen op de live queue precies de ruis (incl. de
-  bekende RECYCLABLE@1.00-degeneraties).
+  (0% van de valse is gedeclareerd, 97% van de echte wél; recall behouden) en flaggen op de live queue
+  precies de ruis (incl. de bekende RECYCLABLE@1.00-degeneraties) — **voor zover er declaratie is**.
 - **Scope/limiet:** de prior helpt **waar declaratie-data bestaat** (~54% van de queue nu; hoger voor
   goed-onderhouden leveranciers). Voor de rest: **graceful fallback** = huidige gedrag, geen penalty.
 - **Ontwerp-implicatie (bevestigt de story):** géén harde filter. Implementeer als:
