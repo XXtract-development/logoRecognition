@@ -40,6 +40,7 @@ import {
 } from '../../services/artwork-registration';
 import { crosscheckDetections } from '../../services/artwork-crosscheck';
 import { enqueueDetectionForImport } from '../../services/pipeline/detection-flow';
+import { resolveDeclaredMarks } from '../../services/t3777-declarations';
 
 // ============================================
 // Constants
@@ -688,6 +689,24 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
       });
 
       return reply.status(200).send({ data: items });
+    }
+  );
+
+  /**
+   * GET /artwork/declared-marks/:gtin
+   * Story 12.7 — the GTIN's declared GS1 marks (all sporen) as a label-prior for
+   * the review UI. Lazy/on-view (like crop-url), Redis-cached and fail-safe: any
+   * miss returns marks=[] with a distinct reason (never an error). The UI uses
+   * it to pin/flag a detection against what the packaging actually declares.
+   * Read-only; any authenticated user.
+   */
+  fastify.get<{ Params: { gtin: string } }>(
+    '/artwork/declared-marks/:gtin',
+    { preHandler: authMiddleware },
+    async (request: FastifyRequest<{ Params: { gtin: string } }>, reply: FastifyReply) => {
+      const { gtin } = request.params;
+      const { marks, reason } = await resolveDeclaredMarks(gtin);
+      return reply.status(200).send({ gtin, marks, reason });
     }
   );
 

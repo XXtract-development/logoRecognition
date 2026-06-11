@@ -1,7 +1,15 @@
 # Story 12.7: Gedeclareerde GS1-waarden van de GTIN als label-prior (spike → implementatie)
 
-Status: **spike GO 2026-06-10** (Fase A uitgevoerd → `12-7-spike-resultaten.md`). Idee van de PO,
-bewezen op echte prod-data. Resteert: Fase B implementatie.
+Status: **Fase B geïmplementeerd 2026-06-10** (spike GO → `12-7-spike-resultaten.md`). Idee van de PO,
+bewezen op echte prod-data.
+
+> **Fase B (gebouwd):** `resolveDeclaredMarks(gtin)` in `t3777-declarations.ts` — hergebruikt het
+> bestaande catalog `tradeitemxml`-pad (Redis-cache, GLN-lookup, fail-safe), uitgebreid naar álle sporen
+> (T3777 + DietTypeCode + NutritionalScore). Endpoint `GET /artwork/declared-marks/:gtin` (lazy/on-view).
+> Review-deck: prior-badge op de kaart ("✓ gedeclareerd op verpakking" / "⚠ niet gedeclareerd op deze
+> GTIN", alleen als er een declaratie ís — graceful fallback) + gedeclareerde codes bovenaan in de picker
+> met "gedeclareerd"-tag. 20 service-tests + 292 API-tests groen; web typecheck + build groen.
+> Eind-tot-eind geverifieerd: de live catalog-XML levert T3777 én dietTypeCode (incl. lactose-free).
 
 > **Spike-uitkomst (kort):** op de gelabelde gold-set is **0% van de valse detecties gedeclareerd** en
 > **97% van de echte wél** → schone scheiding; precisie 96%→100% op records mét declaratie, 0% recall-verlies.

@@ -94,17 +94,22 @@ function cacheKey(gln: string, gtin: string, tm: string): string {
   return `t3777:${gln}:${gtin}:${tm}`;
 }
 
+/** Transport-level outcome of a trade-item XML fetch (before any parsing). */
+type FetchXmlReason = 'ok' | '404-mogelijk-TM-mismatch' | 'api-fout';
+
 /**
- * Fetch the trade-item XML and return the catalog outcome. Distinguishes 404
- * (likely TM mismatch) from any other error so the reasons stay separate.
+ * Fetch the raw trade-item XML. Distinguishes 404 (likely TM mismatch) from any
+ * other error so the reasons stay separate. Returns the body on success, never
+ * throws. Shared by the T3777 crosscheck (parseT3777Codes) and the label-prior
+ * (parseDeclaredMarks) so both go through one cached, fail-safe catalog path.
  */
-async function fetchDeclaration(
+async function fetchTradeItemXml(
   baseUrl: string,
   apiKey: string,
   gln: string,
   gtin: string,
   tm: string
-): Promise<DeclarationResult> {
+): Promise<{ xml: string | null; reason: FetchXmlReason }> {
   const url = `${baseUrl}/api/tradeitemxml/${gln}-${gtin}-${tm}`;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
@@ -123,26 +128,26 @@ async function fetchDeclaration(
       gtin,
       error: err instanceof Error ? err.message : 'unknown',
     });
-    return { codes: [], reason: 'api-fout' };
+    return { xml: null, reason: 'api-fout' };
   } finally {
     clearTimeout(timer);
   }
 
   if (response.status === 404) {
     logger.info('Catalog declaration not found', { reason: '404-mogelijk-TM-mismatch', gtin, tm });
-    return { codes: [], reason: '404-mogelijk-TM-mismatch' };
+    return { xml: null, reason: '404-mogelijk-TM-mismatch' };
   }
 
   if (response.status >= 400) {
     logger.warn('Catalog declaration error status', { reason: 'api-fout', gtin, status: response.status });
-    return { codes: [], reason: 'api-fout' };
+    return { xml: null, reason: 'api-fout' };
   }
 
   // Guard against pathologically large bodies before buffering the whole thing.
   const declaredLength = Number(response.headers.get('content-length') ?? '');
   if (Number.isFinite(declaredLength) && declaredLength > MAX_RESPONSE_BYTES) {
     logger.warn('Catalog declaration response too large', { reason: 'api-fout', gtin, bytes: declaredLength });
-    return { codes: [], reason: 'api-fout' };
+    return { xml: null, reason: 'api-fout' };
   }
 
   let xml: string;
@@ -154,13 +159,33 @@ async function fetchDeclaration(
       gtin,
       error: err instanceof Error ? err.message : 'unknown',
     });
-    return { codes: [], reason: 'api-fout' };
+    return { xml: null, reason: 'api-fout' };
   }
 
   if (xml.length > MAX_RESPONSE_BYTES) {
     // Streaming-less guard for servers that omit content-length.
     logger.warn('Catalog declaration body too large', { reason: 'api-fout', gtin, bytes: xml.length });
-    return { codes: [], reason: 'api-fout' };
+    return { xml: null, reason: 'api-fout' };
+  }
+
+  return { xml, reason: 'ok' };
+}
+
+/**
+ * Fetch + parse the T3777 declaration. Behaviour (and the returned reasons) are
+ * unchanged from the original inline implementation; only the transport step is
+ * factored out into fetchTradeItemXml so the label-prior can reuse it.
+ */
+async function fetchDeclaration(
+  baseUrl: string,
+  apiKey: string,
+  gln: string,
+  gtin: string,
+  tm: string
+): Promise<DeclarationResult> {
+  const { xml, reason } = await fetchTradeItemXml(baseUrl, apiKey, gln, gtin, tm);
+  if (reason !== 'ok' || xml == null) {
+    return { codes: [], reason };
   }
 
   const codes = parseT3777Codes(xml);
@@ -280,6 +305,149 @@ export const catalogDeclarationProvider: DeclarationProvider = async (gtin: stri
   const { codes } = await resolveDeclarations(gtin);
   return codes;
 };
+
+// ---------------------------------------------------------------------------
+// Story 12.7 — declared GS1 marks as a label-prior for the relabel UI.
+//
+// Same catalog source/cache/fail-safe as the T3777 crosscheck, but extracts ALL
+// recognised sporen (not only T3777) so the review UI can pin/flag a detection
+// against what the GTIN actually declares on-pack. Spike-verified: the live
+// catalog XML carries packagingMarkedLabelAccreditationCode AND dietTypeCode.
+// ---------------------------------------------------------------------------
+
+/** A declared mark = a code plus its GS1 codelist name (= reference_logos.fieldType). */
+export interface DeclaredMark {
+  code: string;
+  fieldType: string;
+}
+
+export interface DeclaredMarksResult {
+  marks: DeclaredMark[];
+  reason: DeclarationReason;
+}
+
+/** GS1 declaration element (XML local-name) → GS1 codelist name (fieldType). */
+const MARK_FIELDS: Array<{ tag: string; fieldType: string }> = [
+  { tag: 'packagingMarkedLabelAccreditationCode', fieldType: 'PackagingMarkedLabelAccreditationCode' },
+  { tag: 'dietTypeCode', fieldType: 'DietTypeCode' },
+  { tag: 'nutritionalScore', fieldType: 'NutritionalScore' },
+];
+
+/**
+ * Namespace-agnostic parse on local-name for every recognised mark element.
+ * Union over all layers, trim, uppercase, dedup per (fieldType, code).
+ */
+export function parseDeclaredMarks(xml: string): DeclaredMark[] {
+  const seen = new Set<string>();
+  const out: DeclaredMark[] = [];
+  for (const { tag, fieldType } of MARK_FIELDS) {
+    const re = new RegExp(`<(?:[\\w.-]+:)?${tag}[^>]*>([^<]+)<`, 'g');
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(xml)) !== null) {
+      const code = m[1].trim().toUpperCase();
+      if (!code) continue;
+      const k = `${fieldType}:${code}`;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push({ code, fieldType });
+    }
+  }
+  return out;
+}
+
+/** Separate cache namespace from the T3777-only crosscheck cache. */
+function marksCacheKey(gln: string, gtin: string, tm: string): string {
+  return `marks:${gln}:${gtin}:${tm}`;
+}
+
+async function marksCacheRead(key: string, gtin: string): Promise<DeclaredMarksResult | null> {
+  let raw: string | null = null;
+  try {
+    raw = await getRedisConnection().get(key);
+  } catch (err) {
+    logger.warn('Redis marks cache read failed — proceeding without cache', {
+      gtin,
+      error: err instanceof Error ? err.message : 'unknown',
+    });
+    return null;
+  }
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as DeclaredMarksResult;
+    if (parsed && Array.isArray(parsed.marks)) {
+      return { marks: parsed.marks, reason: parsed.reason ?? 'ok' };
+    }
+  } catch {
+    // corrupt cache entry → treat as a miss
+  }
+  return null;
+}
+
+async function marksCacheWrite(
+  key: string,
+  result: DeclaredMarksResult,
+  ttlS: number,
+  gtin: string
+): Promise<void> {
+  try {
+    await getRedisConnection().setex(key, ttlS, JSON.stringify(result));
+  } catch (err) {
+    logger.warn('Redis marks cache write failed — result not cached', {
+      gtin,
+      error: err instanceof Error ? err.message : 'unknown',
+    });
+  }
+}
+
+/**
+ * Resolve the declared GS1 marks for a GTIN (all sporen). Mirrors
+ * resolveDeclarations' fail-safe order; NEVER throws. Returns marks + a distinct
+ * reason so an empty prior never silently looks like "no data".
+ */
+export async function resolveDeclaredMarks(gtin: string): Promise<DeclaredMarksResult> {
+  const { apiKey, baseUrl, targetMarket, cacheTtlS } = readEnv();
+
+  if (!apiKey) {
+    logger.warn('Catalog API key not configured', { reason: 'api-key-ontbreekt', gtin });
+    return { marks: [], reason: 'api-key-ontbreekt' };
+  }
+
+  let gln: string | null = null;
+  try {
+    const row = await prisma.artworkImport.findFirst({
+      where: { gtin, gln: { not: null } },
+      select: { gln: true },
+    });
+    gln = row?.gln ?? null;
+  } catch (err) {
+    logger.warn('gln lookup failed', {
+      reason: 'gln-ontbreekt',
+      gtin,
+      error: err instanceof Error ? err.message : 'unknown',
+    });
+    return { marks: [], reason: 'gln-ontbreekt' };
+  }
+  if (!gln) {
+    logger.info('No gln for GTIN — declared-marks lookup skipped', { reason: 'gln-ontbreekt', gtin });
+    return { marks: [], reason: 'gln-ontbreekt' };
+  }
+
+  const key = marksCacheKey(gln, gtin, targetMarket);
+  const cached = await marksCacheRead(key, gtin);
+  if (cached) return cached;
+
+  const { xml, reason } = await fetchTradeItemXml(baseUrl, apiKey, gln, gtin, targetMarket);
+  let result: DeclaredMarksResult;
+  if (reason !== 'ok' || xml == null) {
+    result = { marks: [], reason };
+  } else {
+    const marks = parseDeclaredMarks(xml);
+    result = marks.length === 0 ? { marks: [], reason: 'lege-declaratie' } : { marks, reason: 'ok' };
+  }
+
+  await marksCacheWrite(key, result, cacheTtlS, gtin);
+  return result;
+}
 
 /**
  * Wire the catalog provider as the detection-flow default — ONLY when a

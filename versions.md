@@ -1,5 +1,15 @@
 # Versiegeschiedenis
 
+## 2026-06-10 (review toont nu wat er op de verpakking is gedeclareerd)
+
+### Slimmer labelvoorstel op basis van de GS1-declaratie
+- Bij elk review-item haalt het systeem op welke keurmerken/claims er volgens GS1 daadwerkelijk op de verpakking van die GTIN staan
+- Staat het voorgestelde keurmerk **niet** in de declaratie, dan toont de kaart een waarschuwing ("⚠ niet gedeclareerd op deze GTIN") — zo herken je valse detecties (zoals een verkeerd Beter Leven-voorstel) meteen
+- Klopt het wél, dan zie je "✓ gedeclareerd op verpakking"
+- In "ander keurmerk koppelen" staan de gedeclareerde codes bovenaan met een "gedeclareerd"-label, zodat het juiste keurmerk sneller te kiezen is
+- Werkt alleen als er declaratie-data beschikbaar is; anders verandert er niets aan het scherm
+
+
 ## 2026-06-10 (lactosevrij en alle dieet-/free-from-codes koppelbaar in review)
 
 ### Volledige keuzelijst bij "ander keurmerk koppelen"

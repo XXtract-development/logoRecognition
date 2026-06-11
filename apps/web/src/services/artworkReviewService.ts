@@ -92,6 +92,39 @@ export const fetchReviewItemCropBlob = async (id: string): Promise<string | null
   return response.data ? URL.createObjectURL(response.data as Blob) : null;
 };
 
+/** A GS1 mark declared on the GTIN's packaging (Story 12.7 label-prior). */
+export interface DeclaredMark {
+  code: string;
+  /** GS1 codelist name (= reference_logos.fieldType), e.g. DietTypeCode. */
+  fieldType: string;
+}
+
+export interface DeclaredMarksResult {
+  gtin: string;
+  marks: DeclaredMark[];
+  /** Distinct fail-safe reason: 'ok' | 'lege-declaratie' | 'gln-ontbreekt' | … */
+  reason: string;
+}
+
+/**
+ * Fetch the GTIN's declared GS1 marks (Story 12.7). Lazy/on-view, like the crop
+ * URL. Fail-safe: returns marks=[] with a reason on any miss (never throws on a
+ * 200). The deck uses it to pin/flag a detection against the declaration.
+ */
+export const fetchDeclaredMarks = async (gtin: string): Promise<DeclaredMarksResult> => {
+  try {
+    const response = await apiClient.get(`/artwork/declared-marks/${encodeURIComponent(gtin)}`);
+    return {
+      gtin,
+      marks: response.data?.marks ?? [],
+      reason: response.data?.reason ?? 'onbekend',
+    };
+  } catch {
+    // Network/HTTP error → behave like an empty prior (graceful fallback).
+    return { gtin, marks: [], reason: 'fetch-fout' };
+  }
+};
+
 /** Accept an item → push to training-data registration (ADMIN). */
 export const acceptReviewItem = async (
   id: string,

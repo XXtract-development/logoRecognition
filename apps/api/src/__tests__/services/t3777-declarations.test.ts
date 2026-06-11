@@ -24,6 +24,8 @@ import {
   resolveDeclarations,
   catalogDeclarationProvider,
   parseT3777Codes,
+  parseDeclaredMarks,
+  resolveDeclaredMarks,
 } from '../../services/t3777-declarations';
 
 const ACC_XML = readFileSync(
@@ -255,6 +257,67 @@ describe('T3777 declaration provider (8-3D)', () => {
       expect(calledUrl).toBe(
         'https://catalog.staging.example.com/api/tradeitemxml/8718989000000-08718989912451-276'
       );
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Story 12.7 — declared GS1 marks (all sporen) as a label-prior
+  // -------------------------------------------------------------------------
+  describe('declared marks (12.7)', () => {
+    const MARKS_XML = `
+      <tradeItem xmlns:gs1="urn:gs1">
+        <gs1:packagingMarkedLabelAccreditationCode>GREEN_DOT</gs1:packagingMarkedLabelAccreditationCode>
+        <packagingMarkedLabelAccreditationCode> certified_b_corporation </packagingMarkedLabelAccreditationCode>
+        <dietTypeCode>VEGAN</dietTypeCode>
+        <dietTypeCode>lactose_free</dietTypeCode>
+        <isDietTypeMarkedOnPackage>TRUE</isDietTypeMarkedOnPackage>
+        <nutritionalScore>A</nutritionalScore>
+      </tradeItem>`;
+
+    it('parses every spoor with the right fieldType, trim/uppercase/dedup', () => {
+      const marks = parseDeclaredMarks(MARKS_XML);
+      expect(marks).toEqual(
+        expect.arrayContaining([
+          { code: 'GREEN_DOT', fieldType: 'PackagingMarkedLabelAccreditationCode' },
+          { code: 'CERTIFIED_B_CORPORATION', fieldType: 'PackagingMarkedLabelAccreditationCode' },
+          { code: 'VEGAN', fieldType: 'DietTypeCode' },
+          { code: 'LACTOSE_FREE', fieldType: 'DietTypeCode' },
+          { code: 'A', fieldType: 'NutritionalScore' },
+        ])
+      );
+      expect(marks).toHaveLength(5);
+    });
+
+    it('resolveDeclaredMarks returns marks + reason ok and caches under marks:', async () => {
+      fetchMock.mockResolvedValue(okXml(MARKS_XML));
+      const result = await resolveDeclaredMarks(GTIN);
+      expect(result.reason).toBe('ok');
+      expect(result.marks.some((m) => m.code === 'LACTOSE_FREE' && m.fieldType === 'DietTypeCode')).toBe(true);
+      // second call hits the cache (no second fetch) under a marks-namespaced key
+      await resolveDeclaredMarks(GTIN);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect([...cacheStore.keys()].some((k) => k.startsWith('marks:'))).toBe(true);
+    });
+
+    it('empty declaration → marks=[] with reason lege-declaratie (never throws)', async () => {
+      fetchMock.mockResolvedValue(okXml('<tradeItem></tradeItem>'));
+      const result = await resolveDeclaredMarks(GTIN);
+      expect(result.marks).toEqual([]);
+      expect(result.reason).toBe('lege-declaratie');
+    });
+
+    it('missing API key → api-key-ontbreekt, no fetch', async () => {
+      delete process.env.CATALOG_API_KEY;
+      const result = await resolveDeclaredMarks(GTIN);
+      expect(result).toEqual({ marks: [], reason: 'api-key-ontbreekt' });
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('catalog 404 → marks=[] with reason 404-mogelijk-TM-mismatch', async () => {
+      fetchMock.mockResolvedValue(status(404));
+      const result = await resolveDeclaredMarks(GTIN);
+      expect(result.marks).toEqual([]);
+      expect(result.reason).toBe('404-mogelijk-TM-mismatch');
     });
   });
 });

@@ -29,6 +29,7 @@ import {
   rejectReviewItem,
   reopenReviewItem,
   fetchReviewItemCropBlob,
+  fetchDeclaredMarks,
   type ArtworkReviewItem,
 } from '@/services/artworkReviewService';
 import { KEURMERK_CODES } from '@/data/keurmerk-codes';
@@ -77,6 +78,14 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
   const [search, setSearch] = useState('');
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   const cache = useRef<Record<string, string>>({});
+  // Story 12.7 — declared GS1 marks of the current GTIN as a label-prior.
+  // `has` = a real declaration exists (reason 'ok'); without it we show nothing
+  // (graceful fallback). Cached per GTIN (queue repeats GTINs heavily).
+  const [declared, setDeclared] = useState<{ codes: Set<string>; has: boolean }>({
+    codes: new Set(),
+    has: false,
+  });
+  const declaredCache = useRef<Record<string, { codes: string[]; has: boolean }>>({});
 
   // The FULL code universe across ALL recognised GS1 sporen — 884 T3777 +
   // Nutri-Score (keurmerk-codes.ts) PLUS DietTypeCode (incl. LACTOSE_FREE), GHS
@@ -118,6 +127,30 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
   useEffect(() => {
     if (cur) loadCrop(cur.id);
   }, [cur, loadCrop]);
+
+  // Load the GTIN's declared marks (label-prior). Per-GTIN cached; fail-safe.
+  useEffect(() => {
+    const gtin = cur?.gtin;
+    if (!gtin) {
+      setDeclared({ codes: new Set(), has: false });
+      return;
+    }
+    const cached = declaredCache.current[gtin];
+    if (cached) {
+      setDeclared({ codes: new Set(cached.codes), has: cached.has });
+      return;
+    }
+    let active = true;
+    fetchDeclaredMarks(gtin).then((res) => {
+      const has = res.reason === 'ok' && res.marks.length > 0;
+      const codes = res.marks.map((m) => m.code);
+      declaredCache.current[gtin] = { codes, has };
+      if (active) setDeclared({ codes: new Set(codes), has });
+    });
+    return () => {
+      active = false;
+    };
+  }, [cur?.gtin]);
 
   // Revoke all cached object URLs on unmount.
   useEffect(
@@ -334,10 +367,15 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
   const pickPred = cur!.t3777Code;
   const pickList = [
     ...(pickFiltered.includes(pickPred) ? [pickPred] : []),
-    // Benelux-relevant codes first (stable → keeps alphabetical within each group).
+    // Declared-on-pack codes first (Story 12.7 prior), then Benelux-relevant —
+    // stable sort keeps alphabetical within each group.
     ...pickFiltered
       .filter((c) => c !== pickPred)
-      .sort((a, b) => Number(isBeneluxCode(b)) - Number(isBeneluxCode(a))),
+      .sort(
+        (a, b) =>
+          Number(declared.codes.has(b)) - Number(declared.codes.has(a)) ||
+          Number(isBeneluxCode(b)) - Number(isBeneluxCode(a))
+      ),
   ].slice(0, 80);
   const tint = drag > 40 ? '#B7D945' : drag < -40 ? '#D64545' : decision === 'ECHT' ? '#B7D945' : decision === 'VALS' ? '#D64545' : '#E2E8F0';
 
@@ -390,6 +428,20 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
             {typeof cur!.confidence === 'number' ? `${Math.round(cur!.confidence * 100)}%` : '—'}
           </Tag>
         </div>
+        {/* Story 12.7 — label-prior: only shown when the GTIN has a declaration. */}
+        {declared.has && (
+          <div style={{ marginBottom: 8 }} data-testid="deck-prior">
+            {declared.codes.has(shownCode) ? (
+              <Tag color="#B7D945" style={{ color: '#1E293B' }}>
+                {t('review.priorDeclared', { defaultValue: '✓ gedeclareerd op verpakking' })}
+              </Tag>
+            ) : (
+              <Tag color="#E8A33D" style={{ color: '#1E293B' }}>
+                {t('review.priorNotDeclared', { defaultValue: '⚠ niet gedeclareerd op deze GTIN' })}
+              </Tag>
+            )}
+          </div>
+        )}
         <div
           style={{
             width: '100%',
@@ -537,6 +589,11 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
               >
                 {spoorLabelForCode(c)}
               </Tag>
+              {declared.codes.has(c) && (
+                <Tag color="#B7D945" style={{ marginLeft: 4, fontSize: 10, lineHeight: '16px', padding: '0 6px', color: '#1E293B' }}>
+                  {t('review.declared', { defaultValue: 'gedeclareerd' })}
+                </Tag>
+              )}
               {isBeneluxCode(c) && <BeneluxTag small />}
               {c === cur!.t3777Code && (
                 <Text type="secondary" style={{ fontSize: 11, marginLeft: 8 }}>
