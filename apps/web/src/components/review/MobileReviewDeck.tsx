@@ -92,7 +92,6 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
   const [context, setContext] = useState(false);
   const [srcUrl, setSrcUrl] = useState<string | null>(null);
   const [srcLoading, setSrcLoading] = useState(false);
-  const [srcNat, setSrcNat] = useState<{ w: number; h: number } | null>(null);
   const srcCache = useRef<Record<string, string>>({});
 
   // The FULL code universe across ALL recognised GS1 sporen — 884 T3777 +
@@ -166,7 +165,6 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
   useEffect(() => {
     if (!context || !cur) {
       setSrcUrl(null);
-      setSrcNat(null);
       return;
     }
     const id = cur.id;
@@ -176,7 +174,6 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
     }
     setSrcLoading(true);
     setSrcUrl(null);
-    setSrcNat(null);
     let active = true;
     fetchReviewItemSourceBlob(id)
       .then((url) => {
@@ -511,45 +508,28 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
             height: '48vh',
             maxHeight: 440,
             display: 'flex',
-            alignItems: context ? 'flex-start' : 'center',
+            alignItems: 'center',
             justifyContent: 'center',
             background: '#F8FAFC',
             border: '1px solid #E2E8F0',
             borderRadius: 10,
-            overflow: context ? 'auto' : 'hidden',
+            overflow: 'hidden',
           }}
         >
           {context ? (
             srcLoading ? (
-              <Spin style={{ marginTop: 24 }} />
+              <Spin />
             ) : srcUrl ? (
-              <div style={{ position: 'relative', width: '100%' }} data-testid="deck-context">
-                <img
-                  src={srcUrl}
-                  alt={`${cur!.t3777Code} bron`}
-                  onLoad={(e) =>
-                    setSrcNat({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })
-                  }
-                  style={{ width: '100%', display: 'block' }}
-                />
-                {srcNat && srcNat.w > 0 && srcNat.h > 0 && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      left: `${((cur!.bbox.x ?? 0) / srcNat.w) * 100}%`,
-                      top: `${((cur!.bbox.y ?? 0) / srcNat.h) * 100}%`,
-                      width: `${((cur!.bbox.width ?? 0) / srcNat.w) * 100}%`,
-                      height: `${((cur!.bbox.height ?? 0) / srcNat.h) * 100}%`,
-                      border: '3px solid #D64545',
-                      outline: '2px solid #fff',
-                      boxSizing: 'border-box',
-                      pointerEvents: 'none',
-                    }}
-                  />
-                )}
-              </div>
+              // The server returns a downscaled context fragment with the box
+              // already drawn (red) — just display it; no client-side overlay.
+              <img
+                data-testid="deck-context"
+                src={srcUrl}
+                alt={`${cur!.t3777Code} context`}
+                style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+              />
             ) : (
-              <Text type="secondary" style={{ marginTop: 24 }}>
+              <Text type="secondary">
                 {t('review.sourceError', { defaultValue: 'Bronafbeelding niet beschikbaar' })}
               </Text>
             )

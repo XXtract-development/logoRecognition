@@ -41,6 +41,7 @@ import {
 import { crosscheckDetections } from '../../services/artwork-crosscheck';
 import { enqueueDetectionForImport } from '../../services/pipeline/detection-flow';
 import { resolveDeclaredMarks } from '../../services/t3777-declarations';
+import sharp from 'sharp';
 
 // ============================================
 // Constants
@@ -767,10 +768,11 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
 
   /**
    * GET /artwork/review-items/:id/source
-   * Streams the FULL source-artwork bytes (sourceFile = the artwork storage key,
-   * TRAINING bucket under artwork/). The review UI overlays the item's bbox on
-   * this so partial/tight crops stay interpretable ("bekijk in context").
-   * 404 when the item or its source object is missing. Read-only.
+   * "Bekijk in context": instead of streaming the whole (often multi-MB, high-DPI)
+   * source artwork, render a SMALL context fragment server-side — a padded window
+   * around the item's bbox, downscaled, with the bbox drawn as a red box. This
+   * loads near-instantly and the reviewer still sees the logo in its surroundings.
+   * Falls back to the full image only if it has no usable bbox. Read-only.
    */
   fastify.get<{ Params: { id: string } }>(
     '/artwork/review-items/:id/source',
@@ -788,10 +790,70 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
         return reply.status(404).send({ error: 'Bronafbeelding niet gevonden in opslag' });
       }
 
-      const ext = item.sourceFile.split('.').pop()?.toLowerCase();
-      const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : 'image/png';
       reply.header('Cache-Control', 'private, max-age=300');
-      return reply.type(mime).send(buffer);
+
+      const bb = (item.bbox ?? {}) as { x?: number; y?: number; width?: number; height?: number };
+      const hasBox =
+        typeof bb.x === 'number' && typeof bb.y === 'number' &&
+        typeof bb.width === 'number' && typeof bb.height === 'number' && bb.width > 0 && bb.height > 0;
+
+      try {
+        const meta = await sharp(buffer).metadata();
+        const W = meta.width ?? 0;
+        const H = meta.height ?? 0;
+        if (!hasBox || W === 0 || H === 0) {
+          // No bbox to centre on → just downscale the whole thing so it still loads fast.
+          const out = await sharp(buffer).resize({ width: 1200, withoutEnlargement: true }).png().toBuffer();
+          return reply.type('image/png').send(out);
+        }
+
+        // Context window: centre on the box, generous margin, min absolute size so
+        // a tiny tile still shows surroundings. Clamped to the image bounds.
+        const bx = bb.x as number, by = bb.y as number, bw = bb.width as number, bh = bb.height as number;
+        const ctxW = Math.min(W, Math.max(bw * 5, 500));
+        const ctxH = Math.min(H, Math.max(bh * 5, 500));
+        const cx = bx + bw / 2, cy = by + bh / 2;
+        const left = Math.round(Math.max(0, Math.min(cx - ctxW / 2, W - ctxW)));
+        const top = Math.round(Math.max(0, Math.min(cy - ctxH / 2, H - ctxH)));
+        const rw = Math.round(Math.min(ctxW, W - left));
+        const rh = Math.round(Math.min(ctxH, H - top));
+
+        const TARGET = 900;
+        const scale = Math.min(1, TARGET / rw);
+        const dispW = Math.round(rw * scale);
+        const dispH = Math.round(rh * scale);
+
+        // Box position within the resized fragment.
+        const rx = Math.round((bx - left) * scale);
+        const ry = Math.round((by - top) * scale);
+        const rbw = Math.round(bw * scale);
+        const rbh = Math.round(bh * scale);
+        const overlay = Buffer.from(
+          `<svg width="${dispW}" height="${dispH}">` +
+            `<rect x="${rx}" y="${ry}" width="${rbw}" height="${rbh}" ` +
+            `fill="none" stroke="#D64545" stroke-width="3"/>` +
+            `<rect x="${rx - 2}" y="${ry - 2}" width="${rbw + 4}" height="${rbh + 4}" ` +
+            `fill="none" stroke="#ffffff" stroke-width="1"/>` +
+          `</svg>`
+        );
+
+        const out = await sharp(buffer)
+          .extract({ left, top, width: rw, height: rh })
+          .resize(dispW, dispH)
+          .composite([{ input: overlay, top: 0, left: 0 }])
+          .png()
+          .toBuffer();
+        return reply.type('image/png').send(out);
+      } catch (err) {
+        // Any image-processing failure → fall back to the raw bytes (still works).
+        logger.warn('Context fragment render failed; serving raw source', {
+          reviewItemId: id,
+          error: err instanceof Error ? err.message : 'unknown',
+        });
+        const ext = item.sourceFile.split('.').pop()?.toLowerCase();
+        const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : 'image/png';
+        return reply.type(mime).send(buffer);
+      }
     }
   );
 

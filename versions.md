@@ -6,6 +6,7 @@
 - In het reviewscherm kun je met de knop "🔍 Bekijk in context" de uitsnede op het volledige artwork bekijken, met de gevonden locatie rood gemarkeerd
 - Zo zie je ook bij een krap of half afgesneden logo (bijvoorbeeld een gedeeltelijke Nutri-Score-balk) meteen wélk keurmerk het werkelijk is
 - Met "Toon uitsnede" schakel je terug naar de close-up
+- De contextweergave laadt vrijwel direct: de server stuurt een klein ingezoomd fragment rond de locatie (met de markering er al op getekend) in plaats van het hele artwork
 
 ### Nieuwe uitsnedes krijgen wat marge mee
 - Bij nieuwe detecties wordt de bewaarde uitsnede met een marge eromheen opgeslagen, zodat een krap gevonden logo niet meer half wordt afgesneden (bestaande uitsnedes blijven ongewijzigd)
