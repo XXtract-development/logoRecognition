@@ -7,6 +7,10 @@
 - Zo zie je ook bij een krap of half afgesneden logo (bijvoorbeeld een gedeeltelijke Nutri-Score-balk) meteen wélk keurmerk het werkelijk is
 - Met "Toon uitsnede" schakel je terug naar de close-up
 
+### Nieuwe uitsnedes krijgen wat marge mee
+- Bij nieuwe detecties wordt de bewaarde uitsnede met een marge eromheen opgeslagen, zodat een krap gevonden logo niet meer half wordt afgesneden (bestaande uitsnedes blijven ongewijzigd)
+- De detectie zelf verandert niet — alleen de bewaarde afbeelding krijgt context
+
 
 ## 2026-06-10 (review toont nu wat er op de verpakking is gedeclareerd)
 

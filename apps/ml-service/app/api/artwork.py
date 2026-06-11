@@ -55,6 +55,12 @@ router = APIRouter()
 
 TEMPLATE_CACHE_TTL_S: float = float(os.environ.get("TEMPLATE_CACHE_TTL_S", "900"))
 
+# Story 12.7 / option B — margin added around a proposed bbox when PERSISTING the
+# crop, so a tight/clipped region proposal (e.g. a 64px tile on a larger logo)
+# still yields a readable saved crop. Classification stays on the TIGHT crop
+# (detection behaviour unchanged); only the stored PNG gets context. 0 disables.
+ARTWORK_CROP_MARGIN: float = float(os.environ.get("ARTWORK_CROP_MARGIN", "0.25"))
+
 # (loaded_at_monotonic, templates) — templates is a list of {t3777_code, image}.
 _TEMPLATE_CACHE: Tuple[float, Optional[List[Dict[str, Any]]]] = (0.0, None)
 
@@ -639,7 +645,23 @@ async def classify_artwork(request: ClassifyRequest) -> ClassifyResponse:
             try:
                 import cv2 as _cv2
 
-                ok, buf = _cv2.imencode(".png", region["crop"])
+                # Persist a MARGIN-padded crop (readable in review) while keeping
+                # the tight crop for classification. The bbox metadata + crop key
+                # stay the tight box, so the context overlay and idempotent key
+                # are unchanged. Padding is clamped to the image bounds.
+                crop_to_save = region["crop"]
+                bb = region["bbox"]
+                if bb is not None and ARTWORK_CROP_MARGIN > 0:
+                    mx = int(round(bb["width"] * ARTWORK_CROP_MARGIN))
+                    my = int(round(bb["height"] * ARTWORK_CROP_MARGIN))
+                    px0 = max(0, bb["x"] - mx)
+                    py0 = max(0, bb["y"] - my)
+                    px1 = min(w, bb["x"] + bb["width"] + mx)
+                    py1 = min(h, bb["y"] + bb["height"] + my)
+                    if px1 > px0 and py1 > py0:
+                        crop_to_save = img[py0:py1, px0:px1]
+
+                ok, buf = _cv2.imencode(".png", crop_to_save)
                 if ok:
                     key = _crop_object_key(request.gtin, source_label, region["bbox"])
                     storage_service.put_training_image(key, buf.tobytes(), content_type="image/png")
