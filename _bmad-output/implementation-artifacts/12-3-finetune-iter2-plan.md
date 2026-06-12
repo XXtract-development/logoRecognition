@@ -19,14 +19,24 @@ precies dat door **alleen de synthese-bron** te wisselen. Slaagt het niet → pa
 
 ## Kritieke bevinding — echte gelabelde data is schaars (gemeten 2026-06-12)
 
-`training_data` op ACC (`logo_recognition`, status-telling): **101 bevestigde echte crops, 24 labels,
-allemaal met `crop_path`.** Verdeling is bruut scheef:
+`training_data` op ACC (`logo_recognition`): ruw 101 rijen / 24 labels, maar dat telt
+**inactive + relabel-duplicaten** mee (zelfde `crop_path` één keer active, één keer inactive — het
+8.6-reopen/relabel-mechanisme). **Schone verdict-set = `active = true`, gededupliceerd op `crop_path`:
+78 crops, 24 labels, 78 distinct paths.** Let op: de `label` is de **mens-gecorrigeerde** grond-
+waarheid; de bestandsnaam kan de oorspronkelijke (foute) detectie-naam dragen (bv. label
+`AISE_2020_COMPANY` op een crop met `…ON_THE_WAY_TO_PLANETPROOF…` in de naam) — vertrouw `label`, niet
+de bestandsnaam. Verdeling is bruut scheef:
 
 | bucket | klassen |
 |---|---|
-| ≥ 10 crops | 1 (RECYCLABLE_GENERAL_CLAIM = 26) |
-| 5–9 crops | ~5 (BETER_LEVEN_1_STER 11, RAINFOREST_PN 7, NUTRISCORE_B 7, CONFORMITE_EUROPEENNE 6, WEIDEMELK 6) |
-| 1–4 crops | ~18 (de rest) |
+| 26 crops | 1 (RECYCLABLE_GENERAL_CLAIM — 33 % van de hele set) |
+| 3–5 crops | ~9 (BETER_LEVEN 5, WEIDEMELK/RAINFOREST_PN/NUTRISCORE_B 4, PREGNANCY_WARNING/FREE_FROM_GLUTEN/CONFORMITE/NUTRISCORE_E/FSC/GREEN_DOT 3) |
+| 2 crops | 5 |
+| **1 crop** | **9** (single-crop = pure 0/1-ruis in top-1) |
+
+→ **Macro top-1 is het hoofdcijfer** (anders zwemt RECYCLABLE alles onder); single-crop-klassen zijn
+indicatief. Definitie-SQL: `SELECT DISTINCT label, crop_path FROM training_data WHERE active=true AND
+crop_path IS NOT NULL`.
 
 **Gevolg voor het plan:**
 1. **Trainen op echte crops kan niet** (1–4/klasse) → de positieven móéten van 8.7-synthese komen.
