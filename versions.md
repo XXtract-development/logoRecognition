@@ -1,5 +1,11 @@
 # Versiegeschiedenis
 
+## 2026-06-12 (review: contextweergave centreert logo beter)
+
+### Witruimte rechts in contextweergave opgelost
+- De contextweergave toonde soms veel lege verpakkingsachtergrond aan één kant (rechts) wanneer het logo dicht bij de linkerrand van het artwork stond
+- Het venster rondom het logo wordt nu symmetrisch bijgeknipt: het logo staat altijd in het midden, ook bij randen
+
 ## 2026-06-11 (review: "bekijk in context" voor onleesbare uitsnedes)
 
 ### Afgesneden uitsnedes nu te begrijpen

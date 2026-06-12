@@ -807,19 +807,21 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
           return reply.type('image/png').send(out);
         }
 
-        // Context window: centre on the box, generous margin, min absolute size so
-        // a tiny tile still shows surroundings. Clamped to the image bounds.
+        // Context window: always centred on the bbox. Desired margin = 2.5× the
+        // box side (min 250px), but clamped to whatever's available from the
+        // centre toward each image edge — so the bbox stays centred even when
+        // it's near an artwork boundary (no white-packaging bleed on one side).
         const bx = bb.x as number, by = bb.y as number, bw = bb.width as number, bh = bb.height as number;
-        const ctxW = Math.min(W, Math.max(bw * 5, 500));
-        const ctxH = Math.min(H, Math.max(bh * 5, 500));
         const cx = bx + bw / 2, cy = by + bh / 2;
-        const left = Math.round(Math.max(0, Math.min(cx - ctxW / 2, W - ctxW)));
-        const top = Math.round(Math.max(0, Math.min(cy - ctxH / 2, H - ctxH)));
-        const rw = Math.round(Math.min(ctxW, W - left));
-        const rh = Math.round(Math.min(ctxH, H - top));
+        const halfW = Math.min(Math.max(bw * 2.5, 250), cx, W - cx);
+        const halfH = Math.min(Math.max(bh * 2.5, 250), cy, H - cy);
+        const left = Math.round(cx - halfW);
+        const top = Math.round(cy - halfH);
+        const rw = Math.round(halfW * 2);
+        const rh = Math.round(halfH * 2);
 
         const TARGET = 900;
-        const scale = Math.min(1, TARGET / rw);
+        const scale = Math.min(1, TARGET / Math.max(rw, rh));
         const dispW = Math.round(rw * scale);
         const dispH = Math.round(rh * scale);
 
