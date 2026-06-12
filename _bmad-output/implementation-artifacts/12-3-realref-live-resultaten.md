@@ -56,6 +56,26 @@ precisie-kost** die een drempelverhoging (0,75→0,80) grotendeels wegneemt. Aan
 per-regio-labels; de +1,98 %/0,99 %-cijfers zijn accept-rates, geen pure FP-rates. De recall-winst is
 hard; de precisie-kost is gemeten maar in interpretatie begrensd.
 
+## GEDEPLOYED op ACC (2026-06-12)
+
+Definitieve live-staat na deploy:
+- **78 echte-crop-refs toegevoegd** (`realref_live.py deploy`), getagd `source='realref-live-poc'` →
+  omkeerbaar via `realref_live.py revert`. Index = **116 embeddings** (38 guides + 78 real, één per logo).
+- **`CLASSIFY_THRESHOLD_EMBEDDING=0.80`** gezet als Coolify-env op app `qsookwow8koko0kwg00g0cwk` +
+  ML-service geredeployed (bevestigd door gebruiker). Drempel actief geverifieerd in de container.
+- **Precisie in de schone 116-staat @ 0,80: accept-rate 1,13 %** (8/707 proposer-regio's) — vs
+  guide-baseline 0,71 %, en lager dan 1,98 % @ 0,75. Beheerst.
+- Refs overleven herstart (verankerd in `reference_logos`; startup-rebuild herbouwt ze).
+
+**Incident + fix tijdens deploy (eerlijk):** (1) een losse `rebuild`-testaanroep zonder geladen model
+clear​de kort de embeddings (hersteld binnen ~1 min). (2) Bij de redeploy bleek een **4-worker
+startup-rebuild-race** de index te dupliceren (457 i.p.v. 116). Gefixt met een Postgres advisory-lock
+in `main.py` (commit 8b5fedc) zodat één worker herbouwt — deterministische 116 op toekomstige herstarts
+(actief zodra het nieuwe ML-image is uitgerold). Live-staat handmatig naar 116 herbouwd.
+
+**Nog te doen:** PROD-deploy (alleen ACC nu); guide-refs blijven 3× voor FAIRTRADE (dedup-kandidaat);
+12.6-harvest opvoeren; recall@0,80 op echte crops exact her-ijken; monitoren van de live auto-accept-rate.
+
 ## Reproductie
 ```bash
 ML=$(ssh vanilla "docker ps --format '{{.Names}}' | grep '^ml-service-qsookwow'")
