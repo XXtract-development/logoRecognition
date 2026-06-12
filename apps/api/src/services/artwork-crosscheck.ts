@@ -34,6 +34,21 @@ const CROSSCHECK_THRESHOLD_CLASSIFIER = parseFloat(
   process.env.CROSSCHECK_THRESHOLD_CLASSIFIER || '0.90'
 );
 
+// Review-queue floor (interim noise filter, pending Story 12.3 embedding
+// fine-tuning). A detection whose confidence sits below this floor is still
+// persisted for auditability/later harvesting, but lands in status
+// 'dismissed_low_conf' so it never reaches the human review queue (which lists
+// status='open'). The spike (12.2 AC2) measured genuine marks at cosine
+// 0.62–0.78; everything below 0.50 is overwhelmingly noise. Items without a
+// confidence (declared-but-not-found placeholders) are never dismissed — that
+// is a distinct review signal. Set 0 to disable. (status column is VARCHAR(20).)
+const REVIEW_MIN_CONFIDENCE = parseFloat(
+  process.env.REVIEW_MIN_CONFIDENCE || '0.50'
+);
+
+/** Status assigned to a sub-floor review item so it is kept but hidden. */
+export const LOW_CONF_DISMISS_STATUS = 'dismissed_low_conf';
+
 export function getThresholdForMethod(method?: string): number {
   switch (method) {
     case 'template':
@@ -156,7 +171,14 @@ export async function crosscheckDetections(
         reason: item.reason,
         cropPath: item.cropPath,
         sourceFile: item.sourceFile,
-        status: 'open',
+        // Sub-floor detections are persisted but hidden from the queue. Items
+        // without a confidence (placeholders) always stay 'open'.
+        status:
+          typeof item.confidence === 'number' &&
+          REVIEW_MIN_CONFIDENCE > 0 &&
+          item.confidence < REVIEW_MIN_CONFIDENCE
+            ? LOW_CONF_DISMISS_STATUS
+            : 'open',
       })),
       skipDuplicates: false,
     });

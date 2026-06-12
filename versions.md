@@ -1,5 +1,13 @@
 # Versiegeschiedenis
 
+## 2026-06-12 (review-queue: ruis weggefilterd)
+
+### Onbetrouwbare voorstellen niet meer in de review-lijst
+- De review-lijst stond vol met detecties waar het systeem zelf nauwelijks zeker van was — het overgrote deel klopte niet
+- Voorstellen met een te lage betrouwbaarheid worden nu automatisch buiten de review-lijst gehouden, zodat alleen de kandidaten die een handmatige beoordeling waard zijn overblijven
+- De bestaande lijst is eenmalig opgeschoond: ruim 4.500 onbetrouwbare voorstellen zijn verborgen (niet verwijderd — ze blijven bewaard)
+- Dit is een tussenoplossing; de structurele verbetering van de herkenning loopt apart
+
 ## 2026-06-12 (review: contextweergave centreert logo beter)
 
 ### Witruimte rechts in contextweergave opgelost
