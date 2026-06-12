@@ -1,5 +1,13 @@
 # Versiegeschiedenis
 
+## 2026-06-12 (herkenning leert nu automatisch mee met de review)
+
+### Elk bevestigd logo verbetert direct de herkenning
+- Wanneer je in de review een logo accepteert (of corrigeert naar het juiste keurmerk), wordt die uitsnede nu automatisch toegevoegd als herkenningsvoorbeeld
+- Daardoor herkent het systeem datzelfde keurmerk op andere verpakkingen meteen beter — de herkenning groeit dus mee met elke beoordeling, zonder dat er iets handmatigs voor nodig is
+- Bij het terugzetten van een beslissing (heropenen/relabelen) wordt het bijbehorende voorbeeld weer netjes verwijderd, zodat een verkeerde correctie geen ruis achterlaat
+- Ingebouwde bescherming tegen bijna-identieke voorbeelden voorkomt dat één keurmerk de herkenning gaat domineren
+
 ## 2026-06-12 (herkenning: bevestigde voorbeelden als referentie)
 
 ### Logo's worden nu herkend op echte verpakkingsvoorbeelden

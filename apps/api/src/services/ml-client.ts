@@ -438,6 +438,23 @@ export class MLClient {
     }
   }
 
+  /**
+   * Register a human-confirmed review crop as a live reference embedding
+   * (Story 12.3 — review→reference loop). Idempotent + near-duplicate-guarded
+   * on the ML side. Returns the service result; the caller treats it as
+   * best-effort (a failure must not fail the accept).
+   */
+  async registerReference(
+    cropPath: string,
+    t3777Code: string
+  ): Promise<{ added: boolean; reason: string; reference_logo_id?: string }> {
+    const res = await this.client.post('/ml/artwork/register-reference', {
+      crop_path: cropPath,
+      t3777_code: t3777Code,
+    });
+    return res.data as { added: boolean; reason: string; reference_logo_id?: string };
+  }
+
   // ==========================================
   // Synthetic batch fill (Epic 9, Story 9.3 — wiring of deferred 8.7 hook)
   // ==========================================

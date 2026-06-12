@@ -306,6 +306,106 @@ class SimilarityService:
             "errors": errors,
         }
 
+    async def register_crop_as_reference(
+        self,
+        crop_path: str,
+        t3777_code: str,
+        source: str = "review-confirmed",
+        near_dup_threshold: float = 0.97,
+    ) -> Dict[str, Any]:
+        """Add a human-confirmed review crop to the reference library as a LIVE
+        reference embedding (Story 12.3 — close the review→reference loop).
+
+        The 12.3 finding was that real artwork crops match each other far better
+        than they match the clean GS1 guide logo, so confirmed crops are the
+        strongest references. This adds one immediately (no rebuild/restart):
+        the next detection can already match it.
+
+        Two guards keep the index healthy:
+          - idempotency: skip if this ``crop_path`` is already an active reference.
+          - near-duplicate: skip if an existing ACTIVE reference of the SAME code
+            is >= ``near_dup_threshold`` cosine to this crop. Without this a class
+            with many near-identical crops (e.g. RECYCLABLE, 26 crops / 3 GTINs)
+            would over-represent itself and bias the nearest-neighbour search.
+
+        Returns ``{added: bool, reason: str, reference_logo_id?: str}``.
+        """
+        import io
+        import os
+
+        from app.services.storage import storage_service
+
+        # idempotency — already a reference for this exact crop?
+        async with db_service.get_connection() as conn:
+            exists = await conn.fetchval(
+                "SELECT 1 FROM reference_logos WHERE storage_path = $1 AND active LIMIT 1",
+                crop_path,
+            )
+        if exists:
+            return {"added": False, "reason": "already-a-reference"}
+
+        # embed the confirmed crop through the same backbone as serving
+        try:
+            data = storage_service.get_training_image(crop_path)
+            image = Image.open(io.BytesIO(data)).convert("RGB")
+        except Exception as exc:  # storage/decoding failure — fail soft
+            logger.warning(
+                "register_crop_as_reference: crop load failed",
+                extra={"crop_path": crop_path, "error": str(exc)},
+            )
+            return {"added": False, "reason": f"crop-load-failed: {exc}"}
+
+        embedding = await model_manager.generate_embedding(image)
+        emb_list = np.asarray(embedding, dtype=np.float32).tolist()
+        emb_vec = str(emb_list)
+
+        async with db_service.get_connection() as conn:
+            # near-duplicate guard vs same-code active references
+            max_sim = await conn.fetchval(
+                """
+                SELECT MAX(1 - (re.embedding <=> $1::vector))
+                FROM reference_embeddings re
+                JOIN reference_logos rl ON re.reference_logo_id = rl.id
+                WHERE rl.active = true AND rl.t3777_code = $2
+                """,
+                emb_vec, t3777_code,
+            )
+            if max_sim is not None and float(max_sim) >= near_dup_threshold:
+                return {
+                    "added": False,
+                    "reason": f"near-duplicate (cos={float(max_sim):.3f} >= {near_dup_threshold})",
+                }
+
+            # variant_label is UNIQUE per (t3777_code, variant_label); the crop
+            # filename is hash-unique. A rare collision means it is effectively
+            # already present → treat as idempotent skip.
+            variant_label = ("review:" + os.path.basename(crop_path))[:100]
+            try:
+                row = await conn.fetchrow(
+                    """
+                    INSERT INTO reference_logos (t3777_code, variant_label, storage_path, source, active)
+                    VALUES ($1, $2, $3, $4, true)
+                    RETURNING id
+                    """,
+                    t3777_code, variant_label, crop_path, source,
+                )
+            except Exception as exc:
+                if "unique" in str(exc).lower():
+                    return {"added": False, "reason": "duplicate-variant-label"}
+                raise
+            logo_id = str(row["id"])
+            await conn.execute(
+                "INSERT INTO reference_embeddings (reference_logo_id, embedding, created_at) "
+                "VALUES ($1, $2, NOW())",
+                logo_id, emb_vec,
+            )
+
+        logger.info(
+            "Crop registered as live reference",
+            extra={"t3777_code": t3777_code, "crop_path": crop_path, "reference_logo_id": logo_id},
+        )
+        return {"added": True, "reason": "added", "reference_logo_id": logo_id}
+
     def clear_cache(self) -> None:
         """Clear the embedding cache."""
         self._embedding_cache.clear()

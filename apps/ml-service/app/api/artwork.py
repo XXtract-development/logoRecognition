@@ -149,6 +149,29 @@ async def rebuild_reference_embeddings_endpoint() -> Dict[str, Any]:
     return {"status": "rebuilt", **summary}
 
 
+class RegisterReferenceRequest(BaseModel):
+    crop_path: str = Field(..., description="Object key of the confirmed crop in the training bucket")
+    t3777_code: str = Field(..., description="Confirmed keurmerk code for the crop")
+
+
+@router.post("/artwork/register-reference")
+async def register_reference_endpoint(request: RegisterReferenceRequest) -> Dict[str, Any]:
+    """Add a human-confirmed review crop to the reference library as a live
+    reference embedding (Story 12.3 — review→reference loop).
+
+    Auth: NONE — internal-service endpoint (same posture as rebuild-reference-
+    embeddings). The Node accept handler calls this best-effort after a review
+    item is accepted/relabeled, so every confirmed crop strengthens recognition
+    immediately. Idempotent and near-duplicate-guarded in the service.
+    """
+    from app.services.similarity import similarity_service
+
+    result = await similarity_service.register_crop_as_reference(
+        crop_path=request.crop_path, t3777_code=request.t3777_code
+    )
+    return {"status": "ok", **result}
+
+
 # ---------------------------------------------------------------------------
 # Story 8.2 — PDF rasterization endpoint
 # ---------------------------------------------------------------------------

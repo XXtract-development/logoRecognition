@@ -57,6 +57,7 @@ vi.mock('@prisma/client', () => {
       findMany: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn().mockResolvedValue({ count: 0 }),
       delete: vi.fn(),
       count: vi.fn(),
     },
@@ -312,6 +313,7 @@ vi.mock('../services/ml-client', () => ({
     listModels: vi.fn().mockResolvedValue({ models: [], total: 0 }),
     listTrainingJobs: vi.fn().mockResolvedValue([]),
     cancelTraining: vi.fn().mockResolvedValue(undefined),
+    registerReference: vi.fn().mockResolvedValue({ added: true, reason: 'added' }),
   },
   MLServiceError: class MLServiceError extends Error {
     statusCode: number;

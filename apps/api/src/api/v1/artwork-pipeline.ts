@@ -899,6 +899,30 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
 
       const result = await processAcceptedReviewItems([accepted]);
 
+      // Story 12.3 — review→reference loop: a human-confirmed crop is the
+      // strongest reference (real crops match each other far better than the
+      // clean guide logo). Register it as a live reference so it improves
+      // recognition immediately. Best-effort: a failure (ML down, near-dup,
+      // crop-less item) must never fail the accept itself.
+      let referenceAdded: boolean | undefined;
+      if (accepted.cropPath) {
+        try {
+          const ref = await mlClient.registerReference(accepted.cropPath, accepted.t3777Code);
+          referenceAdded = ref.added;
+          logger.info('Review crop reference registration', {
+            reviewItemId: id,
+            t3777Code: accepted.t3777Code,
+            added: ref.added,
+            reason: ref.reason,
+          });
+        } catch (err) {
+          logger.warn('Review crop reference registration failed (non-fatal)', {
+            reviewItemId: id,
+            error: err instanceof Error ? err.message : 'unknown',
+          });
+        }
+      }
+
       logger.info('Review item accepted', {
         reviewItemId: id,
         registered: result.registered,
@@ -909,6 +933,7 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
         status: result.registered > 0 ? 'registered' : 'accepted',
         registered: result.registered,
         skipped: result.skipped,
+        referenceAdded,
       });
     }
   );
@@ -958,19 +983,36 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
       }
 
       let deactivated = 0;
+      let deactivatedReferences = 0;
       if (item.cropPath) {
         const result = await prisma.trainingData.updateMany({
           where: { cropPath: item.cropPath, active: true },
           data: { active: false },
         });
         deactivated = result.count;
+
+        // Story 12.3 — symmetric to the accept→reference loop: if this crop was
+        // promoted to a live reference, deactivate it too so reopening (incl.
+        // relabel: reopen-old then accept-new) removes the now-wrong reference.
+        // Only review-confirmed references are touched — never the seeded guides.
+        const refResult = await prisma.referenceLogo.updateMany({
+          where: { storagePath: item.cropPath, source: 'review-confirmed', active: true },
+          data: { active: false },
+        });
+        deactivatedReferences = refResult.count;
       }
 
       await prisma.artworkReviewItem.update({ where: { id }, data: { status: 'open' } });
 
-      logger.info('Review item reopened', { reviewItemId: id, deactivatedTrainingData: deactivated });
+      logger.info('Review item reopened', {
+        reviewItemId: id,
+        deactivatedTrainingData: deactivated,
+        deactivatedReferences,
+      });
 
-      return reply.status(200).send({ status: 'open', deactivatedTrainingData: deactivated });
+      return reply
+        .status(200)
+        .send({ status: 'open', deactivatedTrainingData: deactivated, deactivatedReferences });
     }
   );
 

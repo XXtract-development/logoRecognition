@@ -665,6 +665,74 @@ describe('Artwork Pipeline Routes (ATDD — Epic 8)', () => {
       );
     });
 
+    // Story 12.3 — review→reference loop -------------------------------------
+
+    it('registers the confirmed crop as a live reference on accept', async () => {
+      (mockPrisma.artworkReviewItem.findUnique as vi.Mock).mockResolvedValue(reviewItemWithCrop);
+      (mockPrisma.artworkReviewItem.update as vi.Mock).mockResolvedValue({
+        ...reviewItemWithCrop,
+        status: 'registered',
+      });
+      (mlClient.registerReference as vi.Mock).mockResolvedValueOnce({ added: true, reason: 'added' });
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: '/api/v1/artwork/review-items/ri-0001/accept',
+      });
+
+      expect(response.statusCode).toBe(200);
+      // The confirmed crop is promoted to a reference under its (corrected) code.
+      expect(mlClient.registerReference).toHaveBeenCalledWith(
+        'artwork-crops/08718989912451/crop-1.png',
+        'EU_ORGANIC_FARMING',
+      );
+      expect(JSON.parse(response.body).referenceAdded).toBe(true);
+    });
+
+    it('accept still succeeds when reference registration fails (best-effort)', async () => {
+      (mockPrisma.artworkReviewItem.findUnique as vi.Mock).mockResolvedValue(reviewItemWithCrop);
+      (mockPrisma.artworkReviewItem.update as vi.Mock).mockResolvedValue({
+        ...reviewItemWithCrop,
+        status: 'registered',
+      });
+      (mlClient.registerReference as vi.Mock).mockRejectedValueOnce(new Error('ML service down'));
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: '/api/v1/artwork/review-items/ri-0001/accept',
+      });
+
+      // The accept (and training-data registration) is unaffected by the failure.
+      expect(response.statusCode).toBe(200);
+      expect(JSON.parse(response.body).status).toBe('registered');
+      expect(mockPrisma.trainingData.create).toHaveBeenCalled();
+    });
+
+    it('deactivates the review-confirmed reference when the item is reopened', async () => {
+      (mockPrisma.artworkReviewItem.findUnique as vi.Mock).mockResolvedValue(reviewItemWithCrop);
+      (mockPrisma.trainingData.updateMany as vi.Mock).mockResolvedValue({ count: 1 });
+      (mockPrisma.referenceLogo.updateMany as vi.Mock).mockResolvedValue({ count: 1 });
+      (mockPrisma.artworkReviewItem.update as vi.Mock).mockResolvedValue({
+        ...reviewItemWithCrop,
+        status: 'open',
+      });
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: '/api/v1/artwork/review-items/ri-0001/reopen',
+      });
+
+      expect(response.statusCode).toBe(200);
+      // Only review-confirmed references for this crop are deactivated — never guides.
+      expect(mockPrisma.referenceLogo.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { storagePath: 'artwork-crops/08718989912451/crop-1.png', source: 'review-confirmed', active: true },
+          data: { active: false },
+        }),
+      );
+      expect(JSON.parse(response.body).deactivatedReferences).toBe(1);
+    });
+
     it('catch-up processes pre-existing accepted items into training data', async () => {
       (mockPrisma.artworkReviewItem.findMany as vi.Mock).mockResolvedValue([
         { ...reviewItemWithCrop, id: 'ri-A', status: 'accepted' },
