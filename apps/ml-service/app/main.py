@@ -57,10 +57,33 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
     # One embedding per active reference variant, used to classify localised
     # crops via pgvector cosine. Non-fatal: if it fails, classification falls
     # back to the classifier route / UNKNOWN.
+    #
+    # Concurrency guard: the container runs ML_WORKERS uvicorn workers, each with
+    # its own lifespan. rebuild_reference_embeddings clears-then-rebuilds, so N
+    # workers racing produce ~N duplicate embeddings per logo (a non-deterministic,
+    # over-represented index that biases the nearest-neighbour search). Serialise
+    # it with a Postgres advisory lock: exactly one worker rebuilds; the others
+    # skip. The result is a deterministic one-embedding-per-active-logo index.
+    REF_REBUILD_LOCK_KEY = 0x9E1F0A7C  # arbitrary fixed key, unique to this rebuild
     try:
         from app.services.similarity import similarity_service
-        summary = await similarity_service.rebuild_reference_embeddings()
-        logger.info("Reference embedding index built", extra=summary)
+        from app.services.database import db_service
+        async with db_service.get_connection() as lock_conn:
+            got_lock = await lock_conn.fetchval(
+                "SELECT pg_try_advisory_lock($1)", REF_REBUILD_LOCK_KEY
+            )
+            if got_lock:
+                try:
+                    summary = await similarity_service.rebuild_reference_embeddings()
+                    logger.info("Reference embedding index built", extra=summary)
+                finally:
+                    await lock_conn.execute(
+                        "SELECT pg_advisory_unlock($1)", REF_REBUILD_LOCK_KEY
+                    )
+            else:
+                logger.info(
+                    "Reference embedding rebuild skipped — another worker holds the lock"
+                )
     except Exception as e:
         logger.error(f"Failed to build reference embedding index: {e}")
 

@@ -1,5 +1,14 @@
 # Versiegeschiedenis
 
+## 2026-06-12 (herkenning: bevestigde voorbeelden als referentie)
+
+### Logo's worden nu herkend op echte verpakkingsvoorbeelden
+- De herkenning vergeleek een gevonden logo alleen met het officiële GS1-voorbeeldplaatje — dat lijkt vaak te weinig op hoe een keurmerk er op een échte verpakking uitziet, waardoor veel voorstellen niet klopten
+- Bevestigde voorbeelden uit de review worden nu óók als referentie gebruikt. Daardoor worden keurmerken die voorheen vrijwel nooit goed herkend werden (zoals het algemene recycling-logo, Nutri-Score B en de zwangerschaps-waarschuwing) nu wél correct herkend
+- Gemeten op voorbeelden van verpakkingen die het systeem niet als referentie kende: de herkenning ging van gemiddeld 58% naar 83% correct
+- De betrouwbaarheidsdrempel is licht verhoogd zodat de winst niet ten koste gaat van foutieve voorstellen
+- Hoe meer voorbeelden er in de review worden bevestigd, hoe beter de herkenning verder wordt
+
 ## 2026-06-12 (review-queue: ruis weggefilterd)
 
 ### Onbetrouwbare voorstellen niet meer in de review-lijst
