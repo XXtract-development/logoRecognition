@@ -1,4 +1,13 @@
-# Story 12.3 iteratie-2 — resultaat: realistische synthese verslaat de baseline NIET (bevroren-feature-plafond)
+# Story 12.3 iteratie-2 — resultaat: realistische synthese verslaat de baseline NIET
+
+> **CORRECTIE (2026-06-12, ná deze meting) — de "bevroren-feature-plafond"-conclusie hieronder is
+> WEERLEGD.** Een leave-one-out k-NN-probe (`12-3-loo-probe-resultaten.md`) toont dat echte crops
+> in ruwe bevroren effb0 wél sterk per klasse clusteren (LOO 87 % micro / 80 % macro; RECYCLABLE
+> 100 %). De backbone is dus NIET het plafond — het knelpunt is de **guide-referentie-domeinkloof**
+> (echte crops lijken niet op het schone guide-logo). Het iter2-resultaat is een echt *flat*
+> (−2,6pt micro ≈ 2 crops, binnen de ruis), maar de oorzaak is verkeerd geduid: de kop trok crops
+> naar guide-logo-ruimte — het verkeerde doel. Lees de oorspronkelijke conclusie hieronder met die
+> correctie. De koers is nu **echte-crop-referenties**, niet ontdooien/fine-tunen.
 
 Datum 2026-06-12 · ACC ML-container · harnas `apps/ml-service/scripts/spike_finetune_iter2.py` ·
 verdict-set 78 echte crops / 24 klassen · artefact `/tmp/iter2-train.json`. **Schoon, eerlijk
