@@ -262,6 +262,46 @@ jobs:
     runs-on: ubuntu-latest
     needs: [test-node]
 
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: logo_recognition_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/logo_recognition_test
+      REDIS_URL: redis://localhost:6379
+      JWT_SECRET: e2e-test-secret-key-at-least-32-characters
+      COOKIE_SECRET: e2e-cookie-secret-at-least-32-characters
+      CORS_ORIGIN: http://localhost:5173
+      NODE_ENV: test
+      PORT: '8000'
+      HOST: 0.0.0.0
+      # MinIO (started as a step below)
+      MINIO_ENDPOINT: localhost
+      MINIO_PORT: '9000'
+      MINIO_USE_SSL: 'false'
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -280,23 +320,52 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Start MinIO + create bucket
+        run: |
+          docker run -d --name minio -p 9000:9000 -p 9001:9001 \
+            -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadmin \
+            minio/minio server /data --console-address ":9001"
+          # wait for MinIO, then create the training bucket the app expects
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:9000/minio/health/live && break || sleep 2
+          done
+          docker run --rm --network host minio/mc sh -c "
+            mc alias set local http://localhost:9000 minioadmin minioadmin &&
+            mc mb --ignore-existing local/training-data local/models local/artwork"
+
+      - name: Prisma generate + migrate
+        run: |
+          cd apps/api
+          npx prisma generate
+          npx prisma migrate deploy
+
+      - name: Build API
+        run: pnpm --filter @logo-recognition/api build
+
+      - name: Start API (background) and wait for health
+        run: |
+          node apps/api/dist/main.js &
+          echo "API_PID=$!" >> "$GITHUB_ENV"
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:8000/health && echo "API up" && break || sleep 2
+          done
+
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium
 
-      - name: Build frontend
-        run: pnpm --filter @logo-recognition/web build
-
       - name: Run E2E tests
-        run: pnpm --filter @logo-recognition/web test:e2e
+        run: pnpm exec playwright test
         env:
           CI: true
+          BASE_URL: http://localhost:5173
+          VITE_API_URL: http://localhost:8000
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: playwright-report
-          path: apps/web/playwright-report/
+          path: playwright-report/
           retention-days: 7
 
   # ===========================================
