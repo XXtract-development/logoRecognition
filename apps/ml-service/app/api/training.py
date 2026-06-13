@@ -5,17 +5,14 @@ Real implementation using PyTorch training pipeline.
 
 from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel, Field
 
 from app.core.logging import logger
-from app.services.trainer import (
-    trainer_service,
-    TrainingConfig as TrainerConfig,
-    HoldoutSetTooSmallError,
-)
 from app.services.database import db_service
-
+from app.services.trainer import HoldoutSetTooSmallError
+from app.services.trainer import TrainingConfig as TrainerConfig
+from app.services.trainer import trainer_service
 
 router = APIRouter()
 

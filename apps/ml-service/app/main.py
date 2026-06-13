@@ -10,16 +10,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import make_asgi_app
 
-from app.api import (
-    health,
-    detection,
-    training,
-    models,
-    artwork as artwork_api,
-    pipeline as pipeline_api,
-)
+from app.api import artwork as artwork_api
+from app.api import detection, health, models
+from app.api import pipeline as pipeline_api
+from app.api import training
 from app.core.config import settings
-from app.core.logging import setup_logging, logger
+from app.core.logging import logger, setup_logging
 from app.ml.model_manager import model_manager
 
 
@@ -74,8 +70,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
     # skip. The result is a deterministic one-embedding-per-active-logo index.
     REF_REBUILD_LOCK_KEY = 0x9E1F0A7C  # arbitrary fixed key, unique to this rebuild
     try:
-        from app.services.similarity import similarity_service
         from app.services.database import db_service
+        from app.services.similarity import similarity_service
 
         async with db_service.get_connection() as lock_conn:
             got_lock = await lock_conn.fetchval(

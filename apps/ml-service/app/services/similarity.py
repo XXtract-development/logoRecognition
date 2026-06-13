@@ -3,13 +3,14 @@ Similarity search service for logo matching.
 Uses vector embeddings and pgvector for efficient similarity search.
 """
 
+from typing import Any, Dict, List, Optional
+
 import numpy as np
-from typing import Optional, List, Dict, Any
 from PIL import Image
 
 from app.core.logging import logger
-from app.services.database import db_service
 from app.ml.model_manager import model_manager
+from app.services.database import db_service
 
 
 class SimilarityService:

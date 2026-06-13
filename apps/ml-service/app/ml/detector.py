@@ -3,10 +3,11 @@ Logo Detector - Handles logo detection using ML models.
 """
 
 from typing import List, Optional
+
 from PIL import Image
 
-from app.core.logging import logger
 from app.core.config import settings
+from app.core.logging import logger
 
 
 class LogoDetector:

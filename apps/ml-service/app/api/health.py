@@ -3,13 +3,12 @@ Health check endpoints for ML Service.
 """
 
 from datetime import datetime
-from typing import Dict, Any
+from typing import Any, Dict
 
 from fastapi import APIRouter, Response
 from pydantic import BaseModel
 
 from app.ml.model_manager import model_manager
-
 
 router = APIRouter()
 

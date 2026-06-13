@@ -3,20 +3,19 @@ Training service for ML models.
 Implements actual training pipeline with PyTorch/TensorFlow.
 """
 
-import os
-import io
-import uuid
 import asyncio
 import hashlib
-from typing import Optional, List, Dict, Any, Callable
+import io
+import os
+import uuid
 from datetime import datetime
 from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional
 
 from app.core.config import settings
 from app.core.logging import logger
 from app.services.database import db_service
 from app.services.storage import storage_service
-
 
 # Minimum number of validated holdout records required before a training run
 # may start (NFR3). Configurable via env; defaults to 25. NB: the same env var
@@ -200,6 +199,7 @@ class TrainerService:
         as macro-averages over the represented classes.
         """
         import io
+
         import torch
         from PIL import Image
 
@@ -392,9 +392,9 @@ class TrainerService:
             import torch
             import torch.nn as nn
             import torch.optim as optim
-            from torch.utils.data import DataLoader, TensorDataset
-            from torchvision import transforms, models
             from PIL import Image
+            from torch.utils.data import DataLoader, TensorDataset
+            from torchvision import models, transforms
 
             device = torch.device(settings.device)
             logger.info(f"Training on device: {device}")

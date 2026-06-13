@@ -2,7 +2,8 @@
 ML Model Manager - Handles loading, caching, and inference of ML models.
 """
 
-from typing import Optional, Any
+from typing import Any, Optional
+
 import numpy as np
 from PIL import Image
 

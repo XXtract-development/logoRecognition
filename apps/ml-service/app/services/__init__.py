@@ -2,15 +2,15 @@
 ML Service - Services module.
 """
 
-from app.services.database import db_service, DatabaseService
-from app.services.storage import storage_service, StorageService
+from app.services.database import DatabaseService, db_service
+from app.services.similarity import SimilarityService, similarity_service
+from app.services.storage import StorageService, storage_service
 from app.services.trainer import (
-    trainer_service,
     TrainerService,
     TrainingConfig,
     TrainingProgress,
+    trainer_service,
 )
-from app.services.similarity import similarity_service, SimilarityService
 
 __all__ = [
     "db_service",

@@ -2,15 +2,14 @@
 Model management API endpoints.
 """
 
-from typing import List, Optional
 from datetime import datetime
+from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from app.core.logging import logger
 from app.ml.model_manager import model_manager
-
 
 router = APIRouter()
 

@@ -3,10 +3,11 @@ Storage service for ML Service.
 Handles MinIO/S3 operations for model files and training images.
 """
 
-import os
 import io
-from typing import Optional, List
+import os
 from datetime import timedelta
+from typing import List, Optional
+
 from minio import Minio
 from minio.error import S3Error
 

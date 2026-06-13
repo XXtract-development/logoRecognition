@@ -8,14 +8,13 @@ import io
 import time
 from typing import List, Optional
 
-from fastapi import APIRouter, File, UploadFile, HTTPException, Query
+from fastapi import APIRouter, File, HTTPException, Query, UploadFile
 from PIL import Image
 from pydantic import BaseModel, Field
 
 from app.core.logging import logger
-from app.ml.model_manager import model_manager
 from app.ml.detector import LogoDetector
-
+from app.ml.model_manager import model_manager
 
 router = APIRouter()
 

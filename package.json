@@ -30,7 +30,8 @@
     "docker:down": "docker-compose -f scripts/deployment/docker-compose.yml down",
     "docker:test": "docker-compose -f scripts/deployment/docker-compose.test.yml up --abort-on-container-exit",
     "start:backend": "bash scripts/deployment/start_backend.sh",
-    "start:uat": "bash scripts/deployment/start_uat.sh"
+    "start:uat": "bash scripts/deployment/start_uat.sh",
+    "type-check": "pnpm -r type-check"
   },
   "devDependencies": {
     "@playwright/test": "1.49.1",
