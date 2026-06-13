@@ -5,7 +5,7 @@ Handles MinIO/S3 operations for model files and training images.
 
 import os
 import io
-from typing import Optional, List, BinaryIO
+from typing import Optional, List
 from datetime import timedelta
 from minio import Minio
 from minio.error import S3Error

@@ -22,6 +22,7 @@ router = APIRouter()
 
 class BoundingBox(BaseModel):
     """Bounding box coordinates."""
+
     x: int
     y: int
     width: int
@@ -30,6 +31,7 @@ class BoundingBox(BaseModel):
 
 class Detection(BaseModel):
     """Single detection result."""
+
     category: str
     value: str
     confidence: float
@@ -39,6 +41,7 @@ class Detection(BaseModel):
 
 class DetectionRequest(BaseModel):
     """Detection request with base64 image."""
+
     image: str = Field(..., description="Base64 encoded image")
     confidence_threshold: float = Field(0.99, ge=0.0, le=1.0)
     return_embeddings: bool = Field(False, description="Include embeddings in response")
@@ -46,6 +49,7 @@ class DetectionRequest(BaseModel):
 
 class DetectionResponse(BaseModel):
     """Detection response model."""
+
     request_id: str
     detections: List[Detection]
     processing_time_ms: int
@@ -55,11 +59,13 @@ class DetectionResponse(BaseModel):
 
 class EmbeddingRequest(BaseModel):
     """Request for embedding generation."""
+
     image: str = Field(..., description="Base64 encoded image")
 
 
 class EmbeddingResponse(BaseModel):
     """Embedding response model."""
+
     embedding: List[float]
     dimension: int
     processing_time_ms: int
@@ -140,8 +146,7 @@ async def detect_logos_upload(
     # Validate file type
     if file.content_type not in ["image/jpeg", "image/png", "image/webp"]:
         raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported image type: {file.content_type}"
+            status_code=400, detail=f"Unsupported image type: {file.content_type}"
         )
 
     try:

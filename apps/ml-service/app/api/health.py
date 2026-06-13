@@ -16,6 +16,7 @@ router = APIRouter()
 
 class HealthResponse(BaseModel):
     """Health check response model."""
+
     status: str
     timestamp: str
     version: str
@@ -25,6 +26,7 @@ class HealthResponse(BaseModel):
 
 class DetailedHealthResponse(BaseModel):
     """Detailed health check response."""
+
     status: str
     timestamp: str
     version: str
@@ -94,12 +96,24 @@ async def detailed_health_check() -> DetailedHealthResponse:
         },
         "gpu": {
             "available": torch.cuda.is_available(),
-            "device_count": torch.cuda.device_count() if torch.cuda.is_available() else 0,
-            "current_device": torch.cuda.current_device() if torch.cuda.is_available() else None,
+            "device_count": (
+                torch.cuda.device_count() if torch.cuda.is_available() else 0
+            ),
+            "current_device": (
+                torch.cuda.current_device() if torch.cuda.is_available() else None
+            ),
         },
         "memory": {
-            "gpu_allocated": f"{torch.cuda.memory_allocated() / 1e9:.2f}GB" if torch.cuda.is_available() else "N/A",
-            "gpu_cached": f"{torch.cuda.memory_reserved() / 1e9:.2f}GB" if torch.cuda.is_available() else "N/A",
+            "gpu_allocated": (
+                f"{torch.cuda.memory_allocated() / 1e9:.2f}GB"
+                if torch.cuda.is_available()
+                else "N/A"
+            ),
+            "gpu_cached": (
+                f"{torch.cuda.memory_reserved() / 1e9:.2f}GB"
+                if torch.cuda.is_available()
+                else "N/A"
+            ),
         },
     }
 

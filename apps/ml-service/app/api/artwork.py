@@ -111,7 +111,10 @@ async def _get_reference_templates_cached() -> List[Dict[str, Any]]:
         return cached
     templates = await _load_reference_templates()
     _TEMPLATE_CACHE = (now, templates)
-    logger.info("Reference templates loaded into cache", extra={"count": len(templates), "ttl_s": TEMPLATE_CACHE_TTL_S})
+    logger.info(
+        "Reference templates loaded into cache",
+        extra={"count": len(templates), "ttl_s": TEMPLATE_CACHE_TTL_S},
+    )
     return templates
 
 
@@ -150,12 +153,16 @@ async def rebuild_reference_embeddings_endpoint() -> Dict[str, Any]:
 
 
 class RegisterReferenceRequest(BaseModel):
-    crop_path: str = Field(..., description="Object key of the confirmed crop in the training bucket")
+    crop_path: str = Field(
+        ..., description="Object key of the confirmed crop in the training bucket"
+    )
     t3777_code: str = Field(..., description="Confirmed keurmerk code for the crop")
 
 
 @router.post("/artwork/register-reference")
-async def register_reference_endpoint(request: RegisterReferenceRequest) -> Dict[str, Any]:
+async def register_reference_endpoint(
+    request: RegisterReferenceRequest,
+) -> Dict[str, Any]:
     """Add a human-confirmed review crop to the reference library as a live
     reference embedding (Story 12.3 — review→reference loop).
 
@@ -187,8 +194,16 @@ class ArtworkStorageError(Exception):
 
 
 class RasterizeRequest(BaseModel):
-    storage_path: str = Field(..., description="Object key in the training bucket, e.g. artwork/{gtin}/{file}.pdf")
-    dpi: int = Field(DEFAULT_DPI, ge=36, le=1200, description="Rasterization DPI (default from ARTWORK_RASTER_DPI)")
+    storage_path: str = Field(
+        ...,
+        description="Object key in the training bucket, e.g. artwork/{gtin}/{file}.pdf",
+    )
+    dpi: int = Field(
+        DEFAULT_DPI,
+        ge=36,
+        le=1200,
+        description="Rasterization DPI (default from ARTWORK_RASTER_DPI)",
+    )
 
 
 class RasterizedPage(BaseModel):
@@ -230,7 +245,10 @@ async def rasterize_artwork(request: RasterizeRequest) -> RasterizeResponse:
     except ArtworkStorageError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except Exception as exc:
-        logger.warning("Could not fetch artwork PDF from storage", extra={"storage_path": storage_path, "error": str(exc)})
+        logger.warning(
+            "Could not fetch artwork PDF from storage",
+            extra={"storage_path": storage_path, "error": str(exc)},
+        )
         raise HTTPException(
             status_code=422,
             detail=f"Kon artwork niet ophalen uit storage: {storage_path}",
@@ -251,7 +269,10 @@ async def rasterize_artwork(request: RasterizeRequest) -> RasterizeResponse:
         raw_pages = rasterize_pdf(local_pdf, dpi=dpi)
 
         if not raw_pages:
-            logger.warning("PDF rasterization produced no pages (corrupt/empty/protected)", extra={"storage_path": storage_path})
+            logger.warning(
+                "PDF rasterization produced no pages (corrupt/empty/protected)",
+                extra={"storage_path": storage_path},
+            )
             return RasterizeResponse(
                 storage_path=storage_path,
                 dpi=dpi,
@@ -278,10 +299,19 @@ async def rasterize_artwork(request: RasterizeRequest) -> RasterizeResponse:
             try:
                 with open(local_png, "rb") as png_fh:
                     png_bytes = png_fh.read()
-                storage_service.put_training_image(object_key, png_bytes, content_type="image/png")
+                storage_service.put_training_image(
+                    object_key, png_bytes, content_type="image/png"
+                )
                 del png_bytes
             except Exception as exc:
-                logger.warning("Failed to upload rasterized page", extra={"storage_path": storage_path, "page": entry["page"], "error": str(exc)})
+                logger.warning(
+                    "Failed to upload rasterized page",
+                    extra={
+                        "storage_path": storage_path,
+                        "page": entry["page"],
+                        "error": str(exc),
+                    },
+                )
                 page_errors.append(f"pagina {entry['page']}: upload mislukt ({exc})")
                 continue
 
@@ -297,9 +327,15 @@ async def rasterize_artwork(request: RasterizeRequest) -> RasterizeResponse:
     error_reason: Optional[str] = "; ".join(page_errors) if page_errors else None
     logger.info(
         "Artwork rasterization complete",
-        extra={"storage_path": storage_path, "pages": len(uploaded_pages), "page_errors": len(page_errors)},
+        extra={
+            "storage_path": storage_path,
+            "pages": len(uploaded_pages),
+            "page_errors": len(page_errors),
+        },
     )
-    return RasterizeResponse(storage_path=storage_path, dpi=dpi, pages=uploaded_pages, error=error_reason)
+    return RasterizeResponse(
+        storage_path=storage_path, dpi=dpi, pages=uploaded_pages, error=error_reason
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -322,7 +358,8 @@ class LocalizeRequest(BaseModel):
     """
 
     storage_path: Optional[str] = Field(
-        None, description="Object key in the training bucket, e.g. artwork/{gtin}/{file}.page-1.png"
+        None,
+        description="Object key in the training bucket, e.g. artwork/{gtin}/{file}.page-1.png",
     )
     image_b64: Optional[str] = None
     templates: Optional[List[TemplateInput]] = None
@@ -358,7 +395,9 @@ def _decode_image_bytes(img_bytes: bytes, with_alpha: bool = False) -> np.ndarra
     import cv2
 
     img_arr = np.frombuffer(img_bytes, dtype=np.uint8)
-    img = cv2.imdecode(img_arr, cv2.IMREAD_UNCHANGED if with_alpha else cv2.IMREAD_COLOR)
+    img = cv2.imdecode(
+        img_arr, cv2.IMREAD_UNCHANGED if with_alpha else cv2.IMREAD_COLOR
+    )
     if img is None:
         raise ValueError("Could not decode image bytes")
     if with_alpha and img.ndim == 2:  # grayscale source — normalise to BGR
@@ -430,12 +469,18 @@ async def localize_artwork(request: LocalizeRequest) -> LocalizeResponse:
         except Exception as exc:
             raise HTTPException(status_code=400, detail=f"Invalid image_b64: {exc}")
     else:
-        raise HTTPException(status_code=422, detail="Either storage_path or image_b64 is required")
+        raise HTTPException(
+            status_code=422, detail="Either storage_path or image_b64 is required"
+        )
 
     # Effective tunables: request overrides env defaults
-    eff_tile_size = request.tile_size if request.tile_size is not None else LOCALIZE_TILE_SIZE
+    eff_tile_size = (
+        request.tile_size if request.tile_size is not None else LOCALIZE_TILE_SIZE
+    )
     eff_overlap = request.overlap if request.overlap is not None else LOCALIZE_OVERLAP
-    eff_min_score = request.min_score if request.min_score is not None else LOCALIZE_MIN_SCORE
+    eff_min_score = (
+        request.min_score if request.min_score is not None else LOCALIZE_MIN_SCORE
+    )
 
     # Templates: caller-supplied (decode b64) OR loaded ML-side from the active
     # reference library with a TTL cache when omitted (Story 8-3O, decision 2).
@@ -445,7 +490,10 @@ async def localize_artwork(request: LocalizeRequest) -> LocalizeResponse:
             try:
                 tmpl_img = _decode_image(tmpl.image_b64, with_alpha=True)
             except Exception as exc:
-                logger.warning("Skipping template with invalid image", extra={"t3777_code": tmpl.t3777_code, "error": str(exc)})
+                logger.warning(
+                    "Skipping template with invalid image",
+                    extra={"t3777_code": tmpl.t3777_code, "error": str(exc)},
+                )
                 continue
             templates.append({"t3777_code": tmpl.t3777_code, "image": tmpl_img})
     else:
@@ -454,7 +502,9 @@ async def localize_artwork(request: LocalizeRequest) -> LocalizeResponse:
     if not templates:
         # Open-input gate (AC2): an empty library / all-invalid templates yields
         # an empty detection list plus a warning — never an error.
-        logger.warning("Localize has no usable templates (empty reference library?) — returning no detections")
+        logger.warning(
+            "Localize has no usable templates (empty reference library?) — returning no detections"
+        )
         return LocalizeResponse(detections=[])
 
     # Build the scale ladder ONCE per request (design decisions 1+2)
@@ -467,7 +517,11 @@ async def localize_artwork(request: LocalizeRequest) -> LocalizeResponse:
     )
 
     # Effective collapse top-k: request overrides env default (8-3P).
-    eff_collapse_top_k = request.collapse_top_k if request.collapse_top_k is not None else LOCALIZE_COLLAPSE_TOP_K
+    eff_collapse_top_k = (
+        request.collapse_top_k
+        if request.collapse_top_k is not None
+        else LOCALIZE_COLLAPSE_TOP_K
+    )
 
     # Tile + match with time budget; collapse to the top-k LOCATION-DISTINCT
     # peaks per (code, tile) before NMS (8-3P, P2). match_templates already
@@ -489,7 +543,11 @@ async def localize_artwork(request: LocalizeRequest) -> LocalizeResponse:
             truncated = True
             logger.warning(
                 "Localize time budget exceeded — truncating",
-                extra={"processed_tiles": tile_idx, "total_tiles": len(tiles), "budget_s": LOCALIZE_TIME_BUDGET_S},
+                extra={
+                    "processed_tiles": tile_idx,
+                    "total_tiles": len(tiles),
+                    "budget_s": LOCALIZE_TIME_BUDGET_S,
+                },
             )
             break
         # match_templates returns score-descending; process in that order so the
@@ -587,7 +645,9 @@ def _crop_object_key(gtin: str, source: str, bbox: Optional[Dict[str, int]]) -> 
     classify for an artwork overwrites rather than duplicates (decision 3).
     """
     box = bbox or {}
-    digest_src = f"{source}|{box.get('x')}|{box.get('y')}|{box.get('width')}|{box.get('height')}"
+    digest_src = (
+        f"{source}|{box.get('x')}|{box.get('y')}|{box.get('width')}|{box.get('height')}"
+    )
     digest = hashlib.sha1(digest_src.encode("utf-8")).hexdigest()[:12]
     return f"artwork-crops/{gtin}/{digest}.png"
 
@@ -629,7 +689,9 @@ async def classify_artwork(request: ClassifyRequest) -> ClassifyResponse:
         except Exception as exc:
             raise HTTPException(status_code=400, detail=f"Invalid image_b64: {exc}")
     else:
-        raise HTTPException(status_code=422, detail="Either storage_path or image_b64 is required")
+        raise HTTPException(
+            status_code=422, detail="Either storage_path or image_b64 is required"
+        )
 
     h, w = img.shape[:2]
 
@@ -642,7 +704,9 @@ async def classify_artwork(request: ClassifyRequest) -> ClassifyResponse:
             x1 = max(0, min(box.x + box.width, w))
             y1 = max(0, min(box.y + box.height, h))
             if x1 <= x0 or y1 <= y0:
-                logger.warning("Skipping out-of-bounds crop", extra={"bbox": box.model_dump()})
+                logger.warning(
+                    "Skipping out-of-bounds crop", extra={"bbox": box.model_dump()}
+                )
                 continue
             regions.append({"bbox": box.model_dump(), "crop": img[y0:y1, x0:x1]})
     else:
@@ -687,12 +751,20 @@ async def classify_artwork(request: ClassifyRequest) -> ClassifyResponse:
                 ok, buf = _cv2.imencode(".png", crop_to_save)
                 if ok:
                     key = _crop_object_key(request.gtin, source_label, region["bbox"])
-                    storage_service.put_training_image(key, buf.tobytes(), content_type="image/png")
+                    storage_service.put_training_image(
+                        key, buf.tobytes(), content_type="image/png"
+                    )
                     crop_path = key
                 else:
-                    logger.warning("Crop PNG encoding failed; crop_path stays null", extra={"bbox": region["bbox"]})
+                    logger.warning(
+                        "Crop PNG encoding failed; crop_path stays null",
+                        extra={"bbox": region["bbox"]},
+                    )
             except Exception as exc:
-                logger.warning("Crop persistence failed; crop_path stays null", extra={"bbox": region["bbox"], "error": str(exc)})
+                logger.warning(
+                    "Crop persistence failed; crop_path stays null",
+                    extra={"bbox": region["bbox"], "error": str(exc)},
+                )
 
         results.append(
             ClassifyResult(
@@ -705,7 +777,10 @@ async def classify_artwork(request: ClassifyRequest) -> ClassifyResponse:
             )
         )
 
-    logger.info("Artwork classification complete", extra={"regions": len(results), "persisted_crops": persist})
+    logger.info(
+        "Artwork classification complete",
+        extra={"regions": len(results), "persisted_crops": persist},
+    )
     return ClassifyResponse(results=results)
 
 
@@ -723,8 +798,12 @@ class SynthesizeRequest(BaseModel):
     ``synthetic/{t3777Code}/{seed}.png``.
     """
 
-    t3777_code: str = Field(..., min_length=1, description="Keurmerk class to synthesize for")
-    count: int = Field(..., ge=1, le=500, description="Number of composites to generate")
+    t3777_code: str = Field(
+        ..., min_length=1, description="Keurmerk class to synthesize for"
+    )
+    count: int = Field(
+        ..., ge=1, le=500, description="Number of composites to generate"
+    )
     seed: Optional[int] = Field(None, ge=0, description="Base seed for reproducibility")
 
 
@@ -775,7 +854,9 @@ async def synthesize_artwork(request: SynthesizeRequest) -> SynthesizeResponse:
             "Synthetic generation failed",
             extra={"t3777_code": request.t3777_code, "error": str(exc)},
         )
-        raise HTTPException(status_code=500, detail="Synthetische generatie mislukt") from exc
+        raise HTTPException(
+            status_code=500, detail="Synthetische generatie mislukt"
+        ) from exc
 
     logger.info(
         "Synthetic generation complete",

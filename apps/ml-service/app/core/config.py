@@ -69,6 +69,7 @@ class Settings(BaseSettings):
         if self.ENABLE_GPU:
             try:
                 import torch
+
                 if torch.cuda.is_available():
                     return "cuda"
             except ImportError:

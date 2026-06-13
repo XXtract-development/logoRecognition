@@ -98,12 +98,14 @@ def _softmax(x: np.ndarray) -> np.ndarray:
 # ---------------------------------------------------------------------------
 
 
-async def _classify_via_embedding(crop: Any, threshold: float) -> Optional[Dict[str, Any]]:
+async def _classify_via_embedding(
+    crop: Any, threshold: float
+) -> Optional[Dict[str, Any]]:
     """Embedding-similarity route. Returns a result dict, or None if the route
     could not run (backbone/db unavailable) so the caller can fail closed.
     """
     from app.ml.model_manager import model_manager  # may be mocked in tests
-    from app.services.database import db_service      # may be mocked in tests
+    from app.services.database import db_service  # may be mocked in tests
 
     image = _to_pil(crop)
     raw_embedding = await model_manager.generate_embedding(image)
@@ -149,7 +151,9 @@ async def _classify_via_embedding(crop: Any, threshold: float) -> Optional[Dict[
 # ---------------------------------------------------------------------------
 
 
-async def _classify_via_classifier(crop: Any, threshold: float) -> Optional[Dict[str, Any]]:
+async def _classify_via_classifier(
+    crop: Any, threshold: float
+) -> Optional[Dict[str, Any]]:
     """Active-crop-classifier route. Returns a result dict, or None when there
     is no active model (route silently skipped — NOT an error).
     """
@@ -165,6 +169,7 @@ async def _classify_via_classifier(crop: Any, threshold: float) -> Optional[Dict
         labels = config.get("labels")
     elif isinstance(config, str):
         import json
+
         try:
             labels = json.loads(config).get("labels")
         except Exception:
@@ -190,7 +195,11 @@ async def _classify_via_classifier(crop: Any, threshold: float) -> Optional[Dict
     image = _to_pil(crop)
     transform = build_eval_transform()
     tensor = transform(image).unsqueeze(0)
-    input_array = tensor.numpy().astype(np.float32) if isinstance(tensor, torch.Tensor) else np.asarray(tensor)
+    input_array = (
+        tensor.numpy().astype(np.float32)
+        if isinstance(tensor, torch.Tensor)
+        else np.asarray(tensor)
+    )
 
     input_name = session.get_inputs()[0].name
     outputs = session.run(None, {input_name: input_array})
@@ -238,7 +247,9 @@ async def classify_crop(
     explicit = confidence_threshold is not None
 
     # --- Primary: embedding route -------------------------------------------
-    embedding_threshold = confidence_threshold if explicit else CLASSIFY_THRESHOLD_EMBEDDING
+    embedding_threshold = (
+        confidence_threshold if explicit else CLASSIFY_THRESHOLD_EMBEDDING
+    )
     try:
         embedding_result = await _classify_via_embedding(crop, embedding_threshold)
     except Exception as exc:
@@ -257,7 +268,9 @@ async def classify_crop(
         return embedding_result
 
     # --- Secondary: classifier route (only when an active model exists) ------
-    classifier_threshold = confidence_threshold if explicit else CLASSIFY_THRESHOLD_CLASSIFIER
+    classifier_threshold = (
+        confidence_threshold if explicit else CLASSIFY_THRESHOLD_CLASSIFIER
+    )
     try:
         classifier_result = await _classify_via_classifier(crop, classifier_threshold)
     except Exception as exc:

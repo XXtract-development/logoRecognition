@@ -44,7 +44,6 @@ SYNTHESIS_DEFAULT_RATIO          — default real-to-synthetic ratio (default 0.
 SYNTHESIS_BUCKET_PREFIX          — MinIO key prefix for composites (default "synthetic")
 """
 
-import io
 import math
 import os
 from typing import Any, Dict, List, Optional, Tuple
@@ -57,7 +56,9 @@ from app.core.logging import logger
 # Configuration
 # ---------------------------------------------------------------------------
 
-SYNTHESIS_DEFAULT_MIN_PER_CLASS: int = int(os.environ.get("SYNTHESIS_DEFAULT_MIN_PER_CLASS", "10"))
+SYNTHESIS_DEFAULT_MIN_PER_CLASS: int = int(
+    os.environ.get("SYNTHESIS_DEFAULT_MIN_PER_CLASS", "10")
+)
 SYNTHESIS_DEFAULT_RATIO: float = float(os.environ.get("SYNTHESIS_DEFAULT_RATIO", "0.5"))
 SYNTHESIS_BUCKET_PREFIX: str = os.environ.get("SYNTHESIS_BUCKET_PREFIX", "synthetic")
 
@@ -159,7 +160,9 @@ def _alpha_composite(
     oh, ow = overlay_rgba.shape[:2]
     roi = canvas[y : y + oh, x : x + ow]
     alpha = overlay_rgba[:, :, 3:4].astype(np.float32) / 255.0
-    blended = overlay_rgba[:, :, :3].astype(np.float32) * alpha + roi.astype(np.float32) * (1.0 - alpha)
+    blended = overlay_rgba[:, :, :3].astype(np.float32) * alpha + roi.astype(
+        np.float32
+    ) * (1.0 - alpha)
     canvas[y : y + oh, x : x + ow] = blended.astype(np.uint8)
     return canvas
 
@@ -388,7 +391,9 @@ def _generate_class_samples(
         if persist:
             from app.services.storage import storage_service
 
-            storage_service.put_training_image(crop_path, _encode_png(composed["image"]))
+            storage_service.put_training_image(
+                crop_path, _encode_png(composed["image"])
+            )
 
         samples.append(
             {
@@ -433,7 +438,9 @@ async def synthesize_for_class(
         return []
     backgrounds = await _load_backgrounds()
     if not backgrounds:
-        logger.warning("No cached artwork backgrounds available — nothing to synthesize")
+        logger.warning(
+            "No cached artwork backgrounds available — nothing to synthesize"
+        )
         return []
 
     return _generate_class_samples(
@@ -537,7 +544,9 @@ async def build_synthetic_batch(
 
         # Deterministic per-class seed base derived from the label (stable across
         # processes — never Python's salted hash()).
-        base_seed = int.from_bytes(label.encode("utf-8")[:4].ljust(4, b"\0"), "big") % (2**31)
+        base_seed = int.from_bytes(label.encode("utf-8")[:4].ljust(4, b"\0"), "big") % (
+            2**31
+        )
 
         produced = _generate_class_samples(
             label, references, backgrounds, generate, base_seed, persist=persist

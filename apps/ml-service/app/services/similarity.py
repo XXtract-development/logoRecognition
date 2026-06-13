@@ -7,7 +7,6 @@ import numpy as np
 from typing import Optional, List, Dict, Any
 from PIL import Image
 
-from app.core.config import settings
 from app.core.logging import logger
 from app.services.database import db_service
 from app.ml.model_manager import model_manager
@@ -103,12 +102,14 @@ class SimilarityService:
 
             try:
                 # Crop the detection region
-                crop = original_image.crop((
-                    bbox.get("x", 0),
-                    bbox.get("y", 0),
-                    bbox.get("x", 0) + bbox.get("width", 100),
-                    bbox.get("y", 0) + bbox.get("height", 100),
-                ))
+                crop = original_image.crop(
+                    (
+                        bbox.get("x", 0),
+                        bbox.get("y", 0),
+                        bbox.get("x", 0) + bbox.get("width", 100),
+                        bbox.get("y", 0) + bbox.get("height", 100),
+                    )
+                )
 
                 # Find matching logo
                 match = await self.find_matching_logo(crop, threshold)
@@ -200,8 +201,7 @@ class SimilarityService:
                 # silently drop logos whose only samples are holdout-marked.
                 images = await db_service.get_training_images(include_holdout=True)
                 logo_images = [
-                    img for img in images
-                    if img.get("label") == logo["value"]
+                    img for img in images if img.get("label") == logo["value"]
                 ]
 
                 if not logo_images:
@@ -212,9 +212,13 @@ class SimilarityService:
                 # TODO: Could generate multiple embeddings or average
                 img_info = logo_images[0]
                 from app.services.storage import storage_service
-                image_bytes = storage_service.get_training_image(img_info["storage_path"])
+
+                image_bytes = storage_service.get_training_image(
+                    img_info["storage_path"]
+                )
 
                 import io
+
                 image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
 
                 await self.store_logo_embedding(
@@ -292,7 +296,9 @@ class SimilarityService:
                     f"Reference embeddings REINDEX complete after rebuild ({processed} embeddings)"
                 )
             except Exception as reindex_err:
-                logger.error(f"REINDEX after reference rebuild failed (non-fatal): {reindex_err}")
+                logger.error(
+                    f"REINDEX after reference rebuild failed (non-fatal): {reindex_err}"
+                )
                 errors += 1
         else:
             logger.warning(
@@ -368,7 +374,8 @@ class SimilarityService:
                 JOIN reference_logos rl ON re.reference_logo_id = rl.id
                 WHERE rl.active = true AND rl.t3777_code = $2
                 """,
-                emb_vec, t3777_code,
+                emb_vec,
+                t3777_code,
             )
             if max_sim is not None and float(max_sim) >= near_dup_threshold:
                 return {
@@ -387,7 +394,10 @@ class SimilarityService:
                     VALUES ($1, $2, $3, $4, true)
                     RETURNING id
                     """,
-                    t3777_code, variant_label, crop_path, source,
+                    t3777_code,
+                    variant_label,
+                    crop_path,
+                    source,
                 )
             except Exception as exc:
                 if "unique" in str(exc).lower():
@@ -397,12 +407,17 @@ class SimilarityService:
             await conn.execute(
                 "INSERT INTO reference_embeddings (reference_logo_id, embedding, created_at) "
                 "VALUES ($1, $2, NOW())",
-                logo_id, emb_vec,
+                logo_id,
+                emb_vec,
             )
 
         logger.info(
             "Crop registered as live reference",
-            extra={"t3777_code": t3777_code, "crop_path": crop_path, "reference_logo_id": logo_id},
+            extra={
+                "t3777_code": t3777_code,
+                "crop_path": crop_path,
+                "reference_logo_id": logo_id,
+            },
         )
         return {"added": True, "reason": "added", "reference_logo_id": logo_id}
 

@@ -43,8 +43,15 @@ class BuildSyntheticBatchRequest(BaseModel):
     synthetic noise.
     """
 
-    min_per_class: int = Field(..., ge=1, le=10_000, description="Target minimum real+synthetic samples per class")
-    real_synthetic_ratio: float = Field(..., gt=0, le=10.0, description="Max synthetic-to-real ratio cap")
+    min_per_class: int = Field(
+        ...,
+        ge=1,
+        le=10_000,
+        description="Target minimum real+synthetic samples per class",
+    )
+    real_synthetic_ratio: float = Field(
+        ..., gt=0, le=10.0, description="Max synthetic-to-real ratio cap"
+    )
 
 
 class BuildSyntheticBatchResponse(BaseModel):
@@ -54,7 +61,9 @@ class BuildSyntheticBatchResponse(BaseModel):
     shortfall_reported: Dict[str, int]
 
 
-@router.post("/pipeline/build-synthetic-batch", response_model=BuildSyntheticBatchResponse)
+@router.post(
+    "/pipeline/build-synthetic-batch", response_model=BuildSyntheticBatchResponse
+)
 async def build_synthetic_batch_endpoint(
     request: BuildSyntheticBatchRequest,
 ) -> BuildSyntheticBatchResponse:
@@ -84,7 +93,9 @@ async def build_synthetic_batch_endpoint(
                 "error": str(exc),
             },
         )
-        raise HTTPException(status_code=500, detail="Synthetische batch-planning mislukt") from exc
+        raise HTTPException(
+            status_code=500, detail="Synthetische batch-planning mislukt"
+        ) from exc
 
     batches: List[Dict[str, Any]] = []
     shortfall_reported: Dict[str, int] = {}
@@ -106,4 +117,6 @@ async def build_synthetic_batch_endpoint(
         },
     )
 
-    return BuildSyntheticBatchResponse(batches=batches, shortfall_reported=shortfall_reported)
+    return BuildSyntheticBatchResponse(
+        batches=batches, shortfall_reported=shortfall_reported
+    )

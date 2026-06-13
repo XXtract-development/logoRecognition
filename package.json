@@ -23,7 +23,7 @@
     "test:security": "npm run security:scan",
     "test:validation": "bash scripts/testing/run_comprehensive_tests.sh",
     "test:qa": "bash scripts/qa/qa_validation_a_plus_plus.sh",
-    "lint": "eslint . --ext .ts,.tsx",
+    "lint": "eslint .",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,css,md}\"",
     "prepare": "husky install",
     "docker:up": "docker-compose -f scripts/deployment/docker-compose.yml up -d",

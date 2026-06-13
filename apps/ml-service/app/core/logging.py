@@ -4,7 +4,6 @@ Structured logging configuration for ML Service.
 
 import logging
 import sys
-from typing import Any
 
 import structlog
 from structlog.typing import EventDict
@@ -41,7 +40,11 @@ def setup_logging() -> None:
             structlog.processors.StackInfoRenderer(),
             structlog.processors.format_exc_info,
             structlog.processors.UnicodeDecoder(),
-            structlog.processors.JSONRenderer() if not settings.DEBUG else structlog.dev.ConsoleRenderer(),
+            (
+                structlog.processors.JSONRenderer()
+                if not settings.DEBUG
+                else structlog.dev.ConsoleRenderer()
+            ),
         ],
         wrapper_class=structlog.make_filtering_bound_logger(
             getattr(logging, settings.LOG_LEVEL.upper())

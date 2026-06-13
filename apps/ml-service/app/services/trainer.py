@@ -4,13 +4,13 @@ Implements actual training pipeline with PyTorch/TensorFlow.
 """
 
 import os
+import io
 import uuid
 import asyncio
 import hashlib
 from typing import Optional, List, Dict, Any, Callable
 from datetime import datetime
 from pathlib import Path
-import numpy as np
 
 from app.core.config import settings
 from app.core.logging import logger
@@ -37,11 +37,13 @@ def build_eval_transform():
     """Deterministic eval/holdout transform: resize + normalize, NO augmentation."""
     from torchvision import transforms
 
-    return transforms.Compose([
-        transforms.Resize(IMAGE_SIZE),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=NORMALIZE_MEAN, std=NORMALIZE_STD),
-    ])
+    return transforms.Compose(
+        [
+            transforms.Resize(IMAGE_SIZE),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=NORMALIZE_MEAN, std=NORMALIZE_STD),
+        ]
+    )
 
 
 class HoldoutSetTooSmallError(Exception):
@@ -66,6 +68,7 @@ def compute_holdout_hash(ids: List[str]) -> str:
 
 class TrainingConfig:
     """Training configuration."""
+
     def __init__(
         self,
         batch_size: int = 16,
@@ -85,6 +88,7 @@ class TrainingConfig:
 
 class TrainingProgress:
     """Training progress tracking."""
+
     def __init__(self, job_id: str, total_epochs: int):
         self.job_id = job_id
         self.total_epochs = total_epochs
@@ -139,7 +143,11 @@ class TrainingProgress:
 
     @property
     def progress_percent(self) -> float:
-        return (self.current_epoch / self.total_epochs) * 100 if self.total_epochs > 0 else 0
+        return (
+            (self.current_epoch / self.total_epochs) * 100
+            if self.total_epochs > 0
+            else 0
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -152,7 +160,9 @@ class TrainingProgress:
             "current_accuracy": self.current_accuracy,
             "best_accuracy": self.best_accuracy,
             "started_at": self.started_at.isoformat() if self.started_at else None,
-            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
+            "completed_at": (
+                self.completed_at.isoformat() if self.completed_at else None
+            ),
             "error_message": self.error_message,
         }
 
@@ -191,7 +201,6 @@ class TrainerService:
         """
         import io
         import torch
-        from torchvision import transforms
         from PIL import Image
 
         device = torch.device(settings.device)
@@ -201,7 +210,9 @@ class TrainerService:
         val_transform = build_eval_transform()
 
         if label_to_idx is None:
-            labels = sorted({img["label"] for img in holdout_images if img.get("label")})
+            labels = sorted(
+                {img["label"] for img in holdout_images if img.get("label")}
+            )
             label_to_idx = {label: idx for idx, label in enumerate(labels)}
 
         model.eval()
@@ -214,10 +225,14 @@ class TrainerService:
                 if not label or label not in label_to_idx:
                     continue
                 try:
-                    image_bytes = storage_service.get_training_image(img_info["storage_path"])
+                    image_bytes = storage_service.get_training_image(
+                        img_info["storage_path"]
+                    )
                     image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
                 except Exception as e:  # noqa: BLE001 - skip unreadable holdout item
-                    logger.warning(f"Failed to load holdout image {img_info.get('id')}: {e}")
+                    logger.warning(
+                        f"Failed to load holdout image {img_info.get('id')}: {e}"
+                    )
                     continue
 
                 tensor = val_transform(image).unsqueeze(0).to(device)
@@ -293,7 +308,9 @@ class TrainerService:
         try:
             holdout_images = await db_service.get_holdout_images()
             holdout_ids = [img["id"] for img in holdout_images]
-            metrics = await self._evaluate_on_holdout(model, holdout_images, label_to_idx)
+            metrics = await self._evaluate_on_holdout(
+                model, holdout_images, label_to_idx
+            )
             holdout_block = {
                 "accuracy": metrics["accuracy"],
                 "precision": metrics["precision"],
@@ -399,17 +416,21 @@ class TrainerService:
 
             # Prepare data transforms (augmentation on top of the shared
             # canonical size/normalization constants).
-            train_transform = transforms.Compose([
-                transforms.Resize(IMAGE_SIZE),
-                transforms.RandomHorizontalFlip(),
-                transforms.RandomRotation(15),
-                transforms.ColorJitter(brightness=0.2, contrast=0.2),
-                transforms.ToTensor(),
-                transforms.Normalize(mean=NORMALIZE_MEAN, std=NORMALIZE_STD),
-            ])
+            train_transform = transforms.Compose(
+                [
+                    transforms.Resize(IMAGE_SIZE),
+                    transforms.RandomHorizontalFlip(),
+                    transforms.RandomRotation(15),
+                    transforms.ColorJitter(brightness=0.2, contrast=0.2),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=NORMALIZE_MEAN, std=NORMALIZE_STD),
+                ]
+            )
 
             # Create label mapping
-            unique_labels = list(set(img['label'] for img in training_images if img.get('label')))
+            unique_labels = list(
+                set(img["label"] for img in training_images if img.get("label"))
+            )
             label_to_idx = {label: idx for idx, label in enumerate(unique_labels)}
             num_classes = len(unique_labels)
 
@@ -423,19 +444,21 @@ class TrainerService:
             y_data = []
 
             for img_info in training_images:
-                if not img_info.get('label'):
+                if not img_info.get("label"):
                     continue
 
                 try:
                     # Load image from storage
-                    image_bytes = storage_service.get_training_image(img_info['storage_path'])
-                    image = Image.open(io.BytesIO(image_bytes)).convert('RGB')
+                    image_bytes = storage_service.get_training_image(
+                        img_info["storage_path"]
+                    )
+                    image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
 
                     # Apply transforms and augmentation
                     for _ in range(config.augmentation_factor // 10 + 1):
                         tensor = train_transform(image)
                         X_data.append(tensor)
-                        y_data.append(label_to_idx[img_info['label']])
+                        y_data.append(label_to_idx[img_info["label"]])
 
                 except Exception as e:
                     logger.warning(f"Failed to load image {img_info['filename']}: {e}")
@@ -453,16 +476,24 @@ class TrainerService:
             train_dataset = TensorDataset(X_tensor[:split_idx], y_tensor[:split_idx])
             val_dataset = TensorDataset(X_tensor[split_idx:], y_tensor[split_idx:])
 
-            train_loader = DataLoader(train_dataset, batch_size=config.batch_size, shuffle=True)
+            train_loader = DataLoader(
+                train_dataset, batch_size=config.batch_size, shuffle=True
+            )
             val_loader = DataLoader(val_dataset, batch_size=config.batch_size)
 
-            logger.info(f"Training samples: {len(train_dataset)}, Validation: {len(val_dataset)}")
+            logger.info(
+                f"Training samples: {len(train_dataset)}, Validation: {len(val_dataset)}"
+            )
 
             # Create model (EfficientNet or ResNet)
             try:
-                model = models.efficientnet_b0(weights=models.EfficientNet_B0_Weights.DEFAULT)
-                model.classifier[-1] = nn.Linear(model.classifier[-1].in_features, num_classes)
-            except:
+                model = models.efficientnet_b0(
+                    weights=models.EfficientNet_B0_Weights.DEFAULT
+                )
+                model.classifier[-1] = nn.Linear(
+                    model.classifier[-1].in_features, num_classes
+                )
+            except Exception:
                 model = models.resnet50(weights=models.ResNet50_Weights.DEFAULT)
                 model.fc = nn.Linear(model.fc.in_features, num_classes)
 
@@ -472,7 +503,7 @@ class TrainerService:
             criterion = nn.CrossEntropyLoss()
             optimizer = optim.AdamW(model.parameters(), lr=config.learning_rate)
             scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-                optimizer, mode='max', patience=5, factor=0.5
+                optimizer, mode="max", patience=5, factor=0.5
             )
 
             # Training loop
@@ -559,21 +590,20 @@ class TrainerService:
                 model,
                 dummy_input,
                 str(onnx_path),
-                input_names=['input'],
-                output_names=['output'],
-                dynamic_axes={
-                    'input': {0: 'batch_size'},
-                    'output': {0: 'batch_size'}
-                },
+                input_names=["input"],
+                output_names=["output"],
+                dynamic_axes={"input": {0: "batch_size"}, "output": {0: "batch_size"}},
                 opset_version=11,
             )
 
             logger.info(f"Model exported to: {onnx_path}")
 
             # Upload to storage
-            with open(onnx_path, 'rb') as f:
+            with open(onnx_path, "rb") as f:
                 model_data = f.read()
-            storage_service.save_model(f"logo_detector_{model_version}", model_data, "onnx")
+            storage_service.save_model(
+                f"logo_detector_{model_version}", model_data, "onnx"
+            )
 
             # Save to database (incl. holdout evaluation, Story 7.2). The
             # holdout-metrics are evaluated and registered here, kept distinct
@@ -585,8 +615,8 @@ class TrainerService:
                 model_type="EfficientNet-B0",
                 accuracy=best_val_acc,
                 precision_score=best_val_acc,  # Simplified train/val metric
-                recall_score=best_val_acc,     # Simplified train/val metric
-                f1_score=best_val_acc,         # Simplified train/val metric
+                recall_score=best_val_acc,  # Simplified train/val metric
+                f1_score=best_val_acc,  # Simplified train/val metric
                 config={
                     "epochs": config.epochs,
                     "batch_size": config.batch_size,
@@ -600,9 +630,9 @@ class TrainerService:
             # Update logo training stats
             for label in unique_labels:
                 logo = await db_service.get_or_create_logo("brand", label)
-                count = sum(1 for img in training_images if img.get('label') == label)
+                count = sum(1 for img in training_images if img.get("label") == label)
                 await db_service.update_logo_training_stats(
-                    logo['id'],
+                    logo["id"],
                     training_samples=count * config.augmentation_factor,
                     accuracy=best_val_acc,
                 )
@@ -611,7 +641,9 @@ class TrainerService:
             progress.completed_at = datetime.utcnow()
             await progress.update(status="completed", accuracy=best_val_acc)
 
-            logger.info(f"Training completed: {progress.job_id}, accuracy: {best_val_acc:.4f}")
+            logger.info(
+                f"Training completed: {progress.job_id}, accuracy: {best_val_acc:.4f}"
+            )
 
         except ImportError as e:
             error_msg = f"Required ML library not installed: {e}"
@@ -648,9 +680,6 @@ class TrainerService:
             return True
         return False
 
-
-# Import io for BytesIO
-import io
 
 # Global trainer service instance
 trainer_service = TrainerService()

@@ -14,7 +14,6 @@ Configuration:
   ARTWORK_RASTER_DPI   — default 300 (configured in the API gateway's env too)
 """
 
-import io
 import os
 import tempfile
 from typing import List, Dict, Any
@@ -51,7 +50,14 @@ def rasterize_pdf(path: str, dpi: int = DEFAULT_DPI) -> List[Dict[str, Any]]:
         import fitz  # PyMuPDF — AGPL, internal use only
     except ImportError:
         logger.error("PyMuPDF (fitz) not installed — cannot rasterize PDF")
-        return [{"source_file": path, "page": 0, "error": "PyMuPDF not installed", "dpi": dpi}]
+        return [
+            {
+                "source_file": path,
+                "page": 0,
+                "error": "PyMuPDF not installed",
+                "dpi": dpi,
+            }
+        ]
 
     results: List[Dict[str, Any]] = []
     source_file = os.path.basename(path)
@@ -90,7 +96,11 @@ def rasterize_pdf(path: str, dpi: int = DEFAULT_DPI) -> List[Dict[str, Any]]:
                 if image_list:
                     logger.debug(
                         "PDF page has embedded images",
-                        extra={"path": path, "page": page_num + 1, "count": len(image_list)},
+                        extra={
+                            "path": path,
+                            "page": page_num + 1,
+                            "count": len(image_list),
+                        },
                     )
             except Exception:
                 pass  # Signal logging failure must never block the pipeline
@@ -107,23 +117,27 @@ def rasterize_pdf(path: str, dpi: int = DEFAULT_DPI) -> List[Dict[str, Any]]:
                 f.write(png_bytes)
             del png_bytes
 
-            results.append({
-                "source_file": source_file,
-                "page": page_num + 1,
-                "image_path": png_path,
-                "dpi": dpi,
-            })
+            results.append(
+                {
+                    "source_file": source_file,
+                    "page": page_num + 1,
+                    "image_path": png_path,
+                    "dpi": dpi,
+                }
+            )
         except Exception as exc:
             logger.warning(
                 "Failed to rasterize PDF page",
                 extra={"path": path, "page": page_num + 1, "error": str(exc)},
             )
-            results.append({
-                "source_file": source_file,
-                "page": page_num + 1,
-                "error": str(exc),
-                "dpi": dpi,
-            })
+            results.append(
+                {
+                    "source_file": source_file,
+                    "page": page_num + 1,
+                    "error": str(exc),
+                    "dpi": dpi,
+                }
+            )
 
     doc.close()
     return results

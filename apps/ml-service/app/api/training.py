@@ -4,7 +4,6 @@ Real implementation using PyTorch training pipeline.
 """
 
 from typing import List, Optional
-from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel, Field
@@ -23,6 +22,7 @@ router = APIRouter()
 
 class TrainingConfig(BaseModel):
     """Training configuration."""
+
     batch_size: int = Field(16, ge=1, le=128)
     epochs: int = Field(100, ge=1, le=1000)
     learning_rate: float = Field(0.001, gt=0, lt=1)
@@ -33,6 +33,7 @@ class TrainingConfig(BaseModel):
 
 class TrainingRequest(BaseModel):
     """Training job request."""
+
     batch_id: str = Field(..., description="Training batch ID")
     config: Optional[TrainingConfig] = None
     model_name: Optional[str] = None
@@ -40,6 +41,7 @@ class TrainingRequest(BaseModel):
 
 class TrainingJob(BaseModel):
     """Training job status."""
+
     job_id: str
     batch_id: str
     status: str  # queued, running, completed, failed
@@ -55,6 +57,7 @@ class TrainingJob(BaseModel):
 
 class TrainingResult(BaseModel):
     """Training completion result."""
+
     job_id: str
     model_id: str
     model_version: str
@@ -68,6 +71,7 @@ class TrainingResult(BaseModel):
 
 class LogoTrainingProgress(BaseModel):
     """Training progress per logo type."""
+
     logo_id: str
     category: str
     value: str
@@ -118,7 +122,9 @@ async def start_training(
     except HoldoutSetTooSmallError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
-    logger.info("Training job started", job_id=progress.job_id, batch_id=request.batch_id)
+    logger.info(
+        "Training job started", job_id=progress.job_id, batch_id=request.batch_id
+    )
 
     return TrainingJob(
         job_id=progress.job_id,
@@ -150,7 +156,9 @@ async def get_training_status(job_id: str) -> TrainingJob:
             current_accuracy=progress.current_accuracy,
             best_accuracy=progress.best_accuracy,
             started_at=progress.started_at.isoformat() if progress.started_at else None,
-            completed_at=progress.completed_at.isoformat() if progress.completed_at else None,
+            completed_at=(
+                progress.completed_at.isoformat() if progress.completed_at else None
+            ),
             error_message=progress.error_message,
         )
 
@@ -190,32 +198,36 @@ async def list_training_jobs(
     result = []
 
     for job in active_jobs:
-        result.append(TrainingJob(
-            job_id=job["job_id"],
-            batch_id="",
-            status=job["status"],
-            progress=job["progress"],
-            total_epochs=job["total_epochs"],
-            current_epoch=job["current_epoch"],
-            current_accuracy=job["current_accuracy"],
-            best_accuracy=job["best_accuracy"],
-            started_at=job["started_at"],
-            completed_at=job["completed_at"],
-            error_message=job["error_message"],
-        ))
+        result.append(
+            TrainingJob(
+                job_id=job["job_id"],
+                batch_id="",
+                status=job["status"],
+                progress=job["progress"],
+                total_epochs=job["total_epochs"],
+                current_epoch=job["current_epoch"],
+                current_accuracy=job["current_accuracy"],
+                best_accuracy=job["best_accuracy"],
+                started_at=job["started_at"],
+                completed_at=job["completed_at"],
+                error_message=job["error_message"],
+            )
+        )
 
     for job in db_jobs:
         # Skip if already in active jobs
         if any(a.job_id == str(job["id"]) for a in result):
             continue
 
-        result.append(TrainingJob(
-            job_id=str(job["id"]),
-            batch_id=job.get("name", ""),
-            status=job["status"].lower() if job.get("status") else "unknown",
-            progress=100 if job.get("status") == "COMPLETED" else 0,
-            total_epochs=0,
-        ))
+        result.append(
+            TrainingJob(
+                job_id=str(job["id"]),
+                batch_id=job.get("name", ""),
+                status=job["status"].lower() if job.get("status") else "unknown",
+                progress=100 if job.get("status") == "COMPLETED" else 0,
+                total_epochs=0,
+            )
+        )
 
     return result[:limit]
 
@@ -228,7 +240,9 @@ async def cancel_training(job_id: str) -> dict:
     cancelled = await trainer_service.cancel_job(job_id)
 
     if not cancelled:
-        raise HTTPException(status_code=404, detail="Training job not found or already completed")
+        raise HTTPException(
+            status_code=404, detail="Training job not found or already completed"
+        )
 
     logger.info("Training job cancelled", job_id=job_id)
 

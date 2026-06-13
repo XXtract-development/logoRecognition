@@ -53,9 +53,16 @@ class ModelManager:
 
             # Check if model file exists
             import os
+
             if os.path.exists(model_path):
-                providers = ['CUDAExecutionProvider', 'CPUExecutionProvider'] if settings.ENABLE_GPU else ['CPUExecutionProvider']
-                self.detection_model = ort.InferenceSession(model_path, providers=providers)
+                providers = (
+                    ["CUDAExecutionProvider", "CPUExecutionProvider"]
+                    if settings.ENABLE_GPU
+                    else ["CPUExecutionProvider"]
+                )
+                self.detection_model = ort.InferenceSession(
+                    model_path, providers=providers
+                )
                 logger.info("ONNX detection model loaded")
             else:
                 logger.warning("Detection model not found, using mock", path=model_path)
@@ -78,7 +85,9 @@ class ModelManager:
 
             # Use EfficientNet for embeddings
             if settings.EMBEDDING_MODEL == "efficientnet_b0":
-                model = models.efficientnet_b0(weights=models.EfficientNet_B0_Weights.DEFAULT)
+                model = models.efficientnet_b0(
+                    weights=models.EfficientNet_B0_Weights.DEFAULT
+                )
                 # Remove classifier to get embeddings
                 model.classifier = torch.nn.Identity()
             else:
@@ -109,6 +118,7 @@ class ModelManager:
         # Clear CUDA cache if available
         try:
             import torch
+
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
         except ImportError:
@@ -133,7 +143,7 @@ class ModelManager:
         img_array = self._preprocess_image(image, size=(640, 640))
 
         # Run inference
-        if hasattr(self.detection_model, 'run'):
+        if hasattr(self.detection_model, "run"):
             # ONNX model
             input_name = self.detection_model.get_inputs()[0].name
             outputs = self.detection_model.run(None, {input_name: img_array})
@@ -160,15 +170,16 @@ class ModelManager:
             from torchvision import transforms
 
             # Preprocessing
-            preprocess = transforms.Compose([
-                transforms.Resize(256),
-                transforms.CenterCrop(224),
-                transforms.ToTensor(),
-                transforms.Normalize(
-                    mean=[0.485, 0.456, 0.406],
-                    std=[0.229, 0.224, 0.225]
-                ),
-            ])
+            preprocess = transforms.Compose(
+                [
+                    transforms.Resize(256),
+                    transforms.CenterCrop(224),
+                    transforms.ToTensor(),
+                    transforms.Normalize(
+                        mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
+                    ),
+                ]
+            )
 
             input_tensor = preprocess(image).unsqueeze(0).to(self._device)
 
@@ -188,7 +199,9 @@ class ModelManager:
             # Mock embedding
             return np.random.randn(512).astype(np.float32)
 
-    def _preprocess_image(self, image: Image.Image, size: tuple = (640, 640)) -> np.ndarray:
+    def _preprocess_image(
+        self, image: Image.Image, size: tuple = (640, 640)
+    ) -> np.ndarray:
         """Preprocess image for detection model."""
         image = image.resize(size)
         img_array = np.array(image).astype(np.float32)
@@ -225,6 +238,7 @@ class MockEmbeddingModel:
     def __call__(self, x):
         """Return mock embeddings."""
         import numpy as np
+
         return np.random.randn(1, 512).astype(np.float32)
 
 

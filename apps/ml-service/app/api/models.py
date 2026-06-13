@@ -17,6 +17,7 @@ router = APIRouter()
 
 class ModelInfo(BaseModel):
     """Model information."""
+
     id: str
     version: str
     model_type: str
@@ -32,12 +33,14 @@ class ModelInfo(BaseModel):
 
 class ModelListResponse(BaseModel):
     """List of models response."""
+
     models: List[ModelInfo]
     active_model: Optional[str] = None
 
 
 class ActivateModelRequest(BaseModel):
     """Request to activate a model."""
+
     model_id: str
 
 
@@ -62,7 +65,11 @@ async def list_models() -> ModelListResponse:
                 f1_score=m.get("f1_score"),
                 training_samples=0,  # TODO: Add to model_versions table
                 is_active=m.get("is_active", False),
-                created_at=m["created_at"].isoformat() if m.get("created_at") else datetime.utcnow().isoformat(),
+                created_at=(
+                    m["created_at"].isoformat()
+                    if m.get("created_at")
+                    else datetime.utcnow().isoformat()
+                ),
             )
             for m in db_models
         ]
@@ -104,7 +111,11 @@ async def get_model(model_id: str) -> ModelInfo:
             f1_score=model.get("f1_score"),
             training_samples=0,
             is_active=model.get("is_active", False),
-            created_at=model["created_at"].isoformat() if model.get("created_at") else datetime.utcnow().isoformat(),
+            created_at=(
+                model["created_at"].isoformat()
+                if model.get("created_at")
+                else datetime.utcnow().isoformat()
+            ),
         )
     except HTTPException:
         raise
@@ -136,7 +147,9 @@ async def activate_model(model_id: str) -> dict:
         }
     except Exception as e:
         logger.error(f"Failed to activate model: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to activate model: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to activate model: {str(e)}"
+        )
 
 
 @router.delete("/models/{model_id}")
@@ -166,7 +179,9 @@ async def delete_model(model_id: str) -> dict:
 
         # Note: We don't have a delete_model method in db_service yet
         # For now, just log the deletion
-        logger.info("Model deletion requested (database cleanup pending)", model_id=model_id)
+        logger.info(
+            "Model deletion requested (database cleanup pending)", model_id=model_id
+        )
 
         return {
             "message": "Model deleted",

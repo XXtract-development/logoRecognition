@@ -91,10 +91,16 @@ def _parse_class_thresholds(raw: Optional[str]) -> Dict[str, float]:
     try:
         parsed = json.loads(raw)
     except (ValueError, TypeError) as exc:
-        logger.warning("Invalid LOCALIZE_CLASS_THRESHOLDS JSON — ignoring", extra={"error": str(exc)})
+        logger.warning(
+            "Invalid LOCALIZE_CLASS_THRESHOLDS JSON — ignoring",
+            extra={"error": str(exc)},
+        )
         return {}
     if not isinstance(parsed, dict):
-        logger.warning("LOCALIZE_CLASS_THRESHOLDS is not a JSON object — ignoring", extra={"type": type(parsed).__name__})
+        logger.warning(
+            "LOCALIZE_CLASS_THRESHOLDS is not a JSON object — ignoring",
+            extra={"type": type(parsed).__name__},
+        )
         return {}
 
     out: Dict[str, float] = {}
@@ -102,10 +108,16 @@ def _parse_class_thresholds(raw: Optional[str]) -> Dict[str, float]:
         try:
             thr = float(value)
         except (ValueError, TypeError):
-            logger.warning("Dropping non-numeric class threshold", extra={"t3777_code": code, "value": value})
+            logger.warning(
+                "Dropping non-numeric class threshold",
+                extra={"t3777_code": code, "value": value},
+            )
             continue
         if not (0.0 <= thr <= 1.0):
-            logger.warning("Dropping out-of-range class threshold", extra={"t3777_code": code, "value": thr})
+            logger.warning(
+                "Dropping out-of-range class threshold",
+                extra={"t3777_code": code, "value": thr},
+            )
             continue
         out[str(code)] = thr
     return out
@@ -269,7 +281,11 @@ def _variance(arr: Any) -> float:
     return float(np.std(arr.astype(np.float32)))
 
 
-def _is_uniform_bright(arr: Any, min_variance: float = LOCALIZE_MIN_VARIANCE, bright_threshold: float = 200.0) -> bool:
+def _is_uniform_bright(
+    arr: Any,
+    min_variance: float = LOCALIZE_MIN_VARIANCE,
+    bright_threshold: float = 200.0,
+) -> bool:
     """
     Return True if the array is both low-variance AND bright (near-white).
 
@@ -279,7 +295,10 @@ def _is_uniform_bright(arr: Any, min_variance: float = LOCALIZE_MIN_VARIANCE, br
     """
     import numpy as np
 
-    return _variance(arr) < min_variance and float(np.mean(arr.astype(np.float32))) > bright_threshold
+    return (
+        _variance(arr) < min_variance
+        and float(np.mean(arr.astype(np.float32))) > bright_threshold
+    )
 
 
 def _resolve_threshold(t3777_code: str, min_score: float) -> float:
@@ -332,12 +351,13 @@ def match_templates(
     """
     try:
         import cv2
-        import numpy as np
     except ImportError:
         logger.error("OpenCV (cv2) not installed — cannot run template matching")
         return []
 
-    tile_gray = cv2.cvtColor(tile, cv2.COLOR_BGR2GRAY) if len(tile.shape) == 3 else tile.copy()
+    tile_gray = (
+        cv2.cvtColor(tile, cv2.COLOR_BGR2GRAY) if len(tile.shape) == 3 else tile.copy()
+    )
     th, tw = tile_gray.shape[:2]
 
     peaks_per_variant = max(1, int(LOCALIZE_PEAKS_PER_VARIANT))
@@ -356,12 +376,18 @@ def match_templates(
         if _is_uniform_bright(tmpl_img):
             logger.debug(
                 "Skipping near-white low-variance template variant",
-                extra={"t3777_code": t3777_code, "scale": tmpl_scale, "variance": _variance(tmpl_img)},
+                extra={
+                    "t3777_code": t3777_code,
+                    "scale": tmpl_scale,
+                    "variance": _variance(tmpl_img),
+                },
             )
             continue
 
         tmpl_gray = (
-            cv2.cvtColor(tmpl_img, cv2.COLOR_BGR2GRAY) if len(tmpl_img.shape) == 3 else tmpl_img.copy()
+            cv2.cvtColor(tmpl_img, cv2.COLOR_BGR2GRAY)
+            if len(tmpl_img.shape) == 3
+            else tmpl_img.copy()
         )
         tmpl_h, tmpl_w = tmpl_gray.shape[:2]
 
@@ -371,7 +397,12 @@ def match_templates(
         if tmpl_h > th or tmpl_w > tw:
             logger.debug(
                 "Template variant larger than tile — skipping this variant",
-                extra={"t3777_code": t3777_code, "scale": tmpl_scale, "tile_size": (tw, th), "tmpl_size": (tmpl_w, tmpl_h)},
+                extra={
+                    "t3777_code": t3777_code,
+                    "scale": tmpl_scale,
+                    "tile_size": (tw, th),
+                    "tmpl_size": (tmpl_w, tmpl_h),
+                },
             )
             continue
 
@@ -417,7 +448,11 @@ def match_templates(
         except cv2.error as exc:
             logger.warning(
                 "matchTemplate failed",
-                extra={"t3777_code": t3777_code, "scale": tmpl_scale, "error": str(exc)},
+                extra={
+                    "t3777_code": t3777_code,
+                    "scale": tmpl_scale,
+                    "error": str(exc),
+                },
             )
             continue
 
@@ -425,7 +460,13 @@ def match_templates(
             if score < effective_threshold:
                 logger.debug(
                     "Match below threshold",
-                    extra={"t3777_code": t3777_code, "scale": tmpl_scale, "metric": metric, "score": score, "threshold": effective_threshold},
+                    extra={
+                        "t3777_code": t3777_code,
+                        "scale": tmpl_scale,
+                        "metric": metric,
+                        "score": score,
+                        "threshold": effective_threshold,
+                    },
                 )
                 continue
 
@@ -434,7 +475,12 @@ def match_templates(
             if _is_uniform_bright(matched_region):
                 logger.debug(
                     "Near-white match region rejected",
-                    extra={"t3777_code": t3777_code, "scale": tmpl_scale, "score": score, "region_variance": _variance(matched_region)},
+                    extra={
+                        "t3777_code": t3777_code,
+                        "scale": tmpl_scale,
+                        "score": score,
+                        "region_variance": _variance(matched_region),
+                    },
                 )
                 continue
 

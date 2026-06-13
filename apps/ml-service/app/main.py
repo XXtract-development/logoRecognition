@@ -3,7 +3,6 @@ Logo Recognition ML Service - Main Application
 FastAPI application for logo detection, training, and inference.
 """
 
-import os
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
@@ -11,7 +10,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import make_asgi_app
 
-from app.api import health, detection, training, models, artwork as artwork_api, pipeline as pipeline_api
+from app.api import (
+    health,
+    detection,
+    training,
+    models,
+    artwork as artwork_api,
+    pipeline as pipeline_api,
+)
 from app.core.config import settings
 from app.core.logging import setup_logging, logger
 from app.ml.model_manager import model_manager
@@ -29,6 +35,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
     # Connect to database
     try:
         from app.services.database import db_service
+
         await db_service.connect()
         logger.info("Database connected successfully")
     except Exception as e:
@@ -38,6 +45,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
     # Connect to storage
     try:
         from app.services.storage import storage_service
+
         storage_service.connect()
         logger.info("Storage connected successfully")
     except Exception as e:
@@ -68,6 +76,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
     try:
         from app.services.similarity import similarity_service
         from app.services.database import db_service
+
         async with db_service.get_connection() as lock_conn:
             got_lock = await lock_conn.fetchval(
                 "SELECT pg_try_advisory_lock($1)", REF_REBUILD_LOCK_KEY
@@ -98,6 +107,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
     # Disconnect from services
     try:
         from app.services.database import db_service
+
         await db_service.disconnect()
     except Exception:
         pass

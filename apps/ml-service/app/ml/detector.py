@@ -50,16 +50,13 @@ class LogoDetector:
         raw_detections = await self.model_manager.detect(image)
 
         # Filter by confidence
-        detections = [
-            d for d in raw_detections
-            if d.get("confidence", 0) >= threshold
-        ]
+        detections = [d for d in raw_detections if d.get("confidence", 0) >= threshold]
 
         # Apply NMS (Non-Maximum Suppression)
         detections = self._apply_nms(detections)
 
         # Limit detections
-        detections = detections[:self.max_detections]
+        detections = detections[: self.max_detections]
 
         # Generate embeddings if requested
         if return_embeddings:
@@ -67,12 +64,14 @@ class LogoDetector:
                 try:
                     # Crop the detection region
                     bbox = det["bbox"]
-                    crop = image.crop((
-                        bbox["x"],
-                        bbox["y"],
-                        bbox["x"] + bbox["width"],
-                        bbox["y"] + bbox["height"]
-                    ))
+                    crop = image.crop(
+                        (
+                            bbox["x"],
+                            bbox["y"],
+                            bbox["x"] + bbox["width"],
+                            bbox["y"] + bbox["height"],
+                        )
+                    )
 
                     # Generate embedding
                     embedding = await self.model_manager.generate_embedding(crop)
@@ -109,7 +108,8 @@ class LogoDetector:
 
             # Remove overlapping detections
             detections = [
-                d for d in detections
+                d
+                for d in detections
                 if self._iou(best["bbox"], d["bbox"]) < self.nms_threshold
             ]
 
@@ -137,7 +137,6 @@ class LogoDetector:
         Match detections with known logos using embedding similarity.
         Uses vector similarity search against stored logo embeddings.
         """
-        from app.services.similarity import similarity_service
 
         matched = []
         for det in detections:
@@ -145,6 +144,7 @@ class LogoDetector:
             if det.get("embedding"):
                 try:
                     import numpy as np
+
                     embedding = np.array(det["embedding"])
                     from app.services.database import db_service
 
@@ -230,7 +230,7 @@ class LogoDetector:
             # Find contour containing click point
             click_point = (click_x, click_y)
             best_contour = None
-            min_area = float('inf')
+            min_area = float("inf")
 
             for contour in contours:
                 if cv2.pointPolygonTest(contour, click_point, False) >= 0:

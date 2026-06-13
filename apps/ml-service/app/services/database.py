@@ -3,10 +3,8 @@ Database service for ML Service.
 Handles PostgreSQL connection and queries for training jobs, models, and embeddings.
 """
 
-import os
 import json
 from typing import Optional, List, Dict, Any
-from datetime import datetime
 import asyncpg
 import numpy as np
 from contextlib import asynccontextmanager
@@ -104,8 +102,9 @@ class DatabaseService:
                 VALUES ($1, $2, 'TRAINING', $3, NOW(), NOW())
                 RETURNING id, name, status, created_at
                 """,
-                job_id, f"Training job for batch {batch_id}",
-                user_id or "00000000-0000-0000-0000-000000000000"
+                job_id,
+                f"Training job for batch {batch_id}",
+                user_id or "00000000-0000-0000-0000-000000000000",
             )
             return dict(row) if row else {}
 
@@ -126,15 +125,15 @@ class DatabaseService:
                 SET status = $2, updated_at = NOW()
                 WHERE id = $1
                 """,
-                job_id, status
+                job_id,
+                status,
             )
 
     async def get_training_job(self, job_id: str) -> Optional[Dict[str, Any]]:
         """Get training job by ID."""
         async with self.get_connection() as conn:
             row = await conn.fetchrow(
-                "SELECT * FROM training_batches WHERE id = $1",
-                job_id
+                "SELECT * FROM training_batches WHERE id = $1", job_id
             )
             return dict(row) if row else None
 
@@ -153,7 +152,8 @@ class DatabaseService:
                     ORDER BY created_at DESC
                     LIMIT $2
                     """,
-                    status, limit
+                    status,
+                    limit,
                 )
             else:
                 rows = await conn.fetch(
@@ -162,7 +162,7 @@ class DatabaseService:
                     ORDER BY created_at DESC
                     LIMIT $1
                     """,
-                    limit
+                    limit,
                 )
             return [dict(row) for row in rows]
 
@@ -198,8 +198,14 @@ class DatabaseService:
                 VALUES ($1, $2, $3, $4, $5, $6, NOW(), false, $7, $8, NOW())
                 RETURNING id, version, model_type, accuracy, is_active, created_at
                 """,
-                version, model_type, accuracy, precision_score, recall_score, f1_score,
-                json.dumps(config or {}), json.dumps(metrics or {})
+                version,
+                model_type,
+                accuracy,
+                precision_score,
+                recall_score,
+                f1_score,
+                json.dumps(config or {}),
+                json.dumps(metrics or {}),
             )
             return dict(row) if row else {}
 
@@ -216,13 +222,10 @@ class DatabaseService:
         async with self.get_connection() as conn:
             async with conn.transaction():
                 # Deactivate all models
-                await conn.execute(
-                    "UPDATE model_versions SET is_active = false"
-                )
+                await conn.execute("UPDATE model_versions SET is_active = false")
                 # Activate the specified model
                 await conn.execute(
-                    "UPDATE model_versions SET is_active = true WHERE id = $1",
-                    model_id
+                    "UPDATE model_versions SET is_active = true WHERE id = $1", model_id
                 )
 
     async def list_models(self, limit: int = 20) -> List[Dict[str, Any]]:
@@ -234,7 +237,7 @@ class DatabaseService:
                 ORDER BY created_at DESC
                 LIMIT $1
                 """,
-                limit
+                limit,
             )
             return [dict(row) for row in rows]
 
@@ -252,7 +255,8 @@ class DatabaseService:
             # Try to get existing
             row = await conn.fetchrow(
                 "SELECT * FROM logos WHERE category = $1 AND value = $2",
-                category, value
+                category,
+                value,
             )
             if row:
                 return dict(row)
@@ -264,7 +268,8 @@ class DatabaseService:
                 VALUES ($1, $2, 0.99, 0, true, NOW(), NOW())
                 RETURNING *
                 """,
-                category, value
+                category,
+                value,
             )
             return dict(row) if row else {}
 
@@ -282,7 +287,9 @@ class DatabaseService:
                 SET training_samples = $2, accuracy = $3, updated_at = NOW()
                 WHERE id = $1
                 """,
-                logo_id, training_samples, accuracy
+                logo_id,
+                training_samples,
+                accuracy,
             )
 
     async def get_all_logos(self, active_only: bool = True) -> List[Dict[str, Any]]:
@@ -293,9 +300,7 @@ class DatabaseService:
                     "SELECT * FROM logos WHERE is_active = true ORDER BY category, value"
                 )
             else:
-                rows = await conn.fetch(
-                    "SELECT * FROM logos ORDER BY category, value"
-                )
+                rows = await conn.fetch("SELECT * FROM logos ORDER BY category, value")
             return [dict(row) for row in rows]
 
     async def get_logo_training_progress(self) -> List[Dict[str, Any]]:
@@ -338,9 +343,11 @@ class DatabaseService:
                 VALUES ($1, $2, $3, NOW())
                 RETURNING id
                 """,
-                logo_id, model_id, str(embedding_list)
+                logo_id,
+                model_id,
+                str(embedding_list),
             )
-            return str(row['id']) if row else ""
+            return str(row["id"]) if row else ""
 
     async def find_similar_logos(
         self,
@@ -366,9 +373,10 @@ class DatabaseService:
                 ORDER BY le.embedding <=> $1::vector
                 LIMIT $2
                 """,
-                str(embedding_list), limit
+                str(embedding_list),
+                limit,
             )
-            return [dict(row) for row in rows if row.get('similarity', 0) >= threshold]
+            return [dict(row) for row in rows if row.get("similarity", 0) >= threshold]
 
     # ============================================
     # Reference Embedding Operations (Epic 8, Story 8.4)
@@ -397,9 +405,10 @@ class DatabaseService:
                 VALUES ($1, $2, NOW())
                 RETURNING id
                 """,
-                reference_logo_id, str(embedding_list)
+                reference_logo_id,
+                str(embedding_list),
             )
-            return str(row['id']) if row else ""
+            return str(row["id"]) if row else ""
 
     async def clear_reference_embeddings(self) -> int:
         """Delete all reference embeddings (used before a full rebuild)."""
@@ -441,7 +450,9 @@ class DatabaseService:
             index_name = row["indexname"]
             # Identifier comes from pg_indexes (not user input); quote defensively.
             await conn.execute(f'REINDEX INDEX "{index_name}"')
-            logger.info(f"REINDEX complete for reference_embeddings index '{index_name}'")
+            logger.info(
+                f"REINDEX complete for reference_embeddings index '{index_name}'"
+            )
 
     async def get_reference_embeddings(self) -> List[Dict[str, Any]]:
         """Return all reference embeddings joined with their keurmerk metadata.
@@ -510,7 +521,8 @@ class DatabaseService:
                 ORDER BY re.embedding <=> $1::vector
                 LIMIT $2
                 """,
-                str(embedding_list), limit
+                str(embedding_list),
+                limit,
             )
             out: List[Dict[str, Any]] = []
             for row in rows:
