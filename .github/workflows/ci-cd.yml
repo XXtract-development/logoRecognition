@@ -337,6 +337,11 @@ jobs:
       - name: Prisma generate + migrate
         run: |
           cd apps/api
+          # Migrations 0007/0008 GRANT to the app role `logorecognition`, which
+          # exists on the real databases but not in the fresh CI postgres. Create
+          # an empty role so the GRANTs apply (the app itself connects as postgres).
+          PGPASSWORD=postgres psql -h localhost -U postgres -d logo_recognition_test \
+            -c "DO \$\$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname='logorecognition') THEN CREATE ROLE logorecognition; END IF; END \$\$;"
           npx prisma generate
           npx prisma migrate deploy
 
