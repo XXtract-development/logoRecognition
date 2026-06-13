@@ -177,7 +177,10 @@ jobs:
           JWT_SECRET: smoke-test-secret
           PIPELINE_SERVICE_KEY: smoke-test-pipeline-key-32chars-min
           GATE_MIN_IMPROVEMENT: '0.02'
-          MINI_DATASET_PATH: tests/fixtures/mini-dataset
+          # Absolute path: the step runs from apps/api, but the fixture lives at
+          # the repo root (tests/fixtures/mini-dataset). A relative value resolved
+          # to apps/api/tests/... and the integrity checks failed (ENOENT).
+          MINI_DATASET_PATH: ${{ github.workspace }}/tests/fixtures/mini-dataset
 
   # ===========================================
   # ML SERVICE (Python)
