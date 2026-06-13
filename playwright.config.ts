@@ -32,7 +32,8 @@ export default defineConfig({
   // Shared settings for all the projects below
   use: {
     // Base URL to use in actions like `await page.goto('/')`
-    baseURL: process.env.BASE_URL || 'http://localhost:3000',
+    // Use port 5173 (Vite default) to avoid conflict with other apps on 3000
+    baseURL: process.env.BASE_URL || 'http://localhost:5173',
 
     // Collect trace when retrying the failed test
     trace: 'on-first-retry',
@@ -47,40 +48,24 @@ export default defineConfig({
     actionTimeout: 10000,
   },
 
-  // Configure projects for major browsers
+  // CI installs only chromium (playwright install --with-deps chromium); the
+  // other browsers would fail to launch. Keep a single project so the suite is
+  // deterministic and matches the installed browser.
   projects: [
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
-
-    {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
-    },
-
-    {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
-    },
-
-    // Mobile viewports
-    {
-      name: 'Mobile Chrome',
-      use: { ...devices['Pixel 5'] },
-    },
-    {
-      name: 'Mobile Safari',
-      use: { ...devices['iPhone 12'] },
-    },
   ],
 
-  // Run your local dev server before starting the tests
-  // DISABLED: Dev server should be started manually with: cd apps/web && pnpm run dev
-  // webServer: {
-  //   command: 'cd apps/web && pnpm run dev',
-  //   url: 'http://localhost:3000',
-  //   reuseExistingServer: true,
-  //   timeout: 120000,
-  // },
+  // Start the frontend automatically. The E2E job (and a local run) bring up the
+  // backend stack separately; the frontend talks to it via the proxy/baseURL.
+  // reuseExistingServer locally so a dev server you already have is reused; in CI
+  // it always starts fresh.
+  webServer: {
+    command: 'pnpm --filter @logo-recognition/web dev',
+    url: 'http://localhost:5173',
+    reuseExistingServer: !process.env.CI,
+    timeout: 120000,
+  },
 });
