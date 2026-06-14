@@ -1,5 +1,12 @@
 # Versiegeschiedenis
 
+## 2026-06-14 (review desktop: logo's nu direct zichtbaar)
+
+### Desktop-reviewlijst toont nu een thumbnail per item
+- Op de desktop-pagina moest je voorheen per item op "Toon herkomst" klikken om de gevonden afbeelding te zien — reviewen was daardoor onwerkbaar
+- Elk item toont nu links een kleine afbeelding (thumbnail) van de gevonden uitsnede, direct zichtbaar; klik erop voor de volledige herkomst
+- Zo beoordeel je de logo's in één oogopslag
+
 ## 2026-06-14 (review-queue: tekst en tabellen weggefilterd)
 
 ### Geen voedingstabellen en tekst meer als keurmerk voorgesteld

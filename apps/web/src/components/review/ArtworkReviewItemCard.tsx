@@ -76,13 +76,13 @@ const ArtworkReviewItemCard: React.FC<ArtworkReviewItemCardProps> = ({
   const [cropError, setCropError] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  // Presign the crop only when the item is opened (on-view), exactly once per
-  // item. A ref guards against re-fetching on re-render; depending only on
-  // [expanded, item.id] avoids a cleanup/finally race that would otherwise
-  // leave the spinner stuck.
+  // Presign the crop on mount (once per item) so every row shows a thumbnail —
+  // reviewing the queue means SEEING the logos at a glance, not click-to-expand
+  // each item. The same presigned URL feeds the thumbnail and the expanded
+  // provenance crop. A ref guards against re-fetching on re-render.
   const requestedRef = React.useRef<string | null>(null);
   useEffect(() => {
-    if (!expanded || requestedRef.current === item.id) return;
+    if (requestedRef.current === item.id) return;
     requestedRef.current = item.id;
     let active = true;
     setCropLoading(true);
@@ -133,9 +133,43 @@ const ArtworkReviewItemCard: React.FC<ArtworkReviewItemCardProps> = ({
       style={{ borderColor: '#E2E8F0' }}
     >
       <Space direction="vertical" size="small" style={{ width: '100%' }}>
-        {/* Header: proposed label + confidence + method */}
+        {/* Header: thumbnail + proposed label + confidence + method */}
         <Space wrap align="center" style={{ justifyContent: 'space-between', width: '100%' }}>
           <Space wrap align="center">
+            {/* Always-visible crop thumbnail so the queue is reviewable at a
+                glance. Click to expand full provenance. */}
+            <div
+              onClick={() => setExpanded((v) => !v)}
+              title={t('review.showDetails', { defaultValue: 'Toon herkomst' })}
+              style={{
+                width: 64,
+                height: 64,
+                flex: '0 0 auto',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: '#F8FAFC',
+                border: '1px solid #E2E8F0',
+                borderRadius: 6,
+                cursor: 'pointer',
+                overflow: 'hidden',
+              }}
+            >
+              {cropLoading ? (
+                <Spin size="small" />
+              ) : cropUrl ? (
+                <img
+                  data-testid="review-item-thumb"
+                  src={cropUrl}
+                  alt={`${item.t3777Code} crop`}
+                  style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                />
+              ) : (
+                <Text type="secondary" style={{ fontSize: 10 }}>
+                  {cropError ? '—' : '…'}
+                </Text>
+              )}
+            </div>
             <Text strong style={{ color: '#1E293B', fontSize: 15 }}>
               {item.t3777Code}
             </Text>
