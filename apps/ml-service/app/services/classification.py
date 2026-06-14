@@ -115,6 +115,24 @@ async def _classify_via_embedding(
 
     embedding = raw_embedding.astype(np.float32)
 
+    # Keurmerk-vs-not gate (Story 12.4 interim): the proposer surfaces non-keurmerk
+    # regions (text, tables, pictograms) that otherwise get a keurmerk label at
+    # moderate confidence and flood the review queue. Score the SAME embedding; if
+    # it is confidently non-keurmerk, return UNKNOWN before the reference search.
+    # Fail-open: a disabled/missing gate returns None and never blocks.
+    from app.services.keurmerk_gate import keurmerk_probability, GATE_THRESHOLD
+
+    kp = keurmerk_probability(embedding)
+    if kp is not None and kp < GATE_THRESHOLD:
+        return {
+            "t3777_code": CLASSIFY_UNKNOWN_CODE,
+            "confidence": 0.0,
+            "method": "embedding",
+            "uncertain": True,
+            "keurmerk_prob": round(kp, 3),
+            "gated": True,
+        }
+
     # pgvector cosine search against the reference library — reuse the existing
     # vector-search pattern (find_similar_logos), no Python-side vector search.
     matches = await db_service.find_similar_references(

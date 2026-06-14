@@ -1,5 +1,13 @@
 # Versiegeschiedenis
 
+## 2026-06-14 (review-queue: tekst en tabellen weggefilterd)
+
+### Geen voedingstabellen en tekst meer als keurmerk voorgesteld
+- De herkenning sneed voorheen overal stukjes uit het artwork en stelde die als keurmerk voor — ook voedingstabellen, losse tekst en halve afbeeldingen, waardoor de review-lijst onbruikbaar was
+- Een nieuwe filter beoordeelt eerst of een gevonden stukje überhaupt op een logo/merk lijkt; tekst, tabellen en fragmenten worden nu automatisch weggehouden
+- De bestaande review-lijst is hierop opgeschoond (honderden niet-logo-voorstellen verborgen, niet verwijderd)
+- Let op: de filter houdt nog wél alle logo-achtige stukjes (ook merklogo's) over; het fijnere onderscheid "is dit een keurmerk of een merklogo" is een vervolgstap
+
 ## 2026-06-12 (herkenning leert nu automatisch mee met de review)
 
 ### Elk bevestigd logo verbetert direct de herkenning
