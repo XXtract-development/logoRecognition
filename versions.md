@@ -1,5 +1,14 @@
 # Versiegeschiedenis
 
+## 2026-06-15 (herkenning: verbeterde keurmerk-filter live)
+
+### Tekst, tabellen en pictogrammen worden nu betrouwbaarder weggefilterd
+- De filter die beoordeelt of een gevonden stukje überhaupt een keurmerk is, is opnieuw getraind — nu op honderden door de beoordelaar afgekeurde voorbeelden in plaats van eenvoudige ruis
+- Daardoor houdt de herkenning veel meer niet-keurmerken tegen: voedingstabellen, losse tekst, kleurstalen, font-overzichten en pictogrammen (zoals een kooktimer of koffiekopje) belanden niet langer als keurmerk-voorstel in de review
+- Op een steekproef ging het aandeel correcte voorstellen in de opgeschoonde review-lijst van circa 30% naar circa 74%
+- Deze verbeterde filter werkt nu ook live in de herkenning zelf, niet alleen in de review-lijst
+- Let op: het allerfijnste onderscheid (een echt keurmerk versus een gewoon merklogo) blijft een vervolgstap; daarvoor is meer beoordeeld voorbeeldmateriaal nodig
+
 ## 2026-06-14 (review desktop: logo's nu direct zichtbaar)
 
 ### Desktop-reviewlijst toont nu een thumbnail per item

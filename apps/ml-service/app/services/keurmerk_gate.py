@@ -9,8 +9,11 @@ computes: P(this crop is a keurmerk). Below a threshold the crop is treated as
 non-keurmerk → UNKNOWN, so it never becomes a keurmerk proposal.
 
 Spike-validated (12-4-spike-resultaten.md): effb0 + logistic regression separates
-keurmerk from the hard moderate-confidence negatives at ROC-AUC ~0.96. The model is
-persisted as plain weights (coef + intercept) in storage so serving needs no sklearn.
+keurmerk from the hard negatives. gate-v1 was trained on EASY noise (ROC-AUC ~0.96 but
+only caught ~25% of the real queue flood). gate-v2 (default) is trained on the 212
+PO-rejected hard-negatives → ROC-AUC 0.85, and actually filters the brand-logo / text /
+pictogram flood (12-4-gate-v2-resultaten.md). The model is persisted as plain weights
+(coef + intercept) in storage so serving needs no sklearn.
 
 Fail-OPEN by design: if the model is missing/unreadable, the gate passes everything
 (probability None → caller does not block). A broken gate must never silently drop
@@ -19,7 +22,7 @@ all detections.
 Configuration (env):
   KEURMERK_GATE_ENABLED    — master switch (default "true")
   KEURMERK_GATE_THRESHOLD  — P(keurmerk) below which a crop is non-keurmerk (default 0.5)
-  KEURMERK_GATE_KEY        — storage key of the weights (default keurmerk-gate/gate-v1.json)
+  KEURMERK_GATE_KEY        — storage key of the weights (default keurmerk-gate/gate-v2.json)
 """
 
 import json
@@ -32,7 +35,7 @@ from app.core.logging import logger
 
 GATE_ENABLED: bool = os.environ.get("KEURMERK_GATE_ENABLED", "true").lower() == "true"
 GATE_THRESHOLD: float = float(os.environ.get("KEURMERK_GATE_THRESHOLD", "0.5"))
-GATE_KEY: str = os.environ.get("KEURMERK_GATE_KEY", "keurmerk-gate/gate-v1.json")
+GATE_KEY: str = os.environ.get("KEURMERK_GATE_KEY", "keurmerk-gate/gate-v2.json")
 
 # Cached weights: (coef ndarray, intercept float, l2_normalize bool) or False if a
 # load was attempted and failed (so we do not retry on every crop).

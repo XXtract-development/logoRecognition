@@ -23,7 +23,8 @@ async function main() {
   const { PrismaClient } = require('@prisma/client');
   const prisma = new PrismaClient();
 
-  const candidates = JSON.parse(fs.readFileSync(path.join(root, 'candidates.json'), 'utf8'));
+  const parsed = JSON.parse(fs.readFileSync(path.join(root, 'candidates.json'), 'utf8'));
+  const candidates = Array.isArray(parsed) ? parsed : parsed.candidates || [];
 
   // Idempotency: remove our own previous open 12.6 items (never the crosscheck ones).
   const cleared = await prisma.artworkReviewItem.deleteMany({
