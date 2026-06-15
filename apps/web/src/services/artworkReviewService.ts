@@ -58,13 +58,20 @@ export const fetchReviewQueue = async (
 };
 
 /**
- * On-view presigned URL for a single item's crop. Returns null when the item
- * has no crop (the UI then renders an empty-preview state). Called lazily when
- * an item is opened, never eagerly for the whole queue.
+ * On-view media URLs for a single item. `cropUrl` is the detected crop (null
+ * when the item has no crop). `artworkUrl` is the full-artwork fallback for
+ * crop-less "declared but not found" items, resolved by GTIN, so the reviewer
+ * can still hunt for the declared keurmerk on the whole pack. Called lazily
+ * when an item is opened, never eagerly for the whole queue.
  */
-export const fetchReviewItemCropUrl = async (id: string): Promise<string | null> => {
+export const fetchReviewItemCropUrl = async (
+  id: string
+): Promise<{ cropUrl: string | null; artworkUrl: string | null }> => {
   const response = await apiClient.get(`/artwork/review-items/${id}/crop-url`);
-  return response.data?.cropUrl ?? null;
+  return {
+    cropUrl: response.data?.cropUrl ?? null,
+    artworkUrl: response.data?.artworkUrl ?? null,
+  };
 };
 
 /**
@@ -90,6 +97,23 @@ export const fetchReviewItemCropBlob = async (id: string): Promise<string | null
     responseType: 'blob',
   });
   return response.data ? URL.createObjectURL(response.data as Blob) : null;
+};
+
+/**
+ * Fetch the full (downscaled) artwork for the item's GTIN as an authenticated
+ * blob URL — the fallback shown when an item has no crop ("declared but not
+ * found"). Returns null when no artwork is stored for the GTIN. The caller
+ * revokes the object URL when done.
+ */
+export const fetchReviewItemArtworkBlob = async (id: string): Promise<string | null> => {
+  try {
+    const response = await apiClient.get(`/artwork/review-items/${id}/artwork`, {
+      responseType: 'blob',
+    });
+    return response.data ? URL.createObjectURL(response.data as Blob) : null;
+  } catch {
+    return null;
+  }
 };
 
 /** A GS1 mark declared on the GTIN's packaging (Story 12.7 label-prior). */

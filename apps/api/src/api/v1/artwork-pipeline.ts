@@ -29,7 +29,11 @@ import crypto from 'crypto';
 import prisma from '../../core/db';
 import { logger } from '../../core/logger';
 import { requireRole, authMiddleware } from '../../middleware/auth';
-import { uploadArtwork, downloadTrainingObject } from '../../services/storage';
+import {
+  uploadArtwork,
+  downloadTrainingObject,
+  listTrainingObjectKeys,
+} from '../../services/storage';
 import { mediaServerClient } from '../../services/mediaserver-client';
 import { mlClient } from '../../services/ml-client';
 import {
@@ -93,6 +97,29 @@ async function markStaleRuns(): Promise<void> {
  */
 function sha256(buffer: Buffer): string {
   return crypto.createHash('sha256').update(buffer).digest('hex');
+}
+
+/**
+ * Resolve the best full-artwork object key for a GTIN from the
+ * `artwork/{gtin}/` storage convention. Prefers a converted page 0, then a
+ * first page (…_001 / …1), else the first image. Returns null when none exist.
+ * Used to show the whole pack for crop-less "declared but not found" items.
+ */
+async function resolveArtworkKeyForGtin(
+  gtin: string | null | undefined
+): Promise<string | null> {
+  if (!gtin) return null;
+  const keys = (await listTrainingObjectKeys(`artwork/${gtin}/`)).filter((k) =>
+    /\.(png|jpe?g)$/i.test(k)
+  );
+  if (keys.length === 0) return null;
+  const score = (k: string): number => {
+    if (/_converted-0\./i.test(k)) return 0;
+    if (/_0*1\.(png|jpe?g)$/i.test(k)) return 1;
+    return 2;
+  };
+  keys.sort((a, b) => score(a) - score(b) || a.localeCompare(b));
+  return keys[0];
 }
 
 /** True when the file name is a PDF (case-insensitive extension check). */
@@ -733,7 +760,59 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
 
       const cropUrl = item.cropPath ? `/api/v1/artwork/review-items/${id}/crop` : null;
 
-      return reply.status(200).send({ cropUrl });
+      // Crop-less items ("verwacht maar niet gevonden": a keurmerk is declared
+      // in GS1 but detection found nothing → no crop, no bbox, no sourceFile).
+      // Surface the full artwork by GTIN so the reviewer can still hunt for the
+      // declared mark on the whole pack instead of an empty "geen crop" state.
+      let artworkUrl: string | null = null;
+      if (!cropUrl && (await resolveArtworkKeyForGtin(item.gtin))) {
+        artworkUrl = `/api/v1/artwork/review-items/${id}/artwork`;
+      }
+
+      return reply.status(200).send({ cropUrl, artworkUrl });
+    }
+  );
+
+  /**
+   * GET /artwork/review-items/:id/artwork
+   * Streams the full (downscaled) artwork for the item's GTIN — the fallback
+   * for crop-less "declared but not found" items that have no crop/bbox/source.
+   * Resolves the artwork from storage by the `artwork/{gtin}/` convention.
+   */
+  fastify.get<{ Params: { id: string } }>(
+    '/artwork/review-items/:id/artwork',
+    { preHandler: authMiddleware },
+    async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+      const { id } = request.params;
+
+      const item = await prisma.artworkReviewItem.findUnique({ where: { id } });
+      if (!item) {
+        return reply.status(404).send({ error: 'Review item niet gevonden' });
+      }
+
+      const key = await resolveArtworkKeyForGtin(item.gtin);
+      if (!key) {
+        return reply.status(404).send({ error: 'Geen artwork voor deze GTIN' });
+      }
+
+      const buffer = await downloadTrainingObject(key);
+      if (!buffer) {
+        return reply.status(404).send({ error: 'Artwork niet gevonden in opslag' });
+      }
+
+      reply.header('Cache-Control', 'private, max-age=300');
+      try {
+        // Downscale so the multi-MB high-DPI page loads fast in the review card.
+        const out = await sharp(buffer)
+          .resize({ width: 1600, withoutEnlargement: true })
+          .jpeg({ quality: 82 })
+          .toBuffer();
+        return reply.type('image/jpeg').send(out);
+      } catch {
+        const ext = key.split('.').pop()?.toLowerCase();
+        const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : 'image/png';
+        return reply.type(mime).send(buffer);
+      }
     }
   );
 

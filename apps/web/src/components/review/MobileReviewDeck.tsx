@@ -29,6 +29,7 @@ import {
   rejectReviewItem,
   reopenReviewItem,
   fetchReviewItemCropBlob,
+  fetchReviewItemArtworkBlob,
   fetchReviewItemSourceBlob,
   fetchDeclaredMarks,
   type ArtworkReviewItem,
@@ -68,6 +69,7 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
   const [idx, setIdx] = useState(0);
   const [decisions, setDecisions] = useState<Record<string, Label>>({});
   const [cropUrl, setCropUrl] = useState<string | null>(null);
+  const [cropIsArtwork, setCropIsArtwork] = useState(false);
   const [cropLoading, setCropLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [drag, setDrag] = useState(0);
@@ -79,6 +81,9 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
   const [search, setSearch] = useState('');
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   const cache = useRef<Record<string, string>>({});
+  // Remembers which cached media URLs are the full-artwork fallback (no crop)
+  // rather than a real detected crop, so the hint renders on cache hits too.
+  const artworkCache = useRef<Record<string, boolean>>({});
   // Story 12.7 — declared GS1 marks of the current GTIN as a label-prior.
   // `has` = a real declaration exists (reason 'ok'); without it we show nothing
   // (graceful fallback). Cached per GTIN (queue repeats GTINs heavily).
@@ -111,17 +116,27 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
   const loadCrop = useCallback((id: string) => {
     if (cache.current[id]) {
       setCropUrl(cache.current[id]);
+      setCropIsArtwork(!!artworkCache.current[id]);
       setCropLoading(false);
       return;
     }
     setCropLoading(true);
     setCropUrl(null);
+    setCropIsArtwork(false);
     let active = true;
+    // Detected crop first; if the item has none ("declared but not found"),
+    // fall back to the full artwork by GTIN so the reviewer can hunt for the
+    // declared keurmerk instead of seeing an empty "Crop niet beschikbaar".
     fetchReviewItemCropBlob(id)
-      .then((url) => {
-        if (url) cache.current[id] = url;
+      .then((url) => (url ? { url, isArtwork: false } : fetchReviewItemArtworkBlob(id).then((a) => (a ? { url: a, isArtwork: true } : null))))
+      .then((res) => {
+        if (res) {
+          cache.current[id] = res.url;
+          artworkCache.current[id] = res.isArtwork;
+        }
         if (active) {
-          setCropUrl(url);
+          setCropUrl(res?.url ?? null);
+          setCropIsArtwork(res?.isArtwork ?? false);
           setCropLoading(false);
         }
       })
@@ -536,12 +551,21 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
           ) : cropLoading ? (
             <Spin />
           ) : cropUrl ? (
-            <img
-              data-testid="deck-crop"
-              src={cropUrl}
-              alt={`${cur!.t3777Code} crop`}
-              style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
-            />
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, maxWidth: '100%', maxHeight: '100%' }}>
+              <img
+                data-testid="deck-crop"
+                src={cropUrl}
+                alt={`${cur!.t3777Code} ${cropIsArtwork ? 'artwork' : 'crop'}`}
+                style={{ maxWidth: '100%', maxHeight: cropIsArtwork ? 'calc(100% - 24px)' : '100%', objectFit: 'contain' }}
+              />
+              {cropIsArtwork && (
+                <Text type="secondary" style={{ fontSize: 12, textAlign: 'center' }}>
+                  {t('review.artworkFallback', {
+                    defaultValue: 'Niet gedetecteerd — volledige verpakking; zoek het keurmerk',
+                  })}
+                </Text>
+              )}
+            </div>
           ) : (
             <Text type="secondary">{t('review.cropError', { defaultValue: 'Crop niet beschikbaar' })}</Text>
           )}

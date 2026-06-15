@@ -436,6 +436,7 @@
     "hideDetails": "Verberg details",
     "noCrop": "Geen crop",
     "cropError": "Crop niet beschikbaar",
+    "artworkFallback": "Niet gedetecteerd — volledige verpakking; zoek het keurmerk",
     "accept": "Accepteer",
     "reject": "Wijs af",
     "acceptConfirm": "Reviewitem accepteren?",

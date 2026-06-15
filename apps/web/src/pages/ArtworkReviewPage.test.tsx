@@ -85,7 +85,10 @@ function asAdmin(isAdmin: boolean) {
 describe('ArtworkReviewPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(fetchReviewItemCropUrl).mockResolvedValue('https://minio/crop-1.png?sig=x');
+    vi.mocked(fetchReviewItemCropUrl).mockResolvedValue({
+      cropUrl: 'https://minio/crop-1.png?sig=x',
+      artworkUrl: null,
+    });
     vi.mocked(fetchUncertainPredictions).mockResolvedValue([]);
   });
 

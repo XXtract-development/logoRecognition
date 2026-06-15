@@ -444,6 +444,37 @@ export async function listUserImages(
 }
 
 /**
+ * List bare object keys under a prefix in the TRAINING bucket (e.g. the
+ * rasterized artwork pages under `artwork/{gtin}/`). Returns keys usable
+ * directly with downloadTrainingObject. Used to resolve the full artwork for
+ * crop-less review items (declared-but-not-found) so the reviewer can still
+ * look for the keurmerk on the whole pack.
+ */
+export async function listTrainingObjectKeys(
+  prefix: string,
+  limit: number = 50
+): Promise<string[]> {
+  const keys: string[] = [];
+  try {
+    const adapter = getStorageAdapter();
+    const stream = adapter.listObjects(BUCKETS.TRAINING, prefix, true);
+    return new Promise((resolve, reject) => {
+      stream.on('data', (obj: any) => {
+        if (obj.name && keys.length < limit) keys.push(obj.name);
+      });
+      stream.on('error', reject);
+      stream.on('end', () => resolve(keys));
+    });
+  } catch (error) {
+    logger.error('Failed to list training objects', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      prefix,
+    });
+    return [];
+  }
+}
+
+/**
  * Download an object from the TRAINING bucket by bare object key (crops,
  * reference logos, artwork) — unlike downloadImage, which expects a
  * "bucket/key" storagePath and would misread the first key segment as a

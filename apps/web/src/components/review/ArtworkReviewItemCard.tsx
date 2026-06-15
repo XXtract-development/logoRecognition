@@ -72,6 +72,7 @@ const ArtworkReviewItemCard: React.FC<ArtworkReviewItemCardProps> = ({
   const isMobile = useMediaQuery('(max-width: 768px)');
   const [expanded, setExpanded] = useState(false);
   const [cropUrl, setCropUrl] = useState<string | null>(null);
+  const [artworkUrl, setArtworkUrl] = useState<string | null>(null);
   const [cropLoading, setCropLoading] = useState(false);
   const [cropError, setCropError] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -88,9 +89,10 @@ const ArtworkReviewItemCard: React.FC<ArtworkReviewItemCardProps> = ({
     setCropLoading(true);
     setCropError(false);
     fetchReviewItemCropUrl(item.id)
-      .then((url) => {
+      .then(({ cropUrl: c, artworkUrl: a }) => {
         if (active) {
-          setCropUrl(url);
+          setCropUrl(c);
+          setArtworkUrl(a);
           setCropLoading(false);
         }
       })
@@ -157,11 +159,11 @@ const ArtworkReviewItemCard: React.FC<ArtworkReviewItemCardProps> = ({
             >
               {cropLoading ? (
                 <Spin size="small" />
-              ) : cropUrl ? (
+              ) : cropUrl || artworkUrl ? (
                 <img
                   data-testid="review-item-thumb"
-                  src={cropUrl}
-                  alt={`${item.t3777Code} crop`}
+                  src={cropUrl ?? artworkUrl ?? undefined}
+                  alt={`${item.t3777Code} ${cropUrl ? 'crop' : 'artwork'}`}
                   style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
                 />
               ) : (
@@ -248,6 +250,24 @@ const ArtworkReviewItemCard: React.FC<ArtworkReviewItemCardProps> = ({
                     objectFit: 'contain',
                   }}
                 />
+              ) : artworkUrl ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                  <img
+                    data-testid="review-item-artwork"
+                    src={artworkUrl}
+                    alt={`${item.gtin} artwork`}
+                    style={{
+                      maxWidth: '100%',
+                      maxHeight: isMobile ? 300 : 140,
+                      objectFit: 'contain',
+                    }}
+                  />
+                  <Text type="secondary" style={{ fontSize: 11, textAlign: 'center' }}>
+                    {t('review.artworkFallback', {
+                      defaultValue: 'Niet gedetecteerd — volledige verpakking; zoek het keurmerk',
+                    })}
+                  </Text>
+                </div>
               ) : (
                 <Text type="secondary" style={{ fontSize: 12 }}>
                   {cropError

@@ -1,5 +1,12 @@
 # Versiegeschiedenis
 
+## 2026-06-15 (review: volledige verpakking tonen bij 'niet gevonden')
+
+### Geen lege "Crop niet beschikbaar" meer bij gedeclareerde-maar-niet-gevonden keurmerken
+- Sommige review-items komen voort uit een kruiscontrole: de GS1-data zegt dat een keurmerk op de verpakking staat, maar de herkenning vond het niet. Zulke items hadden geen uitsnede en toonden alleen "Crop niet beschikbaar" — niet te beoordelen
+- Voor deze items wordt nu de **volledige verpakking** (artwork van de GTIN) getoond, zodat je zelf kunt kijken of het gedeclareerde keurmerk er wél op staat
+- Werkt zowel op de mobiele review-kaarten als de desktop-lijst, met de melding "Niet gedetecteerd — volledige verpakking; zoek het keurmerk"
+
 ## 2026-06-15 (herkenning: verbeterde keurmerk-filter live)
 
 ### Tekst, tabellen en pictogrammen worden nu betrouwbaarder weggefilterd

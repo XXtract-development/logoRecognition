@@ -436,6 +436,7 @@
     "hideDetails": "Hide details",
     "noCrop": "No crop",
     "cropError": "Crop unavailable",
+    "artworkFallback": "Not detected — full pack; look for the keurmerk",
     "accept": "Accept",
     "reject": "Reject",
     "acceptConfirm": "Accept review item?",
