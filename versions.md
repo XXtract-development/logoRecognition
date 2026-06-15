@@ -1,5 +1,12 @@
 # Versiegeschiedenis
 
+## 2026-06-15 (review-queue vult zichzelf nu automatisch aan)
+
+### Nachtelijke aanvulling met schone keurmerk-kandidaten
+- De review-queue wordt nu elke nacht automatisch aangevuld met nieuwe keurmerk-kandidaten van verpakkingen die nog niet zijn doorzocht — batchgewijs richting de volledige catalogus
+- Alleen betrouwbare voorstellen komen erin (de verbeterde keurmerk-filter + een strenge zekerheidsdrempel), zodat de lijst werkbaar blijft
+- De aanvulling draait 's nachts zodat hij het dagelijkse gebruik niet vertraagt, en onthoudt waar hij gebleven was; zo groeit de set bevestigde voorbeelden vanzelf verder
+
 ## 2026-06-15 (review: volledige verpakking tonen bij 'niet gevonden')
 
 ### Geen lege "Crop niet beschikbaar" meer bij gedeclareerde-maar-niet-gevonden keurmerken
