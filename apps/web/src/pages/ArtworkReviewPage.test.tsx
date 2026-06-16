@@ -9,6 +9,11 @@ vi.mock('@/services/artworkReviewService', () => ({
   fetchReviewQueue: vi.fn(),
   fetchUncertainPredictions: vi.fn(),
   fetchReviewItemCropUrl: vi.fn(),
+  fetchReviewItemCropBlob: vi.fn(),
+  fetchReviewItemArtworkBlob: vi.fn(),
+  fetchReviewItemSourceBlob: vi.fn(),
+  fetchDeclaredMarks: vi.fn(),
+  reopenReviewItem: vi.fn(),
   acceptReviewItem: vi.fn(),
   rejectReviewItem: vi.fn(),
   annotateReviewItem: vi.fn(),
@@ -42,7 +47,9 @@ import ArtworkReviewPage from './ArtworkReviewPage';
 import {
   fetchReviewQueue,
   fetchUncertainPredictions,
-  fetchReviewItemCropUrl,
+  fetchReviewItemCropBlob,
+  fetchReviewItemArtworkBlob,
+  fetchDeclaredMarks,
   acceptReviewItem,
   rejectReviewItem,
   type ArtworkReviewItem,
@@ -86,10 +93,17 @@ function asAdmin(isAdmin: boolean) {
 describe('ArtworkReviewPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(fetchReviewItemCropUrl).mockResolvedValue({
-      cropUrl: 'https://minio/crop-1.png?sig=x',
-      artworkUrl: null,
-    });
+    // jsdom lacks the object-URL APIs the station uses for blob crops/cleanup.
+    if (typeof URL.createObjectURL !== 'function') {
+      (URL as unknown as { createObjectURL: unknown }).createObjectURL = vi.fn(() => 'blob:x');
+    }
+    if (typeof URL.revokeObjectURL !== 'function') {
+      (URL as unknown as { revokeObjectURL: unknown }).revokeObjectURL = vi.fn();
+    }
+    // The desktop+mobile review station (deck) loads the crop as an authed blob.
+    vi.mocked(fetchReviewItemCropBlob).mockResolvedValue('blob:crop-1.png');
+    vi.mocked(fetchReviewItemArtworkBlob).mockResolvedValue(null);
+    vi.mocked(fetchDeclaredMarks).mockResolvedValue({ gtin: '', marks: [], reason: 'none' } as never);
     vi.mocked(fetchUncertainPredictions).mockResolvedValue([]);
   });
 
@@ -134,60 +148,48 @@ describe('ArtworkReviewPage', () => {
     expect(screen.queryByTestId('review-error')).not.toBeInTheDocument();
   });
 
-  it('renders an item with label, confidence and discrepancy reason', async () => {
+  it('renders an item with label and confidence in the review station', async () => {
     asAdmin(true);
     vi.mocked(fetchReviewQueue).mockResolvedValue([mockItem]);
 
     renderPage();
 
-    await waitFor(() => {
-      expect(screen.getByTestId('artwork-review-item')).toBeInTheDocument();
-    });
+    await screen.findByTestId('mobile-review-deck');
     expect(screen.getByText('EU_ORGANIC_FARMING')).toBeInTheDocument();
-    expect(screen.getByTestId('review-item-confidence')).toHaveTextContent('91%');
-    expect(screen.getByTestId('review-item-reason')).toHaveTextContent(/niet verwacht/i);
+    expect(screen.getByText('91%')).toBeInTheDocument();
   });
 
-  it('reveals the provenance block (crop + source + bbox) on view', async () => {
+  it('loads the crop into the review station', async () => {
     asAdmin(true);
     vi.mocked(fetchReviewQueue).mockResolvedValue([mockItem]);
 
     renderPage();
-    await screen.findByTestId('artwork-review-item');
+    await screen.findByTestId('mobile-review-deck');
 
-    await userEvent.click(screen.getByTestId('review-item-toggle'));
-
-    const provenance = await screen.findByTestId('review-item-provenance');
-    // Crop is presigned on view, not eagerly.
-    expect(fetchReviewItemCropUrl).toHaveBeenCalledWith('ri-1');
-    const crop = await screen.findByTestId('review-item-crop', {}, { timeout: 3000 });
-    expect(crop).toHaveAttribute('src', expect.stringContaining('crop-1.png'));
-    // Provenance contract (Story 8.5 Task 3): the block self-describes the
-    // detection — image + confidence (%) + discrepancy reason + source + bbox.
-    expect(provenance.querySelector('img')).toBeTruthy();
-    expect(provenance).toHaveTextContent(/%/);
-    expect(provenance).toHaveTextContent(/niet verwacht/i);
-    expect(provenance).toHaveTextContent('08718989912451_46182_001.jpg');
-    expect(provenance).toHaveTextContent(/x:10/);
+    // The station loads the crop as an authenticated blob, lazily per item.
+    await waitFor(() => expect(fetchReviewItemCropBlob).toHaveBeenCalledWith('ri-1'));
+    const crop = await screen.findByTestId('deck-crop', {}, { timeout: 3000 });
+    expect(crop).toHaveAttribute('src', 'blob:crop-1.png');
   });
 
-  it('accepts an item and removes it from the queue optimistically', async () => {
+  it('accepts an item in one click and advances', async () => {
     asAdmin(true);
     vi.mocked(fetchReviewQueue).mockResolvedValue([mockItem]);
-    vi.mocked(acceptReviewItem).mockResolvedValue({ status: 'registered', registered: 1, skipped: 0 });
+    vi.mocked(acceptReviewItem).mockResolvedValue({
+      status: 'registered',
+      registered: 1,
+      skipped: 0,
+    } as never);
 
     renderPage();
-    await screen.findByTestId('artwork-review-item');
+    await screen.findByTestId('deck-accept');
 
-    // Accept is now a direct action (no confirmation step).
-    await userEvent.click(screen.getByTestId('review-item-accept'));
+    // One-click accept (no confirmation) → registers, then auto-advances; with a
+    // single-item queue the station shows its "done" state.
+    await userEvent.click(screen.getByTestId('deck-accept'));
 
-    await waitFor(() => {
-      expect(acceptReviewItem).toHaveBeenCalledWith('ri-1');
-    });
-    await waitFor(() => {
-      expect(screen.queryByTestId('artwork-review-item')).not.toBeInTheDocument();
-    });
+    await waitFor(() => expect(acceptReviewItem).toHaveBeenCalledWith('ri-1'));
+    await screen.findByTestId('review-deck-done');
   });
 
   it('shows both review sources (artwork + feedback) with source labels', async () => {
@@ -213,7 +215,7 @@ describe('ArtworkReviewPage', () => {
 
     await screen.findByTestId('review-section-artwork');
     expect(screen.getByTestId('review-section-feedback')).toBeInTheDocument();
-    expect(screen.getByTestId('artwork-review-item')).toBeInTheDocument();
+    expect(screen.getByTestId('mobile-review-deck')).toBeInTheDocument();
     expect(screen.getByTestId('uncertain-item')).toHaveTextContent('Beter Leven 1 ster');
   });
 
@@ -222,14 +224,12 @@ describe('ArtworkReviewPage', () => {
     vi.mocked(fetchReviewQueue).mockResolvedValue([mockItem]);
 
     renderPage();
-    await screen.findByTestId('artwork-review-item');
+    await screen.findByTestId('deck-accept');
 
-    expect(screen.getByTestId('review-item-accept')).toBeDisabled();
-    expect(screen.getByTestId('review-item-reject')).toBeDisabled();
+    expect(screen.getByTestId('deck-accept')).toBeDisabled();
+    expect(screen.getByTestId('deck-reject')).toBeDisabled();
     // Catch-up action is admin-only and absent.
     expect(screen.queryByTestId('review-catchup')).not.toBeInTheDocument();
-
-    await userEvent.click(screen.getByTestId('review-item-reject'));
     expect(rejectReviewItem).not.toHaveBeenCalled();
   });
 });

@@ -30,9 +30,6 @@ import axios from 'axios';
 import {
   fetchReviewQueue,
   fetchUncertainPredictions,
-  acceptReviewItem,
-  rejectReviewItem,
-  annotateReviewItem,
   processAcceptedReviewItems,
   type ArtworkReviewItem,
   type UncertainPrediction,
@@ -40,7 +37,6 @@ import {
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { isBeneluxCode } from '@/data/benelux-codes';
-import ArtworkReviewItemCard from '@/components/review/ArtworkReviewItemCard';
 import MobileReviewDeck from '@/components/review/MobileReviewDeck';
 
 const { Title, Paragraph } = Typography;
@@ -103,77 +99,6 @@ const ArtworkReviewPage: React.FC = () => {
   useEffect(() => {
     load();
   }, [load]);
-
-  // Optimistically remove the item; restore it on failure.
-  const handleAccept = useCallback(
-    async (id: string) => {
-      const previous = items;
-      // Optimistic removal; restore only if the API call itself fails.
-      setItems((prev) => prev.filter((i) => i.id !== id));
-      let result;
-      try {
-        result = await acceptReviewItem(id);
-      } catch {
-        setItems(previous);
-        message.error(
-          t('review.actionError', { defaultValue: 'Actie mislukt — probeer opnieuw' })
-        );
-        return;
-      }
-      if (result.registered > 0) {
-        message.success(
-          t('review.acceptedRegistered', {
-            defaultValue: 'Geaccepteerd en als trainingsdata geregistreerd',
-          })
-        );
-      } else {
-        message.warning(
-          t('review.acceptedSkipped', {
-            defaultValue: 'Geaccepteerd, maar zonder crop nog niet geregistreerd',
-          })
-        );
-      }
-    },
-    [items, t]
-  );
-
-  const handleReject = useCallback(
-    async (id: string) => {
-      const previous = items;
-      setItems((prev) => prev.filter((i) => i.id !== id));
-      try {
-        await rejectReviewItem(id);
-      } catch {
-        setItems(previous);
-        message.error(
-          t('review.actionError', { defaultValue: 'Actie mislukt — probeer opnieuw' })
-        );
-        return;
-      }
-      message.success(t('review.rejected', { defaultValue: 'Reviewitem afgewezen' }));
-    },
-    [items, t]
-  );
-
-  const handleAnnotate = useCallback(
-    async (id: string, rel: { x: number; y: number; width: number; height: number }) => {
-      const previous = items;
-      setItems((prev) => prev.filter((i) => i.id !== id));
-      try {
-        await annotateReviewItem(id, rel);
-      } catch {
-        setItems(previous);
-        message.error(t('review.actionError', { defaultValue: 'Actie mislukt — probeer opnieuw' }));
-        return;
-      }
-      message.success(
-        t('review.annotated', {
-          defaultValue: 'Keurmerk gemarkeerd en als trainingsdata geregistreerd',
-        })
-      );
-    },
-    [items, t]
-  );
 
   const handleCatchUp = useCallback(async () => {
     setCatchUpBusy(true);
@@ -329,26 +254,17 @@ const ArtworkReviewPage: React.FC = () => {
                   defaultValue: 'Geen openstaande artwork-reviewitems',
                 })}
               />
-            ) : isMobile ? (
-              // Phone: one-card swipe deck (crop front-and-centre, swipe to label).
-              <MobileReviewDeck
-                key={`deck-${filter}-${items[0]?.id ?? 'none'}`}
-                items={items}
-                canMutate={isAdmin}
-              />
             ) : (
-              <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-                {items.map((item) => (
-                  <ArtworkReviewItemCard
-                    key={item.id}
-                    item={item}
-                    canMutate={isAdmin}
-                    onAccept={handleAccept}
-                    onReject={handleReject}
-                    onAnnotate={handleAnnotate}
-                  />
-                ))}
-              </Space>
+              // Focused review station — one item at a time, full-focus, keyboard
+              // shortcuts + auto-advance. Same component on desktop and mobile;
+              // centred and capped on desktop so it reads as a workstation.
+              <div style={{ maxWidth: isMobile ? '100%' : 880, margin: '0 auto' }}>
+                <MobileReviewDeck
+                  key={`deck-${filter}-${items[0]?.id ?? 'none'}`}
+                  items={items}
+                  canMutate={isAdmin}
+                />
+              </div>
             )}
           </div>
 

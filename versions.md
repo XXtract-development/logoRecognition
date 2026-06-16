@@ -1,5 +1,13 @@
 # Versiegeschiedenis
 
+## 2026-06-16 (review-station: sneller beoordelen met sneltoetsen)
+
+### Eén item tegelijk, in volle focus — op desktop én mobiel
+- De review werkt nu als een snel "station": je beoordeelt één item tegelijk, groot in beeld, en gaat na elke keuze automatisch naar het volgende
+- **Sneltoetsen** voor minimaal klikken: **A** goedkeuren · **R** afwijzen · **M** keurmerk markeren · **L** ander keurmerk kiezen · **←/→** vorige/volgende · **U** ongedaan maken
+- **Dubbelklik** op de afbeelding om in/uit te zoomen op precies die plek
+- Alles bij elkaar: goedkeuren/afwijzen, kader tekenen, ander logotype kiezen, in/uitzoomen en navigeren — zonder telkens te scrollen of menu's te openen
+
 ## 2026-06-16 (review: voorstel controleren op de verpakking + markeren op mobiel)
 
 ### Zie het voorgestelde gebied op de hele verpakking

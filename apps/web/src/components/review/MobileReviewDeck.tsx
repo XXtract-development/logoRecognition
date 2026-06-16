@@ -14,7 +14,7 @@
  *     to jump back to it.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Tag, Typography, Spin, Empty, Drawer, Input, message, Image, Modal } from 'antd';
+import { Button, Tag, Typography, Spin, Empty, Drawer, Input, message, Modal } from 'antd';
 import {
   CheckOutlined,
   CloseOutlined,
@@ -74,6 +74,14 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
   const [cropUrl, setCropUrl] = useState<string | null>(null);
   const [cropIsArtwork, setCropIsArtwork] = useState(false);
   const [cropLoading, setCropLoading] = useState(false);
+  // Double-click zoom on the main image: zoom in at the clicked point, again = out.
+  const [zoom, setZoom] = useState<{ s: number; ox: number; oy: number }>({ s: 1, ox: 50, oy: 50 });
+  const onZoomDblClick = useCallback((e: React.MouseEvent<HTMLElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    const ox = ((e.clientX - r.left) / r.width) * 100;
+    const oy = ((e.clientY - r.top) / r.height) * 100;
+    setZoom((z) => (z.s === 1 ? { s: 2.6, ox, oy } : { s: 1, ox: 50, oy: 50 }));
+  }, []);
   const [busy, setBusy] = useState(false);
   const [drag, setDrag] = useState(0);
   const [overview, setOverview] = useState(false);
@@ -150,6 +158,7 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
   }, []);
 
   useEffect(() => {
+    setZoom({ s: 1, ox: 50, oy: 50 });
     if (cur) loadCrop(cur.id);
   }, [cur, loadCrop]);
 
@@ -335,6 +344,67 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
     [cur, busy, canMutate, decisions, idx, goto, t]
   );
 
+  // Keyboard shortcuts — fast desktop review with minimal clicks. Ignored while
+  // typing in the relabel search; Esc closes the picker / draw mode.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const tgt = e.target as HTMLElement | null;
+      const typing =
+        !!tgt && (tgt.tagName === 'INPUT' || tgt.tagName === 'TEXTAREA' || tgt.isContentEditable);
+      if (picker || annotating) {
+        if (e.key === 'Escape') {
+          setPicker(false);
+          setAnnotating(false);
+        }
+        return; // the picker / annotator owns the keyboard while open
+      }
+      if (typing || !cur || e.metaKey || e.ctrlKey || e.altKey) return;
+      switch (e.key) {
+        case 'a':
+        case 'A':
+          e.preventDefault();
+          applyDecision('ECHT');
+          break;
+        case 'r':
+        case 'R':
+          e.preventDefault();
+          applyDecision('VALS');
+          break;
+        case 'm':
+        case 'M':
+          if (cropIsArtwork) {
+            e.preventDefault();
+            setAnnotating(true);
+          }
+          break;
+        case 'l':
+        case 'L':
+          e.preventDefault();
+          setPicker(true);
+          break;
+        case 'u':
+        case 'U':
+          if (decisions[cur.id]) {
+            e.preventDefault();
+            applyDecision(decisions[cur.id]); // same choice again = undo
+          }
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          goto(idx - 1);
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          goto(idx + 1);
+          break;
+        default:
+          break;
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [cur, idx, picker, annotating, cropIsArtwork, decisions, applyDecision, goto]);
+
   const onTouchStart = (e: React.TouchEvent) => {
     touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
   };
@@ -468,7 +538,7 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
 
   return (
     <div data-testid="mobile-review-deck">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
         <Text type="secondary" style={{ fontSize: 13 }}>
           {idx + 1} / {queue.length} &nbsp;·&nbsp;
           <span style={{ color: '#5a8a00', fontWeight: 700 }}>{echt}</span> ✓ &nbsp;
@@ -476,6 +546,12 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
         </Text>
         {OverviewBtn}
       </div>
+      <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 8 }}>
+        {t('review.shortcuts', {
+          defaultValue:
+            'Sneltoetsen: A goedkeuren · R afwijzen · M markeren · L ander keurmerk · ←/→ navigeren · dubbelklik = zoom',
+        })}
+      </Text>
 
       <div
         onTouchStart={onTouchStart}
@@ -579,29 +655,38 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
             <Spin />
           ) : cropUrl ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, maxWidth: '100%', maxHeight: '100%' }}>
-              {cropIsArtwork ? (
-                <Image
-                  src={cropUrl}
-                  alt={`${cur!.t3777Code} artwork`}
-                  style={{ maxHeight: 360, objectFit: 'contain' }}
-                  preview={{
-                    mask: t('review.zoomHintArtwork', {
-                      defaultValue: '🔍 Inzoomen — zoek het keurmerk',
-                    }),
-                  }}
-                />
-              ) : (
+              <div
+                onDoubleClick={onZoomDblClick}
+                title={t('review.zoomDblHint', { defaultValue: 'Dubbelklik om in/uit te zoomen' })}
+                style={{
+                  overflow: 'hidden',
+                  maxWidth: '100%',
+                  maxHeight: cropIsArtwork ? '64vh' : '100%',
+                  cursor: zoom.s === 1 ? 'zoom-in' : 'zoom-out',
+                  borderRadius: 6,
+                }}
+              >
                 <img
                   data-testid="deck-crop"
                   src={cropUrl}
-                  alt={`${cur!.t3777Code} crop`}
-                  style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                  alt={`${cur!.t3777Code} ${cropIsArtwork ? 'artwork' : 'crop'}`}
+                  draggable={false}
+                  style={{
+                    display: 'block',
+                    maxWidth: '100%',
+                    maxHeight: cropIsArtwork ? '64vh' : '100%',
+                    objectFit: 'contain',
+                    transform: `scale(${zoom.s})`,
+                    transformOrigin: `${zoom.ox}% ${zoom.oy}%`,
+                    transition: 'transform .18s ease',
+                    userSelect: 'none',
+                  }}
                 />
-              )}
+              </div>
               {cropIsArtwork && (
                 <Text type="secondary" style={{ fontSize: 12, textAlign: 'center' }}>
                   {t('review.artworkFallback', {
-                    defaultValue: 'Niet gedetecteerd — volledige verpakking; klik om in te zoomen en het keurmerk te zoeken',
+                    defaultValue: 'Niet gedetecteerd — volledige verpakking; dubbelklik om in te zoomen en het keurmerk te zoeken',
                   })}
                 </Text>
               )}
