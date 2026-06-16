@@ -93,10 +93,16 @@ export const reopenReviewItem = async (
  * responsible for URL.revokeObjectURL when the URL is no longer needed.
  */
 export const fetchReviewItemCropBlob = async (id: string): Promise<string | null> => {
-  const response = await apiClient.get(`/artwork/review-items/${id}/crop`, {
-    responseType: 'blob',
-  });
-  return response.data ? URL.createObjectURL(response.data as Blob) : null;
+  // Crop-less items ("declared but not found") 404 here; return null instead of
+  // throwing so the caller can fall back to the full-artwork blob (mobile deck).
+  try {
+    const response = await apiClient.get(`/artwork/review-items/${id}/crop`, {
+      responseType: 'blob',
+    });
+    return response.data ? URL.createObjectURL(response.data as Blob) : null;
+  } catch {
+    return null;
+  }
 };
 
 /**
