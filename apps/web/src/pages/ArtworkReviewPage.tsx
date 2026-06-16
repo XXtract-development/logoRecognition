@@ -32,6 +32,7 @@ import {
   fetchUncertainPredictions,
   acceptReviewItem,
   rejectReviewItem,
+  annotateReviewItem,
   processAcceptedReviewItems,
   type ArtworkReviewItem,
   type UncertainPrediction,
@@ -150,6 +151,26 @@ const ArtworkReviewPage: React.FC = () => {
         return;
       }
       message.success(t('review.rejected', { defaultValue: 'Reviewitem afgewezen' }));
+    },
+    [items, t]
+  );
+
+  const handleAnnotate = useCallback(
+    async (id: string, rel: { x: number; y: number; width: number; height: number }) => {
+      const previous = items;
+      setItems((prev) => prev.filter((i) => i.id !== id));
+      try {
+        await annotateReviewItem(id, rel);
+      } catch {
+        setItems(previous);
+        message.error(t('review.actionError', { defaultValue: 'Actie mislukt — probeer opnieuw' }));
+        return;
+      }
+      message.success(
+        t('review.annotated', {
+          defaultValue: 'Keurmerk gemarkeerd en als trainingsdata geregistreerd',
+        })
+      );
     },
     [items, t]
   );
@@ -324,6 +345,7 @@ const ArtworkReviewPage: React.FC = () => {
                     canMutate={isAdmin}
                     onAccept={handleAccept}
                     onReject={handleReject}
+                    onAnnotate={handleAnnotate}
                   />
                 ))}
               </Space>

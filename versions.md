@@ -1,5 +1,12 @@
 # Versiegeschiedenis
 
+## 2026-06-16 (review: keurmerk zelf markeren met een kader)
+
+### Teken een kader om een gemist keurmerk
+- Bij items waar een keurmerk wél gedeclareerd is maar de herkenning het niet vond, kun je nu zelf de verpakking bekijken en — als je het keurmerk vindt — er een **kader omheen tekenen** ("Markeer keurmerk")
+- Het uitgesneden stuk wordt dan meteen als bevestigd voorbeeld geregistreerd, precies op de juiste plek. Zo leert de herkenning van échte missers in plaats van een gok bij "accepteren"
+- Hierdoor weet je ook zeker dat het júiste logo gekoppeld wordt: je wijst zelf het gebied aan
+
 ## 2026-06-16 (review: sneller beoordelen + verpakking inzoomen)
 
 ### Accepteren en afwijzen gebeurt nu direct

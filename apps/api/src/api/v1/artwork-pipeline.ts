@@ -31,6 +31,7 @@ import { logger } from '../../core/logger';
 import { requireRole, authMiddleware } from '../../middleware/auth';
 import {
   uploadArtwork,
+  uploadReferenceLogo,
   downloadTrainingObject,
   listTrainingObjectKeys,
 } from '../../services/storage';
@@ -846,6 +847,74 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
   );
 
   /**
+   * GET /artwork/review-items/:id/marked
+   * The FULL (downscaled) artwork with the proposed region drawn as a coloured
+   * box — so the reviewer can verify the system coupled the RIGHT logo (not a
+   * different logo on the same busy pack) before accepting. Zoomable in the UI.
+   * Resolves the artwork from the item's sourceFile, or by GTIN when absent.
+   * Returns 404 (no marked view) when neither an artwork nor a usable bbox exists.
+   */
+  fastify.get<{ Params: { id: string } }>(
+    '/artwork/review-items/:id/marked',
+    { preHandler: authMiddleware },
+    async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+      const { id } = request.params;
+
+      const item = await prisma.artworkReviewItem.findUnique({ where: { id } });
+      if (!item) {
+        return reply.status(404).send({ error: 'Review item niet gevonden' });
+      }
+
+      const key = item.sourceFile || (await resolveArtworkKeyForGtin(item.gtin));
+      if (!key) {
+        return reply.status(404).send({ error: 'Geen artwork voor dit reviewitem' });
+      }
+      const buffer = await downloadTrainingObject(key);
+      if (!buffer) {
+        return reply.status(404).send({ error: 'Artwork niet gevonden in opslag' });
+      }
+
+      const bb = (item.bbox ?? {}) as { x?: number; y?: number; width?: number; height?: number };
+      const hasBox =
+        typeof bb.x === 'number' && typeof bb.y === 'number' &&
+        typeof bb.width === 'number' && typeof bb.height === 'number' && bb.width > 0 && bb.height > 0;
+
+      reply.header('Cache-Control', 'private, max-age=300');
+      try {
+        const meta = await sharp(buffer).metadata();
+        const W = meta.width ?? 0;
+        const H = meta.height ?? 0;
+        const TARGET = 1600;
+        const scale = W > 0 ? Math.min(1, TARGET / Math.max(W, H)) : 1;
+        const dispW = Math.max(1, Math.round(W * scale));
+        const dispH = Math.max(1, Math.round(H * scale));
+
+        let pipeline = sharp(buffer).resize(dispW, dispH);
+        if (hasBox && W > 0 && H > 0) {
+          const rx = Math.round((bb.x as number) * scale);
+          const ry = Math.round((bb.y as number) * scale);
+          const rbw = Math.max(2, Math.round((bb.width as number) * scale));
+          const rbh = Math.max(2, Math.round((bb.height as number) * scale));
+          const overlay = Buffer.from(
+            `<svg width="${dispW}" height="${dispH}">` +
+              `<rect x="${rx - 2}" y="${ry - 2}" width="${rbw + 4}" height="${rbh + 4}" ` +
+              `fill="none" stroke="#ffffff" stroke-width="6"/>` +
+              `<rect x="${rx}" y="${ry}" width="${rbw}" height="${rbh}" ` +
+              `fill="none" stroke="#D64545" stroke-width="4"/>` +
+            `</svg>`
+          );
+          pipeline = pipeline.composite([{ input: overlay, top: 0, left: 0 }]);
+        }
+        const out = await pipeline.jpeg({ quality: 82 }).toBuffer();
+        return reply.type('image/jpeg').send(out);
+      } catch (err) {
+        logger.warn('Marked artwork render failed; serving raw', { reviewItemId: id });
+        return reply.type('image/png').send(buffer);
+      }
+    }
+  );
+
+  /**
    * GET /artwork/review-items/:id/source
    * "Bekijk in context": instead of streaming the whole (often multi-MB, high-DPI)
    * source artwork, render a SMALL context fragment server-side — a padded window
@@ -1012,6 +1081,100 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
         status: result.registered > 0 ? 'registered' : 'accepted',
         registered: result.registered,
         skipped: result.skipped,
+        referenceAdded,
+      });
+    }
+  );
+
+  /**
+   * POST /artwork/review-items/:id/annotate
+   * Human annotation: the reviewer drew a box around the keurmerk on the full
+   * artwork (the detector missed it). Crop the artwork at that box, attach it to
+   * the item, and register it as training data + a live reference — the same
+   * path as accept. Turns a missed detection into a verified, LOCATED example,
+   * which is exactly the data the detector needs. Requires ADMIN.
+   * Body: { rel: {x,y,width,height} as fractions 0..1 of the artwork }, optional t3777Code.
+   */
+  fastify.post<{
+    Params: { id: string };
+    Body: { rel?: { x: number; y: number; width: number; height: number }; t3777Code?: string };
+  }>(
+    '/artwork/review-items/:id/annotate',
+    { preHandler: REQUIRE_ADMIN },
+    async (request, reply) => {
+      const { id } = request.params;
+      const rel = request.body?.rel;
+      const override = request.body?.t3777Code?.trim();
+      if (
+        !rel ||
+        ![rel.x, rel.y, rel.width, rel.height].every((n) => typeof n === 'number' && isFinite(n)) ||
+        rel.width <= 0 ||
+        rel.height <= 0
+      ) {
+        return reply.status(400).send({ error: 'Ongeldig kader' });
+      }
+
+      const item = await prisma.artworkReviewItem.findUnique({ where: { id } });
+      if (!item) {
+        return reply.status(404).send({ error: 'Review item niet gevonden' });
+      }
+
+      const key = item.sourceFile || (await resolveArtworkKeyForGtin(item.gtin));
+      if (!key) {
+        return reply.status(404).send({ error: 'Geen artwork voor dit reviewitem' });
+      }
+      const buffer = await downloadTrainingObject(key);
+      if (!buffer) {
+        return reply.status(404).send({ error: 'Artwork niet gevonden in opslag' });
+      }
+
+      const meta = await sharp(buffer).metadata();
+      const W = meta.width ?? 0;
+      const H = meta.height ?? 0;
+      if (!W || !H) {
+        return reply.status(422).send({ error: 'Artwork-afmetingen onbekend' });
+      }
+
+      // Relative (0..1) → pixel bbox in original artwork coords, clamped.
+      const x = Math.max(0, Math.min(Math.round(rel.x * W), W - 2));
+      const y = Math.max(0, Math.min(Math.round(rel.y * H), H - 2));
+      const w = Math.max(2, Math.min(Math.round(rel.width * W), W - x));
+      const h = Math.max(2, Math.min(Math.round(rel.height * H), H - y));
+
+      const cropBuf = await sharp(buffer).extract({ left: x, top: y, width: w, height: h }).png().toBuffer();
+      const code = override || item.t3777Code;
+      const cropKey = `artwork-crops/${item.gtin}/annot_${id}.png`;
+      await uploadReferenceLogo(cropBuf, cropKey, 'image/png');
+
+      const updated = await prisma.artworkReviewItem.update({
+        where: { id },
+        data: {
+          cropPath: cropKey,
+          bbox: { x, y, width: w, height: h },
+          sourceFile: key,
+          t3777Code: code,
+          method: 'human-annotation',
+          status: 'accepted',
+        },
+      });
+
+      const result = await processAcceptedReviewItems([updated]);
+
+      let referenceAdded: boolean | undefined;
+      try {
+        const ref = await mlClient.registerReference(cropKey, code);
+        referenceAdded = ref.added;
+      } catch (err) {
+        logger.warn('Annotation reference registration failed (non-fatal)', {
+          reviewItemId: id,
+          error: err instanceof Error ? err.message : 'unknown',
+        });
+      }
+
+      logger.info('Review item annotated', { reviewItemId: id, t3777Code: code, registered: result.registered });
+      return reply.status(200).send({
+        status: result.registered > 0 ? 'registered' : 'accepted',
+        registered: result.registered,
         referenceAdded,
       });
     }

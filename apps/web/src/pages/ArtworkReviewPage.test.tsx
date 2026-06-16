@@ -11,6 +11,7 @@ vi.mock('@/services/artworkReviewService', () => ({
   fetchReviewItemCropUrl: vi.fn(),
   acceptReviewItem: vi.fn(),
   rejectReviewItem: vi.fn(),
+  annotateReviewItem: vi.fn(),
   processAcceptedReviewItems: vi.fn(),
 }));
 

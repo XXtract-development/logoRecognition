@@ -8,8 +8,9 @@
  * queue. ADMIN users get accept/reject actions; others see them disabled.
  */
 import React, { useCallback, useEffect, useState } from 'react';
-import { Card, Button, Tag, Typography, Space, Spin, Tooltip, Image } from 'antd';
+import { Card, Button, Tag, Typography, Space, Spin, Tooltip, Image, Modal } from 'antd';
 import { CheckOutlined, CloseOutlined, EnvironmentOutlined } from '@ant-design/icons';
+import ArtworkAnnotator from './ArtworkAnnotator';
 import { useTranslation } from 'react-i18next';
 import {
   fetchReviewItemCropUrl,
@@ -26,6 +27,11 @@ interface ArtworkReviewItemCardProps {
   canMutate: boolean;
   onAccept: (id: string) => Promise<void>;
   onReject: (id: string) => Promise<void>;
+  /** Annotate (draw a box) a missed keurmerk on the full artwork. */
+  onAnnotate?: (
+    id: string,
+    rel: { x: number; y: number; width: number; height: number }
+  ) => Promise<void>;
 }
 
 /** Format a confidence (0..1) as a percentage; "—" when absent. */
@@ -65,6 +71,7 @@ const ArtworkReviewItemCard: React.FC<ArtworkReviewItemCardProps> = ({
   canMutate,
   onAccept,
   onReject,
+  onAnnotate,
 }) => {
   const { t } = useTranslation();
   // Responsive: on phones we give the crop more room and turn the accept/reject
@@ -124,6 +131,24 @@ const ArtworkReviewItemCard: React.FC<ArtworkReviewItemCardProps> = ({
       setBusy(false);
     }
   }, [item.id, onReject]);
+
+  const [annotating, setAnnotating] = useState(false);
+  const handleAnnotate = useCallback(
+    async (rel: { x: number; y: number; width: number; height: number }) => {
+      if (!onAnnotate) return;
+      setBusy(true);
+      try {
+        await onAnnotate(item.id, rel);
+        setAnnotating(false);
+      } finally {
+        setBusy(false);
+      }
+    },
+    [item.id, onAnnotate]
+  );
+  // The "mark the keurmerk" action only makes sense for crop-less items that
+  // DO have a full artwork to draw on (the "declared but not found" misses).
+  const canAnnotate = !!onAnnotate && canMutate && !cropUrl && !!artworkUrl;
 
   const bbox = formatBbox(item.bbox);
   const confidenceText = formatConfidence(item.confidence);
@@ -375,8 +400,44 @@ const ArtworkReviewItemCard: React.FC<ArtworkReviewItemCardProps> = ({
             </Button>
           </Tooltip>
           </div>
+
+          {canAnnotate && (
+            <div style={{ flex: isMobile ? 1 : '0 0 auto' }}>
+              <Button
+                size={isMobile ? 'large' : 'small'}
+                block={isMobile}
+                icon={<EnvironmentOutlined />}
+                disabled={!canMutate || busy}
+                data-testid="review-item-annotate"
+                onClick={() => setAnnotating(true)}
+                style={{ borderColor: '#2F5A7A', color: '#2F5A7A' }}
+              >
+                {t('review.markKeurmerk', { defaultValue: 'Markeer keurmerk' })}
+              </Button>
+            </div>
+          )}
         </div>
       </Space>
+
+      <Modal
+        open={annotating}
+        onCancel={() => !busy && setAnnotating(false)}
+        footer={null}
+        width={900}
+        title={t('review.markKeurmerkTitle', {
+          defaultValue: 'Markeer het keurmerk op de verpakking',
+        })}
+        destroyOnClose
+      >
+        {artworkUrl && (
+          <ArtworkAnnotator
+            imageUrl={artworkUrl}
+            busy={busy}
+            onConfirm={handleAnnotate}
+            onCancel={() => setAnnotating(false)}
+          />
+        )}
+      </Modal>
     </Card>
   );
 };

@@ -122,6 +122,21 @@ export const fetchReviewItemArtworkBlob = async (id: string): Promise<string | n
   }
 };
 
+/**
+ * Annotate a review item: the reviewer drew a box (fractions 0..1 of the
+ * artwork) around the keurmerk the detector missed. The server crops the
+ * artwork there and registers it as training data + a reference. Returns the
+ * registration result.
+ */
+export const annotateReviewItem = async (
+  id: string,
+  rel: { x: number; y: number; width: number; height: number },
+  t3777Code?: string
+): Promise<{ status: string; registered: number; referenceAdded?: boolean }> => {
+  const response = await apiClient.post(`/artwork/review-items/${id}/annotate`, { rel, t3777Code });
+  return response.data;
+};
+
 /** A GS1 mark declared on the GTIN's packaging (Story 12.7 label-prior). */
 export interface DeclaredMark {
   code: string;
