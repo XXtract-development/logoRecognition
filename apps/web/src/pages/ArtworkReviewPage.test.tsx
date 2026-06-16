@@ -178,11 +178,8 @@ describe('ArtworkReviewPage', () => {
     renderPage();
     await screen.findByTestId('artwork-review-item');
 
+    // Accept is now a direct action (no confirmation step).
     await userEvent.click(screen.getByTestId('review-item-accept'));
-    // Confirm in the Popconfirm popover — its OK button is the primary button
-    // that appears after opening (the card button is disabled-free but distinct).
-    const okButton = await screen.findByRole('button', { name: 'Bevestig' });
-    await userEvent.click(okButton);
 
     await waitFor(() => {
       expect(acceptReviewItem).toHaveBeenCalledWith('ri-1');

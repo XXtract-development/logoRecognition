@@ -8,7 +8,7 @@
  * queue. ADMIN users get accept/reject actions; others see them disabled.
  */
 import React, { useCallback, useEffect, useState } from 'react';
-import { Card, Button, Tag, Typography, Space, Spin, Tooltip, Popconfirm } from 'antd';
+import { Card, Button, Tag, Typography, Space, Spin, Tooltip } from 'antd';
 import { CheckOutlined, CloseOutlined, EnvironmentOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import {
@@ -322,33 +322,23 @@ const ArtworkReviewItemCard: React.FC<ArtworkReviewItemCardProps> = ({
                   })
             }
           >
-            <Popconfirm
-              title={t('review.acceptConfirm', { defaultValue: 'Reviewitem accepteren?' })}
-              description={t('review.acceptConfirmBody', {
-                defaultValue: 'De crop wordt als trainingsdata geregistreerd.',
-              })}
-              okText={t('review.confirm', { defaultValue: 'Bevestig' })}
-              cancelText={t('common.cancel', { defaultValue: 'Annuleer' })}
-              onConfirm={handleAccept}
-              disabled={!canMutate || busy}
+            <Button
+              type="primary"
+              size={isMobile ? 'large' : 'small'}
+              block={isMobile}
+              icon={<CheckOutlined />}
+              loading={busy}
+              disabled={!canMutate}
+              data-testid="review-item-accept"
+              onClick={handleAccept}
+              style={
+                canMutate
+                  ? { background: '#B7D945', borderColor: '#B7D945', color: '#1E293B' }
+                  : undefined
+              }
             >
-              <Button
-                type="primary"
-                size={isMobile ? 'large' : 'small'}
-                block={isMobile}
-                icon={<CheckOutlined />}
-                loading={busy}
-                disabled={!canMutate}
-                data-testid="review-item-accept"
-                style={
-                  canMutate
-                    ? { background: '#B7D945', borderColor: '#B7D945', color: '#1E293B' }
-                    : undefined
-                }
-              >
-                {t('review.accept', { defaultValue: 'Accepteer' })}
-              </Button>
-            </Popconfirm>
+              {t('review.accept', { defaultValue: 'Accepteer' })}
+            </Button>
           </Tooltip>
           </div>
 
@@ -362,25 +352,18 @@ const ArtworkReviewItemCard: React.FC<ArtworkReviewItemCardProps> = ({
                   })
             }
           >
-            <Popconfirm
-              title={t('review.rejectConfirm', { defaultValue: 'Reviewitem afwijzen?' })}
-              okText={t('review.confirm', { defaultValue: 'Bevestig' })}
-              cancelText={t('common.cancel', { defaultValue: 'Annuleer' })}
-              onConfirm={handleReject}
-              disabled={!canMutate || busy}
+            <Button
+              danger
+              size={isMobile ? 'large' : 'small'}
+              block={isMobile}
+              icon={<CloseOutlined />}
+              loading={busy}
+              disabled={!canMutate}
+              data-testid="review-item-reject"
+              onClick={handleReject}
             >
-              <Button
-                danger
-                size={isMobile ? 'large' : 'small'}
-                block={isMobile}
-                icon={<CloseOutlined />}
-                loading={busy}
-                disabled={!canMutate}
-                data-testid="review-item-reject"
-              >
-                {t('review.reject', { defaultValue: 'Wijs af' })}
-              </Button>
-            </Popconfirm>
+              {t('review.reject', { defaultValue: 'Wijs af' })}
+            </Button>
           </Tooltip>
           </div>
         </div>

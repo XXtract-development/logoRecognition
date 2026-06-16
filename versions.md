@@ -1,5 +1,11 @@
 # Versiegeschiedenis
 
+## 2026-06-16 (review: sneller beoordelen zonder bevestiging)
+
+### Accepteren en afwijzen gebeurt nu direct
+- Bij het accepteren of afwijzen van een review-item hoef je niet meer eerst een bevestiging ("Bevestig") aan te klikken — één klik op "Accepteer" of "Wijs af" verwerkt het item meteen
+- Zo werk je de review-lijst veel sneller door
+
 ## 2026-06-15 (review-queue vult zichzelf nu automatisch aan)
 
 ### Nachtelijke aanvulling met schone keurmerk-kandidaten
