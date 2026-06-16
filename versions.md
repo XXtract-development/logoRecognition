@@ -1,5 +1,14 @@
 # Versiegeschiedenis
 
+## 2026-06-16 (review: voorstel controleren op de verpakking + markeren op mobiel)
+
+### Zie het voorgestelde gebied op de hele verpakking
+- Bij een keurmerk-kandidaat kun je nu de volledige verpakking openen met een **rood kader om precies het stuk dat het systeem voorstelt** — inzoombaar
+- Zo controleer je vóór het accepteren of het kader om het júiste logo zit (en niet om een ander logo op dezelfde verpakking), zodat er nooit een verkeerd logo voor training wordt gekoppeld
+
+### "Markeer keurmerk" werkt nu ook op mobiel
+- Het zelf tekenen van een kader om een gemist keurmerk werkt nu ook op de mobiele review-weergave
+
 ## 2026-06-16 (review: keurmerk zelf markeren met een kader)
 
 ### Teken een kader om een gemist keurmerk

@@ -152,6 +152,15 @@ const ArtworkReviewItemCard: React.FC<ArtworkReviewItemCardProps> = ({
 
   const bbox = formatBbox(item.bbox);
   const confidenceText = formatConfidence(item.confidence);
+  // A candidate has a real region: show the proposed box ON the full pack so the
+  // reviewer can verify the system coupled the RIGHT logo (not another one).
+  const bb = item.bbox as { x?: number; y?: number; width?: number; height?: number } | undefined;
+  const hasBbox =
+    !!bb &&
+    [bb.x, bb.y, bb.width, bb.height].every((n) => typeof n === 'number' && Number.isFinite(n)) &&
+    (bb.width as number) > 0 &&
+    (bb.height as number) > 0;
+  const markedUrl = cropUrl && hasBbox ? `/api/v1/artwork/review-items/${item.id}/marked` : null;
 
   return (
     <Card
@@ -310,6 +319,42 @@ const ArtworkReviewItemCard: React.FC<ArtworkReviewItemCardProps> = ({
                 </div>
               );
             })()}
+
+            {/* Verification: the proposed region drawn ON the full pack, zoomable,
+                so the reviewer confirms the box sits on the RIGHT logo before accepting. */}
+            {markedUrl && (
+              <div
+                style={{
+                  flexBasis: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 4,
+                  padding: 8,
+                  background: '#F8FAFC',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: 6,
+                }}
+              >
+                <Image
+                  data-testid="review-item-marked"
+                  src={markedUrl}
+                  alt={`${item.t3777Code} op verpakking`}
+                  style={{ maxHeight: isMobile ? 460 : 520, objectFit: 'contain' }}
+                  preview={{
+                    mask: t('review.zoomHintMarked', {
+                      defaultValue: '🔍 Klik om in te zoomen — zit het kader om het juiste logo?',
+                    }),
+                  }}
+                />
+                <Text type="secondary" style={{ fontSize: 12, textAlign: 'center' }}>
+                  {t('review.markedHint', {
+                    defaultValue:
+                      'Voorgesteld gebied op de verpakking — zit het rode kader om het juiste keurmerk?',
+                  })}
+                </Text>
+              </div>
+            )}
 
             <Space direction="vertical" size={4} style={{ flex: 1, minWidth: 180 }}>
               <Text strong style={{ color: '#2F5A7A' }}>

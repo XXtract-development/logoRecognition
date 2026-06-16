@@ -14,7 +14,7 @@
  *     to jump back to it.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Tag, Typography, Spin, Empty, Drawer, Input, message, Image } from 'antd';
+import { Button, Tag, Typography, Spin, Empty, Drawer, Input, message, Image, Modal } from 'antd';
 import {
   CheckOutlined,
   CloseOutlined,
@@ -22,18 +22,21 @@ import {
   RightOutlined,
   UnorderedListOutlined,
   TagsOutlined,
+  EnvironmentOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import {
   acceptReviewItem,
   rejectReviewItem,
   reopenReviewItem,
+  annotateReviewItem,
   fetchReviewItemCropBlob,
   fetchReviewItemArtworkBlob,
   fetchReviewItemSourceBlob,
   fetchDeclaredMarks,
   type ArtworkReviewItem,
 } from '@/services/artworkReviewService';
+import ArtworkAnnotator from './ArtworkAnnotator';
 import { KEURMERK_CODES } from '@/data/keurmerk-codes';
 import { isBeneluxCode } from '@/data/benelux-codes';
 import { EXTRA_SPOOR_CODES, spoorLabelForCode, fieldTypeForCode } from '@/data/spoor-codes';
@@ -273,6 +276,30 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
       }
     },
     [cur, busy, canMutate, decisions, idx, goto, t]
+  );
+
+  const [annotating, setAnnotating] = useState(false);
+  const applyAnnotation = useCallback(
+    async (rel: { x: number; y: number; width: number; height: number }) => {
+      if (!cur || busy) return;
+      setBusy(true);
+      try {
+        await annotateReviewItem(cur.id, rel);
+        setDecisions((d) => ({ ...d, [cur.id]: 'ECHT' }));
+        setAnnotating(false);
+        message.success(
+          t('review.annotated', {
+            defaultValue: 'Keurmerk gemarkeerd en als trainingsdata geregistreerd',
+          })
+        );
+        goto(idx + 1);
+      } catch {
+        message.error(t('review.actionError', { defaultValue: 'Actie mislukt — probeer opnieuw' }));
+      } finally {
+        setBusy(false);
+      }
+    },
+    [cur, busy, idx, goto, t]
   );
 
   // Accept the crop under a corrected keurmerk code (different from predicted).
@@ -638,6 +665,41 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
           aria-label={t('review.next', { defaultValue: 'Volgende' })}
         />
       </div>
+
+      {/* For crop-less "declared but not found" items: let the reviewer draw a box
+          around the keurmerk on the full pack → a verified, located training crop. */}
+      {cropIsArtwork && cropUrl && canMutate && (
+        <Button
+          block
+          size="large"
+          icon={<EnvironmentOutlined />}
+          disabled={busy}
+          onClick={() => setAnnotating(true)}
+          data-testid="deck-annotate"
+          style={{ marginTop: 8, height: 48, borderColor: '#2F5A7A', color: '#2F5A7A' }}
+        >
+          {t('review.markKeurmerk', { defaultValue: 'Markeer keurmerk' })}
+        </Button>
+      )}
+
+      <Modal
+        open={annotating}
+        onCancel={() => !busy && setAnnotating(false)}
+        footer={null}
+        width="95vw"
+        style={{ top: 16, maxWidth: 900 }}
+        title={t('review.markKeurmerkTitle', { defaultValue: 'Markeer het keurmerk op de verpakking' })}
+        destroyOnClose
+      >
+        {cropUrl && (
+          <ArtworkAnnotator
+            imageUrl={cropUrl}
+            busy={busy}
+            onConfirm={applyAnnotation}
+            onCancel={() => setAnnotating(false)}
+          />
+        )}
+      </Modal>
       <Button
         block
         icon={<TagsOutlined />}
