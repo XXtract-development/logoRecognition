@@ -14,7 +14,7 @@
  *     to jump back to it.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Tag, Typography, Spin, Empty, Drawer, Input, message } from 'antd';
+import { Button, Tag, Typography, Spin, Empty, Drawer, Input, message, Image } from 'antd';
 import {
   CheckOutlined,
   CloseOutlined,
@@ -552,16 +552,29 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
             <Spin />
           ) : cropUrl ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, maxWidth: '100%', maxHeight: '100%' }}>
-              <img
-                data-testid="deck-crop"
-                src={cropUrl}
-                alt={`${cur!.t3777Code} ${cropIsArtwork ? 'artwork' : 'crop'}`}
-                style={{ maxWidth: '100%', maxHeight: cropIsArtwork ? 'calc(100% - 24px)' : '100%', objectFit: 'contain' }}
-              />
+              {cropIsArtwork ? (
+                <Image
+                  src={cropUrl}
+                  alt={`${cur!.t3777Code} artwork`}
+                  style={{ maxHeight: 360, objectFit: 'contain' }}
+                  preview={{
+                    mask: t('review.zoomHintArtwork', {
+                      defaultValue: '🔍 Inzoomen — zoek het keurmerk',
+                    }),
+                  }}
+                />
+              ) : (
+                <img
+                  data-testid="deck-crop"
+                  src={cropUrl}
+                  alt={`${cur!.t3777Code} crop`}
+                  style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                />
+              )}
               {cropIsArtwork && (
                 <Text type="secondary" style={{ fontSize: 12, textAlign: 'center' }}>
                   {t('review.artworkFallback', {
-                    defaultValue: 'Niet gedetecteerd — volledige verpakking; zoek het keurmerk',
+                    defaultValue: 'Niet gedetecteerd — volledige verpakking; klik om in te zoomen en het keurmerk te zoeken',
                   })}
                 </Text>
               )}

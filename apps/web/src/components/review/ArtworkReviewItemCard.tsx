@@ -8,7 +8,7 @@
  * queue. ADMIN users get accept/reject actions; others see them disabled.
  */
 import React, { useCallback, useEffect, useState } from 'react';
-import { Card, Button, Tag, Typography, Space, Spin, Tooltip } from 'antd';
+import { Card, Button, Tag, Typography, Space, Spin, Tooltip, Image } from 'antd';
 import { CheckOutlined, CloseOutlined, EnvironmentOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import {
@@ -225,57 +225,66 @@ const ArtworkReviewItemCard: React.FC<ArtworkReviewItemCardProps> = ({
               flexWrap: 'wrap',
             }}
           >
-            <div
-              style={{
-                width: isMobile ? '100%' : 160,
-                minHeight: isMobile ? 200 : 120,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: '#F8FAFC',
-                border: '1px solid #E2E8F0',
-                borderRadius: 6,
-              }}
-            >
-              {cropLoading ? (
-                <Spin />
-              ) : cropUrl ? (
-                <img
-                  data-testid="review-item-crop"
-                  src={cropUrl}
-                  alt={`${item.t3777Code} crop`}
+            {(() => {
+              const showArtwork = !cropLoading && !cropUrl && !!artworkUrl;
+              return (
+                <div
                   style={{
-                    maxWidth: '100%',
-                    maxHeight: isMobile ? 300 : 140,
-                    objectFit: 'contain',
+                    // Full-width for the "find the keurmerk on the whole pack" case
+                    // so a small mark is actually inspectable; compact for crops.
+                    width: isMobile ? '100%' : showArtwork ? '100%' : 160,
+                    flexBasis: showArtwork && !isMobile ? '100%' : undefined,
+                    minHeight: isMobile ? 200 : 120,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    background: '#F8FAFC',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: 6,
+                    padding: showArtwork ? 8 : 0,
                   }}
-                />
-              ) : artworkUrl ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                  <img
-                    data-testid="review-item-artwork"
-                    src={artworkUrl}
-                    alt={`${item.gtin} artwork`}
-                    style={{
-                      maxWidth: '100%',
-                      maxHeight: isMobile ? 300 : 140,
-                      objectFit: 'contain',
-                    }}
-                  />
-                  <Text type="secondary" style={{ fontSize: 11, textAlign: 'center' }}>
-                    {t('review.artworkFallback', {
-                      defaultValue: 'Niet gedetecteerd — volledige verpakking; zoek het keurmerk',
-                    })}
-                  </Text>
+                >
+                  {cropLoading ? (
+                    <Spin />
+                  ) : cropUrl ? (
+                    <img
+                      data-testid="review-item-crop"
+                      src={cropUrl}
+                      alt={`${item.t3777Code} crop`}
+                      style={{ maxWidth: '100%', maxHeight: isMobile ? 300 : 140, objectFit: 'contain' }}
+                    />
+                  ) : artworkUrl ? (
+                    <>
+                      <Image
+                        data-testid="review-item-artwork"
+                        src={artworkUrl}
+                        alt={`${item.gtin} artwork`}
+                        style={{ maxHeight: isMobile ? 460 : 520, objectFit: 'contain' }}
+                        preview={{
+                          mask: t('review.zoomHintArtwork', {
+                            defaultValue: '🔍 Klik om in te zoomen en het keurmerk te zoeken',
+                          }),
+                        }}
+                      />
+                      <Text type="secondary" style={{ fontSize: 12, textAlign: 'center' }}>
+                        {t('review.artworkFallback', {
+                          defaultValue:
+                            'Niet gedetecteerd — volledige verpakking; klik om in te zoomen en het keurmerk te zoeken',
+                        })}
+                      </Text>
+                    </>
+                  ) : (
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      {cropError
+                        ? t('review.cropError', { defaultValue: 'Crop niet beschikbaar' })
+                        : t('review.noCrop', { defaultValue: 'Geen crop' })}
+                    </Text>
+                  )}
                 </div>
-              ) : (
-                <Text type="secondary" style={{ fontSize: 12 }}>
-                  {cropError
-                    ? t('review.cropError', { defaultValue: 'Crop niet beschikbaar' })
-                    : t('review.noCrop', { defaultValue: 'Geen crop' })}
-                </Text>
-              )}
-            </div>
+              );
+            })()}
 
             <Space direction="vertical" size={4} style={{ flex: 1, minWidth: 180 }}>
               <Text strong style={{ color: '#2F5A7A' }}>

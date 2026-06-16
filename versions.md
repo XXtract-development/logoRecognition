@@ -1,10 +1,14 @@
 # Versiegeschiedenis
 
-## 2026-06-16 (review: sneller beoordelen zonder bevestiging)
+## 2026-06-16 (review: sneller beoordelen + verpakking inzoomen)
 
 ### Accepteren en afwijzen gebeurt nu direct
 - Bij het accepteren of afwijzen van een review-item hoef je niet meer eerst een bevestiging ("Bevestig") aan te klikken — één klik op "Accepteer" of "Wijs af" verwerkt het item meteen
 - Zo werk je de review-lijst veel sneller door
+
+### Volledige verpakking groot tonen en inzoomen
+- Bij items waar het keurmerk niet automatisch gevonden werd, toont de review nu de volledige verpakking groter
+- Je kunt erop klikken om volledig in te zoomen (en slepen om te verschuiven), zodat je een klein keurmerk op de verpakking goed kunt vinden — op zowel desktop als mobiel
 
 ## 2026-06-15 (review-queue vult zichzelf nu automatisch aan)
 
