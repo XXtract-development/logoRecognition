@@ -1,5 +1,11 @@
 # Versiegeschiedenis
 
+## 2026-06-16 (review-station: referentiebeeld + voorstel direct op de verpakking)
+
+### Zie wát je zoekt en wáár het systeem het voorstelt
+- Bij elk item staat nu het **referentiebeeld** van het keurmerk ("zoek dit keurmerk op de verpakking") — geen giswerk meer over hoe een keurmerk eruitziet
+- Bij keurmerk-kandidaten zie je standaard de **volledige verpakking met een rood kader** om precies de plek die het systeem voorstelt, zodat je in één oogopslag controleert of het kader om het juiste logo zit (en dus het juiste logo wordt gekoppeld)
+
 ## 2026-06-16 (review-station: sneller beoordelen met sneltoetsen)
 
 ### Eén item tegelijk, in volle focus — op desktop én mobiel

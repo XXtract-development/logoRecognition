@@ -159,17 +159,18 @@ describe('ArtworkReviewPage', () => {
     expect(screen.getByText('91%')).toBeInTheDocument();
   });
 
-  it('loads the crop into the review station', async () => {
+  it('shows the proposed region boxed on the full pack for a candidate', async () => {
     asAdmin(true);
     vi.mocked(fetchReviewQueue).mockResolvedValue([mockItem]);
 
     renderPage();
     await screen.findByTestId('mobile-review-deck');
 
-    // The station loads the crop as an authenticated blob, lazily per item.
+    // The station still loads the crop blob lazily, but for a candidate (crop +
+    // bbox) it shows the full pack with the proposed region boxed for verification.
     await waitFor(() => expect(fetchReviewItemCropBlob).toHaveBeenCalledWith('ri-1'));
-    const crop = await screen.findByTestId('deck-crop', {}, { timeout: 3000 });
-    expect(crop).toHaveAttribute('src', 'blob:crop-1.png');
+    const main = await screen.findByTestId('deck-crop', {}, { timeout: 3000 });
+    expect(main).toHaveAttribute('src', expect.stringContaining('/marked'));
   });
 
   it('accepts an item in one click and advances', async () => {

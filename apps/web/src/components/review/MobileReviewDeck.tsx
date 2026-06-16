@@ -76,6 +76,11 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
   const [cropLoading, setCropLoading] = useState(false);
   // Double-click zoom on the main image: zoom in at the clicked point, again = out.
   const [zoom, setZoom] = useState<{ s: number; ox: number; oy: number }>({ s: 1, ox: 50, oy: 50 });
+  // For candidates we show the full pack with the proposed region boxed (verify
+  // the RIGHT logo at a glance); fall back to the bare crop if that fails to load.
+  const [markedError, setMarkedError] = useState(false);
+  // Reference image ("this is what {code} looks like"); hidden if none exists.
+  const [refError, setRefError] = useState(false);
   const onZoomDblClick = useCallback((e: React.MouseEvent<HTMLElement>) => {
     const r = e.currentTarget.getBoundingClientRect();
     const ox = ((e.clientX - r.left) / r.width) * 100;
@@ -159,6 +164,8 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
 
   useEffect(() => {
     setZoom({ s: 1, ox: 50, oy: 50 });
+    setMarkedError(false);
+    setRefError(false);
     if (cur) loadCrop(cur.id);
   }, [cur, loadCrop]);
 
@@ -517,6 +524,20 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
   const decision = decisions[cur!.id];
   const shownCode = assignedCode[cur!.id] ?? cur!.t3777Code;
   const relabeled = Boolean(assignedCode[cur!.id]);
+  // Candidate (has a detected crop) with a usable bbox → show the proposed region
+  // boxed on the full pack so the reviewer verifies the RIGHT logo before accepting.
+  const bb = cur!.bbox as { x?: number; y?: number; width?: number; height?: number } | undefined;
+  const hasBbox =
+    !!bb &&
+    [bb.x, bb.y, bb.width, bb.height].every((n) => typeof n === 'number' && Number.isFinite(n)) &&
+    (bb.width as number) > 0 &&
+    (bb.height as number) > 0;
+  const markedSrc =
+    cur!.cropPath && hasBbox && !markedError
+      ? `/api/v1/artwork/review-items/${cur!.id}/marked`
+      : null;
+  // Reference image of the (possibly relabeled) code — "this is what to look for".
+  const refSrc = refError ? null : `/api/v1/reference-logos/code/${encodeURIComponent(shownCode)}/image`;
   // Searchable pick list over the FULL code universe: filter by query, pin the
   // predicted code on top, cap the rendered count so 889 codes stay fast.
   const pickQuery = search.trim().toLowerCase();
@@ -591,6 +612,33 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
             {typeof cur!.confidence === 'number' ? `${Math.round(cur!.confidence * 100)}%` : '—'}
           </Tag>
         </div>
+        {/* Reference image of the keurmerk to look for — so the reviewer never
+            has to guess what {code} looks like. Hidden when no reference exists. */}
+        {refSrc && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              marginBottom: 8,
+              padding: 6,
+              background: '#F8FAFC',
+              border: '1px solid #E2E8F0',
+              borderRadius: 6,
+            }}
+          >
+            <img
+              data-testid="deck-reference"
+              src={refSrc}
+              onError={() => setRefError(true)}
+              alt={`${shownCode} referentie`}
+              style={{ height: 44, width: 44, objectFit: 'contain', flex: '0 0 auto' }}
+            />
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              {t('review.lookForThis', { defaultValue: 'Zoek dit keurmerk op de verpakking' })}
+            </Text>
+          </div>
+        )}
         {/* Story 12.7 — label-prior: only shown when the GTIN has a declaration. */}
         {declared.has && (
           <div style={{ marginBottom: 8 }} data-testid="deck-prior">
@@ -651,46 +699,61 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
                 {t('review.sourceError', { defaultValue: 'Bronafbeelding niet beschikbaar' })}
               </Text>
             )
-          ) : cropLoading ? (
+          ) : cropLoading && !markedSrc ? (
             <Spin />
-          ) : cropUrl ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, maxWidth: '100%', maxHeight: '100%' }}>
-              <div
-                onDoubleClick={onZoomDblClick}
-                title={t('review.zoomDblHint', { defaultValue: 'Dubbelklik om in/uit te zoomen' })}
-                style={{
-                  overflow: 'hidden',
-                  maxWidth: '100%',
-                  maxHeight: cropIsArtwork ? '64vh' : '100%',
-                  cursor: zoom.s === 1 ? 'zoom-in' : 'zoom-out',
-                  borderRadius: 6,
-                }}
-              >
-                <img
-                  data-testid="deck-crop"
-                  src={cropUrl}
-                  alt={`${cur!.t3777Code} ${cropIsArtwork ? 'artwork' : 'crop'}`}
-                  draggable={false}
-                  style={{
-                    display: 'block',
-                    maxWidth: '100%',
-                    maxHeight: cropIsArtwork ? '64vh' : '100%',
-                    objectFit: 'contain',
-                    transform: `scale(${zoom.s})`,
-                    transformOrigin: `${zoom.ox}% ${zoom.oy}%`,
-                    transition: 'transform .18s ease',
-                    userSelect: 'none',
-                  }}
-                />
-              </div>
-              {cropIsArtwork && (
-                <Text type="secondary" style={{ fontSize: 12, textAlign: 'center' }}>
-                  {t('review.artworkFallback', {
-                    defaultValue: 'Niet gedetecteerd — volledige verpakking; dubbelklik om in te zoomen en het keurmerk te zoeken',
-                  })}
-                </Text>
-              )}
-            </div>
+          ) : markedSrc || cropUrl ? (
+            (() => {
+              const big = cropIsArtwork || !!markedSrc;
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, maxWidth: '100%', maxHeight: '100%' }}>
+                  <div
+                    onDoubleClick={onZoomDblClick}
+                    title={t('review.zoomDblHint', { defaultValue: 'Dubbelklik om in/uit te zoomen' })}
+                    style={{
+                      overflow: 'hidden',
+                      maxWidth: '100%',
+                      maxHeight: big ? '64vh' : '100%',
+                      cursor: zoom.s === 1 ? 'zoom-in' : 'zoom-out',
+                      borderRadius: 6,
+                    }}
+                  >
+                    <img
+                      data-testid="deck-crop"
+                      src={markedSrc ?? cropUrl ?? undefined}
+                      onError={() => {
+                        if (markedSrc) setMarkedError(true);
+                      }}
+                      alt={`${cur!.t3777Code} ${cropIsArtwork ? 'artwork' : markedSrc ? 'op verpakking' : 'crop'}`}
+                      draggable={false}
+                      style={{
+                        display: 'block',
+                        maxWidth: '100%',
+                        maxHeight: big ? '64vh' : '100%',
+                        objectFit: 'contain',
+                        transform: `scale(${zoom.s})`,
+                        transformOrigin: `${zoom.ox}% ${zoom.oy}%`,
+                        transition: 'transform .18s ease',
+                        userSelect: 'none',
+                      }}
+                    />
+                  </div>
+                  {markedSrc ? (
+                    <Text type="secondary" style={{ fontSize: 12, textAlign: 'center' }}>
+                      {t('review.markedHint', {
+                        defaultValue:
+                          'Rood kader = voorgestelde plek. Zit het om het juiste keurmerk? Dubbelklik om in te zoomen.',
+                      })}
+                    </Text>
+                  ) : cropIsArtwork ? (
+                    <Text type="secondary" style={{ fontSize: 12, textAlign: 'center' }}>
+                      {t('review.artworkFallback', {
+                        defaultValue: 'Niet gedetecteerd — volledige verpakking; dubbelklik om in te zoomen en het keurmerk te zoeken',
+                      })}
+                    </Text>
+                  ) : null}
+                </div>
+              );
+            })()
           ) : (
             <Text type="secondary">{t('review.cropError', { defaultValue: 'Crop niet beschikbaar' })}</Text>
           )}

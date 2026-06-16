@@ -10,7 +10,11 @@
 
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import sharp from 'sharp';
-import { uploadReferenceLogo, getReferenceLogoUrl } from '../../services/storage';
+import {
+  uploadReferenceLogo,
+  getReferenceLogoUrl,
+  downloadTrainingObject,
+} from '../../services/storage';
 import { optionalAuth } from '../../middleware/auth';
 import { logger } from '../../core/logger';
 import prisma from '../../core/db';
@@ -241,6 +245,45 @@ export async function referenceLogosRoutes(fastify: FastifyInstance) {
           error: error instanceof Error ? error.message : 'Unknown error',
         });
         return reply.status(500).send({ error: 'Ophalen van referenties mislukt' });
+      }
+    }
+  );
+
+  /**
+   * GET /reference-logos/code/:code/image
+   * Streams the first ACTIVE reference variant image for a T3777 code
+   * (downscaled), so the review station can show "this is what {code} looks
+   * like" next to the artwork. Cookie-auth same-origin — presigned previews
+   * carry the internal MinIO endpoint the browser cannot reach.
+   */
+  fastify.get<{ Params: { code: string } }>(
+    '/reference-logos/code/:code/image',
+    async (request: FastifyRequest<{ Params: { code: string } }>, reply: FastifyReply) => {
+      const { code } = request.params;
+      const ref = await prisma.referenceLogo.findFirst({
+        where: { t3777Code: code, active: true },
+        orderBy: { variantLabel: 'asc' },
+      });
+      if (!ref) {
+        return reply.status(404).send({ error: 'Geen referentie voor deze code' });
+      }
+      const buffer = await downloadTrainingObject(ref.storagePath);
+      if (!buffer) {
+        return reply.status(404).send({ error: 'Referentiebeeld niet gevonden' });
+      }
+      reply.header('Cache-Control', 'private, max-age=3600');
+      const ext = ref.storagePath.split('.').pop()?.toLowerCase();
+      if (ext === 'svg') {
+        return reply.type('image/svg+xml').send(buffer);
+      }
+      try {
+        const out = await sharp(buffer)
+          .resize({ width: 400, withoutEnlargement: true })
+          .png()
+          .toBuffer();
+        return reply.type('image/png').send(out);
+      } catch {
+        return reply.type('image/png').send(buffer);
       }
     }
   );
