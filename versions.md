@@ -1,5 +1,11 @@
 # Versiegeschiedenis
 
+## 2026-06-17 (review: "Markeer keurmerk" werkt nu overal)
+
+### Kader tekenen kan nu bij elk item
+- De knop "Markeer keurmerk" en de sneltoets **M** werkten alleen bij "niet gevonden"-items; bij keurmerk-kandidaten gebeurde er niets
+- Nu kun je bij élk item (ook kandidaten) een kader om het keurmerk tekenen op de volledige verpakking — handig om een verkeerd voorgestelde plek te corrigeren of een gemist keurmerk alsnog vast te leggen
+
 ## 2026-06-16 (review-station: referentiebeeld + voorstel direct op de verpakking)
 
 ### Zie wát je zoekt en wáár het systeem het voorstelt

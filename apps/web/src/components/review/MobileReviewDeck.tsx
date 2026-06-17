@@ -379,7 +379,7 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
           break;
         case 'm':
         case 'M':
-          if (cropIsArtwork) {
+          if (canMutate) {
             e.preventDefault();
             setAnnotating(true);
           }
@@ -410,7 +410,7 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [cur, idx, picker, annotating, cropIsArtwork, decisions, applyDecision, goto]);
+  }, [cur, idx, picker, annotating, canMutate, decisions, applyDecision, goto]);
 
   const onTouchStart = (e: React.TouchEvent) => {
     touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
@@ -814,9 +814,10 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
         />
       </div>
 
-      {/* For crop-less "declared but not found" items: let the reviewer draw a box
-          around the keurmerk on the full pack → a verified, located training crop. */}
-      {cropIsArtwork && cropUrl && canMutate && (
+      {/* Draw a box around the keurmerk on the full pack → a verified, located
+          training crop. Works for candidates (correct/redraw the proposed box)
+          AND "declared but not found" misses — any item with an artwork. */}
+      {canMutate && (cropIsArtwork || !!markedSrc || !!cur!.sourceFile) && (
         <Button
           block
           size="large"
@@ -826,7 +827,7 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
           data-testid="deck-annotate"
           style={{ marginTop: 8, height: 48, borderColor: '#2F5A7A', color: '#2F5A7A' }}
         >
-          {t('review.markKeurmerk', { defaultValue: 'Markeer keurmerk' })}
+          {t('review.markKeurmerk', { defaultValue: 'Markeer keurmerk (M)' })}
         </Button>
       )}
 
@@ -839,9 +840,9 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
         title={t('review.markKeurmerkTitle', { defaultValue: 'Markeer het keurmerk op de verpakking' })}
         destroyOnClose
       >
-        {cropUrl && (
+        {annotating && (
           <ArtworkAnnotator
-            imageUrl={cropUrl}
+            imageUrl={`/api/v1/artwork/review-items/${cur!.id}/artwork`}
             busy={busy}
             onConfirm={applyAnnotation}
             onCancel={() => setAnnotating(false)}
