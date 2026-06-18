@@ -1,5 +1,11 @@
 # Versiegeschiedenis
 
+## 2026-06-18 (review: logo's in de keurmerk-keuzelijst)
+
+### Herken een keurmerk aan z'n logo bij het kiezen
+- In de lijst om een ander keurmerk te kiezen ("ander keurmerk") staat nu vóór elke code het **referentielogo** van dat keurmerk
+- Zo kies je sneller op beeld in plaats van alleen op de naam
+
 ## 2026-06-17 (review: "Markeer keurmerk" werkt nu overal)
 
 ### Kader tekenen kan nu bij elk item

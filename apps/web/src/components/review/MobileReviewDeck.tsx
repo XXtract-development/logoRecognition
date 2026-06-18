@@ -66,6 +66,26 @@ function confidenceColor(c: number | null): string {
   return '#D64545';
 }
 
+/**
+ * Reference-logo thumbnail for the keurmerk picker — so the reviewer recognises
+ * a code by its logo, not just its name. Collapses to a blank placeholder (keeps
+ * row alignment) when a code has no reference image.
+ */
+const RefThumb: React.FC<{ code: string }> = ({ code }) => {
+  const [err, setErr] = useState(false);
+  if (err) {
+    return <span style={{ width: 32, height: 32, flex: '0 0 32px', marginRight: 8 }} />;
+  }
+  return (
+    <img
+      src={`/api/v1/reference-logos/code/${encodeURIComponent(code)}/image`}
+      onError={() => setErr(true)}
+      alt=""
+      style={{ width: 32, height: 32, objectFit: 'contain', flex: '0 0 32px', marginRight: 8 }}
+    />
+  );
+};
+
 const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate }) => {
   const { t } = useTranslation();
   const [queue] = useState<ArtworkReviewItem[]>(items);
@@ -902,11 +922,14 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
               style={{
                 height: 52,
                 textAlign: 'left',
+                display: 'flex',
+                alignItems: 'center',
                 justifyContent: 'flex-start',
                 fontWeight: c === cur!.t3777Code ? 700 : 500,
                 borderColor: c === shownCode ? '#7BA428' : '#E2E8F0',
               }}
             >
+              <RefThumb code={c} />
               {c}
               <Tag
                 color={fieldTypeForCode(c) === 'PackagingMarkedLabelAccreditationCode' ? 'default' : '#54949E'}
