@@ -1,5 +1,13 @@
 # Versiegeschiedenis
 
+## 2026-06-18 (review: direct tekenen, slepen en verwijderen op de afbeelding)
+
+### De afbeelding is nu volledig interactief
+- **Direct markeren**: houd je muisknop ingedrukt op de afbeelding en sleep — je tekent meteen een kader om een keurmerk, zonder eerst op een knop te klikken
+- **Verschuiven na inzoomen**: dubbelklik om in te zoomen, daarna sleep je het beeld met de muis om rond te kijken
+- **Kader verwijderen**: een getekend kader heeft rechtsboven een ×-knop om het weer weg te halen
+- Daarna bevestig je het kader; het uitgesneden stuk wordt als bevestigd voorbeeld geregistreerd
+
 ## 2026-06-18 (review: logo's in de keurmerk-keuzelijst)
 
 ### Herken een keurmerk aan z'n logo bij het kiezen

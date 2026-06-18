@@ -169,8 +169,9 @@ describe('ArtworkReviewPage', () => {
     // The station still loads the crop blob lazily, but for a candidate (crop +
     // bbox) it shows the full pack with the proposed region boxed for verification.
     await waitFor(() => expect(fetchReviewItemCropBlob).toHaveBeenCalledWith('ri-1'));
-    const main = await screen.findByTestId('deck-crop', {}, { timeout: 3000 });
-    expect(main).toHaveAttribute('src', expect.stringContaining('/marked'));
+    const stage = await screen.findByTestId('deck-stage', {}, { timeout: 3000 });
+    const img = stage.querySelector('img');
+    expect(img).toHaveAttribute('src', expect.stringContaining('/marked'));
   });
 
   it('accepts an item in one click and advances', async () => {

@@ -14,7 +14,7 @@
  *     to jump back to it.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Tag, Typography, Spin, Empty, Drawer, Input, message, Modal } from 'antd';
+import { Button, Tag, Typography, Spin, Empty, Drawer, Input, message } from 'antd';
 import {
   CheckOutlined,
   CloseOutlined,
@@ -22,7 +22,6 @@ import {
   RightOutlined,
   UnorderedListOutlined,
   TagsOutlined,
-  EnvironmentOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import {
@@ -36,7 +35,7 @@ import {
   fetchDeclaredMarks,
   type ArtworkReviewItem,
 } from '@/services/artworkReviewService';
-import ArtworkAnnotator from './ArtworkAnnotator';
+import ImageStage from './ImageStage';
 import { KEURMERK_CODES } from '@/data/keurmerk-codes';
 import { isBeneluxCode } from '@/data/benelux-codes';
 import { EXTRA_SPOOR_CODES, spoorLabelForCode, fieldTypeForCode } from '@/data/spoor-codes';
@@ -94,19 +93,11 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
   const [cropUrl, setCropUrl] = useState<string | null>(null);
   const [cropIsArtwork, setCropIsArtwork] = useState(false);
   const [cropLoading, setCropLoading] = useState(false);
-  // Double-click zoom on the main image: zoom in at the clicked point, again = out.
-  const [zoom, setZoom] = useState<{ s: number; ox: number; oy: number }>({ s: 1, ox: 50, oy: 50 });
   // For candidates we show the full pack with the proposed region boxed (verify
   // the RIGHT logo at a glance); fall back to the bare crop if that fails to load.
   const [markedError, setMarkedError] = useState(false);
   // Reference image ("this is what {code} looks like"); hidden if none exists.
   const [refError, setRefError] = useState(false);
-  const onZoomDblClick = useCallback((e: React.MouseEvent<HTMLElement>) => {
-    const r = e.currentTarget.getBoundingClientRect();
-    const ox = ((e.clientX - r.left) / r.width) * 100;
-    const oy = ((e.clientY - r.top) / r.height) * 100;
-    setZoom((z) => (z.s === 1 ? { s: 2.6, ox, oy } : { s: 1, ox: 50, oy: 50 }));
-  }, []);
   const [busy, setBusy] = useState(false);
   const [drag, setDrag] = useState(0);
   const [overview, setOverview] = useState(false);
@@ -183,7 +174,6 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
   }, []);
 
   useEffect(() => {
-    setZoom({ s: 1, ox: 50, oy: 50 });
     setMarkedError(false);
     setRefError(false);
     if (cur) loadCrop(cur.id);
@@ -314,7 +304,6 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
     [cur, busy, canMutate, decisions, idx, goto, t]
   );
 
-  const [annotating, setAnnotating] = useState(false);
   const applyAnnotation = useCallback(
     async (rel: { x: number; y: number; width: number; height: number }) => {
       if (!cur || busy) return;
@@ -322,7 +311,6 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
       try {
         await annotateReviewItem(cur.id, rel);
         setDecisions((d) => ({ ...d, [cur.id]: 'ECHT' }));
-        setAnnotating(false);
         message.success(
           t('review.annotated', {
             defaultValue: 'Keurmerk gemarkeerd en als trainingsdata geregistreerd',
@@ -378,12 +366,9 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
       const tgt = e.target as HTMLElement | null;
       const typing =
         !!tgt && (tgt.tagName === 'INPUT' || tgt.tagName === 'TEXTAREA' || tgt.isContentEditable);
-      if (picker || annotating) {
-        if (e.key === 'Escape') {
-          setPicker(false);
-          setAnnotating(false);
-        }
-        return; // the picker / annotator owns the keyboard while open
+      if (picker) {
+        if (e.key === 'Escape') setPicker(false);
+        return; // the picker owns the keyboard while open
       }
       if (typing || !cur || e.metaKey || e.ctrlKey || e.altKey) return;
       switch (e.key) {
@@ -396,13 +381,6 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
         case 'R':
           e.preventDefault();
           applyDecision('VALS');
-          break;
-        case 'm':
-        case 'M':
-          if (canMutate) {
-            e.preventDefault();
-            setAnnotating(true);
-          }
           break;
         case 'l':
         case 'L':
@@ -430,7 +408,7 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [cur, idx, picker, annotating, canMutate, decisions, applyDecision, goto]);
+  }, [cur, idx, picker, canMutate, decisions, applyDecision, goto]);
 
   const onTouchStart = (e: React.TouchEvent) => {
     touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
@@ -590,7 +568,7 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
       <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 8 }}>
         {t('review.shortcuts', {
           defaultValue:
-            'Sneltoetsen: A goedkeuren · R afwijzen · M markeren · L ander keurmerk · ←/→ navigeren · dubbelklik = zoom',
+            'Sneltoetsen: A goedkeuren · R afwijzen · L ander keurmerk · ←/→ navigeren · sleep = kader tekenen · dubbelklik = zoom (dan slepen = verschuiven)',
         })}
       </Text>
 
@@ -722,58 +700,32 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
           ) : cropLoading && !markedSrc ? (
             <Spin />
           ) : markedSrc || cropUrl ? (
-            (() => {
-              const big = cropIsArtwork || !!markedSrc;
-              return (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, maxWidth: '100%', maxHeight: '100%' }}>
-                  <div
-                    onDoubleClick={onZoomDblClick}
-                    title={t('review.zoomDblHint', { defaultValue: 'Dubbelklik om in/uit te zoomen' })}
-                    style={{
-                      overflow: 'hidden',
-                      maxWidth: '100%',
-                      maxHeight: big ? '64vh' : '100%',
-                      cursor: zoom.s === 1 ? 'zoom-in' : 'zoom-out',
-                      borderRadius: 6,
-                    }}
-                  >
-                    <img
-                      data-testid="deck-crop"
-                      src={markedSrc ?? cropUrl ?? undefined}
-                      onError={() => {
-                        if (markedSrc) setMarkedError(true);
-                      }}
-                      alt={`${cur!.t3777Code} ${cropIsArtwork ? 'artwork' : markedSrc ? 'op verpakking' : 'crop'}`}
-                      draggable={false}
-                      style={{
-                        display: 'block',
-                        maxWidth: '100%',
-                        maxHeight: big ? '64vh' : '100%',
-                        objectFit: 'contain',
-                        transform: `scale(${zoom.s})`,
-                        transformOrigin: `${zoom.ox}% ${zoom.oy}%`,
-                        transition: 'transform .18s ease',
-                        userSelect: 'none',
-                      }}
-                    />
-                  </div>
-                  {markedSrc ? (
-                    <Text type="secondary" style={{ fontSize: 12, textAlign: 'center' }}>
-                      {t('review.markedHint', {
-                        defaultValue:
-                          'Rood kader = voorgestelde plek. Zit het om het juiste keurmerk? Dubbelklik om in te zoomen.',
-                      })}
-                    </Text>
-                  ) : cropIsArtwork ? (
-                    <Text type="secondary" style={{ fontSize: 12, textAlign: 'center' }}>
-                      {t('review.artworkFallback', {
-                        defaultValue: 'Niet gedetecteerd — volledige verpakking; dubbelklik om in te zoomen en het keurmerk te zoeken',
-                      })}
-                    </Text>
-                  ) : null}
-                </div>
-              );
-            })()
+            <ImageStage
+              data-testid="deck-stage"
+              src={(markedSrc ?? cropUrl) as string}
+              alt={cur!.t3777Code}
+              canDraw={canMutate && (!!markedSrc || cropIsArtwork)}
+              busy={busy}
+              resetKey={cur!.id}
+              onConfirmBox={applyAnnotation}
+              hint={
+                markedSrc ? (
+                  <Text type="secondary" style={{ fontSize: 12, textAlign: 'center' }}>
+                    {t('review.markedHint', {
+                      defaultValue:
+                        'Rood kader = voorgestelde plek. Sleep een nieuw kader om te corrigeren · dubbelklik = zoom.',
+                    })}
+                  </Text>
+                ) : cropIsArtwork ? (
+                  <Text type="secondary" style={{ fontSize: 12, textAlign: 'center' }}>
+                    {t('review.artworkFallback', {
+                      defaultValue:
+                        'Niet gedetecteerd — sleep een kader om het keurmerk · dubbelklik = zoom.',
+                    })}
+                  </Text>
+                ) : null
+              }
+            />
           ) : (
             <Text type="secondary">{t('review.cropError', { defaultValue: 'Crop niet beschikbaar' })}</Text>
           )}
@@ -834,41 +786,7 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
         />
       </div>
 
-      {/* Draw a box around the keurmerk on the full pack → a verified, located
-          training crop. Works for candidates (correct/redraw the proposed box)
-          AND "declared but not found" misses — any item with an artwork. */}
-      {canMutate && (cropIsArtwork || !!markedSrc || !!cur!.sourceFile) && (
-        <Button
-          block
-          size="large"
-          icon={<EnvironmentOutlined />}
-          disabled={busy}
-          onClick={() => setAnnotating(true)}
-          data-testid="deck-annotate"
-          style={{ marginTop: 8, height: 48, borderColor: '#2F5A7A', color: '#2F5A7A' }}
-        >
-          {t('review.markKeurmerk', { defaultValue: 'Markeer keurmerk (M)' })}
-        </Button>
-      )}
-
-      <Modal
-        open={annotating}
-        onCancel={() => !busy && setAnnotating(false)}
-        footer={null}
-        width="95vw"
-        style={{ top: 16, maxWidth: 900 }}
-        title={t('review.markKeurmerkTitle', { defaultValue: 'Markeer het keurmerk op de verpakking' })}
-        destroyOnClose
-      >
-        {annotating && (
-          <ArtworkAnnotator
-            imageUrl={`/api/v1/artwork/review-items/${cur!.id}/artwork`}
-            busy={busy}
-            onConfirm={applyAnnotation}
-            onCancel={() => setAnnotating(false)}
-          />
-        )}
-      </Modal>
+      {/* Marking is now direct: drag a box on the image above (no button). */}
       <Button
         block
         icon={<TagsOutlined />}
