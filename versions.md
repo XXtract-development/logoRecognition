@@ -4,7 +4,8 @@
 
 ### De afbeelding is nu volledig interactief
 - **Direct markeren**: houd je muisknop ingedrukt op de afbeelding en sleep — je tekent meteen een kader om een keurmerk, zonder eerst op een knop te klikken
-- **Verschuiven na inzoomen**: dubbelklik om in te zoomen, daarna sleep je het beeld met de muis om rond te kijken
+- **Ook ingezoomd tekenen**: dubbelklik om in te zoomen op een klein logo en teken er dan nauwkeurig een kader omheen
+- **Verschuiven**: houd de **spatiebalk** ingedrukt en sleep om het (ingezoomde) beeld te verschuiven
 - **Kader verwijderen**: een getekend kader heeft rechtsboven een ×-knop om het weer weg te halen
 - Daarna bevestig je het kader; het uitgesneden stuk wordt als bevestigd voorbeeld geregistreerd
 

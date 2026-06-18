@@ -23,7 +23,7 @@ interface ImageStageProps {
   canDraw?: boolean;
   busy?: boolean;
   hint?: React.ReactNode;
-  /** Called with the box as fractions (0..1) of the rendered image. */
+  /** Called with the box as fractions (0..1) of the artwork. */
   onConfirmBox?: (rel: Rel) => void;
   /** Changing this resets zoom/pan/box (use the item id). */
   resetKey?: string | number;
@@ -31,14 +31,17 @@ interface ImageStageProps {
 }
 
 const ZOOM = 2.6;
+const clamp01 = (n: number) => Math.max(0, Math.min(1, n));
 
 /**
  * Interactive image stage for the review station:
  *  - double-click toggles zoom in/out centred on the click point;
- *  - when zoomed, drag pans the image (hand);
- *  - when not zoomed, drag draws a selection box directly on the image to mark
- *    a keurmerk — no "mark" button needed;
+ *  - drag draws a selection box directly on the image — at ANY zoom level, so
+ *    you can zoom in on a small mark and box it precisely (no "mark" button);
+ *  - hold Space and drag to pan the (zoomed) image;
  *  - a drawn box carries an × (top-right) to remove it, plus a confirm button.
+ * The box is tracked in container pixels (correct overlay) and converted to
+ * artwork fractions via the live transformed image rect (correct while zoomed).
  */
 const ImageStage: React.FC<ImageStageProps> = ({
   src,
@@ -51,10 +54,12 @@ const ImageStage: React.FC<ImageStageProps> = ({
   'data-testid': testId,
 }) => {
   const { t } = useTranslation();
+  const wrapRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const [scale, setScale] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [box, setBox] = useState<Box | null>(null);
+  const [space, setSpace] = useState(false);
   const mode = useRef<'idle' | 'pan' | 'draw'>('idle');
   const start = useRef<{ x: number; y: number; px: number; py: number } | null>(null);
 
@@ -64,11 +69,32 @@ const ImageStage: React.FC<ImageStageProps> = ({
     setBox(null);
   }, [resetKey, src]);
 
-  const imgPos = useCallback((e: React.PointerEvent) => {
-    const img = imgRef.current;
-    if (!img) return null;
-    const r = img.getBoundingClientRect();
-    return { x: e.clientX - r.left, y: e.clientY - r.top, w: r.width, h: r.height };
+  // Space = temporary pan ("hand") tool while held. Prevent the page from
+  // scrolling on Space while the station is mounted.
+  useEffect(() => {
+    const kd = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        setSpace(true);
+        const tag = (e.target as HTMLElement | null)?.tagName;
+        if (tag !== 'INPUT' && tag !== 'TEXTAREA') e.preventDefault();
+      }
+    };
+    const ku = (e: KeyboardEvent) => {
+      if (e.code === 'Space') setSpace(false);
+    };
+    window.addEventListener('keydown', kd);
+    window.addEventListener('keyup', ku);
+    return () => {
+      window.removeEventListener('keydown', kd);
+      window.removeEventListener('keyup', ku);
+    };
+  }, []);
+
+  const wrapPos = useCallback((e: React.PointerEvent) => {
+    const w = wrapRef.current;
+    if (!w) return null;
+    const r = w.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
   }, []);
 
   const down = useCallback(
@@ -79,18 +105,19 @@ const ImageStage: React.FC<ImageStageProps> = ({
       } catch {
         /* no-op */
       }
-      if (scale > 1) {
+      // Pan when holding Space (or when drawing isn't allowed); otherwise draw.
+      if (space || !canDraw) {
         mode.current = 'pan';
         start.current = { x: e.clientX, y: e.clientY, px: pan.x, py: pan.y };
-      } else if (canDraw) {
-        const p = imgPos(e);
-        if (!p) return;
-        mode.current = 'draw';
-        start.current = { x: p.x, y: p.y, px: 0, py: 0 };
-        setBox({ x: p.x, y: p.y, w: 0, h: 0 });
+        return;
       }
+      const p = wrapPos(e);
+      if (!p) return;
+      mode.current = 'draw';
+      start.current = { x: p.x, y: p.y, px: 0, py: 0 };
+      setBox({ x: p.x, y: p.y, w: 0, h: 0 });
     },
-    [busy, scale, canDraw, pan, imgPos]
+    [busy, space, canDraw, pan, wrapPos]
   );
 
   const move = useCallback(
@@ -98,9 +125,12 @@ const ImageStage: React.FC<ImageStageProps> = ({
       if (mode.current === 'idle' || !start.current) return;
       e.preventDefault();
       if (mode.current === 'pan') {
-        setPan({ x: start.current.px + (e.clientX - start.current.x), y: start.current.py + (e.clientY - start.current.y) });
+        setPan({
+          x: start.current.px + (e.clientX - start.current.x),
+          y: start.current.py + (e.clientY - start.current.y),
+        });
       } else {
-        const p = imgPos(e);
+        const p = wrapPos(e);
         if (!p) return;
         const s = start.current;
         setBox({
@@ -111,7 +141,7 @@ const ImageStage: React.FC<ImageStageProps> = ({
         });
       }
     },
-    [imgPos]
+    [wrapPos]
   );
 
   const up = useCallback(() => {
@@ -142,18 +172,31 @@ const ImageStage: React.FC<ImageStageProps> = ({
     [scale]
   );
 
+  // Box (container px) → artwork fractions via the live (transformed) image rect,
+  // so a box drawn while zoomed maps to the right spot on the original artwork.
   const confirm = useCallback(() => {
     const img = imgRef.current;
-    if (!img || !box || !onConfirmBox) return;
-    const r = img.getBoundingClientRect();
-    const rel = { x: box.x / r.width, y: box.y / r.height, width: box.w / r.width, height: box.h / r.height };
+    const wrap = wrapRef.current;
+    if (!img || !wrap || !box || !onConfirmBox) return;
+    const ir = img.getBoundingClientRect();
+    const wr = wrap.getBoundingClientRect();
+    const left = wr.left + box.x;
+    const top = wr.top + box.y;
+    const x0 = clamp01((left - ir.left) / ir.width);
+    const y0 = clamp01((top - ir.top) / ir.height);
+    const x1 = clamp01((left + box.w - ir.left) / ir.width);
+    const y1 = clamp01((top + box.h - ir.top) / ir.height);
+    const rel = { x: x0, y: y0, width: x1 - x0, height: y1 - y0 };
     if (rel.width < 0.005 || rel.height < 0.005) return;
     onConfirmBox(rel);
   }, [box, onConfirmBox]);
 
+  const cursor = space ? 'grab' : canDraw ? 'crosshair' : 'zoom-in';
+
   return (
     <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'center' }}>
       <div
+        ref={wrapRef}
         data-testid={testId}
         onPointerDown={down}
         onPointerMove={move}
@@ -161,10 +204,12 @@ const ImageStage: React.FC<ImageStageProps> = ({
         onPointerCancel={up}
         onDoubleClick={dbl}
         title={
-          scale > 1
-            ? t('review.panHint', { defaultValue: 'Sleep om te verschuiven · dubbelklik = uit' })
+          space
+            ? t('review.panHint', { defaultValue: 'Sleep om te verschuiven' })
             : canDraw
-              ? t('review.drawHint', { defaultValue: 'Sleep om een kader te tekenen · dubbelklik = zoom' })
+              ? t('review.drawHint', {
+                  defaultValue: 'Sleep om een kader te tekenen · dubbelklik = zoom · spatie + sleep = verschuiven',
+                })
               : t('review.zoomDblHint', { defaultValue: 'Dubbelklik om in/uit te zoomen' })
         }
         style={{
@@ -174,7 +219,7 @@ const ImageStage: React.FC<ImageStageProps> = ({
           maxHeight: '64vh',
           borderRadius: 6,
           touchAction: 'none',
-          cursor: scale > 1 ? 'grab' : canDraw ? 'crosshair' : 'zoom-in',
+          cursor,
         }}
       >
         <img
@@ -193,7 +238,7 @@ const ImageStage: React.FC<ImageStageProps> = ({
             transition: mode.current === 'pan' ? 'none' : 'transform .15s ease',
           }}
         />
-        {box && scale === 1 && (
+        {box && (
           <div
             style={{
               position: 'absolute',
@@ -204,6 +249,7 @@ const ImageStage: React.FC<ImageStageProps> = ({
               border: '2px solid #D64545',
               background: 'rgba(214,69,69,0.15)',
               boxShadow: '0 0 0 1px #ffffff',
+              pointerEvents: 'none',
             }}
           >
             <Button
@@ -218,13 +264,22 @@ const ImageStage: React.FC<ImageStageProps> = ({
                 e.stopPropagation();
                 setBox(null);
               }}
-              style={{ position: 'absolute', top: -12, right: -12, width: 24, height: 24, minWidth: 24, padding: 0 }}
+              style={{
+                position: 'absolute',
+                top: -12,
+                right: -12,
+                width: 24,
+                height: 24,
+                minWidth: 24,
+                padding: 0,
+                pointerEvents: 'auto',
+              }}
             />
           </div>
         )}
       </div>
       {hint}
-      {box && scale === 1 && onConfirmBox && (
+      {box && onConfirmBox && (
         <Button
           type="primary"
           loading={busy}
