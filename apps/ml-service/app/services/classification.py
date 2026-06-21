@@ -120,7 +120,7 @@ async def _classify_via_embedding(
     # moderate confidence and flood the review queue. Score the SAME embedding; if
     # it is confidently non-keurmerk, return UNKNOWN before the reference search.
     # Fail-open: a disabled/missing gate returns None and never blocks.
-    from app.services.keurmerk_gate import keurmerk_probability, GATE_THRESHOLD
+    from app.services.keurmerk_gate import GATE_THRESHOLD, keurmerk_probability
 
     kp = keurmerk_probability(embedding)
     if kp is not None and kp < GATE_THRESHOLD:

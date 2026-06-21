@@ -22,6 +22,7 @@ Env:
   HARVEST_PER_CODE_CAP   max candidates per code per run (default 25)
   HARVEST_MAX_SECONDS    wall-clock budget per run (default 1000)
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -80,7 +81,9 @@ async def run_batch() -> dict:
 
     # progress state
     try:
-        state = json.loads(storage_service.get_training_image(STATE_KEY).decode("utf-8"))
+        state = json.loads(
+            storage_service.get_training_image(STATE_KEY).decode("utf-8")
+        )
     except Exception:
         state = {"next_offset": 0}
     next_offset = int(state.get("next_offset", 0))
@@ -100,8 +103,14 @@ async def run_batch() -> dict:
     total = len(gtins)
 
     if next_offset >= total:
-        logger.info("Keurmerk harvest complete — all GTINs covered", extra={"total": total})
-        result = {"status": "complete", "total_gtins": total, "next_offset": next_offset}
+        logger.info(
+            "Keurmerk harvest complete — all GTINs covered", extra={"total": total}
+        )
+        result = {
+            "status": "complete",
+            "total_gtins": total,
+            "next_offset": next_offset,
+        }
         print(json.dumps(result))
         return result
 
@@ -136,7 +145,9 @@ async def run_batch() -> dict:
             c = _crop_bgr(img, b)
             if c is None:
                 continue
-            emb = np.asarray(await model_manager.generate_embedding(_to_pil(c)), np.float32)
+            emb = np.asarray(
+                await model_manager.generate_embedding(_to_pil(c)), np.float32
+            )
             kp = keurmerk_probability(emb)
             if kp is not None and kp < GATE_THRESHOLD:
                 continue
@@ -151,7 +162,12 @@ async def run_batch() -> dict:
             queue[code].append(
                 {
                     "gtin": gtin,
-                    "bbox": {"x": int(b[0]), "y": int(b[1]), "width": int(b[2]), "height": int(b[3])},
+                    "bbox": {
+                        "x": int(b[0]),
+                        "y": int(b[1]),
+                        "width": int(b[2]),
+                        "height": int(b[3]),
+                    },
                     "confidence": round(float(matches[0]["similarity"]), 3),
                     "sourceFile": src,
                     "crop": c,

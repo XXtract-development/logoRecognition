@@ -11,9 +11,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import make_asgi_app
 
 from app.api import artwork as artwork_api
-from app.api import detection, health, models, symbols
+from app.api import detection, health, models
 from app.api import pipeline as pipeline_api
-from app.api import training
+from app.api import symbols, training
 from app.core.config import settings
 from app.core.logging import logger, setup_logging
 from app.ml.model_manager import model_manager

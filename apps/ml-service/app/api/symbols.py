@@ -33,7 +33,10 @@ class SymbolRequest(BaseModel):
     image: Optional[str] = Field(None, description="Base64 encoded label image")
     imageUrl: Optional[str] = None
     profile: SymbolProfile = Field(default_factory=SymbolProfile)
-    detections: List[Dict[str, Any]] = Field(default_factory=list, description="Precomputed detections for contract tests/replay")
+    detections: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Precomputed detections for contract tests/replay",
+    )
 
 
 class SymbolDetection(BaseModel):
@@ -55,27 +58,39 @@ class SymbolResponse(BaseModel):
     processingTimeMs: int
 
 
-async def detect_from_image(image_b64: str, confidence_threshold: float) -> List[Dict[str, Any]]:
+async def detect_from_image(
+    image_b64: str, confidence_threshold: float
+) -> List[Dict[str, Any]]:
     image_data = base64.b64decode(image_b64)
     image = Image.open(io.BytesIO(image_data))
     if image.mode != "RGB":
         image = image.convert("RGB")
     detector = LogoDetector(model_manager)
-    return await detector.detect(image=image, confidence_threshold=confidence_threshold, return_embeddings=False)
+    return await detector.detect(
+        image=image, confidence_threshold=confidence_threshold, return_embeddings=False
+    )
 
 
 @router.post("/detect-symbols", response_model=SymbolResponse)
 async def detect_symbols(request: SymbolRequest) -> SymbolResponse:
     start = time.time()
     model_version = str(getattr(model_manager, "model_version", None) or "unknown")
-    request_hash = hashlib.sha1((request.image or request.imageUrl or str(len(request.detections))).encode("utf-8")).hexdigest()[:12]
+    request_hash = hashlib.sha1(
+        (request.image or request.imageUrl or str(len(request.detections))).encode(
+            "utf-8"
+        )
+    ).hexdigest()[:12]
 
     try:
         raw_detections = request.detections
         if not raw_detections and request.image:
-            raw_detections = await detect_from_image(request.image, request.profile.visionThreshold)
+            raw_detections = await detect_from_image(
+                request.image, request.profile.visionThreshold
+            )
         elapsed_ms = int((time.time() - start) * 1000)
-        detections = normalize_detections(raw_detections, request.profile.model_dump(), model_version, elapsed_ms)
+        detections = normalize_detections(
+            raw_detections, request.profile.model_dump(), model_version, elapsed_ms
+        )
         return SymbolResponse(
             requestId=f"sym_{request_hash}",
             detections=detections,
@@ -83,4 +98,6 @@ async def detect_symbols(request: SymbolRequest) -> SymbolResponse:
             processingTimeMs=elapsed_ms,
         )
     except Exception as exc:
-        raise HTTPException(status_code=422, detail=f"detect-symbols failed: {exc}") from exc
+        raise HTTPException(
+            status_code=422, detail=f"detect-symbols failed: {exc}"
+        ) from exc

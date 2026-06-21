@@ -14,7 +14,11 @@ def allowed_codes(profile):
     explicit = {str(code).upper() for code in profile.get("codes", [])}
     codelists = set(profile.get("codelists", []))
     codes = set(explicit)
-    if not codes or "T3777" in codelists or "PackagingMarkedLabelAccreditationCode" in codelists:
+    if (
+        not codes
+        or "T3777" in codelists
+        or "PackagingMarkedLabelAccreditationCode" in codelists
+    ):
         codes |= DEFAULT_T3777_CODES
     if "NutritionalScore" in codelists:
         codes |= NUTRISCORE_CODES
@@ -32,8 +36,14 @@ def classify_codelist(code):
 
 
 def normalize_detection(raw, profile, model_version, elapsed_ms):
-    code = str(raw.get("code") or raw.get("t3777_code") or raw.get("value") or "").strip().upper()
-    confidence = float(raw.get("confidence") or raw.get("match_confidence") or raw.get("score") or 0)
+    code = (
+        str(raw.get("code") or raw.get("t3777_code") or raw.get("value") or "")
+        .strip()
+        .upper()
+    )
+    confidence = float(
+        raw.get("confidence") or raw.get("match_confidence") or raw.get("score") or 0
+    )
     method = str(raw.get("method") or "embedding")
     if method not in {"embedding", "classifier"}:
         method = "embedding"
