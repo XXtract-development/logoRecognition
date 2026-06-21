@@ -18,10 +18,9 @@ from pydantic import BaseModel, Field
 
 from app.ml.detector import LogoDetector
 from app.ml.model_manager import model_manager
+from app.symbol_contract import normalize_detections
 
 router = APIRouter()
-
-from app.symbol_contract import normalize_detections
 
 
 class SymbolProfile(BaseModel):
