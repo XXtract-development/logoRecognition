@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import make_asgi_app
 
 from app.api import artwork as artwork_api
-from app.api import detection, health, models
+from app.api import detection, health, models, symbols
 from app.api import pipeline as pipeline_api
 from app.api import training
 from app.core.config import settings
@@ -137,6 +137,7 @@ app.mount("/metrics", metrics_app)
 # Include API routers
 app.include_router(health.router, tags=["Health"])
 app.include_router(detection.router, prefix="/ml", tags=["Detection"])
+app.include_router(symbols.router, prefix="/v1", tags=["Symbols"])
 app.include_router(training.router, prefix="/ml", tags=["Training"])
 app.include_router(models.router, prefix="/ml", tags=["Models"])
 app.include_router(artwork_api.router, prefix="/ml", tags=["Artwork"])
