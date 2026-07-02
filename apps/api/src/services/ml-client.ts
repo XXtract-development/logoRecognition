@@ -455,6 +455,30 @@ export class MLClient {
     return res.data as { added: boolean; reason: string; reference_logo_id?: string };
   }
 
+  /**
+   * Compute the canonical content-hash + perceptual hash (pHash) for a crop
+   * (Story 13.1, AD-14). This is the ONLY route by which Node obtains a crop
+   * content-hash — the API never computes an image content-hash itself and there
+   * is no Node fallback (fail-closed: if the ml-service is unreachable the caller
+   * must refuse, not invent a hash).
+   *
+   * NOTE — distinct from `ArtworkImport.sha256Hash`: that hashes the raw source
+   * *file bytes* (a different key, AD-12) and stays untouched. The content-hash
+   * here is SHA-256 over the *normalized pixel buffer* (RGB, pinned N×N resize),
+   * the single key for nomination-uniqueness and hard-negatives (13.2/13.4/14.1).
+   *
+   * @param cropPath  MinIO object key of the crop
+   * @returns `{ content_hash, phash }`
+   */
+  async computePhash(
+    cropPath: string
+  ): Promise<{ content_hash: string; phash: string }> {
+    const res = await this.client.post('/ml/phash', {
+      crop_path: cropPath,
+    });
+    return res.data as { content_hash: string; phash: string };
+  }
+
   // ==========================================
   // Synthetic batch fill (Epic 9, Story 9.3 — wiring of deferred 8.7 hook)
   // ==========================================

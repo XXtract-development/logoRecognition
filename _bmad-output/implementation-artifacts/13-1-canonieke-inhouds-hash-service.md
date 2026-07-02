@@ -1,6 +1,6 @@
 # Story 13.1: Canonieke inhouds-hash-service
 
-Status: ready-for-dev
+Status: done
 
 <!-- Aangemaakt via create-story workflow, 2026-07-02. Bron: epics-vliegwiel.md Epic 13 / Story 13.1 + ARCHITECTURE-SPINE (AD-9, AD-14, ARCH-3, ARCH-7). -->
 
@@ -100,15 +100,37 @@ zodat **ontdubbeling, idempotentie en het hard-negative-geheugen nooit stil kunn
 
 ## Dev Agent Record
 
-_(in te vullen door dev-story)_
-
 ### Agent Model Used
+
+claude-opus-4-8 (implement-sprint, epic-13 worktree).
 
 ### Debug Log References
 
+- Green-phase run: `pytest tests/unit/ tests/test_flywheel_atdd.py` → 17 passed, 13 skipped, 0 failed (Python 3.11.15, matches CI).
+- Test-venv buiten de repo; alleen de phash + FastAPI-testclient-subset geïnstalleerd (pillow==10.2.0, numpy==1.26.3, scipy==1.12.0, ImageHash==4.3.2, pytest, fastapi, httpx) plus de eager-`app/services/__init__.py`-keten (asyncpg, minio, structlog, pydantic-settings). Torch NIET nodig (lazy geïmporteerd). `MODEL_PATH` env → schrijfbaar pad om de `/app`-mkdir in de eager package-init te omzeilen (pre-existing koppeling, buiten scope 13.1).
+
 ### Completion Notes List
 
+- `content_hash` = SHA-256 over de genormaliseerde pixel-buffer (RGB, resize 256×256 LANCZOS — vastgelegd als module-constantes met invalidatie-waarschuwing). `perceptual_hash` = pHash (ImageHash, hash_size 8) als hex-string.
+- Nieuw endpoint `POST /ml/phash` (router `app/api/flywheel.py`, prefix `/ml`, tags `["Flywheel"]`) accepteert `crop_path` (voorrang) of `image_b64`; response `{content_hash, phash}`. Fail-closed: storage-/decode-fout → HTTP 422/400, nooit een fallback-hash.
+- `ImageHash==4.3.2` gepind in requirements.txt (naast reeds gepinde pillow/numpy/scipy).
+- MLClient-methode `computePhash(cropPath)` toegevoegd als enige Node-route; docblock grenst expliciet af t.o.v. `ArtworkImport.sha256Hash` (bron-bestandsbytes, AD-12).
+- AC→test-mapping en review: `_bmad-output/implementation-artifacts/review-13-1.md`.
+
 ### File List
+
+- apps/ml-service/app/services/phash.py (nieuw)
+- apps/ml-service/app/api/flywheel.py (nieuw)
+- apps/ml-service/app/main.py (router-registratie)
+- apps/ml-service/requirements.txt (ImageHash==4.3.2)
+- apps/ml-service/.gitignore (nieuw — venv/pycache)
+- apps/ml-service/tests/__init__.py, tests/unit/__init__.py (nieuw)
+- apps/ml-service/tests/unit/test_phash_service.py (nieuw)
+- apps/ml-service/tests/unit/test_flywheel_phash_endpoint.py (nieuw)
+- apps/ml-service/tests/unit/test_no_node_content_hash.py (nieuw)
+- apps/ml-service/tests/test_flywheel_atdd.py (13.1-skips gemarkeerd als vervangen)
+- apps/api/src/services/ml-client.ts (computePhash)
+- versions.md (NL-changelog)
 
 ## Change Log
 

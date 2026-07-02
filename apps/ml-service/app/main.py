@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import make_asgi_app
 
 from app.api import artwork as artwork_api
-from app.api import detection, health, models
+from app.api import detection, flywheel, health, models
 from app.api import pipeline as pipeline_api
 from app.api import training
 from app.core.config import settings
@@ -141,6 +141,7 @@ app.include_router(training.router, prefix="/ml", tags=["Training"])
 app.include_router(models.router, prefix="/ml", tags=["Models"])
 app.include_router(artwork_api.router, prefix="/ml", tags=["Artwork"])
 app.include_router(pipeline_api.router, prefix="/ml", tags=["Pipeline"])
+app.include_router(flywheel.router, prefix="/ml", tags=["Flywheel"])
 
 
 @app.get("/")

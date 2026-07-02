@@ -14,30 +14,36 @@ import pytest
 
 # ---------------------------------------------------------------------------
 # Story 13.1 — Canonieke inhouds-hash-service (/ml/phash)
+#
+# GEIMPLEMENTEERD (green phase): de echte, dekkende tests staan in
+# apps/ml-service/tests/unit/test_phash_service.py,
+# .../test_flywheel_phash_endpoint.py en .../test_no_node_content_hash.py.
+# De onderstaande 13.1-skips blijven staan als ATDD-scaffold-referentie; zij zijn
+# vervangen door bovengenoemde unit-tests en draaien bewust niet.
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skip(reason="ATDD red-phase — story 13.1")
+@pytest.mark.skip(reason="story 13.1 groen — vervangen door tests/unit/ (zie comment)")
 def test_13_1_ac1_phash_endpoint_retourneert_canonieke_hash_en_phash():
     """AC1: /ml/phash retourneert voor een crop uit MinIO de canonieke inhouds-hash
     (SHA-256 over de pixel-buffer na gepinde normalisatie) EN de perceptual hash
     (pHash) in een response (AD-14)."""
 
 
-@pytest.mark.skip(reason="ATDD red-phase — story 13.1")
+@pytest.mark.skip(reason="story 13.1 groen — vervangen door tests/unit/ (zie comment)")
 def test_13_1_ac2_phash_is_deterministisch():
     """AC2: dezelfde crop levert bij herhaalde aanroep byte-identiek dezelfde
     hashes op (AD-14)."""
 
 
-@pytest.mark.skip(reason="ATDD red-phase — story 13.1")
+@pytest.mark.skip(reason="story 13.1 groen — vervangen door tests/unit/ (zie comment)")
 def test_13_1_ac3_imagehash_gepind_en_code_onder_app():
     """AC3: ImageHash==4.3.2 gepind in de requirements; alle nieuwe code onder
     apps/ml-service/app/ (services/phash.py, api/flywheel.py met prefix /ml)
     (ARCH-3, ARCH-7)."""
 
 
-@pytest.mark.skip(reason="ATDD red-phase — story 13.1")
+@pytest.mark.skip(reason="story 13.1 groen — vervangen door tests/unit/ (zie comment)")
 def test_13_1_ac4_geen_node_implementatie_van_de_inhouds_hash():
     """AC4: er bestaat geen inhouds-hash-implementatie in Node (apps/api); de
     MLClient-methode naar /ml/phash is de enige route (AD-14). Testvorm: guard
