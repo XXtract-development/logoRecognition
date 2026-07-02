@@ -1,10 +1,10 @@
 # generated: 2026-06-03
-# last_updated: 2026-06-05
+# last_updated: 2026-07-02 (zie actueel veld hieronder)
 # project: logoRecognition
 # project_key: NOKEY
 # tracking_system: file-system
 # story_location: _bmad-output/implementation-artifacts
-# scope: Epic 7-11 — Geautomatiseerde Modeltraining (Epic 1-6 afgerond, zie docs/sprint-artifacts/sprint-status.yaml)
+# scope: Epic 7-12 + Epics 13-18 Referentie-vliegwiel (Epic 1-6 afgerond, zie docs/sprint-artifacts/sprint-status.yaml)
 
 # STATUS DEFINITIONS:
 # ==================
@@ -40,7 +40,7 @@
 # - Volgorde-advies: Epic 9 strikt sequentieel 9.1→9.6 (Redis-infra in 9.1 is BLOCKER; migratienummers 0007/0008 vereisen volgorde 9.2 vóór 9.5); Epic 10 bouwt op 9; Epic 11 optioneel
 
 generated: 2026-06-03
-last_updated: 2026-06-05  # sprint-planning: epic 7+8 done & gedeployed; epic 9 ready-for-dev (6 stories + ATDD + review verwerkt)
+last_updated: 2026-07-02  # sprint-planning: Epics 13-18 Referentie-vliegwiel toegevoegd (21 stories, backlog)
 project: logoRecognition
 project_key: NOKEY
 tracking_system: file-system
@@ -128,6 +128,7 @@ development_status:
   12-4-getrainde-region-detector-optie-a: ready             # getrainde class-agnostische region-detector (12.2-optie A); recall 45%->>=80% @IoU0.5; orthogonaal aan 12.3, parallel mogelijk; voedt 12.5. Bootstrap met proposer-B + 8.7-synthese
   12-5-herkennings-endpoint-en-acceptatienorm: ready        # HET EINDDOEL: geserveerde twee-traps-endpoint (PDF/afbeelding -> keurmerken) + acceptatie-norm. Fase 1 = top-N (precisie >=90%, voorlopige recall-bar 70%, herzien na stap-0). Beslisregel + eigenaar vastgelegd. Gated op 12.3 + 12.6, gevoed door 12.4. NIET bevriezen voor stap-0
   12-6-top-n-acceptatie-dataset: in-progress                # CONCREET 2026-06-09: top-N=20 codes (top-n-codes.json), v0-seed=75 ECHT/4 klassen (dataset-v0.json), assembler-tool (assemble_acceptance_candidates.py), label-mechanisme = bestaande review-UI. KERN-BEVINDING: bijna geen echte gelabelde data (75 ECHT/4 klassen + ~9 proof-slice) -> data-CREATIE-taak, DE epic-bottleneck. Resteert: top-N seeden + PO labelt. Voorwaarde voor 12.5 + 12.3-iter2
+  12-8-kruischeck-endpoint-n8n: ready-for-dev               # 2026-07-02: keuze Friso optie A (kruischeck declared values, afnemer n8n acc/stage, 100-200/dag, schaduwmodus, geen reviewcapaciteit). Wacht NIET op 12.5-gates; hergebruikt 8-3D declaratieprovider + 8.5 crosscheck + run-patroon. Story: 12-8-kruischeck-endpoint-n8n.md
   # Fase 2 (lange staart ~850 codes als accept-UNKNOWN/review) = apart vervolgspoor na go/no-go.
   epic-12-retrospective: optional
 
@@ -136,3 +137,51 @@ development_status:
   # ============================================
   infra-bouwstraat: done
   CI-1-deploy-via-prebuilt-ghcr-images: done  # 2026-06-07: alle AC's live bewezen — steady-state push→live 1m35s (was ~16-21 min); rollback geoefend (1m22s); zie story Dev Agent Record
+
+  # ============================================
+  # Epics 13-18: Referentie-vliegwiel zonder review (planningsset 2026-07-02)
+  # Bron: _bmad-output/planning-artifacts/epics-vliegwiel.md (21 stories)
+  # PRD: planning-artifacts/prds/prd-logoRecognition-2026-07-02/ · Spine: planning-artifacts/architecture/architecture-logoRecognition-2026-07-02/ (16 AD's)
+  # UX: planning-artifacts/ux-designs/ux-logoRecognition-2026-07-02/ · Gates: readiness PASSED + adversarial PASSED (zie implementation-readiness-report-2026-07-02-vliegwiel.md)
+  # Volgorde: 13 → 14 → 15 → 16 → 17 → 18 (18 mag parallel aan 14-17). Binnen Epic 13 strikt sequentieel 13.1→13.6.
+  # Volgorde: 12.8 (verify-flow) moet gebouwd/gemerged zijn vóór 16.4 (controle-cohort steunt op de verify-flow).
+  # LET OP: elke story met schemawijziging (13.2, 13.3, 13.4, 13.6, 14.3, 15.4, 16.1, 16.2, 18.1) vereist expliciete migratie-toestemming per geval (teamregel) + down-script.
+  # ============================================
+  epic-13: in-progress
+  13-1-canonieke-inhouds-hash-service: ready-for-dev
+  13-2-automatische-nominatie-bij-dubbele-bevestiging: ready-for-dev
+  13-3-gold-set-naar-beheerde-opslag-met-seed-import: ready-for-dev
+  13-4-nachtelijke-promotielus-batching-en-guardrails: ready-for-dev
+  13-5-kwaliteitspoort-regressietest-promotie-en-quarantaine: ready-for-dev
+  13-6-rollback-persistente-pauze-en-automatische-stilstand: ready-for-dev
+  epic-13-retrospective: optional
+
+  epic-14: in-progress
+  14-1-gold-set-aanwas-uit-reviewbeslissingen: ready-for-dev
+  14-2-gold-set-samenstellingsbewaking: ready-for-dev
+  14-3-wekelijkse-outlier-audit-op-de-referentiebibliotheek: ready-for-dev
+  epic-14-retrospective: optional
+
+  epic-15: in-progress
+  15-1-vliegwiel-sectie-in-de-app-theming-route-en-navigatie: ready-for-dev
+  15-2-overzichtsscherm-de-gezondheid-van-het-vliegwiel: ready-for-dev
+  15-3-quarantaine-afhandeling-met-volledig-bewijs: ready-for-dev
+  15-4-drempelbeheer-en-pauzebediening: ready-for-dev
+  epic-15-retrospective: optional
+
+  epic-16: in-progress
+  16-1-mismatch-registratie-en-aggregatie: ready-for-dev
+  16-2-gedeclareerd-niet-gevonden-wordt-werkvoorraad: ready-for-dev
+  16-3-datakwaliteitsrapport-gevonden-niet-gedeclareerd: ready-for-dev
+  16-4-controle-cohort-voor-de-bevestigingsgraad-trend: ready-for-dev  # vereist gemergde 12.8-verify-flow (blokkade-melding indien afwezig)
+  epic-16-retrospective: optional
+
+  epic-17: in-progress
+  17-1-bootstrap-run-per-lege-klasse: ready-for-dev
+  17-2-bootstrap-wachtrij-prioritering-en-beheer: ready-for-dev
+  epic-17-retrospective: optional
+
+  epic-18: in-progress
+  18-1-gln-backfill-via-batch-export: ready-for-dev  # go/no-go: governance-akkoord prod-read vereist vóór uitvoering (ARCH-8)
+  18-2-restant-route-via-mediaserver-re-import: ready-for-dev
+  epic-18-retrospective: optional

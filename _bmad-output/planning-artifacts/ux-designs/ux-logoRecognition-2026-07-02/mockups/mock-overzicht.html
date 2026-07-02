@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vliegwiel — overzicht (mockup)</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,400,0,0&display=swap" rel="stylesheet">
+<style>
+:root{
+  --primary:#2F5A7A; --primary-hover:#245068; --primary-light:#E8F0F5; --primary-faint:#F2F7FA;
+  --secondary:#54949E; --secondary-light:#EBF5F6;
+  --success:#B7D945; --success-dark:#8AAE1F; --success-light:#F4FADF;
+  --warning:#E6A817; --warning-light:#FDF6E3; --warning-text:#92600A;
+  --destructive:#D64545; --destructive-light:#FDE8E8;
+  --background:#FFFFFF; --background-muted:#F8FAFB;
+  --border:#E2E8F0; --border-soft:#EBF0F6;
+  --foreground:#1E293B; --foreground-heading:#2F5A7A; --foreground-muted:#64748B;
+  --app-bg:#EDF1F7;
+  --card-shadow:0 1px 3px rgba(0,0,0,0.06),0 1px 2px rgba(0,0,0,0.04);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',system-ui,sans-serif;font-size:14px;line-height:1.5;color:var(--foreground);background:var(--app-bg)}
+.ms{font-family:'Material Symbols Outlined';font-weight:400;font-size:18px;line-height:1;vertical-align:middle}
+h1,h2,h3{color:var(--foreground-heading)}
+/* Topbar */
+.topbar{height:56px;background:var(--primary);color:#fff;display:flex;align-items:center;padding:0 20px;gap:24px;position:sticky;top:0;z-index:100;box-shadow:0 1px 0 rgba(0,0,0,0.12)}
+.topbar .mark{width:28px;height:28px;border-radius:7px;background:var(--success);display:flex;align-items:center;justify-content:center;color:var(--primary);font-weight:700;font-size:13px}
+.topbar .appname{font-size:15px;font-weight:700}
+.topnav{display:flex;gap:4px;flex:1}
+.topnav a{color:rgba(255,255,255,0.65);text-decoration:none;font-size:13px;padding:6px 12px;border-radius:8px}
+.topnav a:hover{background:rgba(255,255,255,0.08);color:#fff}
+.topnav a.active{background:rgba(255,255,255,0.14);color:#fff;font-weight:600}
+.topnav a .cnt{display:inline-block;min-width:16px;padding:0 5px;margin-left:6px;border-radius:20px;background:var(--warning);color:var(--primary-hover);font-size:10px;font-weight:700;text-align:center;line-height:16px}
+.topbar .user{font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px}
+.topbar .avatar{width:28px;height:28px;border-radius:8px;background:var(--primary-light);color:var(--primary);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700}
+/* Content */
+.content{padding:24px 28px;max-width:1440px;margin:0 auto}
+.pagehead{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:20px}
+.pagehead h1{font-size:20px;font-weight:700;letter-spacing:-0.02em}
+.pagehead .sub{font-size:13px;color:var(--foreground-muted);margin-top:3px}
+.headactions{display:flex;align-items:center;gap:14px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:500;border:1px solid var(--border);background:var(--background);color:var(--foreground);cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,0.04);font-family:inherit}
+.btn:hover{background:var(--background-muted)}
+.btn.primary{background:var(--primary);border-color:var(--primary);color:#fff}
+.btn.primary:hover{background:var(--primary-hover)}
+.btn.sm{padding:5px 12px;font-size:12px}
+/* Pauzeschakelaar */
+.pausewrap{display:flex;align-items:center;gap:10px;padding:8px 14px;background:var(--background);border:1px solid var(--border-soft);border-radius:8px;box-shadow:var(--card-shadow)}
+.pauselabel{font-size:13px;font-weight:600;color:var(--success-dark);display:flex;align-items:center;gap:6px}
+.pauselabel .dot{width:7px;height:7px;border-radius:50%;background:var(--success-dark)}
+.switch{width:38px;height:20px;border-radius:20px;background:var(--success-dark);position:relative;cursor:pointer}
+.switch::after{content:'';position:absolute;top:2px;right:2px;width:16px;height:16px;border-radius:50%;background:#fff}
+/* KPI-rij */
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:20px}
+.stat{background:var(--background);border:1px solid var(--border-soft);border-radius:12px;box-shadow:var(--card-shadow);padding:18px 20px}
+.stat .sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.stat .sl{font-size:12px;font-weight:500;color:var(--foreground-muted)}
+.stat .si{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center}
+.si.navy{background:var(--primary-light);color:var(--primary)} .si.teal{background:var(--secondary-light);color:var(--secondary)}
+.si.green{background:var(--success-light);color:var(--success-dark)} .si.amber{background:var(--warning-light);color:var(--warning)}
+.stat .sv{font-size:28px;font-weight:700}
+.stat .sf{font-size:12px;color:var(--foreground-muted);margin-top:2px}
+.sf .up{color:var(--success-dark);font-weight:600} .sf .amb{color:var(--warning-text);font-weight:600}
+/* Cards */
+.grid{display:grid;grid-template-columns:2fr 1fr;gap:16px;align-items:start}
+.card{background:var(--background);border:1px solid var(--border-soft);border-radius:12px;box-shadow:var(--card-shadow);margin-bottom:16px}
+.ch{padding:16px 20px;border-bottom:1px solid var(--border-soft);display:flex;align-items:center;justify-content:space-between;gap:10px}
+.ch .t{font-size:13px;font-weight:600;color:var(--foreground-heading)}
+.ch .s{font-size:12px;color:var(--foreground-muted);font-weight:400}
+.cb{padding:20px}
+/* Badges */
+.badge{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:500}
+.badge .d{width:5px;height:5px;border-radius:50%}
+.badge.ok{background:var(--success-light);color:var(--success-dark)} .badge.ok .d{background:var(--success-dark)}
+.badge.warn{background:var(--warning-light);color:var(--warning-text)} .badge.warn .d{background:var(--warning)}
+.badge.info{background:var(--secondary-light);color:var(--secondary)} .badge.info .d{background:var(--secondary)}
+.badge.neu{background:#F1F5F9;color:#64748B} .badge.neu .d{background:#94A3B8}
+/* Tabel */
+table{width:100%;border-collapse:collapse}
+th{background:var(--background-muted);padding:10px 16px;font-size:11px;font-weight:600;color:var(--foreground-muted);letter-spacing:0.04em;text-transform:uppercase;text-align:left;border-bottom:1px solid var(--border-soft)}
+td{padding:12px 16px;font-size:13px;border-bottom:1px solid var(--border-soft)}
+tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:var(--primary-faint);cursor:pointer}
+td .main{font-weight:500} td .sub{font-size:11px;color:var(--foreground-muted)}
+/* Tabs (line) */
+.tabs{display:flex;border-bottom:1px solid var(--border);padding:0 20px}
+.tab{padding:9px 16px;font-size:13px;color:var(--foreground-muted);border-bottom:2px solid transparent;cursor:pointer}
+.tab.active{color:var(--primary);border-bottom-color:var(--primary);font-weight:600}
+/* Lijstrijen (panelen) */
+.row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border-soft)}
+.row:last-child{border-bottom:none}
+.row .rt{flex:1;min-width:0} .row .rt .a{font-size:13px;font-weight:500} .row .rt .b{font-size:11px;color:var(--foreground-muted)}
+.thumb{width:36px;height:36px;border-radius:8px;border:1px solid var(--border);background:repeating-conic-gradient(var(--background-muted) 0% 25%, var(--border-soft) 0% 50%) 0 0/12px 12px;display:flex;align-items:center;justify-content:center;color:var(--foreground-muted);flex-shrink:0}
+.thumb .ms{font-size:16px}
+/* Progress */
+.prog{height:6px;background:var(--border);border-radius:4px;overflow:hidden;flex:1}
+.prog .fill{height:100%;border-radius:4px;background:var(--secondary)}
+/* Legenda */
+.legend{display:flex;gap:16px;font-size:11px;color:var(--foreground-muted);flex-wrap:wrap}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.sw{width:10px;height:10px;border-radius:3px;display:inline-block}
+/* Kleine kolomgrafiek (mismatch) */
+.cols{display:flex;align-items:flex-end;gap:10px;height:96px;padding-top:4px}
+.colg{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
+.colg .bars{display:flex;align-items:flex-end;gap:3px;height:76px}
+.colg .bar{width:12px;border-radius:3px 3px 0 0}
+.colg .lbl{font-size:10px;color:var(--foreground-muted)}
+.note{font-size:12px;color:var(--foreground-muted)}
+@media(max-width:1279px){.grid{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+
+<!-- Topbar -->
+<header class="topbar">
+  <div style="display:flex;align-items:center;gap:10px;width:220px">
+    <div class="mark">X</div><span class="appname">logoRecognition</span>
+  </div>
+  <nav class="topnav">
+    <a href="#">Home</a><a href="#">Recognize</a><a href="#">Training</a><a href="#">Models</a>
+    <a href="#">Referenties</a><a href="#">Review</a>
+    <a href="#" class="active">Vliegwiel<span class="cnt">1</span></a>
+    <a href="#">Dashboard</a>
+  </nav>
+  <div class="user"><div class="avatar">SR</div>Sanne</div>
+</header>
+
+<main class="content">
+
+  <!-- Page header met pauzeschakelaar en drempelbeheer -->
+  <div class="pagehead">
+    <div>
+      <h1>Vliegwiel</h1>
+      <div class="sub">Referentie-vliegwiel — laatste promotiebatch: vannacht 03:12 · gold-set: 214 samples (78% ECHT / 22% VALS)</div>
+    </div>
+    <div class="headactions">
+      <button class="btn"><span class="ms">tune</span>Drempels</button>
+      <div class="pausewrap" title="Pauzeren opent een bevestigingsdialoog">
+        <span class="pauselabel"><span class="dot"></span>Vliegwiel actief</span>
+        <div class="switch" role="switch" aria-checked="true" aria-label="Vliegwiel pauzeren"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI-rij (FR-17) -->
+  <section class="stats" aria-label="Kerncijfers">
+    <div class="stat">
+      <div class="sh"><span class="sl">Gold-set-precisie</span><span class="si green"><span class="ms">verified</span></span></div>
+      <div class="sv">0,97</div>
+      <div class="sf"><span class="up">stabiel</span> · tolerantie −1,0 pt</div>
+    </div>
+    <div class="stat">
+      <div class="sh"><span class="sl">Nieuwe referenties (7 dgn)</span><span class="si navy"><span class="ms">library_add</span></span></div>
+      <div class="sv">41</div>
+      <div class="sf">over <b>12 klassen</b> · 3 promotiebatches</div>
+    </div>
+    <div class="stat">
+      <div class="sh"><span class="sl">Batches in quarantaine</span><span class="si amber"><span class="ms">pending_actions</span></span></div>
+      <div class="sv">1</div>
+      <div class="sf"><span class="amb">wacht op jouw beoordeling</span></div>
+    </div>
+    <div class="stat">
+      <div class="sh"><span class="sl">Klassen aan cap</span><span class="si amber"><span class="ms">vertical_align_top</span></span></div>
+      <div class="sv">2</div>
+      <div class="sf">nominaties geweigerd: cap-bereikt</div>
+    </div>
+    <div class="stat">
+      <div class="sh"><span class="sl">GLN-dekkingsgraad archief</span><span class="si teal"><span class="ms">inventory</span></span></div>
+      <div class="sv">91%</div>
+      <div class="sf">35.607 van 39.128 records · doel ≥90%</div>
+    </div>
+  </section>
+
+  <div class="grid">
+    <!-- Linkerkolom -->
+    <div>
+      <!-- Gold-set-precisietrend -->
+      <div class="card">
+        <div class="ch">
+          <span class="t">Gold-set-precisietrend <span class="s">— één meetpunt per gepasseerde promotiebatch</span></span>
+          <div class="legend">
+            <span><span class="sw" style="background:var(--secondary)"></span>precisie</span>
+            <span><span class="sw" style="background:var(--warning)"></span>quarantaine</span>
+            <span><span class="sw" style="background:var(--destructive)"></span>regressie</span>
+          </div>
+        </div>
+        <div class="cb">
+          <svg viewBox="0 0 720 200" width="100%" role="img" aria-label="Precisietrend: laatste meting 0,97; één regressiepunt op 24 juni (0,955)">
+            <!-- gridlijnen + as -->
+            <line x1="50" y1="20" x2="700" y2="20" stroke="#EBF0F6"/><text x="44" y="24" font-size="10" fill="#64748B" text-anchor="end">1,00</text>
+            <line x1="50" y1="70" x2="700" y2="70" stroke="#EBF0F6"/><text x="44" y="74" font-size="10" fill="#64748B" text-anchor="end">0,98</text>
+            <line x1="50" y1="120" x2="700" y2="120" stroke="#EBF0F6"/><text x="44" y="124" font-size="10" fill="#64748B" text-anchor="end">0,96</text>
+            <line x1="50" y1="170" x2="700" y2="170" stroke="#EBF0F6"/><text x="44" y="174" font-size="10" fill="#64748B" text-anchor="end">0,94</text>
+            <!-- tolerantie-ondergrens (gestippeld) -->
+            <line x1="50" y1="95" x2="700" y2="95" stroke="#E6A817" stroke-dasharray="5 4"/>
+            <text x="695" y="90" font-size="10" fill="#92600A" text-anchor="end">tolerantie-ondergrens (baseline −1,0 pt)</text>
+            <!-- trendlijn -->
+            <polyline fill="none" stroke="#54949E" stroke-width="2"
+              points="70,72 145,68 220,74 295,70 370,66 445,130 520,64 595,60 670,58"/>
+            <!-- meetpunten -->
+            <circle cx="70" cy="72" r="4" fill="#54949E"/><circle cx="145" cy="68" r="4" fill="#54949E"/>
+            <circle cx="220" cy="74" r="4" fill="#54949E"/><circle cx="295" cy="70" r="4" fill="#54949E"/>
+            <circle cx="370" cy="66" r="4" fill="#54949E"/>
+            <!-- regressiepunt: rood + ruitvorm + annotatie -->
+            <rect x="439" y="124" width="12" height="12" transform="rotate(45 445 130)" fill="#D64545"/>
+            <text x="445" y="152" font-size="10" fill="#D64545" text-anchor="middle" font-weight="600">24 jun · −1,8 pt → quarantaine</text>
+            <circle cx="520" cy="64" r="4" fill="#54949E"/><circle cx="595" cy="60" r="4" fill="#54949E"/>
+            <circle cx="670" cy="58" r="5" fill="#8AAE1F"/>
+            <text x="670" y="46" font-size="11" fill="#8AAE1F" text-anchor="middle" font-weight="700">0,97</text>
+            <!-- x-labels -->
+            <text x="70" y="192" font-size="10" fill="#64748B" text-anchor="middle">16 jun</text>
+            <text x="370" y="192" font-size="10" fill="#64748B" text-anchor="middle">23 jun</text>
+            <text x="670" y="192" font-size="10" fill="#64748B" text-anchor="middle">1 jul</text>
+          </svg>
+          <div class="note" style="margin-top:8px">Laatste meting: <b>0,97</b> (batch 2026-0701-A, gepasseerd) · gold-set-samenstelling: grootste klasse RECYCLABLE 18% van de set — binnen signaalgrens.</div>
+        </div>
+      </div>
+
+      <!-- Quarantainebatches -->
+      <div class="card">
+        <div class="tabs">
+          <div class="tab active">Quarantaine (1)</div>
+          <div class="tab">Historie (14)</div>
+        </div>
+        <table>
+          <thead><tr><th>Promotiebatch</th><th>Kandidaten</th><th>Faalreden</th><th>Status</th><th></th></tr></thead>
+          <tbody>
+            <tr>
+              <td><span class="main">2026-0628-B</span><div class="sub">za 28 jun 03:04 · 5 klassen</div></td>
+              <td>8</td>
+              <td><span class="main">Gold-set-regressietest: precisiedaling −1,8 pt</span><div class="sub">meest getroffen: EU_ORGANIC, RAINFOREST_ALLIANCE</div></td>
+              <td><span class="badge warn"><span class="d"></span>wacht op jouw beoordeling</span></td>
+              <td style="text-align:right"><button class="btn primary sm">Openen</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Mismatch-trends -->
+      <div class="card">
+        <div class="ch">
+          <span class="t">Mismatch-trends <span class="s">— per verwerkte declaratie, per week</span></span>
+          <button class="btn sm"><span class="ms" style="font-size:15px">download</span>Datakwaliteitsrapport (per GLN)</button>
+        </div>
+        <div class="cb">
+          <div class="cols" role="img" aria-label="Bevestigd versus gedeclareerd-niet-gevonden per week; bevestigingsgraad stijgt van 61 naar 72 procent">
+            <div class="colg"><div class="bars"><div class="bar" style="height:46px;background:#8AAE1F"></div><div class="bar" style="height:30px;background:#E6A817"></div></div><div class="lbl">wk 23</div></div>
+            <div class="colg"><div class="bars"><div class="bar" style="height:50px;background:#8AAE1F"></div><div class="bar" style="height:28px;background:#E6A817"></div></div><div class="lbl">wk 24</div></div>
+            <div class="colg"><div class="bars"><div class="bar" style="height:54px;background:#8AAE1F"></div><div class="bar" style="height:26px;background:#E6A817"></div></div><div class="lbl">wk 25</div></div>
+            <div class="colg"><div class="bars"><div class="bar" style="height:58px;background:#8AAE1F"></div><div class="bar" style="height:24px;background:#E6A817"></div></div><div class="lbl">wk 26</div></div>
+            <div class="colg"><div class="bars"><div class="bar" style="height:64px;background:#8AAE1F"></div><div class="bar" style="height:22px;background:#E6A817"></div></div><div class="lbl">wk 27</div></div>
+          </div>
+          <div class="legend" style="margin-top:10px">
+            <span><span class="sw" style="background:#8AAE1F"></span>bevestigd</span>
+            <span><span class="sw" style="background:#E6A817"></span>gedeclareerd-niet-gevonden</span>
+            <span style="margin-left:auto">gevonden-niet-gedeclareerd (7 dgn): <b>23</b> gevallen bij 9 informatieleveranciers</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rechterkolom: signaalpanelen -->
+    <div>
+      <!-- Promoties per klasse + nieuw geactiveerde klasse -->
+      <div class="card">
+        <div class="ch"><span class="t">Promoties per klasse <span class="s">(7 dgn)</span></span></div>
+        <div class="cb">
+          <div class="row"><div class="thumb"><span class="ms">new_releases</span></div>
+            <div class="rt"><div class="a">DEMETER_LABEL</div><div class="b">4 referenties via seed-bootstrap</div></div>
+            <span class="badge ok"><span class="d"></span>nieuw geactiveerde klasse</span></div>
+          <div class="row"><div class="rt"><div class="a">EU_ORGANIC</div><div class="b">9 promoties</div></div><div class="prog"><div class="fill" style="width:90%;background:var(--success-dark)"></div></div></div>
+          <div class="row"><div class="rt"><div class="a">FSC_MIX</div><div class="b">7 promoties</div></div><div class="prog"><div class="fill" style="width:70%;background:var(--success-dark)"></div></div></div>
+          <div class="row"><div class="rt"><div class="a">BETER_LEVEN_2_STER</div><div class="b">5 promoties</div></div><div class="prog"><div class="fill" style="width:50%;background:var(--success-dark)"></div></div></div>
+          <div class="row"><div class="rt"><div class="a">overige 8 klassen</div><div class="b">16 promoties</div></div><div class="prog"><div class="fill" style="width:32%;background:var(--success-dark)"></div></div></div>
+        </div>
+      </div>
+
+      <!-- Klassen aan cap -->
+      <div class="card">
+        <div class="ch"><span class="t">Klassen aan cap</span><span class="badge warn"><span class="d"></span>2</span></div>
+        <div class="cb">
+          <div class="row"><div class="rt"><div class="a">RECYCLABLE</div><div class="b">10/10 promotie-referenties · 14 nominaties geweigerd (cap-bereikt)</div></div></div>
+          <div class="row"><div class="rt"><div class="a">GREEN_DOT</div><div class="b">10/10 promotie-referenties · 6 nominaties geweigerd (cap-bereikt)</div></div></div>
+        </div>
+      </div>
+
+      <!-- Outlier-meldingen -->
+      <div class="card">
+        <div class="ch"><span class="t">Outlier-meldingen</span><span class="badge warn"><span class="d"></span>3 open</span></div>
+        <div class="cb">
+          <div class="row"><div class="thumb"><span class="ms">image</span></div>
+            <div class="rt"><div class="a">RECYCLABLE · ref #R-0812</div><div class="b">wekelijkse outlier-audit · afstand tot klasse-centrum p98</div></div>
+            <button class="btn sm">Beoordelen</button></div>
+          <div class="row"><div class="thumb"><span class="ms">image</span></div>
+            <div class="rt"><div class="a">FAIRTRADE · ref #R-0231</div><div class="b">handmatig gecureerd · afstand p96</div></div>
+            <button class="btn sm">Beoordelen</button></div>
+          <div class="row"><div class="thumb"><span class="ms">image</span></div>
+            <div class="rt"><div class="a">MSC_LABEL · ref #R-0577</div><div class="b">promotie 2026-0621-A · afstand p95</div></div>
+            <button class="btn sm">Beoordelen</button></div>
+        </div>
+      </div>
+
+      <!-- Bootstrap-wachtrij -->
+      <div class="card">
+        <div class="ch"><span class="t">Bootstrap-wachtrij <span class="s">— lege klassen, op declaratiefrequentie</span></span></div>
+        <div class="cb">
+          <div class="row"><div class="rt"><div class="a">1. NUTRI_SCORE_B</div><div class="b">1.204 declaraties · 0 referenties</div></div><span class="badge warn"><span class="d"></span>wachtend</span></div>
+          <div class="row"><div class="rt"><div class="a">2. UTZ_CERTIFIED</div><div class="b">861 declaraties</div></div><span class="badge warn"><span class="d"></span>wachtend</span></div>
+          <div class="row"><div class="rt"><div class="a">3. WEEE_LABEL</div><div class="b">402 declaraties · run 30 jun: 0 kandidaten</div></div><span class="badge neu"><span class="d"></span>leeg — terug in wachtrij</span></div>
+          <div class="row"><div class="rt"><div class="a">DEMETER_LABEL</div><div class="b">388 declaraties · 4 kandidaten door de kwaliteitspoort</div></div><span class="badge ok"><span class="d"></span>gevuld</span></div>
+          <div class="row"><div class="rt"><div class="a">TESTLOGO_INTERN</div><div class="b">door datamanager uitgesloten</div></div><span class="badge neu"><span class="d"></span>uitgesloten</span></div>
+        </div>
+      </div>
+
+      <!-- GLN-dekkingsgraad -->
+      <div class="card">
+        <div class="ch"><span class="t">GLN-dekkingsgraad — 39k-archief</span></div>
+        <div class="cb">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+            <div class="prog"><div class="fill" style="width:91%"></div></div>
+            <b style="font-size:15px;color:var(--foreground-heading)">91%</b>
+          </div>
+          <div class="note">35.607 records met GLN · 2.104 met gemarkeerde uitvalreden · 1.417 nog te verwerken (backfill loopt)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+</body>
+</html>
