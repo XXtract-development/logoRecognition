@@ -170,7 +170,7 @@ development_status:
   epic-15-retrospective: optional
 
   epic-16: in-progress
-  16-1-mismatch-registratie-en-aggregatie: ready-for-dev
+  16-1-mismatch-registratie-en-aggregatie: in-progress
   16-2-gedeclareerd-niet-gevonden-wordt-werkvoorraad: ready-for-dev
   16-3-datakwaliteitsrapport-gevonden-niet-gedeclareerd: ready-for-dev
   16-4-controle-cohort-voor-de-bevestigingsgraad-trend: ready-for-dev  # vereist gemergde 12.8-verify-flow (blokkade-melding indien afwezig)
