@@ -29,6 +29,7 @@ import {
 import { markPromotionRunSuccess } from './watchdog';
 import { runRegressionGate } from './gate';
 import { shouldSkipForPause } from './pause';
+import { findClassesWithoutGoldSetCoverage } from './gold-set-composition';
 import type { GatePhase, GatePhaseResult, GateResults } from './types';
 
 const logger = createLogger('flywheel-promotion-batch');
@@ -183,6 +184,26 @@ export async function processBatch(batchId: string): Promise<void> {
 
   const gateResults: GateResults = (batch.gateResults as GateResults) ?? {};
 
+  // Story 14.2 (AC 3): niet-blokkerende gold-set-dekkings-markering. Per
+  // batch-klasse zonder ENIGE actieve gold-set-dekking schrijven we één
+  // informatief item in `gateResults.goldSetCoverage` — puur signalerend
+  // (markeren ≠ blokkeren, PRD §4.3): het beïnvloedt de poort-uitkomst NOOIT,
+  // draait vóór de guardrails en verandert geen enkele fase-beslissing. Blokkeren
+  // zou de bootstrap van nieuwe klassen onmogelijk maken. Idempotent: alleen
+  // berekenen als het item nog ontbreekt (crash-recovery-vriendelijk).
+  if (!gateResults.goldSetCoverage) {
+    try {
+      await markGoldSetCoverage(batchId, gateResults);
+      await persistGateResults(batchId, gateResults);
+    } catch (err) {
+      // Best-effort: een dekkings-markering die faalt mag de poort nooit breken.
+      logger.error('Gold-set-dekkings-markering overgeslagen (best-effort, AC3)', {
+        batchId,
+        error: err instanceof Error ? err.message : 'unknown',
+      });
+    }
+  }
+
   for (const { phase, run } of PHASE_ORDER) {
     if (isPhaseComplete(gateResults, phase)) {
       logger.info('Fase al afgerond — overslaan (crash-recovery)', { batchId, phase });
@@ -230,6 +251,36 @@ export async function loadBatchCandidates(batchId: string): Promise<GuardrailCan
       method,
     };
   });
+}
+
+/**
+ * Story 14.2 (AC 3) — schrijf de niet-blokkerende gold-set-dekkings-markering in
+ * `gateResults.goldSetCoverage`. Verzamelt de onderscheiden batch-klassen, vraagt
+ * de sub-service welke daarvan ZONDER actieve gold-set-dekking zijn en legt dat
+ * informatief vast. Muteert NOOIT de batch-status en verandert geen fase-
+ * uitkomst (markeren ≠ blokkeren, PRD §4.3). Muteert alleen het in-memory
+ * `gateResults`-object; de aanroeper persisteert.
+ */
+async function markGoldSetCoverage(
+  batchId: string,
+  gateResults: GateResults
+): Promise<void> {
+  const candidates = await loadBatchCandidates(batchId);
+  const batchClasses = Array.from(new Set(candidates.map((c) => c.t3777Code)));
+  const classesWithoutCoverage = await findClassesWithoutGoldSetCoverage(batchClasses);
+
+  gateResults.goldSetCoverage = {
+    markedAt: new Date().toISOString(),
+    batchClasses,
+    classesWithoutCoverage,
+  };
+
+  if (classesWithoutCoverage.length > 0) {
+    logger.warn('Batch-klassen zonder gold-set-dekking gemarkeerd (niet-blokkerend, AC3)', {
+      batchId,
+      classesWithoutCoverage,
+    });
+  }
 }
 
 /** Schrijf de bijgewerkte gateResults terug op de batch (AD-13). */

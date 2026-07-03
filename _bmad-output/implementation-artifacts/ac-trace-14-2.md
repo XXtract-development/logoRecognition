@@ -1,0 +1,12 @@
+# AC→test-mapping — Story 14.2 (gold-set-samenstellingsbewaking)
+
+ac_trace: 4/4 (elk AC gedekt door een genoemde, assertieve test in de diff)
+
+| AC | Eis | Dekkende test(s) | Assert |
+|----|-----|------------------|--------|
+| **AC1** | Omvang, ECHT/VALS-verdeling, top-5 meest/minst vertegenwoordigde klassen beschikbaar via de overview-API. | `flywheel-gold-set-composition.test.ts`: "AC1: berekent omvang, ECHT/VALS-verdeling en ratio", "AC1: top-5 meest en minst vertegenwoordigde klassen", "AC1: shares tellen op tot 1". `flywheel.routes.test.ts`: "ontsluit het paneel goldSetComposition", "rapporteert verdeling, top-5 en scheefgroei-signalen bij een gevulde set". | size/echt/vals/echtRatio; topClasses+bottomClasses volgorde+count; paneel in de overview-response. |
+| **AC2** | Klasse >20% óf ECHT-aandeel buiten 60–90% → scheefgroei-signaal geregistreerd en via overview ontsloten. | `flywheel-gold-set-composition.test.ts`: "klasse boven de share-max levert een signaal", "klasse EXACT op de share-max is nog gezond", "ECHT-aandeel onder de ondergrens", "ECHT-aandeel boven de bovengrens", "ECHT-aandeel EXACT op 60% en op 90% is nog gezond", "drempels komen uit de meegegeven config". `flywheel.routes.test.ts`: gevulde-set-test asserteert het klasse-signaal in de response. | Drempels 0.20 / 0.60–0.90; grens-inclusiviteit; env-configureerbaar (geen hardcode). |
+| **AC3** | Promotie van een klasse zonder enige gold-set-dekking → gemarkeerd (NIET geblokkeerd) in de batch-poort-uitkomsten. | `flywheel-gold-set-composition.test.ts`: 4x `findClassesWithoutGoldSetCoverage`. `flywheel-promotion-batch.test.ts`: "schrijft een gold-set-dekking-ontbreekt-item in gateResults", "markeert NIET-blokkerend: de guardrails en de poort draaien gewoon door", "is idempotent (crash-recovery)", "een falende dekkings-markering breekt de poort niet". | Markering in `gateResults.goldSetCoverage`; poort draait ondanks ontbrekende dekking door (niet-blokkerend); idempotent; best-effort. |
+| **AC4** | On-read berekend bij de overview-aanroep — geen aparte job (AD-6 ongeraakt). | `flywheel-gold-set-composition.test.ts`: "AC4: resolvet on-read via getActiveGoldSet", "AC4: gebruikt env-drempels". `flywheel.routes.test.ts`: paneel-tests (de route berekent bij elke GET). Statisch: geen job/scheduler/cron in de diff (review H1). | `getActiveGoldSet` 1x per overview-call; geen BullMQ-job toegevoegd. |
+
+Alle 4 AC's gedekt; geen AC zonder assertieve test. Geen waivers nodig.

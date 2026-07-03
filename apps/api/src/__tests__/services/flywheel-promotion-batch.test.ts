@@ -61,6 +61,16 @@ vi.mock('../../services/flywheel/gate', () => ({
   runRegressionGate: (...a: unknown[]) => runRegressionGate(...a),
 }));
 
+// --- Mock de 14.2-dekkings-check (AC3) ---------------------------------------
+// De sub-service zelf heeft eigen tests (flywheel-gold-set-composition.test.ts);
+// hier verifiëren we alleen dát processBatch de markering niet-blokkerend in
+// gateResults schrijft.
+const findClassesWithoutGoldSetCoverage = vi.fn();
+vi.mock('../../services/flywheel/gold-set-composition', () => ({
+  findClassesWithoutGoldSetCoverage: (...a: unknown[]) =>
+    findClassesWithoutGoldSetCoverage(...a),
+}));
+
 import prisma from '../../core/db';
 import {
   runPromotionLoop,
@@ -91,6 +101,7 @@ beforeEach(() => {
   runOutlierPhase.mockResolvedValue(phaseRecord('outlier'));
   markPromotionRunSuccess.mockResolvedValue(undefined);
   runRegressionGate.mockResolvedValue(undefined);
+  findClassesWithoutGoldSetCoverage.mockResolvedValue([]);
 
   mockPrisma.promotionBatch.findMany.mockResolvedValue([]);
   mockPrisma.promotionBatch.findUnique.mockResolvedValue({
@@ -223,5 +234,70 @@ describe('processBatch (AC7/AC8 — fase-idempotentie)', () => {
     mockPrisma.promotionBatch.findUnique.mockResolvedValue({ id: 'batch-1', status: 'passed', gateResults: {} });
     await processBatch('batch-1');
     expect(runThresholdPhase).not.toHaveBeenCalled();
+  });
+});
+
+// ── Story 14.2 AC3: niet-blokkerende gold-set-dekkings-markering ─────────────
+describe('processBatch (Story 14.2, AC3 — dekkings-markering, niet-blokkerend)', () => {
+  it('schrijft een gold-set-dekking-ontbreekt-item in gateResults voor klassen zonder dekking', async () => {
+    // De batch bevat klassen A en B; de check meldt B zonder dekking.
+    mockPrisma.referenceCandidate.findMany.mockResolvedValue([
+      { id: 'c1', t3777Code: 'A', cropPath: 'p1', evidence: {} },
+      { id: 'c2', t3777Code: 'B', cropPath: 'p2', evidence: {} },
+    ]);
+    findClassesWithoutGoldSetCoverage.mockResolvedValue(['B']);
+
+    let persisted: Record<string, unknown> | undefined;
+    mockPrisma.promotionBatch.update.mockImplementation(async (arg: { data: { gateResults?: unknown } }) => {
+      if (arg.data.gateResults) persisted = arg.data.gateResults as Record<string, unknown>;
+      return {};
+    });
+
+    await processBatch('batch-1');
+
+    expect(findClassesWithoutGoldSetCoverage).toHaveBeenCalledWith(['A', 'B']);
+    expect(persisted).toBeDefined();
+    const marking = (persisted as { goldSetCoverage?: { batchClasses: string[]; classesWithoutCoverage: string[] } })
+      .goldSetCoverage;
+    expect(marking).toBeDefined();
+    expect(marking!.batchClasses.sort()).toEqual(['A', 'B']);
+    expect(marking!.classesWithoutCoverage).toEqual(['B']);
+  });
+
+  it('markeert NIET-blokkerend: de guardrails en de poort draaien gewoon door', async () => {
+    mockPrisma.referenceCandidate.findMany.mockResolvedValue([
+      { id: 'c1', t3777Code: 'X', cropPath: 'p1', evidence: {} },
+    ]);
+    findClassesWithoutGoldSetCoverage.mockResolvedValue(['X']); // geen dekking
+
+    await processBatch('batch-1');
+
+    // Ondanks de ontbrekende dekking draait de volledige poort door (markeren ≠ blokkeren).
+    expect(runThresholdPhase).toHaveBeenCalledTimes(1);
+    expect(runOutlierPhase).toHaveBeenCalledTimes(1);
+    expect(runRegressionGate).toHaveBeenCalledWith('batch-1', expect.any(Object));
+  });
+
+  it('is idempotent: bestaat de markering al, dan wordt de check niet opnieuw gedaan (crash-recovery)', async () => {
+    mockPrisma.promotionBatch.findUnique.mockResolvedValue({
+      id: 'batch-1',
+      status: 'pending',
+      gateResults: {
+        goldSetCoverage: { markedAt: 'x', batchClasses: ['A'], classesWithoutCoverage: [] },
+      },
+    });
+    await processBatch('batch-1');
+    expect(findClassesWithoutGoldSetCoverage).not.toHaveBeenCalled();
+  });
+
+  it('een falende dekkings-markering breekt de poort niet (best-effort)', async () => {
+    mockPrisma.referenceCandidate.findMany.mockResolvedValue([
+      { id: 'c1', t3777Code: 'A', cropPath: 'p1', evidence: {} },
+    ]);
+    findClassesWithoutGoldSetCoverage.mockRejectedValue(new Error('boom'));
+
+    await expect(processBatch('batch-1')).resolves.not.toThrow();
+    // De poort draait alsnog.
+    expect(runRegressionGate).toHaveBeenCalledWith('batch-1', expect.any(Object));
   });
 });

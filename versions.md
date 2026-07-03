@@ -1,5 +1,18 @@
 # Versiegeschiedenis
 
+## 2026-07-03 (zicht op de gezondheid van de goudstandaard)
+
+### De datamanager ziet nu de omvang en samenstelling van de goudstandaard
+- Het vliegwiel-overzicht toont voortaan hoe groot de goudstandaard (de vaste meetlat) is, hoe de verhouding tussen echte en valse voorbeelden ligt, en welke keurmerken het vaakst en het minst vaak vertegenwoordigd zijn (de top-5 van beide). Zo is in één oogopslag te zien of de meetlat nog gezond en evenwichtig is
+- Deze cijfers worden live berekend op het moment dat het overzicht wordt opgevraagd — er draait geen extra achtergrondtaak voor
+
+### Automatische waarschuwingen bij scheefgroei
+- Zodra één keurmerk meer dan een vijfde van alle voorbeelden uitmaakt, of de verhouding echt/vals buiten de gezonde bandbreedte (tussen 60% en 90% echt) valt, verschijnt er een signaal. Zo wordt zichtbaar wanneer de meetlat uit balans dreigt te raken
+- De grenswaarden zijn instelbaar, zodat ze in de eerste weken kunnen worden bijgesteld
+
+### Nieuwe keurmerken zonder voorbeeld worden gemarkeerd, niet geblokkeerd
+- Verwerkt de nachtelijke ronde een keurmerk waarvan nog geen enkel voorbeeld in de goudstandaard zit, dan wordt dat als aandachtspunt genoteerd bij de lichting — maar de verwerking gaat gewoon door. Blokkeren zou het opbouwen van nieuwe keurmerken onmogelijk maken
+
 ## 2026-07-03 (reviewbeslissingen laten de goudstandaard automatisch meegroeien)
 
 ### Elke beoordeling in het reviewstation voedt voortaan de goudstandaard

@@ -29,6 +29,7 @@ import {
   toCsv,
 } from '../../services/flywheel/hard-negative-export';
 import { isNominationEnabled } from '../../services/flywheel/config';
+import { getGoldSetComposition } from '../../services/flywheel/gold-set-composition';
 
 const logger = createLogger('flywheel-routes');
 
@@ -41,8 +42,14 @@ export async function flywheelRoutes(fastify: FastifyInstance) {
    * Vliegwiel-overzicht. Story 13.2 leverde hier de gemiste-nominatie-teller
    * (`missedNominations`, per reden); Story 13.4 voegde de watchdog-observatie
    * `lastSuccessfulPromotionRun` toe; Story 13.6 voegt de pauze-stand `paused`
-   * toe (AD-11-scope zichtbaar). Latere stories (15.2 dashboard) breiden dit uit
-   * met batch-/kandidaat-/poort-statistieken.
+   * toe (AD-11-scope zichtbaar). Story 14.2 voegt het modulaire paneel
+   * `goldSetComposition` toe (ON-READ berekend, geen job — AD-6 ongeraakt).
+   * Latere stories (15.2 dashboard) breiden dit uit met batch-/kandidaat-/
+   * poort-statistieken.
+   *
+   * Modulariteit (coördinatie-noot epics): vijf epics leveren panelen; elk
+   * paneel is één sub-service-aanroep hier, geen gedeelde monoliet-handler. Het
+   * `goldSetComposition`-contract (sleutels) is stabiel voor Story 15.2.
    */
   fastify.get(
     '/flywheel/overview',
@@ -56,11 +63,15 @@ export async function flywheelRoutes(fastify: FastifyInstance) {
 
       const lastSuccessfulPromotionRun = await getLastSuccessfulPromotionRun();
       const pauseState = await getPauseState();
+      // Story 14.2: ON-READ samenstellingsbewaking (paneel goldSetComposition).
+      const goldSetComposition = await getGoldSetComposition();
 
       logger.info('Flywheel overview opgevraagd', {
         missedNominationsTotal,
         lastSuccessfulPromotionRun,
         paused: pauseState.paused,
+        goldSetSize: goldSetComposition.size,
+        goldSetSkewSignals: goldSetComposition.skewSignals.length,
       });
 
       return reply.status(200).send({
@@ -73,6 +84,9 @@ export async function flywheelRoutes(fastify: FastifyInstance) {
         lastSuccessfulPromotionRun,
         paused: pauseState.paused,
         pause: pauseState,
+        // Story 14.2 (FR-11): gold-set-omvang, ECHT/VALS-verdeling, top-5
+        // meest/minst vertegenwoordigde klassen en scheefgroei-signalen.
+        goldSetComposition,
       });
     }
   );

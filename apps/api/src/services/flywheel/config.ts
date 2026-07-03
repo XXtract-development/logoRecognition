@@ -165,3 +165,37 @@ export function getRegressionTolerancePp(): number {
   const v = parseFloat(process.env.FLYWHEEL_REGRESSION_TOLERANCE_PP ?? '');
   return Number.isFinite(v) && v >= 0 ? v : 1;
 }
+
+// ============================================
+// Story 14.2 — gold-set-samenstellingsbewaking (scheefgroei-drempels)
+// ============================================
+
+/**
+ * Maximaal aandeel (fractie 0–1) dat één klasse van de actieve gold-set mag
+ * beslaan vóór er een scheefgroei-signaal ontstaat (FR-11, PRD-assumptie §9).
+ * Default 0,20 (20%). Startwaarde uit de PRD-assumptie — env-configureerbaar
+ * zodat de eerste draai-weken hem kunnen bijstellen, geen hardcode.
+ *
+ * De grens is INCLUSIEF: een klasse op exact het aandeel (> is de test, niet ≥)
+ * telt nog niet als scheef — zie `computeGoldSetComposition`.
+ */
+export function getGoldSetClassShareMax(): number {
+  const v = parseFloat(process.env.FLYWHEEL_GOLDSET_CLASS_SHARE_MAX ?? '');
+  return Number.isFinite(v) && v > 0 ? v : 0.2;
+}
+
+/**
+ * Onder- en bovengrens (fractie 0–1) van het gezonde ECHT-aandeel in de actieve
+ * gold-set (FR-11, PRD-assumptie §9). Buiten [min, max] → scheefgroei-signaal.
+ * Defaults 0,60 / 0,90. De grenzen zijn INCLUSIEF: een ECHT-aandeel op exact
+ * 0,60 of 0,90 is nog gezond (< / > is de test).
+ */
+export function getGoldSetEchtMin(): number {
+  const v = parseFloat(process.env.FLYWHEEL_GOLDSET_ECHT_MIN ?? '');
+  return Number.isFinite(v) && v >= 0 && v <= 1 ? v : 0.6;
+}
+
+export function getGoldSetEchtMax(): number {
+  const v = parseFloat(process.env.FLYWHEEL_GOLDSET_ECHT_MAX ?? '');
+  return Number.isFinite(v) && v >= 0 && v <= 1 ? v : 0.9;
+}

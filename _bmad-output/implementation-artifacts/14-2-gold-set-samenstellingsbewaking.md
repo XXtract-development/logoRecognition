@@ -1,6 +1,6 @@
 # Story 14.2: Gold-set-samenstellingsbewaking
 
-Status: in-progress
+Status: done
 
 <!-- Aangemaakt door create-story workflow, 2026-07-02. Bron: epics-vliegwiel.md Epic 14 / Story 14.2. -->
 
@@ -100,16 +100,37 @@ zodat **ik weet of de regressietest nog op een gezond meetinstrument draait** (F
 
 ## Dev Agent Record
 
-_(in te vullen door dev-story)_
-
 ### Agent Model Used
+
+claude-opus-4-8 (implement-sprint, epic/vliegwiel-14 worktree).
 
 ### Debug Log References
 
+- Volledige apps/api vitest-suite groen tegen lokale DATABASE_URL (localhost:5432): 492 passed / 2 skipped / 16 todo.
+- Migratie-vrij: `GoldSetCoverageMarking` leeft in de bestaande `promotion_batches.gateResults` (JSONB, AD-13); geen schema-/migratie-wijziging.
+
 ### Completion Notes
 
+- Sub-service `gold-set-composition.ts`: pure `computeGoldSetComposition` (omvang, ECHT/VALS + ratio, klasse-verdeling, top-5 meest/minst, scheefgroei-signalen) + on-read `getGoldSetComposition` (via de ENE 13.3-resolver `getActiveGoldSet`, AD-4) + `findClassesWithoutGoldSetCoverage` (AC3-dekkings-check).
+- Drempels als env-config (`FLYWHEEL_GOLDSET_CLASS_SHARE_MAX`=0.20, `FLYWHEEL_GOLDSET_ECHT_MIN`/`_MAX`=0.60/0.90) in `config.ts` — geen hardcode. Grenzen INCLUSIEF (exact op de drempel = nog gezond).
+- Paneel `goldSetComposition` toegevoegd aan `GET /api/v1/flywheel/overview` — één modulaire sub-service-aanroep, geen monoliet-handler (coördinatie-noot).
+- AC3: niet-blokkerende dekkings-markering in `processBatch` (promotion-batch.ts) → `gateResults.goldSetCoverage`. Draait vóór de guardrails, best-effort (try/catch), idempotent (alleen als het item nog ontbreekt), muteert nooit de batch-status. De poort/13.4/13.5 bestond al, dus AC3 is volledig ingehaakt (geen uitgestelde koppeling nodig).
+- AC4: geen job/scheduler/cron — on-read bij de overview-aanroep (AD-6 ongeraakt).
+- Randgevallen getest: lege set (geen deling door nul, expliciet `set-leeg`-signaal), één klasse, grens-inclusiviteit (klasse exact 20%, ECHT exact 60%/90%).
+
 ### File List
+
+- NEW: `apps/api/src/services/flywheel/gold-set-composition.ts`
+- EDIT: `apps/api/src/services/flywheel/config.ts`
+- EDIT: `apps/api/src/services/flywheel/types.ts`
+- EDIT: `apps/api/src/api/v1/flywheel.ts`
+- EDIT: `apps/api/src/services/flywheel/promotion-batch.ts`
+- NEW: `apps/api/src/__tests__/services/flywheel-gold-set-composition.test.ts`
+- EDIT: `apps/api/src/__tests__/services/flywheel-promotion-batch.test.ts`
+- EDIT: `apps/api/src/__tests__/api/flywheel.routes.test.ts`
+- DOCS: `_bmad-output/implementation-artifacts/review-14-2.md`, `ac-trace-14-2.md`
 
 ## Change Log
 
 - 2026-07-02: Story aangemaakt (create-story workflow) op basis van epics-vliegwiel.md Epic 14, spine-AD's en PRD FR-11.
+- 2026-07-03: Geïmplementeerd (implement-sprint). On-read samenstellingsbewaking + niet-blokkerende dekkings-markering; migratie-vrij; 4/4 AC's gedekt; volledige apps/api-suite groen (492).

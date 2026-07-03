@@ -31,8 +31,31 @@ export interface GatePhaseResult {
   details: Record<string, unknown>;
 }
 
-/** De volledige `gateResults`-map: fasenaam → record. */
-export type GateResults = Partial<Record<GatePhase, GatePhaseResult>>;
+/**
+ * Story 14.2 (AC 3) — niet-blokkerende gold-set-dekkings-markering. Leeft naast
+ * de poort-fasen in `gateResults` onder de sleutel `goldSetCoverage`; het is
+ * bewust GEEN `GatePhase` zodat het de fase-idempotentie/crash-recovery en de
+ * poort-beslissing niet raakt. Puur informatief (markeren ≠ blokkeren): een
+ * klasse in de batch zonder enige actieve gold-set-dekking verschijnt hier,
+ * maar de batch-uitkomst verandert er niet door.
+ */
+export interface GoldSetCoverageMarking {
+  /** ISO-tijdstip van de markering. */
+  markedAt: string;
+  /** De onderscheiden klassen in de batch (uniek). */
+  batchClasses: string[];
+  /** De subset daarvan ZONDER enige actieve gold-set-dekking (leeg = alles gedekt). */
+  classesWithoutCoverage: string[];
+}
+
+/**
+ * De volledige `gateResults`-map: fasenaam → record, plus het niet-blokkerende
+ * 14.2-dekkingsitem (`goldSetCoverage`). De fase-sleutels blijven exact de
+ * `GatePhase`-namen; `goldSetCoverage` is een aparte, optionele sleutel.
+ */
+export type GateResults = Partial<Record<GatePhase, GatePhaseResult>> & {
+  goldSetCoverage?: GoldSetCoverageMarking;
+};
 
 /** Batch-statussen (AD-16). `pending` = nog niet afgesloten. */
 export type BatchStatus = 'pending' | 'passed' | 'quarantined' | 'rolled_back';
