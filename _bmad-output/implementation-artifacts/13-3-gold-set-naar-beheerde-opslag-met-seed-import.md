@@ -1,6 +1,6 @@
 # Story 13.3: Gold-set naar beheerde opslag met seed-import
 
-Status: ready-for-dev
+Status: done
 
 <!-- Aangemaakt via create-story workflow, 2026-07-02. Bron: epics-vliegwiel.md Epic 13 / Story 13.3 + ARCHITECTURE-SPINE (AD-4; ARCH-2, ARCH-4). Onafhankelijk van 13.2 uitvoerbaar (eigen migratie). -->
 
@@ -101,15 +101,41 @@ zodat **de regressietest (13.5) een reproduceerbaar en groeibaar meetinstrument 
 
 ## Dev Agent Record
 
-_(in te vullen door dev-story)_
-
 ### Agent Model Used
+
+claude-opus-4-8 (implement-sprint, epic/vliegwiel-13 worktree).
 
 ### Debug Log References
 
+- DB-veiligheid: `DATABASE_URL=postgresql://postgres:postgres@localhost:5432/logo_recognition` — geverifieerd localhost:5432, geen remote-token, vóór elke prisma-actie.
+- Migratie 0013 lokaal toegepast via `prisma migrate deploy` (localhost); `prisma migrate status` = up to date; `prisma validate` + `prisma generate` groen.
+- Dry-run: plan 303 (91 oogstrun + 212 declared), labels ECHT=287/VALS=16, 25 codes; count bleef 0 (niets geschreven).
+- Echte seed E2E lokaal: run 1 = 303 inserts, run 2 = 0 (idempotent). getActiveGoldSet = 303 (cropOnly 91). Vervanging: actief blijft 303 (oud getombstoned); double-replace → GoldSetReplacementError. Daarna tabel getruncate om de lokale DB schoon achter te laten.
+
 ### Completion Notes List
 
+- **AC1**: migratie `0013_add_gold_set_records` (migration.sql + down.sql) voorbereid en lokaal toegepast; docblock legt de variance (cropPath nullable + evidence-kolom) en het 14.1-afstempunt (géén `replaced_by_id = id`-constraint) vast. Uitvoering op ACC/PROD blijft een expliciet toestemmingsmoment.
+- **AC2**: `src/scripts/seed-gold-set.ts` — handmatig, idempotent, `--dry-run`. Dedup: oogstrun op bron-id (in evidence), declared-marks op (gtin, code, source). Legacy-markering via NIEUWE `tests/validation/README.md` + `tests/validation/CLAUDE.md` — de JSON-bronbestanden zijn NIET gemuteerd (keuze conform Task 3.5: JSON kent geen comments én is fixture elders).
+- **AC3**: `src/services/flywheel/gold-set.ts` — `getActiveGoldSet` (replacedById IS NULL, optioneel cropOnly) + `replaceGoldSetRecord` (transactie: create + conditionele tombstone-update, 0 rijen → fout). Immutability-guard-test bewaakt: geen update-op-inhoud, geen delete.
+- **Variance vastgelegd**: cropPath nullable (GTIN-records hebben geen crop) + evidence JSONB (volledige bron-context, AD-13). Scriptlocatie `apps/api/src/scripts/` (api-side, Prisma) — niet ml-service `scripts/`.
+- Volledige apps/api vitest-suite groen: 335 passed / 2 skipped (337), +17 nieuw.
+- Review + AC-trace: zie `apps/api/review-13-3.md` (verdict PASS) en `apps/api/ac-trace-13-3.md`.
+
 ### File List
+
+- `apps/api/prisma/schema.prisma` (model GoldSetRecord)
+- `apps/api/prisma/migrations/0013_add_gold_set_records/migration.sql` (nieuw)
+- `apps/api/prisma/migrations/0013_add_gold_set_records/down.sql` (nieuw)
+- `apps/api/src/services/flywheel/gold-set.ts` (nieuw)
+- `apps/api/src/scripts/seed-gold-set.ts` (nieuw)
+- `apps/api/src/__tests__/services/flywheel-gold-set.test.ts` (nieuw)
+- `apps/api/src/__tests__/scripts/seed-gold-set.test.ts` (nieuw)
+- `apps/api/src/__tests__/setup.ts` (goldSetRecord-mock toegevoegd)
+- `apps/api/src/__tests__/__mocks__/prisma.ts` (goldSetRecord-mock toegevoegd)
+- `tests/validation/README.md` (nieuw, legacy-markering)
+- `tests/validation/CLAUDE.md` (nieuw, AI-context legacy-markering)
+- `apps/api/review-13-3.md`, `apps/api/ac-trace-13-3.md` (review-artefacten)
+- `versions.md` (release-notitie)
 
 ## Change Log
 

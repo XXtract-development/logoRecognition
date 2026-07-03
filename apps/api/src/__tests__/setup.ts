@@ -205,6 +205,17 @@ vi.mock('@prisma/client', () => {
       create: vi.fn(),
       count: vi.fn(),
     },
+    // Gold-set (Story 13.3)
+    goldSetRecord: {
+      findUnique: vi.fn(),
+      findFirst: vi.fn(),
+      findMany: vi.fn().mockResolvedValue([]),
+      create: vi.fn().mockResolvedValue({ id: 'gold-1' }),
+      update: vi.fn(),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+      delete: vi.fn(),
+      count: vi.fn(),
+    },
     $executeRaw: vi.fn().mockResolvedValue(1),
     $queryRaw: vi.fn().mockResolvedValue([]),
     // Supports both Prisma transaction forms:

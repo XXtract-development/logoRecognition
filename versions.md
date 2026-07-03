@@ -1,5 +1,15 @@
 # Versiegeschiedenis
 
+## 2026-07-03 (goudstandaard: de meetlat voor de herkenning staat nu veilig in de database)
+
+### De goudstandaard verhuist van losse bestanden naar een beheerde opslag
+- De vaste referentieset waarmee we de kwaliteit van de herkenning meten (91 gecontroleerde voorbeelden plus de officiële keurmerk-declaraties van 74 producten) staat voortaan in de database in plaats van in losse bestanden — één betrouwbare bron van waarheid
+- Die set wordt met één handmatige opdracht ingeladen; je kunt eerst een "proefdraai" doen die precies laat zien wat er ingeladen zou worden zonder al iets weg te schrijven
+- De import is herhaalbaar zonder rommel: een tweede keer draaien voegt niets dubbels toe
+- Een voorbeeld in de goudstandaard wordt nooit overschreven of gewist; een correctie zet een nieuw voorbeeld klaar en markeert het oude als vervangen — zo blijft de meethistorie altijd herleidbaar
+- De oude bestanden blijven als bevroren momentopname bestaan, met een duidelijke verwijzing dat de database nu leidend is
+- Nog geen zichtbare wijziging in de schermen; dit legt de basis voor de automatische kwaliteitsmeting (regressietest) die hierna volgt
+
 ## 2026-07-03 (leergeheugen: dubbel bevestigde keurmerken worden vanzelf kandidaat)
 
 ### Een dubbel bevestigd keurmerk wordt automatisch een kandidaat-voorbeeld

@@ -205,6 +205,17 @@ export class PrismaClient {
     count: jest.fn(),
   };
 
+  goldSetRecord = {
+    findUnique: jest.fn(),
+    findFirst: jest.fn(),
+    findMany: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    updateMany: jest.fn(),
+    delete: jest.fn(),
+    count: jest.fn(),
+  };
+
   $transaction = jest.fn((operations: unknown[]) => Promise.all(operations));
   $connect = jest.fn();
   $disconnect = jest.fn();
