@@ -102,6 +102,25 @@ async def _load_reference_templates() -> List[Dict[str, Any]]:
     return templates
 
 
+def filter_templates_by_codes(
+    templates: List[Dict[str, Any]], codes: Optional[List[str]]
+) -> List[Dict[str, Any]]:
+    """Restrict a template list to a subset of T3777 codes (Story 12.8, AC4b).
+
+    Pure + dependency-free so it is unit-testable without the storage/DB layer.
+    A falsy/empty ``codes`` filter is a no-op (whole library kept) — the existing
+    behaviour. Matching is case-insensitive against the template's ``t3777_code``.
+    A filter that matches nothing yields an empty list (the caller's open-input
+    gate then returns no detections, never an error).
+    """
+    if not codes:
+        return templates
+    wanted = {c.strip().upper() for c in codes if c and c.strip()}
+    if not wanted:
+        return templates
+    return [t for t in templates if str(t["t3777_code"]).upper() in wanted]
+
+
 async def _get_reference_templates_cached() -> List[Dict[str, Any]]:
     """Return the cached reference templates, reloading if the TTL expired."""
     global _TEMPLATE_CACHE
@@ -363,6 +382,13 @@ class LocalizeRequest(BaseModel):
     )
     image_b64: Optional[str] = None
     templates: Optional[List[TemplateInput]] = None
+    # Story 12.8 (AC4b): restrict the ML-side reference library to a subset of
+    # T3777 codes (the GTIN's declared, alias-mapped codes). Only applies when
+    # ``templates`` is omitted (library loaded ML-side). An empty/None filter
+    # keeps the existing behaviour (whole active library). Codes are matched
+    # case-insensitively against the reference class code. A filter that matches
+    # nothing yields no detections (open-input gate) — never an error.
+    codes: Optional[List[str]] = None
     # Tunables (optional; env defaults apply — see localization module)
     tile_size: Optional[int] = Field(None, ge=64, le=4096)
     overlap: Optional[float] = Field(None, ge=0.0, lt=1.0)
@@ -498,12 +524,21 @@ async def localize_artwork(request: LocalizeRequest) -> LocalizeResponse:
             templates.append({"t3777_code": tmpl.t3777_code, "image": tmpl_img})
     else:
         templates = await _get_reference_templates_cached()
+        # Story 12.8 (AC4b): a codes-filter restricts the ML-side library to the
+        # declared (alias-mapped) subset so the localize ladder only builds
+        # variants for the codes the GTIN actually declares — the candidate
+        # shrink (~43 → 2–6) that carries the kruischeck latency budget. Only
+        # meaningful for the library path (caller-supplied templates are already
+        # the intended subset). Applied to the CACHED full set (never mutates the
+        # cache) via a pure, unit-tested helper.
+        templates = filter_templates_by_codes(templates, request.codes)
 
     if not templates:
-        # Open-input gate (AC2): an empty library / all-invalid templates yields
-        # an empty detection list plus a warning — never an error.
+        # Open-input gate (AC2): an empty library / all-invalid templates — or a
+        # codes-filter that matches nothing — yields an empty detection list plus
+        # a warning, never an error.
         logger.warning(
-            "Localize has no usable templates (empty reference library?) — returning no detections"
+            "Localize has no usable templates (empty reference library or codes-filter matched nothing) — returning no detections"
         )
         return LocalizeResponse(detections=[])
 

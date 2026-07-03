@@ -41,6 +41,7 @@ import { mlClient } from '../ml-client';
 import prisma from '../../core/db';
 import { createLogger } from '../../core/logger';
 import { runDetectionJob, DETECTION_QUEUE, type DetectionJobData } from './detection-flow';
+import { runVerifyJob, VERIFY_JOB_NAME, type VerifyJobData } from './verify-flow';
 import {
   runNominationJob,
   NOMINATION_JOB_NAME,
@@ -342,6 +343,11 @@ export function registerDetectionWorker(): Worker {
       // alle andere jobs zijn reguliere detectie-jobs.
       if (job.name === NOMINATION_JOB_NAME) {
         return runNominationJob(job.data as NominationJobData);
+      }
+      // Story 12.8: declared-values verification runs on this same queue (AC8)
+      // so parallel n8n calls share the detection worker's throughput budget.
+      if (job.name === VERIFY_JOB_NAME) {
+        return runVerifyJob(job.data as VerifyJobData);
       }
       return runDetectionJob(job.data as DetectionJobData);
     },

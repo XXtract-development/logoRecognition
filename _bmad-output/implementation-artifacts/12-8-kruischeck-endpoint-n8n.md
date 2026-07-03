@@ -1,6 +1,6 @@
 # Story 12.8: Kruischeck-endpoint voor n8n (declared-values verificatie)
 
-Status: ready-for-dev
+Status: done
 
 <!-- Aangemaakt door Mary (analyst) + create-story workflow, 2026-07-02. -->
 
@@ -111,26 +111,70 @@ zodat **datakwaliteitsbewaking automatisch kan vaststellen of gedeclareerde keur
 
 ## Tasks / Subtasks
 
-- [ ] 1. Alias-module + unit-tests (AC3) — tabel afleiden uit actieve klassen × frequentiedoc.
-- [ ] 2. ml-service `codes`-filter op LocalizeRequest + pytest (AC4b), of templates-subset vanaf Node (AC4a) — keuze documenteren in Dev Agent Record.
-- [ ] 3. `verify-flow.ts`: BullMQ-job met import-check → declaraties → gerichte detectie → crosscheck → verdicts (AC1/2/4/5/8).
-- [ ] 4. Routes `POST .../verify-declared` + `GET .../runs/:runId` met API-key-auth (AC1/6).
-- [ ] 5. Schaduwlogging naar recognition_logs/recognition_results (AC7).
-- [ ] 6. Unit-/integratietests (AC9).
-- [ ] 7. versions.md + Engelse commit; ghcr-build afwachten; ACC-deploy; bewijs-run met echte GTIN (AC10).
-- [ ] 8. n8n-aanroeprecept documenteren in route-docblock (AC6).
+- [x] 1. Alias-module + unit-tests (AC3) — `services/t3777-aliases.ts`, tabel afgeleid uit actieve klassen × frequentiedoc.
+- [x] 2. ml-service `codes`-filter op LocalizeRequest + pytest (AC4b) — keuze 4b (codes-filter ML-side, kleinere request).
+- [x] 3. `verify-flow.ts`: BullMQ-job met import-check → declaraties → alias → gerichte detectie → verdict-drempels → shadow-log (AC1/2/4/5/7/8).
+- [x] 4. Routes `POST .../verify-declared` + `GET .../runs/:runId` met API-key-auth (AC1/6).
+- [x] 5. Schaduwlogging naar recognition_logs/recognition_results (AC7).
+- [x] 6. Unit-/integratietests (AC9).
+- [ ] 7. versions.md + Engelse commit; ghcr-build afwachten; ACC-deploy; bewijs-run met echte GTIN (AC10) — **ACC-deel = post-deploy vervolgtaak** (implement-sprint draait niet tegen ACC).
+- [x] 8. n8n-aanroeprecept documenteren in route-docblock (AC6).
 
 ## Dev Agent Record
 
-_(in te vullen door dev-story)_
-
 ### Agent Model Used
+
+claude-opus-4-8 (implement-sprint, epic/vliegwiel-16 worktree).
 
 ### Debug Log References
 
+- Route-auth: de globale test-mock (`src/__tests__/setup.ts`) van `middleware/auth`
+  laat elke aanwezige x-api-key door en 401't authMiddleware niet bij ontbrekende
+  auth. Daarom velt `verifyDeclaredAuth` het "geen credential"-oordeel zelf (401
+  vóór delegatie) — deterministisch onder zowel de echte als de gemockte
+  middleware, en het matcht AC9 ("401 zonder key"). De "verkeerde key"-401 leunt
+  op de echte `apiKeyAuth` (draait live), niet apart getest onder de mock.
+
 ### Completion Notes
 
+- **Optie 4b gekozen** (AC4): een optioneel `codes: list[str]`-filter op
+  `LocalizeRequest` (ml-service) dat de actieve referentiebibliotheek ML-side
+  filtert — kleiner request, templates blijven ML-side. Pure helper
+  `filter_templates_by_codes` (unit-getest).
+- **Geen migratie** (AC7): run-state in Redis (`verify-declared:run:{runId}`, TTL
+  24u), schaduwlog naar bestaande `recognition_logs`/`recognition_results`.
+- **Shadow-mode hard** (AC8): de flow roept BEWUST niet `crosscheckDetections`
+  aan (die persisteert review-items); alleen de pure `getThresholdForMethod`
+  wordt hergebruikt voor de verdict-grenzen. Geen review-items, geen
+  trainingsdata. Job op de bestaande `artwork-detection`-queue, gerouteerd per
+  job-naam in de bestaande detection-worker.
+- **Vliegwiel-aansluiting**: CONFIRMED-verdict → `nominateFromKruischeck` (13.2)
+  + `registerKruischeckMismatchEvents` (16.1), achter
+  `FLYWHEEL_KRUISCHECK_NOMINATION_ENABLED` (default uit → nul neveneffecten). De
+  verdict-response wordt FIRST weggeschreven, de haakjes draaien daarna
+  (byte-gelijk contract, AD-8). Review-fix C1: canonieke (gealiaste) declared-codes
+  doorgegeven aan de mismatch-registratie zodat declared/confirmed/detected in één
+  codespace vergeleken worden.
+- **AC10** (ACC-bewijs) = post-deploy operationele vervolgtaak; implement-sprint
+  draait niet tegen ACC. Deploy-volgorde: GitHub Actions "Build and Push Docker
+  Images" → Coolify (ACC draait pre-built ghcr-images).
+- Nieuwe env: `VERIFY_RUN_STATE_TTL_S` (default 86400).
+
 ### File List
+
+- `apps/api/src/services/t3777-aliases.ts` (nieuw)
+- `apps/api/src/services/pipeline/verify-flow.ts` (nieuw — de verify-flow die 16.4 nodig heeft)
+- `apps/api/src/api/v1/verify-declared.ts` (nieuw)
+- `apps/api/src/services/ml-client.ts` (localizeArtwork: optioneel `codes`)
+- `apps/api/src/services/pipeline/workers.ts` (VERIFY_JOB_NAME-route in de detection-worker)
+- `apps/api/src/main.ts` (registratie verifyDeclaredRoutes)
+- `apps/ml-service/app/api/artwork.py` (LocalizeRequest.codes + `filter_templates_by_codes`)
+- `apps/api/src/__tests__/services/t3777-aliases.test.ts` (nieuw)
+- `apps/api/src/__tests__/services/verify-flow.test.ts` (nieuw)
+- `apps/api/src/__tests__/api/verify-declared.routes.test.ts` (nieuw)
+- `apps/api/src/__tests__/setup.ts` (storage-mock: listTrainingObjectKeys)
+- `apps/ml-service/tests/unit/test_localize_codes_filter.py` (nieuw)
+- `_bmad-output/implementation-artifacts/review-12-8.md`, `ac-trace-12-8.md` (nieuw)
 
 ## Change Log
 

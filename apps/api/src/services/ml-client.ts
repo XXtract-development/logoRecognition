@@ -356,11 +356,19 @@ export class MLClient {
    * the active reference library itself (TTL-cached). Callers that supply
    * templates (meet-scripts, tests) keep the existing behaviour. Returns the
    * detections with absolute bbox coordinates + per-detection threshold.
+   *
+   * `codes` is OPTIONAL (Story 12.8, AC4b): restricts the ML-side library to the
+   * given subset of T3777 codes (the GTIN's declared, alias-mapped codes) so the
+   * localize ladder only builds variants for those classes — the candidate-shrink
+   * that carries the kruischeck latency budget. Only meaningful together with the
+   * library path (i.e. when `templates` is omitted). An absent/empty filter keeps
+   * the whole-library behaviour.
    */
   async localizeArtwork(request: {
     storage_path?: string;
     image_b64?: string;
     templates?: Array<{ t3777_code: string; image_b64: string }>;
+    codes?: string[];
   }): Promise<{ detections: Array<Record<string, unknown>>; truncated: boolean }> {
     try {
       const response = await this.client.post<{

@@ -357,6 +357,7 @@ vi.mock('../services/storage', () => ({
   getReferenceLogoUrl: vi.fn(),
   downloadImage: vi.fn(),
   downloadTrainingObject: vi.fn(),
+  listTrainingObjectKeys: vi.fn().mockResolvedValue([]),
   deleteImage: vi.fn(),
   validateImage: vi.fn(),
   generateThumbnail: vi.fn(),

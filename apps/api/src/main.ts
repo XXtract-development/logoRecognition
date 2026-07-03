@@ -26,6 +26,7 @@ import { feedbackRoutes } from './api/v1/feedback';
 import { statsRoutes } from './api/v1/stats';
 import { referenceLogosRoutes } from './api/v1/reference-logos';
 import { artworkPipelineRoutes } from './api/v1/artwork-pipeline';
+import { verifyDeclaredRoutes } from './api/v1/verify-declared';
 import { pipelineRoutes } from './api/v1/pipeline';
 import { flywheelRoutes } from './api/v1/flywheel';
 import { registerRetrainingCronJob } from './services/pipeline/trigger';
@@ -134,6 +135,7 @@ async function startServer() {
     await app.register(statsRoutes, { prefix: '/api/v1' });
     await app.register(referenceLogosRoutes, { prefix: '/api/v1' });
     await app.register(artworkPipelineRoutes, { prefix: '/api/v1' });
+    await app.register(verifyDeclaredRoutes, { prefix: '/api/v1' });
     await app.register(pipelineRoutes, { prefix: '/api/v1' });
     await app.register(flywheelRoutes, { prefix: '/api/v1' });
 

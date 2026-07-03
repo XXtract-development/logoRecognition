@@ -1,5 +1,14 @@
 # Versiegeschiedenis
 
+## 2026-07-03 (Kruischeck-endpoint: gedeclareerde keurmerken automatisch controleren op de verpakking)
+
+### Nieuwe automatische controle of een product zijn eigen gedeclareerde keurmerken ook echt op de verpakking heeft staan
+- Er is een nieuw koppelpunt waarmee een geautomatiseerde workflow per product (GTIN) kan vragen: "staan de keurmerken die dit product opgeeft ook daadwerkelijk op het etiket?". Bedoeld voor doorlopende datakwaliteitsbewaking (100–200 producten per dag)
+- Het systeem zoekt gericht alléén naar de keurmerken die het product zelf opgeeft — niet naar álle mogelijke keurmerken. Dat maakt de controle snel en gericht
+- Per opgegeven keurmerk komt er een duidelijk oordeel terug: bevestigd (gevonden met voldoende zekerheid), onzeker (wel iets gevonden, maar te onzeker), niet gevonden, of niet-ondersteund (we hebben nog geen referentiebeeld voor dat keurmerk). Zo lijkt een controle die niets kon vinden nooit ten onrechte op "netjes gecontroleerd, niets aan de hand"
+- De controle draait in de schaduw: ze rapporteert en logt, maar blokkeert niets en maakt geen handmatige-review-taken aan
+- Verschillende schrijfwijzen van hetzelfde keurmerk (bijvoorbeeld de oude en nieuwe naam van Rainforest Alliance, of MSC met/zonder "label"-toevoeging) worden automatisch naar dezelfde referentie herleid, zodat een naamsverschil niet onterecht "niet gevonden" oplevert
+
 ## 2026-07-03 (Datakwaliteitsrapport: keurmerken die wél op de verpakking staan maar niet gedeclareerd zijn)
 
 ### Nieuw rapport toont per informatieleverancier de gemiste declaraties
