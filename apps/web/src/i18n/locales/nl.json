@@ -407,7 +407,125 @@
     "emptyQuarantine_one": "{{count}} batch wacht op jouw beoordeling.",
     "emptyQuarantine_other": "{{count}} batches wachten op jouw beoordeling.",
     "badgeTitle_one": "{{count}} batch wacht op jouw beoordeling",
-    "badgeTitle_other": "{{count}} batches wachten op jouw beoordeling"
+    "badgeTitle_other": "{{count}} batches wachten op jouw beoordeling",
+    "panelError": "Dit paneel kon niet geladen worden.",
+    "kpi": {
+      "sectionLabel": "Kerncijfers",
+      "precision": "Gold-set-precisie",
+      "tolerance": "tolerantie −{{pp}} pt",
+      "newReferences": "Nieuwe referenties ({{days}} dgn)",
+      "newReferencesFoot": "over {{classes}} klassen · {{batches}} promotiebatches",
+      "quarantine": "Batches in quarantaine",
+      "quarantineWaiting": "wacht op jouw beoordeling",
+      "oldestAge": "oudste {{hours}} u open",
+      "classesAtCap": "Klassen aan cap",
+      "classesAtCapFoot": "nominaties geweigerd: cap-bereikt",
+      "glnCoverage": "GLN-dekkingsgraad archief",
+      "glnPending": "nog niet beschikbaar",
+      "missedNominations": "Gemiste nominaties: {{total}}",
+      "lastRun": "Laatste succesvolle run: {{when}}",
+      "noRun": "nog geen run"
+    },
+    "trend": {
+      "title": "Gold-set-precisietrend",
+      "caption": "Laatste meting: {{value}}. {{delta}}",
+      "delta": "Δ {{delta}} pt t.o.v. vorige meting",
+      "goldSetSub": "Gold-set: {{size}} samples ({{echt}}% ECHT / {{vals}}% VALS)",
+      "empty": "Nog geen meetpunten — de eerste gepasseerde batch verschijnt hier.",
+      "regression": "Regressie → quarantaine",
+      "showData": "Toon als tabel",
+      "hideData": "Verberg data",
+      "colDate": "Datum",
+      "colPrecision": "Precisie",
+      "colStatus": "Status"
+    },
+    "quarantine": {
+      "tab": "Quarantaine ({{n}})",
+      "empty": "Alle batches passeerden de kwaliteitspoort.",
+      "colBatch": "Promotiebatch",
+      "colCandidates": "Kandidaten",
+      "colReason": "Faalreden",
+      "colStatus": "Status",
+      "mostAffected": "meest getroffen: {{classes}}",
+      "waiting": "wacht op jouw beoordeling",
+      "open": "Openen"
+    },
+    "history": {
+      "tab": "Historie ({{n}})",
+      "colBatch": "Promotiebatch",
+      "colPrecision": "Precisie",
+      "colStatus": "Status",
+      "rolledBack": "teruggedraaid",
+      "passed": "gepasseerd",
+      "rollback": "Terugdraaien"
+    },
+    "drawer": {
+      "title": "Batch-poortuitkomsten",
+      "batch": "Batch",
+      "reason": "Faalreden",
+      "gate": "Poort-uitkomsten"
+    },
+    "rollback": {
+      "title": "Batch terugdraaien",
+      "explain": "Terugdraaien deactiveert de gepromoveerde referenties van deze batch (soft-delete) en herstelt de baseline. Reden is verplicht (wie/wanneer/waarom).",
+      "reasonPlaceholder": "Reden voor terugdraaien",
+      "confirm": "Terugdraaien",
+      "cancel": "Annuleren",
+      "success": "Batch teruggedraaid.",
+      "error": "Terugdraaien mislukt — probeer opnieuw."
+    },
+    "goldSet": {
+      "title": "Gold-set-samenstelling",
+      "size": "{{size}} samples · {{classes}} klassen",
+      "labels": "ECHT {{echt}} ({{echtPct}}%) / VALS {{vals}}",
+      "top": "Meest vertegenwoordigd",
+      "bottom": "Minst vertegenwoordigd",
+      "skewTitle": "Scheefgroei-signalen",
+      "signal": "signaal",
+      "skewEmpty": "De actieve gold-set is leeg.",
+      "skewClass": "Klasse {{klasse}} is {{waarde}} van de set (signaalgrens {{drempel}}).",
+      "skewBand": "ECHT-aandeel {{waarde}} ligt buiten de gezonde band."
+    },
+    "classCaps": {
+      "title": "Klassen aan cap",
+      "empty": "Geen klassen aan hun cap.",
+      "detail": "{{active}}/{{cap}} promotie-referenties · {{rejected}} nominaties geweigerd (cap-bereikt)"
+    },
+    "outlier": {
+      "title": "Outlier-meldingen",
+      "open": "{{n}} open",
+      "empty": "Geen openstaande outlier-meldingen.",
+      "finding": "wekelijkse outlier-audit · afstand p{{pct}}",
+      "review": "Beoordelen",
+      "modalTitle": "Outlier beoordelen",
+      "compareIntro": "De gemarkeerde referentie vergeleken met haar klasse-genoten.",
+      "thisRef": "Deze referentie",
+      "classPeers": "Klasse-genoten",
+      "distance": "Afstand tot centrum",
+      "percentile": "Percentiel",
+      "cancel": "Annuleren",
+      "keep": "Behouden",
+      "deactivate": "Deactiveren",
+      "kept": "Referentie behouden.",
+      "deactivated": "Referentie gedeactiveerd.",
+      "error": "Beoordeling mislukt — probeer opnieuw."
+    },
+    "bootstrap": {
+      "title": "Bootstrap-wachtrij",
+      "empty": "Nog niet beschikbaar — komt met de seed-bootstrap (Epic 17)."
+    },
+    "mismatch": {
+      "title": "Mismatch-trends",
+      "empty": "Nog niet beschikbaar — komt met de mismatch-registratie (Epic 16)."
+    },
+    "gln": {
+      "title": "GLN-dekkingsgraad",
+      "empty": "Nog niet beschikbaar — komt met de GLN-backfill (Epic 18)."
+    },
+    "stale": {
+      "message": "Bijgewerkt — deze weergave is mogelijk verouderd.",
+      "refresh": "Vernieuwen"
+    }
   },
   "emptyState": {
     "noImages": {

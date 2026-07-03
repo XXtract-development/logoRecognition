@@ -1,6 +1,6 @@
 # Story 15.2: Overzichtsscherm — de gezondheid van het vliegwiel in één oogopslag
 
-Status: ready-for-dev
+Status: done
 
 <!-- Aangemaakt via create-story workflow, 2026-07-02. Bron: epics-vliegwiel.md Epic 15. -->
 
@@ -154,15 +154,61 @@ _(1-op-1 uit epics-vliegwiel.md, Story 15.2)_
 
 ## Dev Agent Record
 
-_(in te vullen door dev-story)_
-
 ### Agent Model Used
+
+claude-opus-4-8 (implement-sprint, worktree epic/vliegwiel-15).
 
 ### Debug Log References
 
+- `apps/api/prisma` genereerde bij aanvang (`npx prisma generate`) — de worktree deelt de node_modules van de hoofdrepo; zonder generate faalde tsc op alle bestaande flywheel-modellen (niet mijn wijziging).
+
 ### Completion Notes
 
+- **Modulaire /overview (coördinatie-noot, bindend):** per paneel één sub-service onder `apps/api/src/services/flywheel/overview/` (`precision-trend.ts`, `quarantine.ts`, `kpi.ts`, `class-caps.ts`, `history.ts`, `empty-panels.ts`), gecomponeerd in `overview/index.ts` (`composeOverview`) met sectie-lokale foutafhandeling (`{ error }` per paneel). De route (`api/v1/flywheel.ts`) componeert alleen — géén monoliet-handler. De bestaande sub-services (14.2 gold-set-composition, 14.3 outliers-overview, 13.2 missed-nominations, 13.4 watchdog, 13.6 pause, 15.1 quarantine-count) haken ongewijzigd in.
+- **Nieuw endpoint `POST /flywheel/outliers/:id/decision`** (`outlier-decision.ts`): Behouden → finding `behouden`; Deactiveren → `ReferenceLogo.active=false` (soft-delete, nooit DELETE) + finding `gedeactiveerd` + **`markBaselineStale('outlier-deactivatie', by)` (AD-5, kritiek)** + idempotentie (409 op reeds-beoordeeld). ADMIN-only. Geen poortlogica (AD-15).
+- **Batch-detail (taak 3.1, variance gedocumenteerd):** de 15.3-route `/flywheel/batches/:id` bestaat nog niet → geleverde variant = **antd Drawer** met de poort-uitkomsten (`gateResults`) uit de overview-data. De navigatie wordt bewust niet doorgegeven aan `QuarantineCard`, waardoor de Drawer-fallback actief is. Wanneer 15.3 landt, wordt `onOpenBatch` doorgegeven en vervalt de Drawer zonder verdere wijziging.
+- **Kleursemantiek (UX-DR5) & a11y (UX-DR9):** gecentraliseerd in `statusColors.ts` + `StatusBadge.tsx` (dot+tekst, amber-tekst `#92600A`); trend als `role="img"`+aria-label + tekstueel alternatief + data-als-tabel; regressie-annotatie tekstueel (kleur nooit als enige kanaal); `StaleDataAlert` `aria-live="polite"`.
+- **Geen polling:** `useFlywheelOverview` (15.1) heeft refetchOnMount + staleTime, géén `refetchInterval`. Verversing handmatig; `StaleDataAlert` doet geen auto-reload.
+- **Migratie-vrij:** geen schema.prisma/migrations-wijziging (bevestigd via git). Alle tabellen uit Epics 13/14.
+- **Tests:** api vitest 531 pass/2 skip (20 nieuw); web vitest 88 pass/20 todo (12 nieuw). 15.1-tests + `flywheelService.test.ts` bijgewerkt naar de nieuwe markup/contract (intentie behouden, geen test verzwakt). AC→test-mapping: `ac-trace-15-2.md`. Review: `review-15-2.md` (verdict PASS).
+
 ### File List
+
+**Nieuw (API):**
+- `apps/api/src/services/flywheel/overview/precision-trend.ts`
+- `apps/api/src/services/flywheel/overview/quarantine.ts`
+- `apps/api/src/services/flywheel/overview/kpi.ts`
+- `apps/api/src/services/flywheel/overview/class-caps.ts`
+- `apps/api/src/services/flywheel/overview/history.ts`
+- `apps/api/src/services/flywheel/overview/empty-panels.ts`
+- `apps/api/src/services/flywheel/overview/index.ts`
+- `apps/api/src/services/flywheel/outlier-decision.ts`
+- `apps/api/src/__tests__/services/flywheel-overview-panels.test.ts`
+- `apps/api/src/__tests__/services/flywheel-overview-compose.test.ts`
+- `apps/api/src/__tests__/services/flywheel-outlier-decision.test.ts`
+- `apps/api/src/__tests__/api/flywheel-outlier-decision.routes.test.ts`
+
+**Nieuw (web):**
+- `apps/web/src/components/flywheel/statusColors.ts`
+- `apps/web/src/components/flywheel/StatusBadge.tsx`
+- `apps/web/src/components/flywheel/KpiRow.tsx`
+- `apps/web/src/components/flywheel/PrecisionTrendCard.tsx`
+- `apps/web/src/components/flywheel/QuarantineCard.tsx`
+- `apps/web/src/components/flywheel/GoldSetCompositionCard.tsx`
+- `apps/web/src/components/flywheel/SignalPanels.tsx`
+- `apps/web/src/components/flywheel/StaleDataAlert.tsx`
+
+**Gewijzigd:**
+- `apps/api/src/api/v1/flywheel.ts` (overview → composeOverview; nieuw outlier-decision-endpoint)
+- `apps/api/src/__tests__/setup.ts` (groupBy-mock op referenceLogo/referenceCandidate)
+- `apps/web/src/pages/FlywheelPage.tsx` (volledig overzichtsscherm)
+- `apps/web/src/services/flywheelService.ts` (volledige overview-types + rollback + decideOutlier)
+- `apps/web/src/components/common/AppLayout.tsx` (quarantineCount PanelError-veilig)
+- `apps/web/src/i18n/locales/nl.json` (flywheel.* keys)
+- `apps/web/src/pages/FlywheelPage.test.tsx`, `apps/web/src/services/flywheelService.test.ts` (bijgewerkt + uitgebreid)
+- `versions.md`, `_bmad-output/implementation-artifacts/sprint-status.yaml`
+
+**Artefacten:** `review-15-2.md`, `ac-trace-15-2.md`.
 
 ## Change Log
 

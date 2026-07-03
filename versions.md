@@ -1,5 +1,16 @@
 # Versiegeschiedenis
 
+## 2026-07-03 (Vliegwiel-overzichtsscherm: de gezondheid in één blik)
+
+### Het Vliegwiel-onderdeel toont nu een volledig overzicht
+- Waar het Vliegwiel eerst alleen een casco was, staat er nu een echt dashboard. Bovenaan een rij kerncijfers: de gold-set-precisie, hoeveel nieuwe referenties er de afgelopen week bijkwamen (en over hoeveel keurmerken), hoeveel batches op beoordeling wachten (met hun ouderdom), hoeveel keurmerken hun maximum bereikt hebben, en de GLN-dekkingsgraad. Klikken op een kerncijfer scrolt naar het bijbehorende onderdeel
+- Een precisietrend-grafiek toont per gepasseerde batch één meetpunt, met een gestippelde tolerantielijn. Een batch die de kwaliteitspoort niet haalde, is als rood ruitje mét tekst herkenbaar — nooit alleen op kleur. Onder de grafiek staat de laatste meting ook als tekst, en de onderliggende cijfers zijn als tabel opvraagbaar
+- De quarantainetabel toont wachtende batches met hun faalreden in gewone taal. Een tweede tabblad "Historie" toont de gepasseerde én teruggedraaide batches. Terugdraaien kan daar, achter een bevestiging met een verplicht redenveld; een teruggedraaide batch krijgt een neutraal label "teruggedraaid"
+- Een samenstellingspaneel laat zien hoe de goudstandaard eruitziet: omvang, de ECHT/VALS-verdeling, de meest en minst vertegenwoordigde keurmerken en eventuele scheefgroei-signalen (rustig, informatief — geen alarm)
+- Afwijkende referentiebeelden (de wekelijkse controle) kun je nu vanuit het overzicht beoordelen: een vergelijkingsweergave toont het gemarkeerde beeld naast zijn soortgenoten, met de keuze "Behouden" of "Deactiveren". Deactiveren zet het beeld op inactief (het wordt niet verwijderd) en zorgt dat de kwaliteitspoort daarna opnieuw ijkt
+- Onderdelen die nog uit latere stappen komen (bootstrap-wachtrij, mismatch-trends, GLN-dekking) tonen netjes een "nog niet beschikbaar"-melding in plaats van een leeg vlak
+- Het scherm ververst bij openen en met een handmatige knop — er wordt niet doorlopend gepolld. Staat een weergave te lang open, dan verschijnt een rustige "vernieuwen"-melding. Alle teksten zijn Nederlands en de statuskleuren volgen de afspraak: amber voor "wacht op beoordeling", rood alleen voor een echte terugval
+
 ## 2026-07-03 (Vliegwiel-onderdeel in de app)
 
 ### Nieuw menu-item "Vliegwiel" met een teller voor wachtende batches

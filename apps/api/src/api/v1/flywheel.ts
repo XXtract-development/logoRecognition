@@ -13,12 +13,9 @@
  * zijn Story 15.4 (die op de `pause.ts`-service bouwt).
  */
 
-import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { FastifyInstance, FastifyReply } from 'fastify';
 import { authMiddleware, requireRole } from '../../middleware/auth';
 import { createLogger } from '../../core/logger';
-import { getMissedNominationCounts } from '../../services/flywheel/missed-nominations';
-import { getLastSuccessfulPromotionRun } from '../../services/flywheel/watchdog';
-import { getPauseState } from '../../services/flywheel/pause';
 import {
   rollbackBatch,
   BatchNotFoundError,
@@ -28,10 +25,13 @@ import {
   getHardNegativeExport,
   toCsv,
 } from '../../services/flywheel/hard-negative-export';
-import { isNominationEnabled } from '../../services/flywheel/config';
-import { getGoldSetComposition } from '../../services/flywheel/gold-set-composition';
-import { getOutliersPanel } from '../../services/flywheel/outliers-overview';
-import { getQuarantineCount } from '../../services/flywheel/quarantine-count';
+import { composeOverview } from '../../services/flywheel/overview';
+import {
+  decideOutlier,
+  OutlierFindingNotFoundError,
+  OutlierFindingAlreadyDecidedError,
+  type OutlierDecision,
+} from '../../services/flywheel/outlier-decision';
 
 const logger = createLogger('flywheel-routes');
 
@@ -41,67 +41,73 @@ export async function flywheelRoutes(fastify: FastifyInstance) {
   /**
    * GET /api/v1/flywheel/overview
    *
-   * Vliegwiel-overzicht. Story 13.2 leverde hier de gemiste-nominatie-teller
-   * (`missedNominations`, per reden); Story 13.4 voegde de watchdog-observatie
-   * `lastSuccessfulPromotionRun` toe; Story 13.6 voegt de pauze-stand `paused`
-   * toe (AD-11-scope zichtbaar). Story 14.2 voegt het modulaire paneel
-   * `goldSetComposition` toe (ON-READ berekend, geen job — AD-6 ongeraakt).
-   * Latere stories (15.2 dashboard) breiden dit uit met batch-/kandidaat-/
-   * poort-statistieken.
-   *
-   * Modulariteit (coördinatie-noot epics): vijf epics leveren panelen; elk
-   * paneel is één sub-service-aanroep hier, geen gedeelde monoliet-handler. Het
-   * `goldSetComposition`-contract (sleutels) is stabiel voor Story 15.2.
+   * Vliegwiel-overzicht — modulair samengesteld (Story 15.2, coördinatie-noot
+   * epics). Vijf epics (13 t/m 18) leveren panelen; elk paneel is één sub-service
+   * onder `services/flywheel/overview/`. De compositie zit in `composeOverview()`
+   * (géén monoliet-handler hier); elk paneel faalt sectie-lokaal (`{ error }` in
+   * de payload i.p.v. een 500 op het geheel — EXPERIENCE.md State Patterns). De
+   * response bevat `generatedAt` t.b.v. de client-side "verouderde data"-melding.
    */
   fastify.get(
     '/flywheel/overview',
     { preHandler: authMiddleware },
-    async (_request: FastifyRequest, reply: FastifyReply) => {
-      const missedNominations = await getMissedNominationCounts();
-      const missedNominationsTotal = Object.values(missedNominations).reduce(
-        (sum, n) => sum + n,
-        0
-      );
-
-      const lastSuccessfulPromotionRun = await getLastSuccessfulPromotionRun();
-      const pauseState = await getPauseState();
-      // Story 14.2: ON-READ samenstellingsbewaking (paneel goldSetComposition).
-      const goldSetComposition = await getGoldSetComposition();
-      // Story 14.3: open outlier-meldingen + laatste audit-run (paneel outliers).
-      const outliers = await getOutliersPanel();
-      // Story 15.1: aantal openstaande quarantainebatches (voedt de nav-badge).
-      const quarantineCount = await getQuarantineCount();
-
+    async (_request, reply: FastifyReply) => {
+      const overview = await composeOverview();
       logger.info('Flywheel overview opgevraagd', {
-        missedNominationsTotal,
-        lastSuccessfulPromotionRun,
-        paused: pauseState.paused,
-        goldSetSize: goldSetComposition.size,
-        goldSetSkewSignals: goldSetComposition.skewSignals.length,
-        outliersOpen: outliers.openCount,
-        quarantineCount,
+        generatedAt: overview.generatedAt,
+        quarantineCount: overview.quarantineCount,
+        paused: overview.paused,
       });
+      return reply.status(200).send(overview);
+    }
+  );
 
-      return reply.status(200).send({
-        // Story 14.1: de reviewstation-web-app leest hier de hoofdvlag zodat de
-        // redenkeuze-UI bij reject alleen bij vlag-aan verschijnt (runtime-
-        // schakelbaar, geen web-build env-var).
-        nominationEnabled: isNominationEnabled(),
-        missedNominations,
-        missedNominationsTotal,
-        lastSuccessfulPromotionRun,
-        paused: pauseState.paused,
-        pause: pauseState,
-        // Story 14.2 (FR-11): gold-set-omvang, ECHT/VALS-verdeling, top-5
-        // meest/minst vertegenwoordigde klassen en scheefgroei-signalen.
-        goldSetComposition,
-        // Story 14.3 (FR-8): open outlier-meldingen van de wekelijkse audit +
-        // laatste run-tijdstempel. Beoordeling (Behouden/Deactiveren) = Story 15.2.
-        outliers,
-        // Story 15.1 (AC2): aantal openstaande quarantainebatches voor de
-        // navigatie-badge. Story 15.2 breidt dit paneel verder uit.
-        quarantineCount,
-      });
+  /**
+   * POST /api/v1/flywheel/outliers/:id/decision
+   *
+   * Beoordeel een open outlier-melding (Story 15.2, AC6, FR-8/AD-5/AD-13). Body
+   * `{ decision: 'behouden' | 'deactiveren' }`. `behouden` markeert de finding als
+   * beoordeeld; `deactiveren` zet de referentie op `active=false` (soft-delete,
+   * gelogd) én markeert de baseline als VEROUDERD (AD-5) — GÉÉN poort-executie
+   * (AD-15). 404 onbekende finding, 409 reeds beoordeelde finding (idempotentie),
+   * 400 ongeldige decision. Alleen ADMIN.
+   */
+  fastify.post<{ Params: { id: string }; Body: { decision?: string } }>(
+    '/flywheel/outliers/:id/decision',
+    { preHandler: REQUIRE_ADMIN },
+    async (request, reply) => {
+      const { id } = request.params;
+      const decision = request.body?.decision;
+      const by = request.user?.userId ?? 'onbekend';
+
+      if (decision !== 'behouden' && decision !== 'deactiveren') {
+        return reply.status(400).send({
+          error: "Ongeldige beslissing — verwacht 'behouden' of 'deactiveren'.",
+        });
+      }
+
+      try {
+        const result = await decideOutlier({
+          findingId: id,
+          decision: decision as OutlierDecision,
+          by,
+        });
+        return reply.status(200).send(result);
+      } catch (err) {
+        if (err instanceof OutlierFindingNotFoundError) {
+          return reply.status(404).send({ error: 'Outlier-melding niet gevonden' });
+        }
+        if (err instanceof OutlierFindingAlreadyDecidedError) {
+          return reply.status(409).send({
+            error: `Outlier-melding is al beoordeeld (status ${err.status}).`,
+          });
+        }
+        logger.error('Outlier-beslissing mislukt', {
+          findingId: id,
+          error: err instanceof Error ? err.message : 'unknown',
+        });
+        return reply.status(500).send({ error: 'Outlier-beslissing mislukt' });
+      }
     }
   );
 

@@ -122,7 +122,11 @@ export const AppLayout: React.FC = () => {
   // Story 15.1: aantal openstaande quarantainebatches voor de nav-badge.
   // refetch-on-mount, geen polling (patroon RetrainingNotificationBanner).
   const { data: flywheelOverview } = useFlywheelOverview();
-  const quarantineCount = flywheelOverview?.quarantineCount ?? 0;
+  // `quarantineCount` kan sectie-lokaal `{ error }` zijn (Story 15.2) — dan 0.
+  const quarantineCount =
+    typeof flywheelOverview?.quarantineCount === 'number'
+      ? flywheelOverview.quarantineCount
+      : 0;
 
   // Logout: clear the session server-side, then send the user to /login.
   // /login lives outside AppLayout, so the layout unmounts and useCurrentUser
