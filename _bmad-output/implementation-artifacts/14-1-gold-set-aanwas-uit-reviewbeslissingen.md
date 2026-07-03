@@ -1,6 +1,6 @@
 # Story 14.1: Gold-set-aanwas uit reviewbeslissingen
 
-Status: ready-for-dev
+Status: done
 
 <!-- Aangemaakt door create-story workflow, 2026-07-02. Bron: epics-vliegwiel.md Epic 14 / Story 14.1. -->
 
@@ -116,15 +116,39 @@ zodat **de noodrem van het vliegwiel meegroeit zonder extra werk** (FR-10).
 
 ## Dev Agent Record
 
-_(in te vullen door dev-story)_
-
 ### Agent Model Used
+
+claude-opus-4-8 (implement-sprint epic-14 agent).
 
 ### Debug Log References
 
+- Volledige api vitest-suite groen ná de laatste fix: 469 passed / 2 skipped / 16 todo (was 449 baseline; +20 nieuwe tests). Web vitest: 58 passed.
+- Eén flake waargenomen (`artwork-detection-orchestration.test.ts` timeout onder koude-start-CPU); geïsoleerd 17/17 groen in 334ms — pre-existing timing, geen 14.1-regressie.
+
 ### Completion Notes
 
+- **Vlag-lijn (ontwerpkeuze):** ALLE nieuwe schrijfpaden (accept-ECHT, annotate-ECHT, reject-registers, undo) staan achter de hoofdvlag `FLYWHEEL_NOMINATION_ENABLED`. Met de vlag uit is elk endpoint byte-gelijk aan vandaag (expliciete regressietests toegevoegd). Dit is de aanbevolen lijn uit de story (alles achter de hoofdvlag).
+- **Herbruikbare aanwas-service (AC5):** `recordReviewDecision`/`withdrawGoldSetRecord` in `gold-set.ts`; de reject/undo-orchestratie (phash + hard-negative) in nieuw `review-decision.ts`. Bron `quarantaine` zit al in `HUMAN_GOLD_SET_SOURCES` zodat Story 15.3 dezelfde route aanroept.
+- **Fail-closed (AC2):** phash wordt berekend vóór enige schrijf; faalt die → 503 "Beslissing niet opgeslagen — probeer opnieuw", geen VALS-record en geen hard-negative.
+- **Undo (AC3):** self-tombstone (`replaced_by_id = id`, conditional) + hard-negative-delete op `cropPath` (reden `reviewstation-geen-keurmerk`). Idempotent.
+- **Reden-enum:** hard-negative-reden is exact `reviewstation-geen-keurmerk` uit de gedeelde 13.6-enum (`HUMAN_HARD_NEGATIVE_REASONS`) — compile-time geborgd in `review-decision.ts`.
+- **Geaccepteerde bevinding M1** (dubbele VALS bij zeldzame register-ok/status-fail-retry): gold-set is append-only; de FR-9-blokkade (hard-negative) is idempotent via `upsert` op de unieke `contentHash`. Zie `review-14-1.md`.
+- **AC6 — OPEN MENSELIJKE TAAK (geen code):** er moet nog afstemming plaatsvinden met de reviewstation-gebruikers over de nieuwe betekenis van hun klik: accept/annotate voedt nu de goudstandaard (ECHT), een reject vraagt om een reden, "geen keurmerk" blokkeert het beeld permanent (gold-set-VALS + hard-negative), "onjuiste locatie/verkeerde code" wijst alleen af, en undo trekt beide terug. Dit korte gesprek/demo is nog niet gevoerd en valt buiten de code van deze story.
+
 ### File List
+
+- apps/api/src/services/flywheel/gold-set.ts (uitgebreid: `recordReviewDecision`, `withdrawGoldSetRecord`, bron-guard)
+- apps/api/src/services/flywheel/review-decision.ts (nieuw)
+- apps/api/src/api/v1/artwork-pipeline.ts (accept/annotate/reject/reopen-hooks)
+- apps/api/src/api/v1/flywheel.ts (`nominationEnabled` op /flywheel/overview)
+- apps/web/src/services/artworkReviewService.ts (`rejectReviewItem(reason?)`, `fetchNominationEnabled`)
+- apps/web/src/components/review/MobileReviewDeck.tsx (redenkeuze-modal, vlag-gate)
+- apps/api/src/__tests__/setup.ts (hardNegative upsert/deleteMany/findFirst mock)
+- apps/api/src/__tests__/services/flywheel-review-decision.test.ts (nieuw)
+- apps/api/src/__tests__/api/artwork-pipeline.routes.test.ts (14.1-describe toegevoegd)
+- apps/web/src/components/review/MobileReviewDeck.test.tsx (nieuw)
+- apps/web/src/pages/ArtworkReviewPage.test.tsx (mock uitgebreid met fetchNominationEnabled)
+- _bmad-output/implementation-artifacts/review-14-1.md, ac-trace-14-1.md (nieuw)
 
 ## Change Log
 

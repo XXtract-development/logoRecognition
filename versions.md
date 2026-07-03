@@ -1,5 +1,19 @@
 # Versiegeschiedenis
 
+## 2026-07-03 (reviewbeslissingen laten de goudstandaard automatisch meegroeien)
+
+### Elke beoordeling in het reviewstation voedt voortaan de goudstandaard
+- Wat een beoordelaar in het reviewstation goedkeurt (of zelf op de verpakking aanwijst) belandt automatisch als "echt voorbeeld" in de goudstandaard — de vaste meetlat waarmee het systeem bewaakt dat het niet slechter gaat herkennen. Zo groeit die meetlat mee zonder extra werk
+- Elk voorbeeld wordt vastgelegd met de crop, de keurmerkcode, de herkomst en wie de beslissing nam, zodat alles herleidbaar blijft
+
+### Afwijzen kan nu met een reden, en die reden bepaalt wat er gebeurt
+- Bij het afwijzen kiest de beoordelaar voortaan een reden. "Geen keurmerk" betekent: dit beeld is écht fout — het gaat als tegenvoorbeeld de goudstandaard in én wordt permanent geblokkeerd, zodat het nooit meer als kandidaat terugkomt
+- "Onjuiste locatie / verkeerde code" betekent: het beeld zelf klopt, alleen de toewijzing was verkeerd — dan wordt er niets geblokkeerd en niets als fout weggeschreven
+- Deze redenkeuze verschijnt alleen wanneer het leervliegwiel aanstaat; staat het uit, dan werkt het reviewstation precies zoals voorheen
+
+### Een beslissing terugnemen draait ook de gevolgen netjes terug
+- Maakt een beoordelaar een zojuist genomen beslissing ongedaan, dan wordt het bijbehorende goudstandaard-voorbeeld ingetrokken (het blijft bewaard, maar telt niet meer mee) en vervalt een eventuele blokkade weer — geen losse eindjes
+
 ## 2026-07-03 (veiligheidsrem: terugdraaien, pauzeren en automatisch stilvallen bij herhaald falen)
 
 ### Een hele goedgekeurde lichting kan in één handeling worden teruggedraaid

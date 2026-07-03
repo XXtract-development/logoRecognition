@@ -28,6 +28,7 @@ import {
   getHardNegativeExport,
   toCsv,
 } from '../../services/flywheel/hard-negative-export';
+import { isNominationEnabled } from '../../services/flywheel/config';
 
 const logger = createLogger('flywheel-routes');
 
@@ -63,6 +64,10 @@ export async function flywheelRoutes(fastify: FastifyInstance) {
       });
 
       return reply.status(200).send({
+        // Story 14.1: de reviewstation-web-app leest hier de hoofdvlag zodat de
+        // redenkeuze-UI bij reject alleen bij vlag-aan verschijnt (runtime-
+        // schakelbaar, geen web-build env-var).
+        nominationEnabled: isNominationEnabled(),
         missedNominations,
         missedNominationsTotal,
         lastSuccessfulPromotionRun,

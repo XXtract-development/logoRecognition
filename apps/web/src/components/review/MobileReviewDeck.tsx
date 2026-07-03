@@ -14,7 +14,7 @@
  *     to jump back to it.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Tag, Typography, Spin, Empty, Drawer, Input, message } from 'antd';
+import { Button, Tag, Typography, Spin, Empty, Drawer, Input, message, Modal } from 'antd';
 import {
   CheckOutlined,
   CloseOutlined,
@@ -33,7 +33,9 @@ import {
   fetchReviewItemArtworkBlob,
   fetchReviewItemSourceBlob,
   fetchDeclaredMarks,
+  fetchNominationEnabled,
   type ArtworkReviewItem,
+  type ReviewRejectReason,
 } from '@/services/artworkReviewService';
 import ImageStage from './ImageStage';
 import { KEURMERK_CODES } from '@/data/keurmerk-codes';
@@ -101,6 +103,11 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
   const [busy, setBusy] = useState(false);
   const [drag, setDrag] = useState(0);
   const [overview, setOverview] = useState(false);
+  // Story 14.1 — reviewstation reason-choice at reject, ONLY when the flywheel
+  // main flag is on (runtime-switchable via server). Default false = legacy.
+  const [flywheelOn, setFlywheelOn] = useState(false);
+  // Holds the item id awaiting a reject-reason choice (null = modal closed).
+  const [rejectReasonFor, setRejectReasonFor] = useState<string | null>(null);
   // Code correction: when a crop is a real keurmerk but a DIFFERENT one than
   // predicted, the picker assigns the right code and accepts under it.
   const [assignedCode, setAssignedCode] = useState<Record<string, string>>({});
@@ -257,6 +264,45 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
     [queue.length]
   );
 
+  // Story 14.1 — read the flywheel main flag once so the reject reason-choice
+  // only shows when it is on. Fail-safe: any error → stays false (legacy).
+  useEffect(() => {
+    let alive = true;
+    void fetchNominationEnabled().then((on) => {
+      if (alive) setFlywheelOn(on);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // Commit a reject with an explicit reason (Story 14.1). Kept separate so both
+  // the reason-choice modal and the (flag-off) legacy path funnel through the
+  // same decision/queue bookkeeping.
+  const commitReject = useCallback(
+    async (reason?: ReviewRejectReason) => {
+      if (!cur) return;
+      const prev = decisions[cur.id];
+      setBusy(true);
+      try {
+        if (prev) {
+          // Changing a previous decision → reopen first (clears training data).
+          await reopenReviewItem(cur.id);
+        }
+        await rejectReviewItem(cur.id, reason);
+        setDecisions((d) => ({ ...d, [cur.id]: 'VALS' }));
+        setRejectReasonFor(null);
+        if (!prev) goto(idx + 1);
+        else setDrag(0);
+      } catch {
+        message.error(t('review.actionError', { defaultValue: 'Actie mislukt — probeer opnieuw' }));
+      } finally {
+        setBusy(false);
+      }
+    },
+    [cur, decisions, idx, goto, t]
+  );
+
   const applyDecision = useCallback(
     async (label: Label) => {
       if (!cur || busy) return;
@@ -267,6 +313,15 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
         return;
       }
       const prev = decisions[cur.id];
+
+      // Story 14.1 — a fresh reject with the flag on asks WHY: "geen keurmerk"
+      // (→ gold-set VALS + hard-negative) vs "onjuiste locatie/verkeerde code"
+      // (→ no registers). Re-rejecting the same item is an undo → skip the modal.
+      if (label === 'VALS' && flywheelOn && prev !== 'VALS') {
+        setRejectReasonFor(cur.id);
+        return;
+      }
+
       setBusy(true);
       try {
         if (prev === label) {
@@ -301,7 +356,7 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
         setBusy(false);
       }
     },
-    [cur, busy, canMutate, decisions, idx, goto, t]
+    [cur, busy, canMutate, decisions, idx, goto, t, flywheelOn]
   );
 
   const applyAnnotation = useCallback(
@@ -500,6 +555,42 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
     </Drawer>
   );
 
+  // Story 14.1 — reason-choice at reject (only reachable when the flywheel flag
+  // is on; applyDecision gates the open). "geen keurmerk" feeds the gold-set as
+  // VALS and blocks the image forever; "onjuiste locatie/verkeerde code" only
+  // rejects (the image is fine, just mis-assigned).
+  const rejectReasonModal = (
+    <Modal
+      title={t('review.rejectReasonTitle', { defaultValue: 'Waarom afwijzen?' })}
+      open={rejectReasonFor !== null}
+      onCancel={() => setRejectReasonFor(null)}
+      footer={null}
+      data-testid="reject-reason-modal"
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <Button
+          block
+          danger
+          disabled={busy}
+          data-testid="reject-reason-geen-keurmerk"
+          onClick={() => void commitReject('geen-keurmerk')}
+        >
+          {t('review.rejectReasonGeenKeurmerk', { defaultValue: 'Geen keurmerk' })}
+        </Button>
+        <Button
+          block
+          disabled={busy}
+          data-testid="reject-reason-onjuiste-locatie"
+          onClick={() => void commitReject('onjuiste-locatie-verkeerde-code')}
+        >
+          {t('review.rejectReasonOnjuisteLocatie', {
+            defaultValue: 'Onjuiste locatie / verkeerde code',
+          })}
+        </Button>
+      </div>
+    </Modal>
+  );
+
   if (idx >= queue.length) {
     return (
       <div data-testid="review-deck-done">
@@ -515,6 +606,7 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
           {OverviewBtn}
         </div>
         {overviewDrawer}
+        {rejectReasonModal}
       </div>
     );
   }
@@ -880,6 +972,7 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
       </Drawer>
 
       {overviewDrawer}
+      {rejectReasonModal}
     </div>
   );
 };

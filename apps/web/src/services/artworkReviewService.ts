@@ -198,10 +198,41 @@ export const acceptReviewItem = async (
   return response.data;
 };
 
-/** Reject an item (no training data created; not deleted) (ADMIN). */
-export const rejectReviewItem = async (id: string): Promise<{ status: string }> => {
-  const response = await apiClient.patch(`/artwork/review-items/${id}/reject`);
+/**
+ * Reject-reden bij het reviewstation (Story 14.1). Alleen betekenisvol met de
+ * vliegwiel-vlag aan; zonder reden blijft het legacy-gedrag (alleen status).
+ *   - 'geen-keurmerk'                    → gold-set-VALS + hard-negative (blokkade)
+ *   - 'onjuiste-locatie-verkeerde-code'  → alleen afwijzen, geen registers
+ */
+export type ReviewRejectReason = 'geen-keurmerk' | 'onjuiste-locatie-verkeerde-code';
+
+/**
+ * Reject an item (no training data created; not deleted) (ADMIN). Story 14.1: een
+ * optionele `reason` wordt meegestuurd zodra de vliegwiel-vlag aan staat.
+ */
+export const rejectReviewItem = async (
+  id: string,
+  reason?: ReviewRejectReason
+): Promise<{ status: string; reason?: string | null }> => {
+  const response = await apiClient.patch(
+    `/artwork/review-items/${id}/reject`,
+    reason ? { reason } : {}
+  );
   return response.data;
+};
+
+/**
+ * Read the flywheel main flag from the server (Story 14.1). Runtime-switchable:
+ * the reject reason-choice UI only appears when this is true. Fail-safe: any error
+ * → false (legacy behaviour), never throws.
+ */
+export const fetchNominationEnabled = async (): Promise<boolean> => {
+  try {
+    const response = await apiClient.get('/flywheel/overview');
+    return response.data?.nominationEnabled === true;
+  } catch {
+    return false;
+  }
 };
 
 /** Catch-up: register all previously-accepted items that still carry crops (ADMIN). */

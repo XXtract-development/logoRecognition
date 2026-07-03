@@ -208,8 +208,12 @@ vi.mock('@prisma/client', () => {
     },
     hardNegative: {
       findUnique: vi.fn().mockResolvedValue(null),
+      findFirst: vi.fn().mockResolvedValue(null),
       findMany: vi.fn(),
       create: vi.fn(),
+      upsert: vi.fn().mockResolvedValue({ id: 'hn-1' }),
+      delete: vi.fn(),
+      deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
       count: vi.fn(),
     },
     // Promotie-batch (Story 13.4)

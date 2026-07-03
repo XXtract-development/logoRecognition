@@ -48,6 +48,14 @@ import { enqueueDetectionForImport } from '../../services/pipeline/detection-flo
 import { enqueueNominations } from '../../services/flywheel/crosscheck-hook';
 import { isNominationEnabled } from '../../services/flywheel/config';
 import { markBaselineStale } from '../../services/flywheel/baseline';
+import {
+  recordAcceptDecision,
+  recordRejectGeenKeurmerk,
+  withdrawReviewDecision,
+  isReviewRejectReason,
+  PhashUnavailableError,
+  type ReviewRejectReason,
+} from '../../services/flywheel/review-decision';
 import { resolveDeclaredMarks } from '../../services/t3777-declarations';
 import sharp from 'sharp';
 
@@ -1071,6 +1079,30 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
       let referenceAdded: boolean | undefined;
       if (accepted.cropPath) {
         if (isNominationEnabled()) {
+          // Story 14.1 (AC 1) — een accept is een expliciete menselijke ECHT-
+          // beslissing die de goudstandaard voedt. Gescheiden van de nominatie:
+          // best-effort, want een gold-set-schrijffout mag de accept nooit
+          // terugdraaien (de aanwas is een bijbestemming, niet de kern).
+          try {
+            await recordAcceptDecision({
+              t3777Code: accepted.t3777Code,
+              cropPath: accepted.cropPath,
+              source: 'review-accept',
+              decidedBy: (request as { user?: { userId?: string } }).user?.userId ?? null,
+              evidence: {
+                reviewItemId: id,
+                gtin: accepted.gtin,
+                method: accepted.method ?? null,
+                bbox: accepted.bbox ?? null,
+              },
+            });
+          } catch (err) {
+            logger.warn('Gold-set-aanwas (accept) faalde (non-fataal)', {
+              reviewItemId: id,
+              error: err instanceof Error ? err.message : 'unknown',
+            });
+          }
+
           await enqueueNominations(
             accepted.gtin,
             [
@@ -1209,6 +1241,29 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
       // registerReference-call); vlag uit → legacy-registratie ongewijzigd.
       let referenceAdded: boolean | undefined;
       if (isNominationEnabled()) {
+        // Story 14.1 (AC 1) — een annotatie is óók een expliciete menselijke
+        // accept-beslissing (de reviewer wees de crop zelf aan) → ECHT-record.
+        // Best-effort, identiek aan het accept-pad.
+        try {
+          await recordAcceptDecision({
+            t3777Code: code,
+            cropPath: cropKey,
+            source: 'review-annotate',
+            decidedBy: (request as { user?: { userId?: string } }).user?.userId ?? null,
+            evidence: {
+              reviewItemId: id,
+              gtin: updated.gtin,
+              method: 'human-annotation',
+              bbox: { x, y, width: w, height: h },
+            },
+          });
+        } catch (err) {
+          logger.warn('Gold-set-aanwas (annotate) faalde (non-fataal)', {
+            reviewItemId: id,
+            error: err instanceof Error ? err.message : 'unknown',
+          });
+        }
+
         await enqueueNominations(
           updated.gtin,
           [
@@ -1257,16 +1312,65 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
   /**
    * PATCH /artwork/review-items/:id/reject
    * Reject an open review item (no training data is created). Requires ADMIN.
+   *
+   * Story 14.1 (AC 1/AC 2): met de vliegwiel-vlag aan accepteert het endpoint een
+   * optionele body `{ reason: 'geen-keurmerk' | 'onjuiste-locatie-verkeerde-code' }`:
+   *   - "geen-keurmerk"                 → VALS gold-set-record + hard-negative
+   *                                       (fail-closed bij /ml/phash-fout → 503).
+   *   - "onjuiste-locatie-verkeerde-code" → alleen status `rejected`, géén registers
+   *                                       (de beeldinhoud is niet fout, alleen de
+   *                                       toewijzing — AD-12).
+   * Zonder reden (vlag uit / oude client): legacy-gedrag, geen registers.
    */
-  fastify.patch<{ Params: { id: string } }>(
+  fastify.patch<{ Params: { id: string }; Body: { reason?: string } }>(
     '/artwork/review-items/:id/reject',
     { preHandler: REQUIRE_ADMIN },
-    async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+    async (
+      request: FastifyRequest<{ Params: { id: string }; Body: { reason?: string } }>,
+      reply: FastifyReply
+    ) => {
       const { id } = request.params;
+      const rawReason = request.body?.reason?.trim();
 
       const item = await prisma.artworkReviewItem.findUnique({ where: { id } });
       if (!item) {
         return reply.status(404).send({ error: 'Review item niet gevonden' });
+      }
+
+      // Vlag + reden bepalen of dit een register-voedende beslissing is. Met de
+      // vlag uit (of zonder reden) is dit endpoint byte-gelijk aan legacy.
+      let reason: ReviewRejectReason | undefined;
+      if (isNominationEnabled() && rawReason) {
+        if (!isReviewRejectReason(rawReason)) {
+          return reply.status(400).send({ error: 'Ongeldige reject-reden' });
+        }
+        reason = rawReason;
+      }
+
+      // Reden "geen-keurmerk": VALS-record + hard-negative, VÓÓR de status-update,
+      // fail-closed. Faalt de hash → 503 en géén statuswijziging (nooit een halve
+      // beslissing). De crop is vereist om een hash/hard-negative te maken.
+      if (reason === 'geen-keurmerk') {
+        if (!item.cropPath) {
+          return reply
+            .status(422)
+            .send({ error: 'Geen crop voor dit reviewitem — "geen keurmerk" niet mogelijk' });
+        }
+        try {
+          await recordRejectGeenKeurmerk({
+            t3777Code: item.t3777Code,
+            cropPath: item.cropPath,
+            decidedBy: (request as { user?: { userId?: string } }).user?.userId ?? null,
+            evidence: { reviewItemId: id, gtin: item.gtin, method: item.method ?? null },
+          });
+        } catch (err) {
+          if (err instanceof PhashUnavailableError) {
+            return reply
+              .status(503)
+              .send({ error: 'Beslissing niet opgeslagen — probeer opnieuw' });
+          }
+          throw err;
+        }
       }
 
       await prisma.artworkReviewItem.update({
@@ -1274,9 +1378,9 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
         data: { status: 'rejected' },
       });
 
-      logger.info('Review item rejected', { reviewItemId: id });
+      logger.info('Review item rejected', { reviewItemId: id, reason: reason ?? null });
 
-      return reply.status(200).send({ status: 'rejected' });
+      return reply.status(200).send({ status: 'rejected', reason: reason ?? null });
     }
   );
 
@@ -1316,6 +1420,23 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
           data: { active: false },
         });
         deactivatedReferences = refResult.count;
+
+        // Story 14.1 (AC 3) — undo van de gold-set-aanwas: het record van deze
+        // crop via self-tombstone intrekken (blijft bewaard, valt uit de actieve
+        // set) én de bijbehorende hard-negative-rij verwijderen (de afkeuring wordt
+        // teruggenomen → permanente blokkade vervalt). Achter de hoofdvlag;
+        // idempotent (reopen is dat al). Best-effort — een undo-schrijffout mag de
+        // reopen zelf niet blokkeren.
+        if (isNominationEnabled()) {
+          try {
+            await withdrawReviewDecision(item.cropPath);
+          } catch (err) {
+            logger.warn('Gold-set/hard-negative undo faalde (non-fataal)', {
+              reviewItemId: id,
+              error: err instanceof Error ? err.message : 'unknown',
+            });
+          }
+        }
       }
 
       await prisma.artworkReviewItem.update({ where: { id }, data: { status: 'open' } });

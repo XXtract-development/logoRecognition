@@ -18,6 +18,9 @@ vi.mock('@/services/artworkReviewService', () => ({
   rejectReviewItem: vi.fn(),
   annotateReviewItem: vi.fn(),
   processAcceptedReviewItems: vi.fn(),
+  // Story 14.1 — the deck reads the flywheel flag on mount; default off so the
+  // page tests keep their legacy behaviour (no reason-choice modal).
+  fetchNominationEnabled: vi.fn(() => Promise.resolve(false)),
 }));
 
 // Mock the current-user hook so we can toggle ADMIN.

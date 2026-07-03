@@ -755,6 +755,177 @@ describe('Artwork Pipeline Routes (ATDD — Epic 8)', () => {
   });
 
   // -------------------------------------------------------------------------
+  // Story 14.1 — Gold-set-aanwas uit reviewbeslissingen (achter de hoofdvlag)
+  // -------------------------------------------------------------------------
+  describe('Story 14.1 — reviewbeslissing → gold-set/hard-negative', () => {
+    const item = {
+      id: 'ri-14',
+      gtin: '08718989912451',
+      t3777Code: 'EU_ORGANIC_FARMING',
+      cropPath: 'artwork-crops/08718989912451/crop-1.png',
+      sourceFile: '08718989912451_46182_001.jpg',
+      bbox: { x: 10, y: 10, width: 80, height: 80 },
+      confidence: 0.91,
+      method: 'template',
+      reason: 'Confidence onder drempel',
+      status: 'open',
+    };
+
+    beforeEach(() => {
+      (mockPrisma.artworkReviewItem.findUnique as vi.Mock).mockResolvedValue(item);
+      (mockPrisma.artworkReviewItem.update as vi.Mock).mockResolvedValue({ ...item, status: 'registered' });
+      (mockPrisma.goldSetRecord.create as vi.Mock).mockResolvedValue({ id: 'gold-1' });
+      (mockPrisma.goldSetRecord.updateMany as vi.Mock).mockResolvedValue({ count: 1 });
+      (mockPrisma.goldSetRecord.findFirst as vi.Mock).mockResolvedValue(null);
+      (mockPrisma.hardNegative.upsert as vi.Mock).mockResolvedValue({ id: 'hn-1' });
+      (mockPrisma.hardNegative.deleteMany as vi.Mock).mockResolvedValue({ count: 0 });
+      (mlClient.computePhash as vi.Mock).mockResolvedValue({ content_hash: 'hash-abc', phash: 'p-abc' });
+    });
+
+    afterEach(() => {
+      delete process.env.FLYWHEEL_NOMINATION_ENABLED;
+    });
+
+    it('vlag AAN: accept → één ECHT gold-set-record (AC1)', async () => {
+      process.env.FLYWHEEL_NOMINATION_ENABLED = 'true';
+      const res = await app.inject({
+        method: 'PATCH',
+        url: '/api/v1/artwork/review-items/ri-14/accept',
+      });
+      expect(res.statusCode).toBe(200);
+      expect(mockPrisma.goldSetRecord.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ label: 'ECHT', source: 'review-accept' }),
+        }),
+      );
+    });
+
+    it('vlag UIT: accept schrijft GEEN gold-set-record (byte-gelijk legacy, AC1)', async () => {
+      const res = await app.inject({
+        method: 'PATCH',
+        url: '/api/v1/artwork/review-items/ri-14/accept',
+      });
+      expect(res.statusCode).toBe(200);
+      expect(mockPrisma.goldSetRecord.create).not.toHaveBeenCalled();
+    });
+
+    it('vlag AAN: reject "geen-keurmerk" → VALS + hard-negative, status rejected (AC2)', async () => {
+      process.env.FLYWHEEL_NOMINATION_ENABLED = 'true';
+      const res = await app.inject({
+        method: 'PATCH',
+        url: '/api/v1/artwork/review-items/ri-14/reject',
+        payload: { reason: 'geen-keurmerk' },
+      });
+      expect(res.statusCode).toBe(200);
+      expect(JSON.parse(res.body).reason).toBe('geen-keurmerk');
+      expect(mlClient.computePhash).toHaveBeenCalledWith(item.cropPath);
+      expect(mockPrisma.goldSetRecord.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ label: 'VALS' }) }),
+      );
+      expect(mockPrisma.hardNegative.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          create: expect.objectContaining({ reason: 'reviewstation-geen-keurmerk' }),
+        }),
+      );
+      expect(mockPrisma.artworkReviewItem.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { status: 'rejected' } }),
+      );
+    });
+
+    it('vlag AAN: reject "onjuiste-locatie-verkeerde-code" → GEEN registers (AC2)', async () => {
+      process.env.FLYWHEEL_NOMINATION_ENABLED = 'true';
+      const res = await app.inject({
+        method: 'PATCH',
+        url: '/api/v1/artwork/review-items/ri-14/reject',
+        payload: { reason: 'onjuiste-locatie-verkeerde-code' },
+      });
+      expect(res.statusCode).toBe(200);
+      expect(mlClient.computePhash).not.toHaveBeenCalled();
+      expect(mockPrisma.goldSetRecord.create).not.toHaveBeenCalled();
+      expect(mockPrisma.hardNegative.upsert).not.toHaveBeenCalled();
+      expect(mockPrisma.artworkReviewItem.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { status: 'rejected' } }),
+      );
+    });
+
+    it('vlag AAN: reject "geen-keurmerk" met phash-down → 503 én GEEN statuswijziging (AC2 fail-closed)', async () => {
+      process.env.FLYWHEEL_NOMINATION_ENABLED = 'true';
+      (mlClient.computePhash as vi.Mock).mockRejectedValueOnce(new Error('ml down'));
+      const res = await app.inject({
+        method: 'PATCH',
+        url: '/api/v1/artwork/review-items/ri-14/reject',
+        payload: { reason: 'geen-keurmerk' },
+      });
+      expect(res.statusCode).toBe(503);
+      // Geen VALS-record, geen hard-negative, geen status-update: alles of niets.
+      expect(mockPrisma.goldSetRecord.create).not.toHaveBeenCalled();
+      expect(mockPrisma.hardNegative.upsert).not.toHaveBeenCalled();
+      expect(mockPrisma.artworkReviewItem.update).not.toHaveBeenCalled();
+    });
+
+    it('vlag AAN: onbekende reject-reden → 400', async () => {
+      process.env.FLYWHEEL_NOMINATION_ENABLED = 'true';
+      const res = await app.inject({
+        method: 'PATCH',
+        url: '/api/v1/artwork/review-items/ri-14/reject',
+        payload: { reason: 'iets-anders' },
+      });
+      expect(res.statusCode).toBe(400);
+      expect(mockPrisma.artworkReviewItem.update).not.toHaveBeenCalled();
+    });
+
+    it('vlag UIT: reject met reden → legacy (alleen status, geen registers)', async () => {
+      const res = await app.inject({
+        method: 'PATCH',
+        url: '/api/v1/artwork/review-items/ri-14/reject',
+        payload: { reason: 'geen-keurmerk' },
+      });
+      expect(res.statusCode).toBe(200);
+      expect(mlClient.computePhash).not.toHaveBeenCalled();
+      expect(mockPrisma.goldSetRecord.create).not.toHaveBeenCalled();
+      expect(mockPrisma.artworkReviewItem.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { status: 'rejected' } }),
+      );
+    });
+
+    it('vlag AAN: reopen → gold-record self-tombstone + hard-negative-delete (AC3)', async () => {
+      process.env.FLYWHEEL_NOMINATION_ENABLED = 'true';
+      (mockPrisma.trainingData.updateMany as vi.Mock).mockResolvedValue({ count: 1 });
+      (mockPrisma.referenceLogo.updateMany as vi.Mock).mockResolvedValue({ count: 0 });
+      (mockPrisma.goldSetRecord.findFirst as vi.Mock).mockResolvedValue({ id: 'gold-5' });
+      (mockPrisma.hardNegative.deleteMany as vi.Mock).mockResolvedValue({ count: 1 });
+      (mockPrisma.artworkReviewItem.update as vi.Mock).mockResolvedValue({ ...item, status: 'open' });
+
+      const res = await app.inject({
+        method: 'PATCH',
+        url: '/api/v1/artwork/review-items/ri-14/reopen',
+      });
+      expect(res.statusCode).toBe(200);
+      expect(mockPrisma.goldSetRecord.updateMany).toHaveBeenCalledWith({
+        where: { id: 'gold-5', replacedById: null },
+        data: { replacedById: 'gold-5' },
+      });
+      expect(mockPrisma.hardNegative.deleteMany).toHaveBeenCalledWith({
+        where: { cropPath: item.cropPath, reason: 'reviewstation-geen-keurmerk' },
+      });
+    });
+
+    it('vlag UIT: reopen raakt gold-set/hard-negatives NIET (byte-gelijk legacy, AC3)', async () => {
+      (mockPrisma.trainingData.updateMany as vi.Mock).mockResolvedValue({ count: 1 });
+      (mockPrisma.referenceLogo.updateMany as vi.Mock).mockResolvedValue({ count: 0 });
+      (mockPrisma.artworkReviewItem.update as vi.Mock).mockResolvedValue({ ...item, status: 'open' });
+
+      const res = await app.inject({
+        method: 'PATCH',
+        url: '/api/v1/artwork/review-items/ri-14/reopen',
+      });
+      expect(res.statusCode).toBe(200);
+      expect(mockPrisma.goldSetRecord.updateMany).not.toHaveBeenCalled();
+      expect(mockPrisma.hardNegative.deleteMany).not.toHaveBeenCalled();
+    });
+  });
+
+  // -------------------------------------------------------------------------
   // Story 8.2 — PDF-artwork rasterization (P0)
   //   AC1: na import van een PDF → rasterization-stap; paginarelatie vastgelegd
   //   AC2: rasterization-fout = zacht falen, item blijft 'imported', geen pipeline-fout
