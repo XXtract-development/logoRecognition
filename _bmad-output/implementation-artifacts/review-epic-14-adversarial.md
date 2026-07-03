@@ -1,7 +1,9 @@
 # Post-implementation adversarial review — Epic 14 (meegroeiend meetinstrument + outlier-audits)
 
-reviewed_commit: 4c2ef26
+reviewed_commit: 8408950
 verdict: PASS
+
+> Noot: `reviewed_commit` verwijst naar de code-dragende commit `8408950`. Deze rapport-regel-update is de enige verandering daarná (identieke code-tree); de HEAD na deze commit draagt exact dezelfde `apps/`-code die groen getest is.
 
 Base: `9ef977d` (acc + Epic 13). Reviewed epic-HEAD vóór fixes: `87132b7`. Werkmap:
 `/private/tmp/logoRecognition-implement-sprint/epic-14`, branch `epic/vliegwiel-14`.
@@ -53,7 +55,7 @@ Eén repo (monorepo). 45 bestanden, +3806/−51. Kern-flywheel-bestanden:
 - **14.2** — AC1–AC4 gedekt (`ac-trace-14-2.md`), 4/4 assertief. On-read, geen job, geen migratie; markeren-niet-blokkeren in `gateResults.goldSetCoverage`. **PASS.**
 - **14.3** — AC1–AC5 gedekt (`ac-trace-14-3.md`), 5/5. Migratie 0016 + down-script, library-modus ml-service, wekelijkse Job Scheduler, read-only/deactiveert-niets. **PASS.**
 
-## Testuitslag (na fixes, tegen 4c2ef26)
+## Testuitslag (na fixes, tegen 8408950)
 
 - apps/api vitest (volledige suite, DATABASE_URL lokaal): **508 passed / 2 skipped / 16 todo** (was 507; +1 M1-regressietest).
 - ml-service pure pytests (`tests/unit/test_outlier_service.py`, anaconda-python numpy 1.26.4): **16 passed**.
@@ -63,8 +65,8 @@ Eén repo (monorepo). 45 bestanden, +3806/−51. Kern-flywheel-bestanden:
 
 | # | Bevinding | Fix | Commit |
 |---|-----------|-----|--------|
-| M1 | Dubbele VALS bij herhaalde reject | Idempotentie-guard `item.status === 'rejected'` op reject-register-pad + regressietest | 4c2ef26 |
-| L1 | Dode `get_active_reference_classes` | Verwijderd uit `database.py` | 4c2ef26 |
+| M1 | Dubbele VALS bij herhaalde reject | Idempotentie-guard `item.status === 'rejected'` op reject-register-pad + regressietest | 8408950 |
+| L1 | Dode `get_active_reference_classes` | Verwijderd uit `database.py` | 8408950 |
 
 ## Conclusie
 
