@@ -72,3 +72,52 @@ export function getPromotionThresholdForMethod(method?: string): number {
       return parseThreshold(process.env.FLYWHEEL_PROMOTION_THRESHOLD_CLASSIFIER);
   }
 }
+
+// ============================================
+// Story 13.4 — guardrail-config (batch/cap/dedup/outlier/watchdog)
+// ============================================
+
+/**
+ * Cadans van de nachtelijke promotielus (AD-6). Default 01:00 Europe/Amsterdam —
+ * bewust vóór/buiten het harvest-venster (~03:23) om ml-service-CPU-concurrentie
+ * te vermijden. De tijdzone wordt in de scheduler-opts expliciet gezet.
+ */
+export const FLYWHEEL_PROMOTION_CRON_DEFAULT = '0 1 * * *';
+export const FLYWHEEL_PROMOTION_TZ = 'Europe/Amsterdam';
+
+export function getPromotionCron(): string {
+  const raw = process.env.FLYWHEEL_PROMOTION_CRON;
+  return raw && raw.trim().length > 0 ? raw : FLYWHEEL_PROMOTION_CRON_DEFAULT;
+}
+
+/** Per-klasse cap op cumulatieve, actieve promotie-referenties (FR-6). Default 10. */
+export function getClassCap(): number {
+  const v = parseInt(process.env.FLYWHEEL_CLASS_CAP ?? '', 10);
+  return Number.isFinite(v) && v > 0 ? v : 10;
+}
+
+/**
+ * Dedup trap 1 — maximale pHash-Hamming-afstand waaronder twee crops als
+ * duplicaat gelden ("strak" conform AD-9). Startwaarde 6 (op 64-bit pHash, ~9%
+ * bitverschil) — documenteren zodat 14.x hem kan bijstellen.
+ */
+export function getDedupHammingMax(): number {
+  const v = parseInt(process.env.FLYWHEEL_DEDUP_HAMMING_MAX ?? '', 10);
+  return Number.isFinite(v) && v >= 0 ? v : 6;
+}
+
+/** Dedup trap 2 — cosine-drempel waarboven twee embeddings als duplicaat gelden (AD-9). Default 0,97. */
+export function getDedupCosine(): number {
+  const v = parseFloat(process.env.FLYWHEEL_DEDUP_COSINE ?? '');
+  return Number.isFinite(v) ? v : 0.97;
+}
+
+/**
+ * Watchdog-drempel: aantal uren zonder een succesvolle promotielus-run waarna de
+ * watchdog een stilstand-notificatie stuurt (AD-11/ARCH-4). Default 26 uur — één
+ * gemiste nacht plus marge.
+ */
+export function getWatchdogStaleHours(): number {
+  const v = parseFloat(process.env.FLYWHEEL_WATCHDOG_STALE_HOURS ?? '');
+  return Number.isFinite(v) && v > 0 ? v : 26;
+}

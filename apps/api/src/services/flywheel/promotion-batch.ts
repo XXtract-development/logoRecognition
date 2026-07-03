@@ -1,0 +1,231 @@
+/**
+ * Nachtelijke promotie-batch-service (Story 13.4).
+ *
+ * Orkestreert één run van de `flywheel-promotion`-job (AD-6, AD-15):
+ *   1. CRASH-RECOVERY (AD-12/AD-16): hervat éérst bestaande `pending`-batches,
+ *      fase-idempotent via `gateResults` (afgeronde fasen overslaan).
+ *   2. BUNDELING: bundel daarna pas nieuwe `candidate`-kandidaten in een nieuwe
+ *      `pending`-batch en claim ze via conditional update `candidate → in_batch`
+ *      met `promotionBatchId` (claim: hoogstens één niet-afgesloten batch).
+ *
+ * Uitsluitend deze worker instantieert batches en draait de poort (AD-15) — geen
+ * poortlogica in enig HTTP-request-pad. De promotie-transactie (INSERT
+ * ReferenceLogo + embedding-kopie) en de regressie-fase zijn 13.5: een batch die
+ * hier alle guardrails passeert blijft `pending` met `gateResults.regression =
+ * { outcome: 'not-run' }`, klaar voor 13.5.
+ */
+
+import { Prisma } from '@prisma/client';
+import prisma from '../../core/db';
+import { createLogger } from '../../core/logger';
+import {
+  runThresholdPhase,
+  runCapPhase,
+  runDedupPhase,
+  runOutlierPhase,
+  isPhaseComplete,
+  type GuardrailCandidate,
+} from './guardrails';
+import { markPromotionRunSuccess } from './watchdog';
+import type { GatePhase, GatePhaseResult, GateResults } from './types';
+
+const logger = createLogger('flywheel-promotion-batch');
+
+/** Maximum kandidaten per batch (voorkomt onbegrensde nachtelijke run). */
+const MAX_BATCH_SIZE = parseInt(process.env.FLYWHEEL_MAX_BATCH_SIZE || '500', 10);
+
+/** De guardrail-fasen in uitvoeringsvolgorde (regressie = 13.5, hier not-run). */
+const PHASE_ORDER: Array<{
+  phase: Exclude<GatePhase, 'regression'>;
+  run: (c: GuardrailCandidate[]) => Promise<{ record: GatePhaseResult; survivors: GuardrailCandidate[] }>;
+}> = [
+  { phase: 'threshold', run: runThresholdPhase },
+  { phase: 'cap', run: runCapPhase },
+  { phase: 'dedup', run: runDedupPhase },
+  { phase: 'outlier', run: runOutlierPhase },
+];
+
+export interface PromotionRunResult {
+  resumedBatchIds: string[];
+  newBatchId: string | null;
+  bundledCandidates: number;
+}
+
+/**
+ * Draai één volledige promotielus-run (AD-6). Idempotent bij herstart: eerst
+ * hervatten, dan bundelen. Legt bij succes de "laatste succesvolle run" vast
+ * (watchdog, AC 9).
+ */
+export async function runPromotionLoop(): Promise<PromotionRunResult> {
+  const resumedBatchIds: string[] = [];
+
+  // 1. CRASH-RECOVERY: hervat alle openstaande pending-batches, oudste eerst.
+  const pending = await prisma.promotionBatch.findMany({
+    where: { status: 'pending' },
+    orderBy: { createdAt: 'asc' },
+    select: { id: true },
+  });
+  for (const b of pending) {
+    await processBatch(b.id);
+    resumedBatchIds.push(b.id);
+  }
+
+  // 2. BUNDELING: nieuwe kandidaten in een verse batch.
+  const bundle = await bundleNewCandidates();
+  if (bundle) {
+    await processBatch(bundle.batchId);
+  }
+
+  // Watchdog: markeer deze run als succesvol afgerond (AC 9).
+  await markPromotionRunSuccess();
+
+  return {
+    resumedBatchIds,
+    newBatchId: bundle?.batchId ?? null,
+    bundledCandidates: bundle?.count ?? 0,
+  };
+}
+
+/**
+ * Bundel openstaande `candidate`-kandidaten in een nieuwe `pending`-batch en
+ * claim ze (AD-15/AD-16). Batch-INSERT + kandidaat-claims in één transactie.
+ * Claim = conditional update `WHERE status='candidate' AND promotion_batch_id IS
+ * NULL`; 0 rows = niets te bundelen (geen lege batch).
+ *
+ * Retourneert `{ batchId, count }` of `null` als er geen kandidaten waren.
+ */
+export async function bundleNewCandidates(): Promise<{ batchId: string; count: number } | null> {
+  // Kandidaat-ids die nog niet geclaimd zijn (buiten de transactie geselecteerd;
+  // de claim binnen de transactie is conditioneel, dus een race verliest netjes).
+  const open = await prisma.referenceCandidate.findMany({
+    where: { status: 'candidate', promotionBatchId: null },
+    orderBy: { createdAt: 'asc' },
+    take: MAX_BATCH_SIZE,
+    select: { id: true },
+  });
+
+  if (open.length === 0) {
+    logger.info('Geen openstaande kandidaten om te bundelen');
+    return null;
+  }
+
+  const candidateIds = open.map((c) => c.id);
+
+  const result = await prisma.$transaction(async (tx) => {
+    const batch = await tx.promotionBatch.create({
+      data: {
+        status: 'pending',
+        gateResults: {} as Prisma.InputJsonValue,
+      },
+      select: { id: true },
+    });
+
+    // Claim: conditional update. Alleen kandidaten die NOG candidate + ongeclaimd
+    // zijn gaan over naar in_batch (AD-16). Een parallelle claim verliest hier.
+    const claimed = await tx.referenceCandidate.updateMany({
+      where: {
+        id: { in: candidateIds },
+        status: 'candidate',
+        promotionBatchId: null,
+      },
+      data: { status: 'in_batch', promotionBatchId: batch.id },
+    });
+
+    return { batchId: batch.id, count: claimed.count };
+  });
+
+  // Geen enkele kandidaat geclaimd (allemaal weggekaapt door een race): de lege
+  // batch weer sluiten zodat er geen wees-batch blijft hangen.
+  if (result.count === 0) {
+    await prisma.promotionBatch.updateMany({
+      where: { id: result.batchId, status: 'pending' },
+      data: { status: 'rolled_back', closedAt: new Date() },
+    });
+    logger.info('Bundeling leeg na claim-race — lege batch gesloten', { batchId: result.batchId });
+    return null;
+  }
+
+  logger.info('Nieuwe promotie-batch gebundeld', {
+    batchId: result.batchId,
+    claimed: result.count,
+  });
+  return { batchId: result.batchId, count: result.count };
+}
+
+/**
+ * Verwerk één batch door de guardrail-fasen, fase-idempotent (AD-12). Een fase
+ * met een afgerond record in `gateResults` wordt overgeslagen (crash-recovery).
+ * Na de vier fasen initialiseert hij `gateResults.regression = { not-run }` en
+ * laat de batch `pending` — 13.5 maakt de poort af.
+ */
+export async function processBatch(batchId: string): Promise<void> {
+  const batch = await prisma.promotionBatch.findUnique({
+    where: { id: batchId },
+    select: { id: true, status: true, gateResults: true },
+  });
+  if (!batch || batch.status !== 'pending') {
+    logger.info('Batch niet (meer) pending — overslaan', { batchId, status: batch?.status });
+    return;
+  }
+
+  const gateResults: GateResults = (batch.gateResults as GateResults) ?? {};
+
+  for (const { phase, run } of PHASE_ORDER) {
+    if (isPhaseComplete(gateResults, phase)) {
+      logger.info('Fase al afgerond — overslaan (crash-recovery)', { batchId, phase });
+      continue;
+    }
+
+    // De overlevende kandidaten van de fase = de in_batch-kandidaten van de batch.
+    const survivors = await loadBatchCandidates(batchId);
+    const { record } = await run(survivors);
+    gateResults[phase] = record;
+    await persistGateResults(batchId, gateResults);
+  }
+
+  // Regressie-fase-placeholder (13.5-scope): expliciet not-run markeren.
+  if (!isPhaseComplete(gateResults, 'regression')) {
+    gateResults.regression = {
+      phase: 'regression',
+      startedAt: new Date().toISOString(),
+      finishedAt: null,
+      outcome: 'not-run',
+      rejectedCandidateIds: [],
+      details: { note: 'Regressie-fase is Story 13.5-scope' },
+    };
+    await persistGateResults(batchId, gateResults);
+  }
+
+  logger.info('Batch door alle guardrails — blijft pending voor 13.5', { batchId });
+}
+
+/** Laad de nog-in-batch-kandidaten (survivors) van een batch als guardrail-input. */
+export async function loadBatchCandidates(batchId: string): Promise<GuardrailCandidate[]> {
+  const rows = await prisma.referenceCandidate.findMany({
+    where: { promotionBatchId: batchId, status: 'in_batch' },
+    select: { id: true, t3777Code: true, cropPath: true, evidence: true },
+  });
+
+  return rows.map((r) => {
+    const evidence = (r.evidence as Record<string, unknown>) ?? {};
+    const scores = (evidence.scores as Record<string, unknown> | undefined) ?? {};
+    const confidence =
+      typeof scores.confidence === 'number' ? (scores.confidence as number) : null;
+    const method = typeof evidence.method === 'string' ? (evidence.method as string) : null;
+    return {
+      id: r.id,
+      t3777Code: r.t3777Code,
+      cropPath: r.cropPath,
+      confidence,
+      method,
+    };
+  });
+}
+
+/** Schrijf de bijgewerkte gateResults terug op de batch (AD-13). */
+async function persistGateResults(batchId: string, gateResults: GateResults): Promise<void> {
+  await prisma.promotionBatch.update({
+    where: { id: batchId },
+    data: { gateResults: gateResults as Prisma.InputJsonValue },
+  });
+}

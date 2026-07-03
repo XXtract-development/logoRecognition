@@ -26,13 +26,17 @@ const logger = createLogger('pipeline-queue');
 export interface PipelineQueues {
   training: Queue;
   'artwork-detection': Queue;
+  flywheel: Queue;
 }
 
 /**
  * Known queue names. `getJobStatus` is parametrized over these (O6) so the
  * existing jobs-endpoint can surface detection jobs alongside training jobs.
+ *
+ * `flywheel` (Story 13.4, AD-6) carries the nightly promotion loop + watchdog on
+ * worker-concurrency 1, so promotion/bootstrap/audit are mutually exclusive.
  */
-export type QueueName = 'training' | 'artwork-detection';
+export type QueueName = 'training' | 'artwork-detection' | 'flywheel';
 
 /**
  * Shared default job-options (9.1): attempts ≥ 3, exponential backoff, history
@@ -107,9 +111,16 @@ export function createPipelineQueues(): PipelineQueues {
   // Same 9.1 defaults — Redis state survives restarts (crash-resilience, AC4).
   const artworkDetection = new Queue('artwork-detection', { connection, defaultJobOptions });
 
-  logger.info('Pipeline queues created', { queues: ['training', 'artwork-detection'] });
+  // Flywheel queue (Story 13.4): nightly promotion loop + watchdog. Worker
+  // concurrency 1 (workers.ts) — promotion/bootstrap/audit serialise. Same 9.1
+  // defaults; Redis state survives restarts (crash-recovery, AD-12).
+  const flywheel = new Queue('flywheel', { connection, defaultJobOptions });
 
-  return { training, 'artwork-detection': artworkDetection };
+  logger.info('Pipeline queues created', {
+    queues: ['training', 'artwork-detection', 'flywheel'],
+  });
+
+  return { training, 'artwork-detection': artworkDetection, flywheel };
 }
 
 // ============================================

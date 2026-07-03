@@ -38,4 +38,17 @@ describe('Story 13.2 — GET /api/v1/flywheel/overview (AC7)', () => {
     );
     expect(typeof body.missedNominationsTotal).toBe('number');
   });
+
+  // Story 13.4 (AC9): de overview ontsluit de watchdog-observatie
+  // lastSuccessfulPromotionRun (ISO-timestamp of null).
+  it('ontsluit lastSuccessfulPromotionRun (Story 13.4, AC9)', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/v1/flywheel/overview' });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect('lastSuccessfulPromotionRun' in body).toBe(true);
+    expect(
+      body.lastSuccessfulPromotionRun === null ||
+        typeof body.lastSuccessfulPromotionRun === 'string'
+    ).toBe(true);
+  });
 });

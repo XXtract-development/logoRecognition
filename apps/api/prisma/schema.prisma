@@ -559,10 +559,16 @@ model ReferenceCandidate {
   // Relations
   referenceLogo ReferenceLogo?       @relation(fields: [referenceLogoId], references: [id])
   embeddings    CandidateEmbedding[]
+  // Claim-doel (AD-15): de niet-afgesloten batch die deze kandidaat claimt. De
+  // FK-constraint wordt in de 13.4-migratie toegevoegd (13.2 liet de kolom
+  // bewust constraint-loos). onDelete: SetNull — een verwijderde batch mag de
+  // kandidaat niet meesleuren; hij valt terug naar een niet-geclaimde staat.
+  promotionBatch PromotionBatch?     @relation(fields: [promotionBatchId], references: [id], onDelete: SetNull)
 
   @@unique([contentHash, t3777Code])
   @@index([status])
   @@index([t3777Code])
+  @@index([promotionBatchId])
   @@index([createdAt(sort: Desc)])
   @@map("reference_candidates")
 }
@@ -601,6 +607,43 @@ model HardNegative {
   @@index([t3777Code])
   @@index([createdAt(sort: Desc)])
   @@map("hard_negatives")
+}
+
+/// Nachtelijke promotie-batch van het referentie-vliegwiel (Story 13.4, AD-6/
+/// AD-13/AD-15/AD-16). Uitsluitend de flywheel-worker maakt batches aan (AD-15).
+/// Kandidaten worden via `promotionBatchId` aan hoogstens één niet-afgesloten
+/// batch geclaimd. Een batch is "afgesloten" zodra status ≠ `pending`.
+///
+/// `gateResults` bewaart per poort-fase (drempel/cap/dedup/outlier/regressie)
+/// een uitkomst-record (AD-13) zodat de fasen crash-recovery-idempotent zijn
+/// (AD-12/AD-16) en de dashboards (15.2/15.3) ze kunnen tonen. De regressie-fase,
+/// de promotie-transactie en quarantaine zijn Story 13.5 — deze story stopt bij
+/// een batch die alle guardrails passeert en `pending` blijft met de fase
+/// `regression: not-run` in `gateResults`.
+///
+/// `baselineMeasurement` is eigendom van 13.5 (AD-5-baseline op de gepasseerde
+/// batch); hier alleen gedeclareerd (default `{}`) zodat de tabelvorm klopt.
+model PromotionBatch {
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  // Status-machine (AD-16): pending → passed | quarantined | rolled_back.
+  // Geen Prisma-enum (patroon ArtworkReviewItem.status / ReferenceCandidate.status).
+  status              String    @default("pending") @db.VarChar(20)
+  // Poort-uitkomsten per fase (AD-13). Vorm: { [phase]: { phase, startedAt,
+  // finishedAt, outcome, rejectedCandidateIds, details } }.
+  gateResults         Json      @default("{}") @map("gate_results")
+  // AD-5-baseline op de gepasseerde batch — gevuld door 13.5. Nullable: een
+  // pending/quarantined batch heeft (nog) geen baseline.
+  baselineMeasurement Json?     @map("baseline_measurement")
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  // Gezet zodra de batch afgesloten wordt (status ≠ pending).
+  closedAt            DateTime? @map("closed_at") @db.Timestamptz
+
+  // Relations: de kandidaten die deze batch claimde.
+  candidates ReferenceCandidate[]
+
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
+  @@map("promotion_batches")
 }
 
 // ============================================

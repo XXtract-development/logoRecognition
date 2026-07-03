@@ -11,6 +11,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { authMiddleware } from '../../middleware/auth';
 import { createLogger } from '../../core/logger';
 import { getMissedNominationCounts } from '../../services/flywheel/missed-nominations';
+import { getLastSuccessfulPromotionRun } from '../../services/flywheel/watchdog';
 
 const logger = createLogger('flywheel-routes');
 
@@ -18,9 +19,11 @@ export async function flywheelRoutes(fastify: FastifyInstance) {
   /**
    * GET /api/v1/flywheel/overview
    *
-   * Vliegwiel-overzicht. Story 13.2 levert hier voorlopig ALLEEN de
-   * gemiste-nominatie-teller (`missedNominations`, per reden). Latere stories
-   * (15.2 dashboard) breiden dit uit met batch-/kandidaat-/poort-statistieken.
+   * Vliegwiel-overzicht. Story 13.2 leverde hier de gemiste-nominatie-teller
+   * (`missedNominations`, per reden); Story 13.4 voegt de watchdog-observatie
+   * `lastSuccessfulPromotionRun` toe (ISO-timestamp of `null` als de promotielus
+   * nog nooit succesvol draaide). Latere stories (15.2 dashboard) breiden dit uit
+   * met batch-/kandidaat-/poort-statistieken.
    */
   fastify.get(
     '/flywheel/overview',
@@ -32,11 +35,17 @@ export async function flywheelRoutes(fastify: FastifyInstance) {
         0
       );
 
-      logger.info('Flywheel overview opgevraagd', { missedNominationsTotal });
+      const lastSuccessfulPromotionRun = await getLastSuccessfulPromotionRun();
+
+      logger.info('Flywheel overview opgevraagd', {
+        missedNominationsTotal,
+        lastSuccessfulPromotionRun,
+      });
 
       return reply.status(200).send({
         missedNominations,
         missedNominationsTotal,
+        lastSuccessfulPromotionRun,
       });
     }
   );

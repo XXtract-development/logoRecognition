@@ -205,6 +205,16 @@ vi.mock('@prisma/client', () => {
       create: vi.fn(),
       count: vi.fn(),
     },
+    // Promotie-batch (Story 13.4)
+    promotionBatch: {
+      findUnique: vi.fn(),
+      findFirst: vi.fn().mockResolvedValue(null),
+      findMany: vi.fn().mockResolvedValue([]),
+      create: vi.fn().mockResolvedValue({ id: 'batch-1' }),
+      update: vi.fn().mockResolvedValue({}),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+      count: vi.fn().mockResolvedValue(0),
+    },
     // Gold-set (Story 13.3)
     goldSetRecord: {
       findUnique: vi.fn(),
@@ -232,8 +242,20 @@ vi.mock('@prisma/client', () => {
     $disconnect: vi.fn(),
   };
 
+  // Minimal `Prisma` namespace mock. `$queryRaw`/`$executeRaw` are mocked to
+  // return canned values regardless of the SQL argument, so the tagged-template
+  // helpers only need to produce inert placeholder objects that don't throw.
+  const makeSqlFragment = () => ({ strings: [''], values: [] });
+  const Prisma = {
+    sql: (..._args: unknown[]) => makeSqlFragment(),
+    join: (..._args: unknown[]) => makeSqlFragment(),
+    raw: (..._args: unknown[]) => makeSqlFragment(),
+    empty: makeSqlFragment(),
+  };
+
   return {
     PrismaClient: vi.fn(() => mockPrismaClient),
+    Prisma,
     UserRole: {
       USER: 'USER',
       ADMIN: 'ADMIN',
@@ -352,6 +374,7 @@ vi.mock('../services/ml-client', () => ({
     registerReference: vi.fn().mockResolvedValue({ added: true, reason: 'added' }),
     computePhash: vi.fn().mockResolvedValue({ content_hash: 'hash-default', phash: 'phash-default' }),
     generateEmbeddingFromBuffer: vi.fn().mockResolvedValue(new Array(512).fill(0.1)),
+    outlierAudit: vi.fn().mockResolvedValue({ t3777_code: 'X', centroid_size: 0, threshold: 0, results: [] }),
   },
   MLServiceError: class MLServiceError extends Error {
     statusCode: number;
@@ -509,6 +532,9 @@ vi.mock('bullmq', () => {
       removeOnFail: false,
     },
     add: vi.fn().mockResolvedValue(mockJob),
+    // Story 13.4: modern Job Schedulers API (BullMQ 5.63) — not the deprecated
+    // repeat: { pattern }. Registers repeatable jobs idempotently.
+    upsertJobScheduler: vi.fn().mockResolvedValue(mockJob),
     getJob: vi.fn().mockImplementation((id: string) => {
       if (id === 'job-failed-1') return Promise.resolve({ ...mockJob, id });
       return Promise.resolve(null);

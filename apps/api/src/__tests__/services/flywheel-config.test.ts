@@ -46,6 +46,49 @@ describe('Story 13.2 — flywheel config (AD-8)', () => {
   });
 });
 
+describe('Story 13.4 — guardrail-config (cap/dedup/cron/watchdog)', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    delete process.env.FLYWHEEL_CLASS_CAP;
+    delete process.env.FLYWHEEL_DEDUP_HAMMING_MAX;
+    delete process.env.FLYWHEEL_DEDUP_COSINE;
+    delete process.env.FLYWHEEL_PROMOTION_CRON;
+    delete process.env.FLYWHEEL_WATCHDOG_STALE_HOURS;
+  });
+
+  it('cap default 10, override-baar', async () => {
+    const c = await import('../../services/flywheel/config');
+    expect(c.getClassCap()).toBe(10);
+    process.env.FLYWHEEL_CLASS_CAP = '25';
+    expect(c.getClassCap()).toBe(25);
+  });
+
+  it('dedup-drempels defaulten (Hamming 6, cosine 0,97) en zijn override-baar', async () => {
+    const c = await import('../../services/flywheel/config');
+    expect(c.getDedupHammingMax()).toBe(6);
+    expect(c.getDedupCosine()).toBeCloseTo(0.97);
+    process.env.FLYWHEEL_DEDUP_HAMMING_MAX = '3';
+    process.env.FLYWHEEL_DEDUP_COSINE = '0.95';
+    expect(c.getDedupHammingMax()).toBe(3);
+    expect(c.getDedupCosine()).toBeCloseTo(0.95);
+  });
+
+  it('promotie-cron default 01:00 (0 1 * * *), tz Europe/Amsterdam', async () => {
+    const c = await import('../../services/flywheel/config');
+    expect(c.getPromotionCron()).toBe('0 1 * * *');
+    expect(c.FLYWHEEL_PROMOTION_TZ).toBe('Europe/Amsterdam');
+    process.env.FLYWHEEL_PROMOTION_CRON = '0 2 * * *';
+    expect(c.getPromotionCron()).toBe('0 2 * * *');
+  });
+
+  it('watchdog-drempel default 26h, override-baar', async () => {
+    const c = await import('../../services/flywheel/config');
+    expect(c.getWatchdogStaleHours()).toBe(26);
+    process.env.FLYWHEEL_WATCHDOG_STALE_HOURS = '48';
+    expect(c.getWatchdogStaleHours()).toBe(48);
+  });
+});
+
 describe('Story 13.2 — gemiste-nominatie-teller (AC7, NFR-5)', () => {
   beforeEach(() => {
     vi.resetModules();

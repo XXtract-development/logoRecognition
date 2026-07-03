@@ -494,6 +494,35 @@ class DatabaseService:
                 )
             return results
 
+    async def get_reference_embeddings_for_class(
+        self, t3777_code: str
+    ) -> List[np.ndarray]:
+        """Return the ACTIVE reference embedding vectors for one keurmerk class.
+
+        Read-only helper for the per-batch outlier-audit (Story 13.4, AD-9): the
+        class-centroid is computed from the active reference embeddings of the
+        candidate's class. Malformed/empty vectors are skipped so a corrupt row
+        never poisons the centroid. Returns an empty list when the class has no
+        active reference embeddings (leeg-klasse-randgeval — the caller defines
+        the answer, no crash).
+        """
+        async with self.get_connection() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT re.embedding::text AS embedding_text
+                FROM reference_embeddings re
+                JOIN reference_logos rl ON re.reference_logo_id = rl.id
+                WHERE rl.active = true AND rl.t3777_code = $1
+                """,
+                t3777_code,
+            )
+            vectors: List[np.ndarray] = []
+            for row in rows:
+                vec = _parse_pgvector(row["embedding_text"])
+                if vec.size > 0:
+                    vectors.append(vec)
+            return vectors
+
     async def find_similar_references(
         self,
         embedding: np.ndarray,

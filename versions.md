@@ -1,5 +1,17 @@
 # Versiegeschiedenis
 
+## 2026-07-03 (leergeheugen: kandidaten worden 's nachts gebundeld en langs de vangrails geleid)
+
+### Kandidaat-voorbeelden gaan 's nachts automatisch langs caps en ontdubbeling
+- Elke nacht (standaard om 01:00) bundelt het systeem de verzamelde kandidaat-voorbeelden en leidt ze langs een reeks vangrails, zodat straks alleen zinvolle, niet-dubbele voorbeelden de dure kwaliteitsmeting bereiken
+- Per keurmerk geldt een bovengrens op het aantal automatisch geleerde voorbeelden (standaard 10); handmatig gecureerde voorbeelden tellen daar niet in mee en worden nooit verdrongen
+- Bijna-identieke voorbeelden worden ontdubbeld — zowel onderling als tegen wat al bekend is, inclusief zojuist uitgezette slechte voorbeelden, zodat een kloon daarvan niet stiekem terugkeert
+- Voorbeelden die duidelijk afwijken van hun soortgenoten (uitschieters) worden er automatisch uitgefilterd
+- Wordt een voorbeeld op zo'n zachte grond afgewezen (te vol, dubbel of uitschieter), dan wordt het niet definitief geblokkeerd: het mag later opnieuw meedoen als de situatie verandert
+- Valt er 's nachts iets stil, dan volgt automatisch een melding zodra de laatste geslaagde ronde meer dan 26 uur geleden is — een stilgevallen leerlus blijft zo niet onopgemerkt
+- Draait het systeem opnieuw op halverwege een ronde, dan pakt het de openstaande ronde eerst netjes af voordat het nieuwe voorbeelden bundelt — er blijft niets half hangen
+- Nog geen nieuwe actieve herkenning: de gebundelde voorbeelden staan klaar voor de kwaliteitsmeting die in de volgende stap volgt
+
 ## 2026-07-03 (goudstandaard: de meetlat voor de herkenning staat nu veilig in de database)
 
 ### De goudstandaard verhuist van losse bestanden naar een beheerde opslag

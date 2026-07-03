@@ -29,7 +29,8 @@ import { artworkPipelineRoutes } from './api/v1/artwork-pipeline';
 import { pipelineRoutes } from './api/v1/pipeline';
 import { flywheelRoutes } from './api/v1/flywheel';
 import { registerRetrainingCronJob } from './services/pipeline/trigger';
-import { registerTrainingFlowWorker, registerDetectionWorker, closePipelineWorkers } from './services/pipeline/workers';
+import { registerTrainingFlowWorker, registerDetectionWorker, registerFlywheelWorker, closePipelineWorkers } from './services/pipeline/workers';
+import { registerFlywheelSchedulers } from './services/flywheel/scheduler';
 import { installCatalogDeclarationProvider } from './services/t3777-declarations';
 import { logger } from './core/logger';
 import { wsManager } from './services/websocket-manager';
@@ -324,6 +325,22 @@ async function startServer() {
         registerDetectionWorker();
       } catch (err) {
         logger.warn('Failed to register detection worker (Redis may not be ready)', {
+          error: err instanceof Error ? err.message : 'Unknown error',
+        });
+      }
+
+      // Story 13.4: register the flywheel worker (concurrency 1 — nightly
+      // promotion loop + watchdog) and its Job Schedulers (upsertJobScheduler,
+      // AD-6). ONLY this worker instantiates/advances promotion batches (AD-15).
+      try {
+        registerFlywheelWorker();
+        registerFlywheelSchedulers().catch((err) => {
+          logger.warn('Failed to register flywheel Job Schedulers (Redis may not be ready)', {
+            error: err instanceof Error ? err.message : 'Unknown error',
+          });
+        });
+      } catch (err) {
+        logger.warn('Failed to register flywheel worker (Redis may not be ready)', {
           error: err instanceof Error ? err.message : 'Unknown error',
         });
       }

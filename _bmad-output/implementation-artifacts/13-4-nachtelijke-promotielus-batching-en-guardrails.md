@@ -1,6 +1,6 @@
 # Story 13.4: Nachtelijke promotielus — batching en guardrails
 
-Status: ready-for-dev
+Status: done
 
 <!-- Aangemaakt via create-story workflow, 2026-07-02. Bron: epics-vliegwiel.md Epic 13 / Story 13.4 + ARCHITECTURE-SPINE (AD-6, AD-9, AD-12, AD-13, AD-15, AD-16; ARCH-2, ARCH-4, ARCH-6). Vereist: 13.1 (/ml/phash) en 13.2 (kandidaat-tabellen) afgerond. -->
 
@@ -129,15 +129,60 @@ zodat **alleen zinvolle, niet-dubbele kandidaten de dure regressietest bereiken*
 
 ## Dev Agent Record
 
-_(in te vullen door dev-story)_
-
 ### Agent Model Used
+
+claude-opus-4-8 (implement-sprint epic-agent, worktree epic/vliegwiel-13).
 
 ### Debug Log References
 
+- Migratie 0014 lokaal toegepast via `prisma migrate deploy` (DATABASE_URL localhost:5432 bevestigd); tabel + FK geverifieerd via `pg_constraint`.
+- Raw SQL-vormen (cap FOR UPDATE, cosine-dedup incl. survivor-arm, candidate-embedding-loader) tegen de echte pgvector-DB geparsed/uitgevoerd.
+- Volledige API-vitest-suite groen (377 passed / 2 skipped). ml-service pytest `test_outlier_service.py` 11 passed.
+
 ### Completion Notes List
 
+- **Persistentie-keuze "laatste succesvolle run" (variance-documentatie):** `system_settings` bestaat pas na 13.6, dus migratie-loos opgelost via **Redis** (sleutel `flywheel:last-successful-promotion-run`, ISO-timestamp) op dezelfde ioredis-connectie als de BullMQ-queues. Overleeft container-herstart; alleen een Redis-flush zet 'm terug (dan meldt de watchdog correct "nog nooit gedraaid"). 13.6 mag dit naar `system_settings` migreren.
+- **pHash in dedup:** 13.2 sloeg de pHash niet in evidence op; de dedup-fase haalt 'm daarom on-demand via `MLClient.computePhash(cropPath)` (de story stond dit expliciet toe).
+- **Drempel-fase = vrijgave, geen zachte afwijzing:** een kandidaat die de (mogelijk aangescherpte) drempel niet haalt gaat `in_batch → candidate` (vrijgave, AD-16), niet `rejected` — hij is geen slechte kandidaat, de drempel schoof.
+- **Regressie/promotie/quarantaine = 13.5-scope:** een batch die alle guardrails passeert blijft `pending` met `gateResults.regression = { outcome: 'not-run' }`. `assertClassCapWithinTx` (SELECT … FOR UPDATE) is geëxporteerd zodat 13.5 de cap ín de promotie-transactie afdwingt.
+- **Deploy-volgorde (AC/task 8):** ml-service (`/ml/outlier-audit`) vóór api (de worker die 'm aanroept). ghcr-build vóór Coolify. Niet gedeployed binnen deze story.
+
 ### File List
+
+**Nieuw (apps/api):**
+- `src/services/flywheel/types.ts`
+- `src/services/flywheel/guardrails.ts`
+- `src/services/flywheel/promotion-batch.ts`
+- `src/services/flywheel/watchdog.ts`
+- `src/services/flywheel/scheduler.ts`
+- `src/__tests__/services/flywheel-guardrails.test.ts`
+- `src/__tests__/services/flywheel-promotion-batch.test.ts`
+- `src/__tests__/services/flywheel-watchdog.test.ts`
+- `src/__tests__/services/flywheel-worker-scheduler.test.ts`
+- `prisma/migrations/0014_add_promotion_batches/migration.sql`
+- `prisma/migrations/0014_add_promotion_batches/down.sql`
+
+**Gewijzigd (apps/api):**
+- `prisma/schema.prisma` (model `PromotionBatch` + FK-relatie op `ReferenceCandidate`)
+- `src/services/flywheel/config.ts` (cap/dedup/cron/watchdog-config)
+- `src/services/ml-client.ts` (`outlierAudit`)
+- `src/services/pipeline/queue.ts` (queue `flywheel`)
+- `src/services/pipeline/workers.ts` (flywheel-worker + job-routing + close)
+- `src/main.ts` (worker + scheduler-bootstrap)
+- `src/api/v1/flywheel.ts` (`lastSuccessfulPromotionRun` in overview)
+- `src/__tests__/setup.ts` (`promotionBatch`-mock, `outlierAudit`-mock, `Prisma`-namespace-mock, `upsertJobScheduler`-mock)
+- `src/__tests__/services/flywheel-config.test.ts` (13.4-config-tests)
+- `src/__tests__/api/flywheel.routes.test.ts` (overview-veld-test)
+
+**Nieuw/gewijzigd (apps/ml-service):**
+- `app/services/outlier.py` (nieuw)
+- `app/api/flywheel.py` (`/ml/outlier-audit`-endpoint)
+- `app/services/database.py` (`get_reference_embeddings_for_class`)
+- `tests/unit/test_outlier_service.py` (nieuw)
+
+**Artefacten:**
+- `_bmad-output/implementation-artifacts/review-13-4.md`
+- `_bmad-output/implementation-artifacts/ac-trace-13-4.md`
 
 ## Change Log
 

@@ -46,10 +46,17 @@ import {
   NOMINATION_JOB_NAME,
   type NominationJobData,
 } from '../flywheel/crosscheck-hook';
+import { runPromotionLoop } from '../flywheel/promotion-batch';
+import { runWatchdogCheck } from '../flywheel/watchdog';
 
 const logger = createLogger('pipeline-workers');
 
 const TRAINING_QUEUE = 'training';
+
+// Flywheel queue (Story 13.4): nightly promotion loop + watchdog, concurrency 1.
+const FLYWHEEL_QUEUE = 'flywheel';
+export const FLYWHEEL_PROMOTION_JOB = 'flywheel-promotion';
+export const FLYWHEEL_WATCHDOG_JOB = 'flywheel-watchdog';
 
 // Detection-worker concurrency (Story 8-3O, decision 1). Default 2.
 const DETECTION_CONCURRENCY = parseInt(process.env.DETECTION_CONCURRENCY || '2', 10);
@@ -352,16 +359,79 @@ export function registerDetectionWorker(): Worker {
   return detectionWorker;
 }
 
+// ============================================
+// Flywheel worker (Story 13.4)
+// ============================================
+
+let flywheelWorker: Worker | null = null;
+
+/**
+ * Route a flywheel-queue job to its handler by job name. Exported so tests can
+ * drive the handler without a live Worker/Redis.
+ *
+ * `flywheel-promotion` → runPromotionLoop (crash-recovery → bundle → guardrails).
+ * `flywheel-watchdog`  → runWatchdogCheck (stall-notification).
+ */
+export async function processFlywheelJob(job: Pick<Job, 'name'>): Promise<unknown> {
+  switch (job.name) {
+    case FLYWHEEL_PROMOTION_JOB:
+      return runPromotionLoop();
+    case FLYWHEEL_WATCHDOG_JOB:
+      return runWatchdogCheck();
+    default:
+      return undefined;
+  }
+}
+
+/**
+ * Register the BullMQ worker that processes the flywheel queue (Story 13.4).
+ *
+ * Concurrency = 1 (AD-6): the nightly promotion loop, the watchdog check and any
+ * future bootstrap/audit job on this queue run serially and never overlap — so
+ * ONLY this worker ever instantiates/advances a batch (AD-15). Job state lives in
+ * Redis, so an API-container restart never loses a queued run; the promotion loop
+ * itself resumes any `pending` batch on start (crash-recovery, AD-12).
+ */
+export function registerFlywheelWorker(): Worker {
+  if (flywheelWorker) return flywheelWorker;
+
+  const connection = getRedisConnection();
+
+  flywheelWorker = new Worker(
+    FLYWHEEL_QUEUE,
+    async (job) => processFlywheelJob(job),
+    { connection, concurrency: 1 },
+  );
+
+  flywheelWorker.on('failed', (job, err) => {
+    logger.error('Flywheel job failed', {
+      jobId: job?.id,
+      job: job?.name,
+      attemptsMade: job?.attemptsMade,
+      error: err.message,
+    });
+  });
+
+  flywheelWorker.on('completed', (job) => {
+    logger.info('Flywheel job completed', { jobId: job.id, job: job.name });
+  });
+
+  logger.info('Flywheel worker registered', { concurrency: 1 });
+
+  return flywheelWorker;
+}
+
 /**
  * Close all registered pipeline workers (graceful shutdown). In-flight jobs
  * finish or are returned to the queue by BullMQ; subsequent restarts resume
  * them (NFR1). Safe to call when no worker was registered.
  */
 export async function closePipelineWorkers(): Promise<void> {
-  const workers = [trainingWorker, detectionWorker].filter(
+  const workers = [trainingWorker, detectionWorker, flywheelWorker].filter(
     (w): w is Worker => w !== null
   );
   await Promise.allSettled(workers.map((w) => w.close()));
   trainingWorker = null;
   detectionWorker = null;
+  flywheelWorker = null;
 }

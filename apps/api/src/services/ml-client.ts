@@ -479,6 +479,44 @@ export class MLClient {
     return res.data as { content_hash: string; phash: string };
   }
 
+  /**
+   * Per-batch outlier-audit (Story 13.4, AD-9). Bepaalt voor elke kandidaat de
+   * afstand tot het klasse-centroid van de opgegeven klasse en velt een
+   * grens-oordeel. De ml-service leest hoogstens embeddings (read-only) of
+   * ontvangt de kandidaat-vectoren als payload — hij schrijft niets.
+   *
+   * De cap/outlier-drempel leeft ml-side (AD-9: scores komen van ml-service, de
+   * API beslist op het `is_outlier`-oordeel). `percentile` is optioneel zodat de
+   * wekelijkse bibliotheek-audit (14.3) dezelfde endpoint met top-5%-percentiel
+   * kan hergebruiken; blijft die weg, dan geldt de service-default.
+   *
+   * @param request.t3777_code  klasse waarvan het centroid berekend wordt
+   * @param request.candidates  per kandidaat een id + embedding-vector
+   * @param request.percentile  optionele percentiel-grens (0..1)
+   */
+  async outlierAudit(request: {
+    t3777_code: string;
+    candidates: Array<{ id: string; embedding: number[] }>;
+    percentile?: number;
+  }): Promise<{
+    t3777_code: string;
+    centroid_size: number;
+    threshold: number;
+    results: Array<{ id: string; distance: number; is_outlier: boolean }>;
+  }> {
+    try {
+      const res = await this.client.post('/ml/outlier-audit', request);
+      return res.data as {
+        t3777_code: string;
+        centroid_size: number;
+        threshold: number;
+        results: Array<{ id: string; distance: number; is_outlier: boolean }>;
+      };
+    } catch (error) {
+      throw this.handleError(error, 'Outlier audit failed');
+    }
+  }
+
   // ==========================================
   // Synthetic batch fill (Epic 9, Story 9.3 — wiring of deferred 8.7 hook)
   // ==========================================
