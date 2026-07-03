@@ -1,6 +1,6 @@
 # Story 17.1: Bootstrap-run per lege klasse
 
-Status: ready-for-dev
+Status: in-progress
 
 <!-- Aangemaakt via create-story workflow, 2026-07-02. Epic 17 — Seed-bootstrap voor lege klassen. -->
 
