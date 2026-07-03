@@ -1,6 +1,6 @@
 # Adversarial review — Epic 15 (Vliegwiel-dashboard & besturing)
 
-reviewed_commit: ede926a
+reviewed_commit: 7915364
 verdict: PASS
 base: 244fcd6 (acc + Epics 13+14)
 epic_head_before_fixes: dab2fe7
@@ -86,7 +86,7 @@ Geen `.env`/`node_modules`/snapshots/build-output meegecommit.
 ## Fix-log
 
 - H1 — lichte badge-count-route + hook, AppLayout omgezet, tests bijgewerkt/toegevoegd:
-  commit ede926a (fix + report, één commit).
+  fix in commit 7915364; deze report-hash-sync in de opvolgende commit.
 
 ## Testresultaat (na fix, DATABASE_URL lokaal)
 
