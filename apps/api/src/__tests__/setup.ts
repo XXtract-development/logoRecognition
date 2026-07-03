@@ -182,6 +182,31 @@ vi.mock('@prisma/client', () => {
       create: vi.fn(),
       count: vi.fn(),
     },
+    // Referentie-vliegwiel (Story 13.2)
+    referenceCandidate: {
+      findUnique: vi.fn().mockResolvedValue(null),
+      findFirst: vi.fn(),
+      findMany: vi.fn(),
+      create: vi.fn().mockResolvedValue({ id: 'cand-1' }),
+      update: vi.fn(),
+      updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+      delete: vi.fn(),
+      count: vi.fn(),
+    },
+    candidateEmbedding: {
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
+      create: vi.fn(),
+      count: vi.fn(),
+    },
+    hardNegative: {
+      findUnique: vi.fn().mockResolvedValue(null),
+      findMany: vi.fn(),
+      create: vi.fn(),
+      count: vi.fn(),
+    },
+    $executeRaw: vi.fn().mockResolvedValue(1),
+    $queryRaw: vi.fn().mockResolvedValue([]),
     // Supports both Prisma transaction forms:
     //  - array form: prisma.$transaction([op1, op2, ...])
     //  - interactive form: prisma.$transaction(async (tx) => { ... })
@@ -314,6 +339,8 @@ vi.mock('../services/ml-client', () => ({
     listTrainingJobs: vi.fn().mockResolvedValue([]),
     cancelTraining: vi.fn().mockResolvedValue(undefined),
     registerReference: vi.fn().mockResolvedValue({ added: true, reason: 'added' }),
+    computePhash: vi.fn().mockResolvedValue({ content_hash: 'hash-default', phash: 'phash-default' }),
+    generateEmbeddingFromBuffer: vi.fn().mockResolvedValue(new Array(512).fill(0.1)),
   },
   MLServiceError: class MLServiceError extends Error {
     statusCode: number;
@@ -508,6 +535,7 @@ vi.mock('ioredis', () => {
     setex: vi.fn().mockResolvedValue('OK'),
     del: vi.fn().mockResolvedValue(1),
     exists: vi.fn().mockResolvedValue(0),
+    incr: vi.fn().mockResolvedValue(1),
     on: vi.fn(),
     quit: vi.fn().mockResolvedValue('OK'),
     disconnect: vi.fn(),

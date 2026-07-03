@@ -45,6 +45,8 @@ import {
 } from '../../services/artwork-registration';
 import { crosscheckDetections } from '../../services/artwork-crosscheck';
 import { enqueueDetectionForImport } from '../../services/pipeline/detection-flow';
+import { enqueueNominations } from '../../services/flywheel/crosscheck-hook';
+import { isNominationEnabled } from '../../services/flywheel/config';
 import { resolveDeclaredMarks } from '../../services/t3777-declarations';
 import sharp from 'sharp';
 
@@ -690,6 +692,12 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
         declared
       );
 
+      // Flywheel nominatie (Story 13.2): dit is het REQUEST-pad — nooit inline
+      // /ml/phash of INSERT (NFR-3/NFR-7). Enqueue de auto-accepted detecties op
+      // de detection-queue; de worker draait de nominatie later. Achter
+      // FLYWHEEL_NOMINATION_ENABLED (default uit → geen actie). Best-effort.
+      await enqueueNominations(gtin, autoAccepted, declared, 'crosscheck');
+
       return reply.status(200).send({ autoAccepted, reviewItems });
     }
   );
@@ -1052,22 +1060,47 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
       // clean guide logo). Register it as a live reference so it improves
       // recognition immediately. Best-effort: a failure (ML down, near-dup,
       // crop-less item) must never fail the accept itself.
+      //
+      // Story 13.2 (AD-1/AD-2, 12.3-ombuiging): met FLYWHEEL_NOMINATION_ENABLED
+      // wordt dit pad OMGEBOGEN naar nominatie (herkomst `review`) — ml-service
+      // schrijft dan geen referentie-tabellen meer (geen registerReference-call).
+      // Nooit inline (request-pad): enqueue de nominatie (NFR-3/NFR-7). Met de
+      // vlag uit blijft het legacy-12.3-gedrag exact zoals nu (geleidelijke
+      // migratie).
       let referenceAdded: boolean | undefined;
       if (accepted.cropPath) {
-        try {
-          const ref = await mlClient.registerReference(accepted.cropPath, accepted.t3777Code);
-          referenceAdded = ref.added;
-          logger.info('Review crop reference registration', {
-            reviewItemId: id,
-            t3777Code: accepted.t3777Code,
-            added: ref.added,
-            reason: ref.reason,
-          });
-        } catch (err) {
-          logger.warn('Review crop reference registration failed (non-fatal)', {
-            reviewItemId: id,
-            error: err instanceof Error ? err.message : 'unknown',
-          });
+        if (isNominationEnabled()) {
+          await enqueueNominations(
+            accepted.gtin,
+            [
+              {
+                t3777Code: accepted.t3777Code,
+                confidence: accepted.confidence ?? 1,
+                method: accepted.method ?? undefined,
+                cropPath: accepted.cropPath,
+                sourceFile: accepted.sourceFile ?? undefined,
+                bbox: (accepted.bbox as { x: number; y: number; width: number; height: number }) ?? undefined,
+              },
+            ],
+            [accepted.t3777Code],
+            'review'
+          );
+        } else {
+          try {
+            const ref = await mlClient.registerReference(accepted.cropPath, accepted.t3777Code);
+            referenceAdded = ref.added;
+            logger.info('Review crop reference registration', {
+              reviewItemId: id,
+              t3777Code: accepted.t3777Code,
+              added: ref.added,
+              reason: ref.reason,
+            });
+          } catch (err) {
+            logger.warn('Review crop reference registration failed (non-fatal)', {
+              reviewItemId: id,
+              error: err instanceof Error ? err.message : 'unknown',
+            });
+          }
         }
       }
 
@@ -1160,15 +1193,36 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
 
       const result = await processAcceptedReviewItems([updated]);
 
+      // Story 13.2 (12.3-ombuiging, AD-1/AD-2): identiek aan het accept-pad.
+      // Vlag aan → nominatie (herkomst `review`, geënqueue-d, geen
+      // registerReference-call); vlag uit → legacy-registratie ongewijzigd.
       let referenceAdded: boolean | undefined;
-      try {
-        const ref = await mlClient.registerReference(cropKey, code);
-        referenceAdded = ref.added;
-      } catch (err) {
-        logger.warn('Annotation reference registration failed (non-fatal)', {
-          reviewItemId: id,
-          error: err instanceof Error ? err.message : 'unknown',
-        });
+      if (isNominationEnabled()) {
+        await enqueueNominations(
+          updated.gtin,
+          [
+            {
+              t3777Code: code,
+              confidence: updated.confidence ?? 1,
+              method: updated.method ?? undefined,
+              cropPath: cropKey,
+              sourceFile: updated.sourceFile ?? undefined,
+              bbox: { x, y, width: w, height: h },
+            },
+          ],
+          [code],
+          'review'
+        );
+      } else {
+        try {
+          const ref = await mlClient.registerReference(cropKey, code);
+          referenceAdded = ref.added;
+        } catch (err) {
+          logger.warn('Annotation reference registration failed (non-fatal)', {
+            reviewItemId: id,
+            error: err instanceof Error ? err.message : 'unknown',
+          });
+        }
       }
 
       logger.info('Review item annotated', { reviewItemId: id, t3777Code: code, registered: result.registered });

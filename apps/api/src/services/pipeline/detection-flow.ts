@@ -34,6 +34,7 @@ import {
   TxClient,
 } from '../artwork-registration';
 import { ProvenanceMethod } from '../provenance';
+import { nominateAutoAccepted } from '../flywheel/crosscheck-hook';
 import prisma from '../../core/db';
 import { createLogger } from '../../core/logger';
 
@@ -273,6 +274,13 @@ export async function runDetectionJob(data: DetectionJobData): Promise<Detection
       registerCropsTx(tx as TxClient, gtin, registerable)
     );
   }
+
+  // Flywheel nominatie (Story 13.2): elke auto-accepted detectie (dubbele
+  // bevestiging) wordt kandidaat-referentie. Draait SYNCHROON in deze
+  // BullMQ-detection-worker (NFR-3/NFR-7); achter FLYWHEEL_NOMINATION_ENABLED
+  // (default uit → geen actie). Staat NAAST de 8.6-registratie hierboven, niet
+  // erin. Non-fataal: nominatiefouten laten de detectie-job niet falen.
+  await nominateAutoAccepted(gtin, autoAccepted, declared, 'crosscheck');
 
   logger.info('Detection job complete', {
     gtin,

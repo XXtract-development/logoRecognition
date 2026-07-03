@@ -1,6 +1,6 @@
 # Story 13.2: Automatische nominatie bij dubbele bevestiging
 
-Status: ready-for-dev
+Status: done
 
 <!-- Aangemaakt via create-story workflow, 2026-07-02. Bron: epics-vliegwiel.md Epic 13 / Story 13.2 + ARCHITECTURE-SPINE (AD-1, AD-2, AD-8, AD-12, AD-14, AD-16; ARCH-2, ARCH-5). Vereist: Story 13.1 (/ml/phash) afgerond. -->
 
@@ -118,15 +118,68 @@ zodat **geen enkel dubbel bewijs meer verdampt in alleen trainingsdata**.
 
 ## Dev Agent Record
 
-_(in te vullen door dev-story)_
-
 ### Agent Model Used
+
+claude-opus-4-8 (implement-sprint, worktree epic/vliegwiel-13).
 
 ### Debug Log References
 
+- Migratie: shadow-DB faalde eerst op ontbrekende rol `logorecognition` (GRANT
+  in bestaande migraties 0007/0008). Rol aangemaakt in de lokale postgres-container;
+  migraties 0001-0011 via `migrate deploy` toegepast, daarna 0012 via `migrate diff`
+  + `migrate deploy` (non-interactieve omgeving → geen `migrate dev`). Lokale DB
+  `postgresql://postgres:postgres@localhost:5432/logo_recognition` (leeg → vers).
+- Hook-crop-embedding: classify-resultaat draagt géén embedding; de nominatie-
+  service haalt de embedding daarom uit de crop via `mlClient.generateEmbeddingFromBuffer`
+  wanneer de aanroeper er geen meegeeft (evidence legt de modelversie vast).
+
 ### Completion Notes List
 
+- Migratie `0012_flywheel_nomination_tables` (+ `down.sql`) lokaal toegepast en
+  geverifieerd: `@@unique([content_hash, t3777_code])`, FK op `reference_logo_id`,
+  `promotion_batch_id` nullable ZONDER FK (volgt in 13.4), FK-cascade op
+  `candidate_embeddings`, `hard_negatives.content_hash` uniek.
+- Nominatie-service fail-closed op /ml/phash (AD-14); transactionele kandidaat +
+  embedding (AD-3/AD-5); idempotentie via unique + hard-negative-blokkade +
+  status-reset (AD-12/AD-16).
+- Twee vlaggen (AD-8), beide default uit → byte-gelijk aan vandaag. Kruischeck
+  vereist beide.
+- 12.3-ombuiging op beide aanroepplekken (accept :1058 + annotatie :1165); worker
+  synchroon, request-pad enqueue-t (NFR-3/NFR-7).
+- Gemiste-nominatie-teller (Redis INCR + log) ontsloten via
+  `GET /api/v1/flywheel/overview` → `missedNominations`.
+- 12.8-koppelplek: `nominateFromKruischeck` in `flywheel/kruischeck-hook.ts` met
+  koppelrecept in de bestandsheader — niet-blokkerend, aan te sluiten op de
+  CONFIRMED-verdict-bepaling zodra `verify-flow.ts` bestaat.
+- Volledige apps/api vitest-suite groen (318 passed / 2 skipped); tsc schoon.
+
 ### File List
+
+Nieuw:
+- `apps/api/prisma/migrations/0012_flywheel_nomination_tables/migration.sql`
+- `apps/api/prisma/migrations/0012_flywheel_nomination_tables/down.sql`
+- `apps/api/src/services/flywheel/config.ts`
+- `apps/api/src/services/flywheel/missed-nominations.ts`
+- `apps/api/src/services/flywheel/nomination.ts`
+- `apps/api/src/services/flywheel/crosscheck-hook.ts`
+- `apps/api/src/services/flywheel/kruischeck-hook.ts`
+- `apps/api/src/api/v1/flywheel.ts`
+- `apps/api/src/__tests__/services/flywheel-nomination.test.ts`
+- `apps/api/src/__tests__/services/flywheel-config.test.ts`
+- `apps/api/src/__tests__/services/flywheel-crosscheck-hook.test.ts`
+- `apps/api/src/__tests__/services/flywheel-kruischeck-hook.test.ts`
+- `apps/api/src/__tests__/api/flywheel.routes.test.ts`
+- `apps/api/src/__tests__/api/flywheel-review-redirect.routes.test.ts`
+- `_bmad-output/implementation-artifacts/review-13-2.md`
+
+Gewijzigd:
+- `apps/api/prisma/schema.prisma` (3 modellen + relatie op `ReferenceLogo`)
+- `apps/api/src/services/pipeline/detection-flow.ts` (synchrone nominatie-hook)
+- `apps/api/src/services/pipeline/workers.ts` (nominatie-job-routing)
+- `apps/api/src/api/v1/artwork-pipeline.ts` (crosscheck-enqueue + 12.3-ombuiging)
+- `apps/api/src/main.ts` (flywheel-route-registratie)
+- `apps/api/src/__tests__/setup.ts` (mocks: modellen, redis.incr, ml-client)
+- `versions.md`
 
 ## Change Log
 

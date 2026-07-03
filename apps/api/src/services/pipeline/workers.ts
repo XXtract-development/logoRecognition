@@ -41,6 +41,11 @@ import { mlClient } from '../ml-client';
 import prisma from '../../core/db';
 import { createLogger } from '../../core/logger';
 import { runDetectionJob, DETECTION_QUEUE, type DetectionJobData } from './detection-flow';
+import {
+  runNominationJob,
+  NOMINATION_JOB_NAME,
+  type NominationJobData,
+} from '../flywheel/crosscheck-hook';
 
 const logger = createLogger('pipeline-workers');
 
@@ -318,7 +323,15 @@ export function registerDetectionWorker(): Worker {
 
   detectionWorker = new Worker(
     DETECTION_QUEUE,
-    async (job) => runDetectionJob(job.data as DetectionJobData),
+    async (job) => {
+      // Flywheel (Story 13.2): het request-pad enqueue-t nominatie-jobs op deze
+      // queue (nooit inline, NFR-3/NFR-7). Route ze naar de nominatie-handler;
+      // alle andere jobs zijn reguliere detectie-jobs.
+      if (job.name === NOMINATION_JOB_NAME) {
+        return runNominationJob(job.data as NominationJobData);
+      }
+      return runDetectionJob(job.data as DetectionJobData);
+    },
     { connection, concurrency: DETECTION_CONCURRENCY },
   );
 

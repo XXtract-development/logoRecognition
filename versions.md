@@ -1,5 +1,15 @@
 # Versiegeschiedenis
 
+## 2026-07-03 (leergeheugen: dubbel bevestigde keurmerken worden vanzelf kandidaat)
+
+### Een dubbel bevestigd keurmerk wordt automatisch een kandidaat-voorbeeld
+- Wanneer het systeem een keurmerk vindt dat óók in de officiële productdeclaratie staat (dubbele bevestiging), wordt dat uitgesneden logo voortaan automatisch bewaard als kandidaat-voorbeeld voor het leergeheugen — geen enkel dubbel bewijs verdwijnt nog ongebruikt
+- Ook een handmatig bevestigd of ingetekend logo in het reviewstation gaat via deze nieuwe route
+- Elk kandidaat-voorbeeld krijgt zijn vaste vingerafdruk mee; een eerder afgekeurd of al bekend voorbeeld wordt nooit dubbel opgeslagen
+- Alles staat achter een uit-schakelaar: standaard verandert er niets aan het huidige gedrag. De beheerder zet het pas aan zodra de leerlus bewezen is
+- Overgeslagen kandidaten (bijvoorbeeld omdat de vingerafdruk-dienst even niet bereikbaar is) worden geteld en zijn straks zichtbaar op het beheerdashboard — zo gaat er niets stil verloren
+- Dit levert nog geen nieuwe actieve herkenning op; de kandidaten worden in een volgende stap beoordeeld en pas daarna eventueel echt in gebruik genomen
+
 ## 2026-07-03 (fundament: één vaste vingerafdruk per uitgesneden logo)
 
 ### Elke crop krijgt voortaan één en dezelfde, reproduceerbare vingerafdruk

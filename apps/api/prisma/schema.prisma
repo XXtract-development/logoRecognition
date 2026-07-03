@@ -260,6 +260,8 @@ model ReferenceLogo {
   // Relations
   logo       Logo?                @relation(fields: [logoId], references: [id])
   embeddings ReferenceEmbedding[]
+  // Kandidaten die naar deze referentie zijn gepromoveerd (Story 13.2, AD-3).
+  candidates ReferenceCandidate[]
 
   @@unique([t3777Code, variantLabel])
   @@index([t3777Code])
@@ -521,4 +523,82 @@ model ArtworkReviewItem {
   @@index([status])
   @@index([t3777Code])
   @@map("artwork_review_items")
+}
+
+// ============================================
+// REFERENTIE-VLIEGWIEL MODELS (Epic 13, Story 13.2)
+// ============================================
+
+/// Kandidaat-referentie in de nominatie-fase van het referentie-vliegwiel
+/// (Story 13.2, AD-3/AD-12/AD-16). Een dubbel bevestigde detectie (crosscheck,
+/// kruischeck, bootstrap of reviewstation-accept) wordt hier genomineerd; de
+/// batch-/poort-/promotielus (13.4/13.5) maakt er pas later een actieve
+/// referentie van. Uniciteit op (contentHash, t3777Code) voorkomt duplicaten
+/// bij herverwerking (AD-12). De status volgt de status-machine uit AD-16.
+model ReferenceCandidate {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  t3777Code         String   @map("t3777_code") @db.VarChar(100)
+  // Status-machine (AD-16): candidate → in_batch → promoted | rejected
+  // (+ terugkeer-overgangen). Geen Prisma-enum (patroon ArtworkReviewItem.status).
+  status            String   @default("candidate") @db.VarChar(20)
+  // Herkomst-enum: crosscheck | kruischeck | bootstrap | review (AD-13).
+  origin            String   @db.VarChar(20)
+  // Canonieke inhouds-hash uit /ml/phash (AD-14) — de enige toegestane hash.
+  contentHash       String   @map("content_hash") @db.VarChar(64)
+  cropPath          String?  @map("crop_path") @db.VarChar(1000)
+  // Evidence-contract (AD-13): bron-GTIN, bronbestand, bbox, methode, scores,
+  // declaratie-uitkomst, embedding-modelversie, status-overgangen.
+  evidence          Json     @default("{}")
+  // Claim-semantiek (AD-15): hoogstens één niet-afgesloten batch. Nullable
+  // kolom ZONDER FK-constraint — de FK-constraint volgt in de 13.4-migratie.
+  promotionBatchId  String?  @map("promotion_batch_id") @db.Uuid
+  // Gezet bij promotie (AD-3): verwijzing naar de aangemaakte ReferenceLogo.
+  referenceLogoId   String?  @map("reference_logo_id") @db.Uuid
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  referenceLogo ReferenceLogo?       @relation(fields: [referenceLogoId], references: [id])
+  embeddings    CandidateEmbedding[]
+
+  @@unique([contentHash, t3777Code])
+  @@index([status])
+  @@index([t3777Code])
+  @@index([createdAt(sort: Desc)])
+  @@map("reference_candidates")
+}
+
+/// Schaduw-embedding van een kandidaat-referentie (Story 13.2, AD-5).
+/// pgvector(512), door de API geschreven. Bij promotie 1:1 gekopieerd naar
+/// ReferenceEmbedding — nooit herberekend (AD-3), zodat de poort exact meet wat
+/// live gaat.
+model CandidateEmbedding {
+  id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  referenceCandidateId  String   @map("reference_candidate_id") @db.Uuid
+  embedding             Unsupported("vector(512)")?
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  referenceCandidate ReferenceCandidate @relation(fields: [referenceCandidateId], references: [id], onDelete: Cascade)
+
+  @@index([referenceCandidateId])
+  @@map("candidate_embeddings")
+}
+
+/// Hard-negative (Story 13.2, AD-12). Uitsluitend gevuld door menselijke
+/// afkeuring (quarantaine-afkeuring 15.3, reviewstation-reject "geen keurmerk"
+/// 14.1) — nominatie blokkeert op een hash die hier staat, zodat een afgekeurd
+/// beeld nooit opnieuw genomineerd wordt. De contentHash is de canonieke
+/// AD-14-hash en uniek.
+model HardNegative {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  contentHash String   @unique @map("content_hash") @db.VarChar(64)
+  t3777Code   String   @map("t3777_code") @db.VarChar(100)
+  cropPath    String?  @map("crop_path") @db.VarChar(1000)
+  reason      String
+  evidence    Json     @default("{}")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([t3777Code])
+  @@index([createdAt(sort: Desc)])
+  @@map("hard_negatives")
 }
