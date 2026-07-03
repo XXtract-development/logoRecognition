@@ -1,6 +1,6 @@
 # Story 16.1: Mismatch-registratie en -aggregatie
 
-Status: in-progress
+Status: done
 
 <!-- Aangemaakt via create-story workflow, 2026-07-02. Epic 16 — Mismatch-stromen als brandstof en datakwaliteitssignaal. -->
 
@@ -51,16 +51,16 @@ So that **de twee waardevolste datastromen van het vliegwiel niet langer verdamp
 
 ## Tasks / Subtasks
 
-- [ ] 1. Prisma-migratie `mismatch_events` voorbereiden + down-script documenteren; **expliciete goedkeuring aan Friso vragen vóór `prisma migrate deploy`** (AC: 1)
-- [ ] 2. Registratie-service `apps/api/src/services/flywheel/mismatch-events.ts`: pure mapping (declared[], detecties, actieve-klassen-set, drempels → event-rijen) + persist-functie (AC: 2)
-  - [ ] 2.1 `not-supported`-bepaling: gedeclareerde code zonder actieve referentieklasse (zelfde bron als 12.8-AC3: `SELECT DISTINCT t3777_code FROM reference_logos WHERE active=true`, na alias-mapping `t3777-aliases.ts` zodra 12.8 die levert)
-  - [ ] 2.2 GLN-bron: `artwork_imports.gln` (schema.prisma:448) via de gln-lookup die `t3777-declarations.ts` al doet — geen tweede lookup-implementatie
-- [ ] 3. Crosscheck-pad aanhaken op de 13.2-hook-plek (detection-flow.ts rond de `crosscheckDetections`-aanroep, :252) onder `FLYWHEEL_NOMINATION_ENABLED` (AC: 2, 3)
-- [ ] 4. Kruischeck-pad aanhaken (12.8 verify-flow) onder `FLYWHEEL_KRUISCHECK_NOMINATION_ENABLED`; als 12.8 nog niet gemerged is: aansluitpunt + tests klaarzetten en dit expliciet in het Dev Agent Record noteren (AC: 2, 3)
-- [ ] 5. Afstemmoment n8n/12.8 + vlag-gedrag documenteren in de 12.8-API-docs (AC: 4)
-- [ ] 6. Overview-sub-service `apps/api/src/services/flywheel/overview-mismatch.ts` (ratio per code + per GLN, trend per periode) + sectie in `/api/v1/flywheel/overview` (AC: 5)
-- [ ] 7. Unit-/integratietests (AC: 6)
-- [ ] 8. versions.md (NL) in DEZELFDE commit; Engelse commit; ghcr-build afwachten vóór Coolify-deploy
+- [x] 1. Prisma-migratie `mismatch_events` voorbereiden + down-script documenteren; **expliciete goedkeuring gevraagd vóór toepassen** (AC: 1) — migratie 0018 toegepast op de lokale DB na goedkeuring; geen nieuwe migratie in de afronding
+- [x] 2. Registratie-service `apps/api/src/services/flywheel/mismatch-events.ts`: pure mapping + persist-functie (AC: 2)
+  - [x] 2.1 `not-supported`-bepaling via `reference_logos WHERE active=true` (`loadActiveClasses`)
+  - [x] 2.2 GLN-bron via de gedeelde `resolveGln` (geëxtraheerd uit `t3777-declarations.ts` — één implementatie)
+- [x] 3. Crosscheck-pad aangehaakt in `detection-flow.ts` onder `FLYWHEEL_NOMINATION_ENABLED` (AC: 2, 3)
+- [x] 4. Kruischeck-pad: koppel-klare `registerKruischeckMismatchEvents` onder `FLYWHEEL_KRUISCHECK_NOMINATION_ENABLED`; 12.8 nog niet gemerged → aansluitpunt + tests klaar, genoteerd in Dev Agent Record (AC: 2, 3)
+- [~] 5. Afstemmoment n8n/12.8 + vlag-gedrag in de 12.8-API-docs (AC: 4) — MENSELIJKE TAAK, open (zie Dev Agent Record); koppel-klare functie + docblock geleverd als aansluitcontract
+- [x] 6. Overview-sub-service `overview/mismatch-trends.ts` (ratio per code + per GLN, trend) + sectie in de overview-compositie (AC: 5)
+- [x] 7. Unit-/integratietests (AC: 6) — 29 tests
+- [x] 8. versions.md (NL) in DEZELFDE commit; Engelse commit
 
 ## Dev Notes — Developer Context
 
@@ -115,15 +115,40 @@ So that **de twee waardevolste datastromen van het vliegwiel niet langer verdamp
 
 ## Dev Agent Record
 
-_(in te vullen door dev-story)_
-
 ### Agent Model Used
+
+claude-opus-4-8 (implement-sprint epic-agent, afronding vanaf partiële staat).
 
 ### Debug Log References
 
+- `prisma migrate status` (lokale DB `logo_recognition`, localhost:5432): up to date, 18 migraties — migratie 0018 al toegepast na expliciete goedkeuring (geen nieuwe migratie in deze afronding).
+- Twee regressies gevangen door de bestaande suite bij de overview-interface-wijziging (zie review-16-1.md H1/H2) — opgelost, suites hérdraaid.
+
 ### Completion Notes
 
+- Registratie per verwerking volledig: per gedeclareerde code `confirmed`/`declared-not-found`/`not-supported`, plus `found-not-declared` per niet-gedeclareerde vondst ≥ promotiedrempel (per methode, via de gedeelde `resolvePromotionThreshold`-resolver).
+- Vlag-scoping (AD-8): crosscheck-pad aangehaakt in `detection-flow.ts` onder `FLYWHEEL_NOMINATION_ENABLED`; kruischeck-pad als koppel-klare `registerKruischeckMismatchEvents` onder `FLYWHEEL_KRUISCHECK_NOMINATION_ENABLED` (eist beide vlaggen). 12.8-verify-flow bestaat nog niet → functie + docblock + tests staan klaar; met de kruischeck-vlag uit schrijft dat pad NIETS. Geen blocker.
+- Aggregatie per T3777-code én per GLN + trend via de modulaire overview-sub-service `overview/mismatch-trends.ts`; cohort-herkomst (`origin LIKE 'cohort-%'`) uitgesloten uit alle drie de aggregatiequery's.
+- GLN-lookup geconsolideerd: `resolveGln` geëxtraheerd uit `t3777-declarations.ts` (één implementatie, gedeeld door declaratie-resolutie én mismatch-registratie).
+- Web: `mismatchTrends`-type verruimd naar de echte payload; het paneel toont bewust nog zijn lege staat (volledige weergave is 15.x-werk, UX-DR8).
+- **MENSELIJKE STORY-TAAK (AC4) — OPEN, geen code-blocker:** kort afstemmoment met het n8n-/12.8-werk over de contractuitbreiding. Af te stemmen: kruischeck-registratie schrijft alléén bij `FLYWHEEL_KRUISCHECK_NOMINATION_ENABLED=true`, en de verdict-response van `verify-declared` richting n8n verandert op geen enkele wijze (byte-gelijk). Dit vlag-gedrag moet worden gedocumenteerd in de 12.8-API-docs (route-docblock/OpenAPI van `verify-declared`) zodra dat endpoint geïmplementeerd wordt (Story 12.8). Wie/wanneer: nog te beleggen door de PO bij de start van 12.8-implementatie — deze story levert de koppel-klare functie + docblock als aansluitcontract.
+
 ### File List
+
+- `apps/api/prisma/schema.prisma` (model `MismatchEvent`)
+- `apps/api/prisma/migrations/0018_add_mismatch_events/migration.sql` + `down.sql`
+- `apps/api/src/services/flywheel/mismatch-events.ts` (nieuw — pure mapping + persist + beide vlag-wrappers)
+- `apps/api/src/services/flywheel/overview/mismatch-trends.ts` (nieuw — aggregatie per code/GLN + trend)
+- `apps/api/src/services/flywheel/overview/index.ts` (mismatchTrends-sectie)
+- `apps/api/src/services/flywheel/overview/empty-panels.ts` (stub verwijderd)
+- `apps/api/src/services/pipeline/detection-flow.ts` (crosscheck-hook-registratie)
+- `apps/api/src/services/t3777-declarations.ts` (`resolveGln` geëxtraheerd/geëxporteerd)
+- `apps/web/src/services/flywheelService.ts` (mismatch-trends-types)
+- `apps/web/src/components/flywheel/SignalPanels.tsx` (paneel-prop-type)
+- `apps/api/src/__tests__/services/flywheel-mismatch.test.ts` (nieuw — 29 tests)
+- `apps/api/src/__tests__/setup.ts` (mismatchEvent-mock)
+- `apps/api/src/__tests__/services/flywheel-overview-panels.test.ts` + `flywheel-overview-compose.test.ts` (stale asserties bijgewerkt)
+- `_bmad-output/implementation-artifacts/review-16-1.md`, `ac-trace-16-1.md`
 
 ## Change Log
 

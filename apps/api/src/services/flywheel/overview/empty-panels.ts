@@ -2,8 +2,10 @@
  * Overview-stubs voor panelen waarvan de bron-epic nog niet gebouwd is
  * (Story 15.2, coördinatie-noot epics + UX-DR8):
  *   - bootstrap-wachtrij  → Epic 17
- *   - mismatch-trends     → Epic 16
  *   - GLN-dekkingsgraad   → Epic 18
+ *
+ * Het mismatch-trends-paneel is per Story 16.1 vervangen door de echte
+ * sub-service `overview/mismatch-trends.ts` en staat hier niet langer als stub.
  *
  * Elk levert een expliciete LEGE-STAAT-payload (`{ available: false, items: [] }`)
  * zodat het dashboard de lege staat toont in plaats van een kaal vlak of een
@@ -27,11 +29,6 @@ export interface EmptyPanel<T = never> {
 /** Bootstrap-wachtrij-paneel — lege staat tot Epic 17 (Story 17.2). */
 export function getBootstrapQueuePanel(): EmptyPanel {
   return { available: false, sourceEpic: 'epic-17', items: [] };
-}
-
-/** Mismatch-trends-paneel — lege staat tot Epic 16 (Story 16.1/16.3). */
-export function getMismatchTrendsPanel(): EmptyPanel {
-  return { available: false, sourceEpic: 'epic-16', items: [] };
 }
 
 /** GLN-dekkingsgraad-paneel — lege staat tot Epic 18 (Story 18.1). */

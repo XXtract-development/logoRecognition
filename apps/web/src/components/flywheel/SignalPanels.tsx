@@ -18,7 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { FLYWHEEL_COLORS as C } from './statusColors';
 import { StatusBadge } from './StatusBadge';
 import { decideOutlier } from '@/services/flywheelService';
-import type { ClassCapsPanel as ClassCapsData, OutliersPanel, OutlierPanelItem, EmptyPanel } from '@/services/flywheelService';
+import type { ClassCapsPanel as ClassCapsData, OutliersPanel, OutlierPanelItem, EmptyPanel, MismatchTrendsPanel as MismatchTrendsData } from '@/services/flywheelService';
 import { isPanelError, type PanelError } from '@/services/flywheelService';
 
 // ── Klassen aan cap ─────────────────────────────────────────────────────────
@@ -222,7 +222,15 @@ export const BootstrapQueuePanel: React.FC<{ panel: EmptyPanel }> = () => {
   );
 };
 
-export const MismatchTrendsPanel: React.FC<{ panel: EmptyPanel }> = () => {
+/**
+ * Story 16.1 levert de mismatch-aggregatie in de backend; het volledige
+ * dashboard-paneel (charts per code/GLN + trend) is Story 15.2/15.x-werk. Zolang
+ * dat er niet is, toont dit paneel bewust zijn lege staat (AC5, UX-DR8) —
+ * ongeacht of de payload al data of een fout draagt. De prop-vorm accepteert nu
+ * de echte backend-payload zodat het volgende story-werk alleen dit component
+ * hoeft in te vullen, niet de pagina.
+ */
+export const MismatchTrendsPanel: React.FC<{ panel: MismatchTrendsData | PanelError }> = () => {
   const { t } = useTranslation();
   return (
     <EmptyStatePanel

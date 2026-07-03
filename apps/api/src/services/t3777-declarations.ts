@@ -210,6 +210,30 @@ async function fetchDeclaration(
  *   4. fetch                 → 404 / >=400 / network distinguished inside fetchDeclaration
  *   5. cache write           → ALL results cached, incl. empties (negative caching)
  */
+/**
+ * Resolveer de GLN (informatieleverancier) van een GTIN uit `artwork_imports.gln`
+ * — de ENIGE gln-lookup-implementatie, gedeeld door de declaratie-resolutie én de
+ * mismatch-registratie (Story 16.1, Dev Notes 2.2). Fail-safe: een DB-fout of een
+ * ontbrekende gln levert `null` (nooit een throw), net als in de crosscheck-keten.
+ */
+export async function resolveGln(gtin: string): Promise<string | null> {
+  try {
+    const row = await prisma.artworkImport.findFirst({
+      where: { gtin, gln: { not: null } },
+      select: { gln: true },
+    });
+    return row?.gln ?? null;
+  } catch (err) {
+    // A DB error here is treated as "no gln" — still a fail-safe, never a throw.
+    logger.warn('gln lookup failed', {
+      reason: 'gln-ontbreekt',
+      gtin,
+      error: err instanceof Error ? err.message : 'unknown',
+    });
+    return null;
+  }
+}
+
 export async function resolveDeclarations(gtin: string): Promise<DeclarationResult> {
   const { apiKey, baseUrl, targetMarket, cacheTtlS } = readEnv();
 
@@ -220,22 +244,7 @@ export async function resolveDeclarations(gtin: string): Promise<DeclarationResu
   }
 
   // 2. gln lookup (decision 0 prerequisite). No gln → cannot form a URL/key.
-  let gln: string | null = null;
-  try {
-    const row = await prisma.artworkImport.findFirst({
-      where: { gtin, gln: { not: null } },
-      select: { gln: true },
-    });
-    gln = row?.gln ?? null;
-  } catch (err) {
-    // A DB error here is treated as "no gln" — still a fail-safe, never a throw.
-    logger.warn('gln lookup failed', {
-      reason: 'gln-ontbreekt',
-      gtin,
-      error: err instanceof Error ? err.message : 'unknown',
-    });
-    return { codes: [], reason: 'gln-ontbreekt' };
-  }
+  const gln = await resolveGln(gtin);
   if (!gln) {
     logger.info('No gln for GTIN — declaration lookup skipped', { reason: 'gln-ontbreekt', gtin });
     return { codes: [], reason: 'gln-ontbreekt' };

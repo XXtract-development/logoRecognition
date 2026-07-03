@@ -170,7 +170,7 @@ development_status:
   epic-15-retrospective: optional
 
   epic-16: in-progress
-  16-1-mismatch-registratie-en-aggregatie: in-progress
+  16-1-mismatch-registratie-en-aggregatie: done  # 2026-07-03: mismatch-registratie + aggregatie — model MismatchEvent (@@map mismatch_events, migratie 0018 al toegepast), pure mapping mismatch-events.ts (confirmed/declared-not-found/not-supported/found-not-declared, drempel per methode via resolvePromotionThreshold), crosscheck-pad in detection-flow.ts onder FLYWHEEL_NOMINATION_ENABLED, koppel-klare kruischeck-wrapper onder FLYWHEEL_KRUISCHECK_NOMINATION_ENABLED (12.8 nog niet gemerged, schrijft niets met vlag uit), overview/mismatch-trends.ts (ratio per code+GLN+trend, cohort uitgesloten), resolveGln geconsolideerd. AC4 (afstemming n8n/12.8) = open menselijke taak. api vitest 632 pass/2 skip/33 todo; web 115 pass/16 todo. Migratie-toestemming vereist bij deploy (down-script aanwezig)
   16-2-gedeclareerd-niet-gevonden-wordt-werkvoorraad: ready-for-dev
   16-3-datakwaliteitsrapport-gevonden-niet-gedeclareerd: ready-for-dev
   16-4-controle-cohort-voor-de-bevestigingsgraad-trend: ready-for-dev  # vereist gemergde 12.8-verify-flow (blokkade-melding indien afwezig)

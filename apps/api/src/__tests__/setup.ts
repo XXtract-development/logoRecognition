@@ -270,6 +270,13 @@ vi.mock('@prisma/client', () => {
       delete: vi.fn(),
       count: vi.fn().mockResolvedValue(0),
     },
+    // Mismatch-events (Story 16.1) — registratie + aggregatiebron (FR-14).
+    mismatchEvent: {
+      findMany: vi.fn().mockResolvedValue([]),
+      create: vi.fn(),
+      createMany: vi.fn().mockResolvedValue({ count: 0 }),
+      count: vi.fn().mockResolvedValue(0),
+    },
     $executeRaw: vi.fn().mockResolvedValue(1),
     $queryRaw: vi.fn().mockResolvedValue([]),
     // Supports both Prisma transaction forms:

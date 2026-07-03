@@ -1,5 +1,16 @@
 # Versiegeschiedenis
 
+## 2026-07-03 (Mismatch-signalen vastleggen en samenvatten)
+
+### Elke verwerking legt nu vast wat er met de gedeclareerde keurmerken gebeurde
+- Bij elke verwerking van een verpakking houdt het systeem voortaan bij hoe het per gedeclareerd keurmerk afliep: bevestigd, wel verwacht maar niet teruggevonden, of een keurmerk dat het model nog helemaal niet kan herkennen. Daarnaast wordt elk met hoge zekerheid gevonden keurmerk dat níet was gedeclareerd apart genoteerd
+- Zo verdampen de twee waardevolste signalen van het vliegwiel niet langer: ze vormen de basis voor de werkvoorraad en het datakwaliteitsrapport die er later op voortbouwen
+- Deze registratie is een stille bij-vangst: ze verandert niets aan de bestaande beoordeling of aan wat er richting de koppelingen teruggaat, en staat standaard uit tot ze bewust wordt aangezet
+
+### Een nieuw overzicht van de bevestigingsgraad per keurmerk en per leverancier
+- Het Vliegwiel-scherm kan nu de verhouding bevestigd/niet-teruggevonden tonen, uitgesplitst per keurmerk-klasse én per informatieleverancier, plus het verloop daarvan over de tijd
+- Metingen uit speciale controle-rondes worden bewust buiten dit reguliere overzicht gehouden, zodat de cijfers zuiver blijven
+
 ## 2026-07-03 (Drempels bijstellen en het vliegwiel pauzeren)
 
 ### Je bepaalt nu zelf de promotiedrempels — met een verplichte reden en een logboek

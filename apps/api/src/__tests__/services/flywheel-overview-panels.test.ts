@@ -15,7 +15,6 @@ import { getClassCapsPanel } from '../../services/flywheel/overview/class-caps';
 import { getHistoryPanel } from '../../services/flywheel/overview/history';
 import {
   getBootstrapQueuePanel,
-  getMismatchTrendsPanel,
   getGlnCoveragePanel,
 } from '../../services/flywheel/overview/empty-panels';
 
@@ -204,9 +203,10 @@ describe('history (AC5) — gepasseerde + teruggedraaide batches', () => {
 });
 
 describe('lege-staat-panelen (UX-DR8) — bron-epic nog niet gebouwd', () => {
-  it('bootstrap/mismatch/gln geven expliciete lege staat', () => {
+  it('bootstrap/gln geven expliciete lege staat', () => {
+    // mismatch-trends is per Story 16.1 een echte sub-service (zie
+    // flywheel-mismatch.test.ts) en geen lege-staat-stub meer.
     expect(getBootstrapQueuePanel()).toEqual({ available: false, sourceEpic: 'epic-17', items: [] });
-    expect(getMismatchTrendsPanel()).toEqual({ available: false, sourceEpic: 'epic-16', items: [] });
     expect(getGlnCoveragePanel()).toEqual({ available: false, sourceEpic: 'epic-18', items: [] });
   });
 });

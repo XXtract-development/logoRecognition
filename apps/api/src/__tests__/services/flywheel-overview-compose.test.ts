@@ -33,9 +33,11 @@ describe('composeOverview (AC1) — sectie-lokale fouttolerantie', () => {
     expect(overview.kpi).toBeDefined();
     expect(overview.classCaps).toBeDefined();
     expect(overview.history).toBeDefined();
+    // mismatch-trends is per Story 16.1 een echte sub-service (available: true,
+    // best-effort leeg bij leesfout — nooit een lege-staat-stub meer).
+    expect(overview.mismatchTrends).toMatchObject({ available: true });
     // Lege-staat-panelen (UX-DR8).
     expect(overview.bootstrapQueue).toMatchObject({ available: false });
-    expect(overview.mismatchTrends).toMatchObject({ available: false });
     expect(overview.glnCoverage).toMatchObject({ available: false });
     // Server-tijdstempel voor de "verouderde data"-melding (AC8).
     expect(typeof overview.generatedAt).toBe('string');

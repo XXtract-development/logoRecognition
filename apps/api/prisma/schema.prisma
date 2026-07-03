@@ -783,3 +783,40 @@ model ThresholdChange {
   @@index([changedAt(sort: Desc)])
   @@map("threshold_changes")
 }
+
+/// Mismatch-event: één observatie per verwerking van de uitkomst van een
+/// gedeclareerde code (`confirmed`/`declared-not-found`/`not-supported`) óf van
+/// een hoogbetrouwbare niet-gedeclareerde vondst (`found-not-declared`) — Epic 16,
+/// Story 16.1 (FR-14), AD-2/AD-13.
+///
+/// Eén gedeeld contract voor registratie (FR-14), werkvoorraad (FR-15, Story 16.2)
+/// en export (FR-16, Story 16.3). Geschreven door het crosscheck- én het
+/// kruischeck-pad, elk achter zijn eigen vlag (AD-8). Events zijn PER-RUN-
+/// observaties: herverwerking van dezelfde GTIN levert nieuwe rijen (geen dedup —
+/// wél herleidbaar via `origin`/`runId`, AD-13). `apps/api` is exclusief eigenaar
+/// (AD-2); ml-service schrijft hier nooit in.
+///
+/// `type` is een vaste-waardenset als `VarChar` (geen Prisma-enum, conform
+/// Consistency Conventions, patroon `ArtworkReviewItem.status`). `confidence` is
+/// nullable: `declared-not-found`/`not-supported` hebben geen vondst-confidence.
+/// `gln` is nullable (Epic 18 vult het archief pas; aggregatie groepeert dan op
+/// "onbekend"). `origin` draagt de herkomst (`crosscheck`/`kruischeck`/
+/// `cohort-<runId>`); reguliere aggregaties sluiten `cohort-`-herkomst uit
+/// (Story 16.4). De DESC-index op `createdAt` dient de trend; de indexen op
+/// `t3777Code` en `gln` dienen de per-klasse/per-leverancier-aggregatie.
+model MismatchEvent {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  gtin       String   @db.VarChar(14)
+  gln        String?  @db.VarChar(13)
+  t3777Code  String   @map("t3777_code") @db.VarChar(100)
+  type       String   @db.VarChar(20)
+  confidence Float?
+  origin     String   @db.VarChar(64)
+  runId      String?  @map("run_id") @db.VarChar(128)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([createdAt(sort: Desc)])
+  @@index([t3777Code])
+  @@index([gln])
+  @@map("mismatch_events")
+}

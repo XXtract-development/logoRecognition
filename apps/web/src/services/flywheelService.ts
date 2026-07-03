@@ -139,6 +139,39 @@ export interface StandstillPanel {
   k: number | null;
 }
 
+// ── Mismatch-trends (Story 16.1, FR-14) ─────────────────────────────────────
+
+/** Aantallen per uitkomst-type binnen één groep (T3777-code of GLN). */
+export interface MismatchCounts {
+  confirmed: number;
+  declaredNotFound: number;
+  notSupported: number;
+  foundNotDeclared: number;
+}
+
+/** Eén aggregatie-rij (per code óf per GLN) met de bevestigingsratio. */
+export interface MismatchRatioRow {
+  key: string;
+  counts: MismatchCounts;
+  /** Bevestigd / (bevestigd + niet-gevonden); null als de noemer 0 is. */
+  confirmedRatio: number | null;
+}
+
+/** Eén trendpunt (per dag). */
+export interface MismatchTrendPoint {
+  period: string;
+  counts: MismatchCounts;
+  confirmedRatio: number | null;
+}
+
+/** Het mismatch-trends-paneel (available=true zodra Epic 16 landt). */
+export interface MismatchTrendsPanel {
+  available: true;
+  byCode: MismatchRatioRow[];
+  byGln: MismatchRatioRow[];
+  trend: MismatchTrendPoint[];
+}
+
 /** De volledige `/flywheel/overview`-response (Story 15.2). Panelen kunnen `{ error }` zijn. */
 export interface FlywheelOverview {
   generatedAt: string;
@@ -158,7 +191,7 @@ export interface FlywheelOverview {
   classCaps: ClassCapsPanel | PanelError;
   history: HistoryPanel | PanelError;
   bootstrapQueue: EmptyPanel;
-  mismatchTrends: EmptyPanel;
+  mismatchTrends: MismatchTrendsPanel | PanelError;
   glnCoverage: EmptyPanel;
 }
 

@@ -35,6 +35,12 @@ import {
 } from '../artwork-registration';
 import { ProvenanceMethod } from '../provenance';
 import { nominateAutoAccepted } from '../flywheel/crosscheck-hook';
+import {
+  registerCrosscheckMismatchEvents,
+  crosscheckResultToRegisterInput,
+} from '../flywheel/mismatch-events';
+import { isNominationEnabled } from '../flywheel/config';
+import { resolveGln } from '../t3777-declarations';
 import prisma from '../../core/db';
 import { createLogger } from '../../core/logger';
 
@@ -251,11 +257,12 @@ export async function runDetectionJob(data: DetectionJobData): Promise<Detection
     sourceFile: d.sourceFile,
   }));
 
-  const { autoAccepted, reviewItems } = await crosscheckDetections(
+  const crosscheckResult = await crosscheckDetections(
     gtin,
     crosscheckInput,
     declared
   );
+  const { autoAccepted, reviewItems } = crosscheckResult;
 
   // 6. Auto-accepted detections → 8.6 registration path (only those with a crop).
   const registerable: RegisterableCrop[] = autoAccepted
@@ -281,6 +288,24 @@ export async function runDetectionJob(data: DetectionJobData): Promise<Detection
   // (default uit → geen actie). Staat NAAST de 8.6-registratie hierboven, niet
   // erin. Non-fataal: nominatiefouten laten de detectie-job niet falen.
   await nominateAutoAccepted(gtin, autoAccepted, declared, 'crosscheck');
+
+  // Flywheel mismatch-registratie (Story 16.1, FR-14): leg per gedeclareerde code
+  // de uitkomst (confirmed/declared-not-found/not-supported) en per hoogbetrouwbare
+  // niet-gedeclareerde vondst een found-not-declared-event vast. Hergebruikt de
+  // reeds-berekende crosscheck-uitkomst (één instrumentatiepunt), herberekent
+  // niets. Achter FLYWHEEL_NOMINATION_ENABLED (AD-8; vlag uit → nul writes).
+  // Non-fataal: registratie is aanvullend werk. GLN via de gedeelde resolveGln
+  // (dezelfde lookup als de declaratie-resolutie). Bij een lege declaratie
+  // (geen codes) schrijft de service alleen eventuele found-not-declared-events;
+  // fail-safe-lege declaraties leveren geen gefabriceerde declared-not-found.
+  // De vlagcheck staat hier expliciet zodat de GLN-lookup het hete pad niet raakt
+  // wanneer de hoofdvlag uit staat (byte-gelijk aan vandaag).
+  if (isNominationEnabled() && (declared.length > 0 || reviewItems.length > 0)) {
+    const gln = await resolveGln(gtin);
+    await registerCrosscheckMismatchEvents(
+      crosscheckResultToRegisterInput(gtin, gln, declared, crosscheckResult)
+    );
+  }
 
   logger.info('Detection job complete', {
     gtin,

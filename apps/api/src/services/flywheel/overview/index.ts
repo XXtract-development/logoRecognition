@@ -25,9 +25,9 @@ import { getQuarantinePanel } from './quarantine';
 import { getKpiPanel } from './kpi';
 import { getClassCapsPanel } from './class-caps';
 import { getHistoryPanel } from './history';
+import { getMismatchTrends } from './mismatch-trends';
 import {
   getBootstrapQueuePanel,
-  getMismatchTrendsPanel,
   getGlnCoveragePanel,
 } from './empty-panels';
 
@@ -79,6 +79,7 @@ export async function composeOverview() {
     kpi,
     classCaps,
     history,
+    mismatchTrends,
   ] = await Promise.all([
     panel('missedNominations', getMissedNominationCounts),
     panel('lastSuccessfulPromotionRun', getLastSuccessfulPromotionRun),
@@ -92,6 +93,7 @@ export async function composeOverview() {
     panel('kpi', getKpiPanel),
     panel('classCaps', getClassCapsPanel),
     panel('history', getHistoryPanel),
+    panel('mismatchTrends', getMismatchTrends),
   ]);
 
   const missedNominationsTotal = isPanelError(missedNominations)
@@ -127,9 +129,10 @@ export async function composeOverview() {
     kpi,
     classCaps,
     history,
+    // Story 16.1: mismatch-aggregatie (ratio per code + per GLN + trend).
+    mismatchTrends,
     // Panelen waarvan de bron-epic nog niet gebouwd is (lege staat, UX-DR8).
     bootstrapQueue: getBootstrapQueuePanel(),
-    mismatchTrends: getMismatchTrendsPanel(),
     glnCoverage: getGlnCoveragePanel(),
   };
 }
