@@ -1,6 +1,6 @@
 # Story 15.4: Drempelbeheer en pauzebediening
 
-Status: ready-for-dev
+Status: in-progress
 
 <!-- Aangemaakt via create-story workflow, 2026-07-02. Bron: epics-vliegwiel.md Epic 15. -->
 
