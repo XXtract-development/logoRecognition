@@ -127,6 +127,18 @@ export interface PauseState {
   by: string | null;
 }
 
+/** Pauze-/stilstandstatus (Story 15.4) — voedt amber pauzebanner en rode stilstand-banner. */
+export type StandstillMode = 'running' | 'manual' | 'auto';
+export interface StandstillPanel {
+  mode: StandstillMode;
+  paused: boolean;
+  reason: string | null;
+  since: string | null;
+  by: string | null;
+  batchIds: string[];
+  k: number | null;
+}
+
 /** De volledige `/flywheel/overview`-response (Story 15.2). Panelen kunnen `{ error }` zijn. */
 export interface FlywheelOverview {
   generatedAt: string;
@@ -136,6 +148,7 @@ export interface FlywheelOverview {
   lastSuccessfulPromotionRun: string | null | PanelError;
   paused: boolean;
   pause: PauseState | PanelError;
+  standstill: StandstillPanel | PanelError;
   goldSetComposition: GoldSetComposition | PanelError;
   outliers: OutliersPanel | PanelError;
   quarantineCount: number | PanelError;
@@ -300,4 +313,99 @@ export async function fetchReferenceCodeImageBlob(code: string): Promise<string 
   } catch {
     return null;
   }
+}
+
+// ── Drempelbeheer (Story 15.4) ──────────────────────────────────────────────
+
+/** Bekende detectiemethoden waarvoor een promotiedrempel geldt (FR-5). */
+export type ThresholdMethod = 'template' | 'embedding' | 'classifier';
+export type ThresholdSource = 'override' | 'env' | 'default';
+
+/** Eén per-methode-drempel in het drempelbeheer. */
+export interface MethodThresholdView {
+  method: ThresholdMethod;
+  value: number;
+  envValue: number;
+  source: ThresholdSource;
+  min: number;
+  max: number;
+  step: number;
+}
+
+/** Eén rij in de drempel-wijzigingshistorie. */
+export interface ThresholdHistoryRow {
+  id: string;
+  thresholdKey: string;
+  method: ThresholdMethod | null;
+  oldValue: string;
+  newValue: string;
+  reason: string | null;
+  userId: string;
+  changedAt: string;
+}
+
+/** De volledige drempelbeheer-view (per-methode-drempels + historie). */
+export interface ThresholdsView {
+  methods: MethodThresholdView[];
+  history: ThresholdHistoryRow[];
+}
+
+/** Haal de drempelbeheer-view op (Story 15.4-endpoint). */
+export async function fetchThresholds(): Promise<ThresholdsView> {
+  const res = await apiClient.get<ThresholdsView>('/flywheel/thresholds');
+  return res.data;
+}
+
+export interface ChangeThresholdResult {
+  method: ThresholdMethod;
+  oldValue: number;
+  newValue: number;
+  reason: string;
+  changedAt: string;
+}
+
+/**
+ * Wijzig de effectieve promotiedrempel voor één methode (Story 15.4-endpoint).
+ * Reden verplicht — de server valideert het ook (400 zonder). Gooit door bij een
+ * fout zodat de modal de foutmelding toont.
+ */
+export async function changeThreshold(
+  method: ThresholdMethod,
+  newValue: number,
+  reason: string
+): Promise<ChangeThresholdResult> {
+  const res = await apiClient.put<ChangeThresholdResult>('/flywheel/thresholds', {
+    method,
+    newValue,
+    reason,
+  });
+  return res.data;
+}
+
+// ── Pauzebediening (Story 15.4) ─────────────────────────────────────────────
+
+export interface PauseControlResult {
+  paused: boolean;
+  reason: string | null;
+  since: string | null;
+  by: string | null;
+  /** Bij hervatten: aantal openstaande quarantaines als waarschuwing (FR-19). */
+  openQuarantines: number | null;
+}
+
+/** Pauzeer het vliegwiel (Story 15.4-endpoint). */
+export async function pauseFlywheel(reason?: string): Promise<PauseControlResult> {
+  const res = await apiClient.post<PauseControlResult>('/flywheel/pause', {
+    action: 'pause',
+    reason,
+  });
+  return res.data;
+}
+
+/** Hervat het vliegwiel (Story 15.4-endpoint) — blokkeert niet op quarantaines. */
+export async function resumeFlywheel(): Promise<PauseControlResult> {
+  const res = await apiClient.post<PauseControlResult>('/flywheel/pause', {
+    action: 'resume',
+  });
+  return res.data;
 }

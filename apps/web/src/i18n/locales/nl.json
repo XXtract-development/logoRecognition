@@ -124,6 +124,7 @@
   "common": {
     "save": "Opslaan",
     "cancel": "Annuleren",
+    "close": "Sluiten",
     "delete": "Verwijderen",
     "edit": "Bewerken",
     "create": "Aanmaken",
@@ -525,6 +526,48 @@
     "stale": {
       "message": "Bijgewerkt — deze weergave is mogelijk verouderd.",
       "refresh": "Vernieuwen"
+    },
+    "thresholds": {
+      "button": "Drempels",
+      "title": "Promotiedrempels",
+      "save": "Opslaan",
+      "loadFailed": "Drempels konden niet geladen worden.",
+      "saved": "Drempel bijgewerkt.",
+      "saveFailed": "Drempel wijzigen mislukt.",
+      "previous": "vorige: {{v}}",
+      "editLabel": "Nieuwe waarde voor {{method}}",
+      "reasonPlaceholder": "Reden voor de wijziging (verplicht)",
+      "hint": "Wijzigingen worden gelogd met oude en nieuwe waarde.",
+      "historyTitle": "Wijzigingshistorie",
+      "historyEmpty": "Nog geen wijzigingen.",
+      "colDate": "Datum",
+      "colUser": "Gebruiker",
+      "colMethod": "Drempel",
+      "colChange": "Oud → nieuw",
+      "colReason": "Reden"
+    },
+    "pause": {
+      "labelActive": "Vliegwiel actief",
+      "labelPaused": "Gepauzeerd",
+      "labelAuto": "Gepauzeerd (automatisch)",
+      "switchAria": "Vliegwiel pauzeren of hervatten",
+      "confirmTitle": "Vliegwiel pauzeren?",
+      "confirmOk": "Pauzeren",
+      "consequence": "Nominatie en promotie stoppen; detectie en trainingsdata-registratie lopen door.",
+      "resumeTitle": "Vliegwiel hervatten?",
+      "resumeOk": "Hervatten",
+      "resumeBody": "Nominatie en promotie starten weer. Detectie en trainingsdata-registratie liepen door.",
+      "resumeWarning": "{{count}} batches wachten nog op jouw beoordeling. Hervatten kan — de batches blijven veilig in quarantaine.",
+      "paused": "Vliegwiel gepauzeerd.",
+      "resumed": "Vliegwiel hervat.",
+      "failed": "Pauzeren mislukt — probeer opnieuw.",
+      "resumeFailed": "Hervatten mislukt — probeer opnieuw.",
+      "banner": "Vliegwiel gepauzeerd door {{who}} op {{when}} — nominatie en promotie staan stil.",
+      "unknownUser": "onbekend"
+    },
+    "standstill": {
+      "title": "Automatische stilstand: {{k}} opeenvolgende promotiebatches in quarantaine. Hervatten kan na beoordeling.",
+      "batchesLabel": "Betrokken batches:"
     }
   },
   "emptyState": {

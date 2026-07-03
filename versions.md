@@ -1,5 +1,18 @@
 # Versiegeschiedenis
 
+## 2026-07-03 (Drempels bijstellen en het vliegwiel pauzeren)
+
+### Je bepaalt nu zelf de promotiedrempels — met een verplichte reden en een logboek
+- Via de knop "Drempels" op het Vliegwiel-scherm open je een venster waarin je per herkenningsmethode (template, embedding en classifier) de promotiedrempel apart instelt. Je ziet steeds de huidige én de vorige waarde
+- Opslaan kan pas als je een reden invult — die reden, samen met de oude en nieuwe waarde, je naam en het tijdstip, komt in een wijzigingslogboek dat direct in hetzelfde venster zichtbaar is. Zo blijft altijd navolgbaar wie wanneer waarom een drempel verschoof
+- Een aangepaste drempel werkt meteen door in de nachtelijke nominatie- en promotieronde, zonder dat er iets opnieuw uitgerold hoeft te worden
+
+### Het vliegwiel pauzeren en hervatten met een duidelijke bevestiging
+- Met een schakelaar in de bovenbalk zet je het vliegwiel op pauze of weer aan. Omzetten opent altijd een bevestiging die uitlegt wat er gebeurt: nominatie en promotie stoppen, maar herkenning en het verzamelen van trainingsdata lopen gewoon door
+- Zolang het vliegwiel handmatig gepauzeerd is, staat er een amber (oranje) balk onder de titel met wie het pauzeerde en wanneer. Hervatten is altijd een bewuste actie; als er nog batches op beoordeling wachten, waarschuwt het venster daarvoor — maar het blokkeert niet, want die batches blijven veilig in quarantaine
+- Zet het vliegwiel zichzelf stil na twee mislukte batches op rij (de automatische noodrem), dan verschijnt bovenaan een rode balk met de aanleiding en directe links naar de betrokken batches. Rood is bewust voorbehouden aan deze automatische stilstand en aan een echte terugval — nooit aan een gewone pauze of aan wachtende batches
+- De pauze onthoudt zichzelf: na een herstart blijft het vliegwiel gepauzeerd tot je het bewust hervat. Alle teksten zijn Nederlands en de banners zijn schermlezer-toegankelijk
+
 ## 2026-07-03 (Quarantainebatch afhandelen met volledig bewijs)
 
 ### Wachtende batches beoordeel je nu kandidaat-voor-kandidaat op een eigen pagina

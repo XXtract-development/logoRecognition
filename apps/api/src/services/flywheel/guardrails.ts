@@ -29,11 +29,11 @@ import prisma from '../../core/db';
 import { mlClient } from '../ml-client';
 import { createLogger } from '../../core/logger';
 import {
-  getPromotionThresholdForMethod,
   getClassCap,
   getDedupHammingMax,
   getDedupCosine,
 } from './config';
+import { resolvePromotionThreshold } from './thresholds';
 import type {
   GatePhase,
   GatePhaseResult,
@@ -169,7 +169,8 @@ export async function runThresholdPhase(
   const released: string[] = [];
 
   for (const c of candidates) {
-    const threshold = getPromotionThresholdForMethod(c.method ?? undefined);
+    // Effectieve drempel via de gedeelde resolver (override ?? env ?? default).
+    const threshold = await resolvePromotionThreshold(c.method ?? undefined);
     if (c.confidence === null || c.confidence < threshold) {
       await releaseCandidate(c.id, 'onder-drempel');
       released.push(c.id);

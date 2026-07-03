@@ -249,6 +249,16 @@ vi.mock('@prisma/client', () => {
       delete: vi.fn(),
       count: vi.fn(),
     },
+    // Threshold-/pauze-audittrail (Story 15.4) — drempelwijzigingen + pauze-overgangen.
+    thresholdChange: {
+      findUnique: vi.fn(),
+      findFirst: vi.fn().mockResolvedValue(null),
+      findMany: vi.fn().mockResolvedValue([]),
+      create: vi.fn().mockResolvedValue({ id: 'tc-1', changedAt: new Date('2026-07-03T09:00:00Z') }),
+      update: vi.fn(),
+      delete: vi.fn(),
+      count: vi.fn().mockResolvedValue(0),
+    },
     // Outlier findings (Story 14.3) — wekelijkse bibliotheek-outlier-audit.
     outlierFinding: {
       findUnique: vi.fn(),

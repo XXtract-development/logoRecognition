@@ -21,6 +21,10 @@ export const SETTING_KEYS = {
   PAUSED: 'flywheel.paused',
   BASELINE_STALE: 'flywheel.baselineStale',
   AUTO_PAUSE_STREAK: 'flywheel.autoPauseStreak',
+  // Story 15.4: de betrokken batches van de LAATSTE automatische stilstand,
+  // los van de (na de stilstand gereset) teller — voedt de rode stilstand-banner
+  // met batch-links. Gewist bij een bewuste hervatting.
+  AUTO_PAUSE_STANDSTILL: 'flywheel.autoPauseStandstill',
 } as const;
 
 /** Time-to-live van de in-process read-cache (ms). Kort — pauze moet snel landen. */
@@ -85,4 +89,14 @@ export async function setSetting(
 /** Wis de in-process read-cache (testhulp + expliciete invalidatie). */
 export function clearSettingsCache(): void {
   cache.clear();
+}
+
+/**
+ * Invalideer de cache-entry voor één key. Gebruikt wanneer een setting BUITEN
+ * `setSetting` is geschreven (bv. een `system_settings`-upsert binnen dezelfde
+ * DB-transactie als een audit-rij), zodat de eerstvolgende lezing de verse
+ * waarde uit de DB haalt i.p.v. een stale cache-hit.
+ */
+export function invalidateSetting(key: string): void {
+  cache.delete(key);
 }

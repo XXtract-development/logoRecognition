@@ -15,6 +15,7 @@ import { createLogger } from '../../../core/logger';
 import { getMissedNominationCounts } from '../missed-nominations';
 import { getLastSuccessfulPromotionRun } from '../watchdog';
 import { getPauseState } from '../pause';
+import { getStandstillPanel } from './standstill';
 import { isNominationEnabled } from '../config';
 import { getGoldSetComposition } from '../gold-set-composition';
 import { getOutliersPanel } from '../outliers-overview';
@@ -69,6 +70,7 @@ export async function composeOverview() {
     missedNominations,
     lastSuccessfulPromotionRun,
     pauseState,
+    standstill,
     goldSetComposition,
     outliers,
     quarantineCount,
@@ -81,6 +83,7 @@ export async function composeOverview() {
     panel('missedNominations', getMissedNominationCounts),
     panel('lastSuccessfulPromotionRun', getLastSuccessfulPromotionRun),
     panel('pause', getPauseState),
+    panel('standstill', getStandstillPanel),
     panel('goldSetComposition', getGoldSetComposition),
     panel('outliers', getOutliersPanel),
     panel('quarantineCount', getQuarantineCount),
@@ -108,6 +111,9 @@ export async function composeOverview() {
     lastSuccessfulPromotionRun,
     // Story 13.6: pauze-stand.
     paused,
+    // Story 15.4: pauze-/stilstandstatus (amber pauzebanner vs. rode stilstand-
+    // banner met batch-links).
+    standstill,
     pause: pauseState,
     // Story 14.2: gold-set-samenstelling.
     goldSetComposition,

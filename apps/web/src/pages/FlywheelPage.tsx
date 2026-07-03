@@ -36,6 +36,10 @@ import {
   GlnCoveragePanel,
 } from '@/components/flywheel/SignalPanels';
 import { StaleDataAlert } from '@/components/flywheel/StaleDataAlert';
+import { StandstillBanner } from '@/components/flywheel/StandstillBanner';
+import { PauseSwitch } from '@/components/flywheel/PauseSwitch';
+import { ThresholdModal } from '@/components/flywheel/ThresholdModal';
+import { isPanelError } from '@/services/flywheelService';
 
 const { Title, Text } = Typography;
 
@@ -77,15 +81,39 @@ const FlywheelContent: React.FC = () => {
               {t('flywheel.pageSubtitle', { defaultValue: 'Referentie-vliegwiel — gezondheid in één blik' })}
             </Text>
           </div>
-          <Button
-            data-testid="flywheel-refresh"
-            icon={<ReloadOutlined spin={isFetching} />}
-            onClick={() => refetch()}
-            disabled={isFetching}
-          >
-            {t('flywheel.refresh', { defaultValue: 'Vernieuwen' })}
-          </Button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {/* Pauzeschakelaar + drempelbeheer (Story 15.4). */}
+            {!isLoading && !isError && data && (
+              <>
+                <PauseSwitch
+                  paused={data.paused}
+                  openQuarantines={typeof data.quarantineCount === 'number' ? data.quarantineCount : 0}
+                  auto={!isPanelError(data.standstill) && data.standstill?.mode === 'auto'}
+                />
+                <ThresholdModal />
+              </>
+            )}
+            <Button
+              data-testid="flywheel-refresh"
+              icon={<ReloadOutlined spin={isFetching} />}
+              onClick={() => refetch()}
+              disabled={isFetching}
+            >
+              {t('flywheel.refresh', { defaultValue: 'Vernieuwen' })}
+            </Button>
+          </div>
         </div>
+
+        {/* Rode stilstand-banner (AC5) — bovenaan vóór alle content bij automatische
+            stilstand; enige rode toestand naast het regressie-meetpunt. */}
+        {!isLoading && !isError && data && (
+          <StandstillBanner standstill={data.standstill} variant="auto" />
+        )}
+
+        {/* Amber pauzebanner (AC3) — handmatige pauze, onder de pagina-header. */}
+        {!isLoading && !isError && data && (
+          <StandstillBanner standstill={data.standstill} variant="manual" />
+        )}
 
         {/* Verouderde-data-melding (AC8) — geen polling, alleen handmatig. */}
         {!isLoading && !isError && (

@@ -114,6 +114,9 @@ export async function resume(by: string | null = null): Promise<PauseState> {
   };
   await setSetting(SETTING_KEYS.PAUSED, state, by);
   await resetQuarantineStreak();
+  // Story 15.4: een bewuste hervatting wist óók de stilstand-record, zodat de
+  // rode stilstand-banner verdwijnt.
+  await setSetting(SETTING_KEYS.AUTO_PAUSE_STANDSTILL, null, null);
   logger.info('Vliegwiel hervat', { by, at: new Date().toISOString() });
   return state;
 }
@@ -163,11 +166,44 @@ export async function registerQuarantine(batchId: string): Promise<boolean> {
   }
   await notifyAutoPause(nextIds, k);
 
+  // Persisteer de betrokken batches van deze stilstand (Story 15.4): de teller
+  // wordt hierna gereset, maar de rode stilstand-banner heeft de batch-ids nodig
+  // voor de detail-links. Gewist bij een bewuste hervatting (`resume`).
+  await setSetting(
+    SETTING_KEYS.AUTO_PAUSE_STANDSTILL,
+    { batchIds: nextIds, k, at: new Date().toISOString() },
+    'system'
+  );
+
   // Reset de teller ná de stilstand zodat een volgende reeks vers begint (de
   // pauze zélf blokkeert intussen nieuwe batch-verwerking, AD-11).
   await resetQuarantineStreak();
   return true;
 }
+
+/** Vorm van de persistente stilstand-record (Story 15.4). */
+export interface StandstillRecord {
+  batchIds: string[];
+  k: number;
+  at: string;
+}
+
+/**
+ * Lees de laatste automatische-stilstand-record (Story 15.4): de betrokken
+ * batches + tijdstip, of `null` als er geen (openstaande) auto-stilstand is. De
+ * banner toont dit alleen zolang het vliegwiel automatisch gepauzeerd is; een
+ * bewuste hervatting wist de record.
+ */
+export async function getStandstillRecord(): Promise<StandstillRecord | null> {
+  const s = await getSetting<StandstillRecord>(SETTING_KEYS.AUTO_PAUSE_STANDSTILL);
+  if (!s || !Array.isArray(s.batchIds)) return null;
+  return {
+    batchIds: s.batchIds,
+    k: typeof s.k === 'number' ? s.k : s.batchIds.length,
+    at: typeof s.at === 'string' ? s.at : new Date().toISOString(),
+  };
+}
+
 
 interface QuarantineStreak {
   count: number;

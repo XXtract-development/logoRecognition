@@ -18,7 +18,7 @@
 
 import prisma from '../../core/db';
 import { createLogger } from '../../core/logger';
-import { getPromotionThresholdForMethod } from './config';
+import { resolvePromotionThreshold } from './thresholds';
 import type { GatePhase } from './types';
 
 const logger = createLogger('flywheel-batch-detail');
@@ -258,20 +258,28 @@ export async function getBatchDetail(batchId: string): Promise<BatchDetail> {
     candidates: candidateRows.length,
   });
 
-  return { batch: head, candidates, promotionThresholds: getPromotionThresholds(candidates) };
+  return {
+    batch: head,
+    candidates,
+    promotionThresholds: await getPromotionThresholds(candidates),
+  };
 }
 
 /**
- * De promotiedrempel per methode die in deze batch voorkomt (voor het scoreblok:
- * "match-confidence vs. promotiedrempel"). Leest de vliegwiel-config.
+ * De effectieve promotiedrempel per methode die in deze batch voorkomt (voor het
+ * scoreblok: "match-confidence vs. promotiedrempel"). Leest via de gedeelde
+ * resolver (override ?? env ?? default), zodat een UI-drempelwijziging (15.4)
+ * ook hier zichtbaar is.
  */
-function getPromotionThresholds(candidates: BatchCandidateView[]): Record<string, number> {
+async function getPromotionThresholds(
+  candidates: BatchCandidateView[]
+): Promise<Record<string, number>> {
   const methods = Array.from(
     new Set(candidates.map((c) => c.method).filter((m): m is string => !!m))
   );
   const out: Record<string, number> = {};
   for (const m of methods) {
-    out[m] = getPromotionThresholdForMethod(m);
+    out[m] = await resolvePromotionThreshold(m);
   }
   return out;
 }

@@ -1,6 +1,6 @@
 # Story 15.4: Drempelbeheer en pauzebediening
 
-Status: in-progress
+Status: done
 
 <!-- Aangemaakt via create-story workflow, 2026-07-02. Bron: epics-vliegwiel.md Epic 15. -->
 
@@ -133,15 +133,62 @@ _(1-op-1 uit epics-vliegwiel.md, Story 15.4)_
 
 ## Dev Agent Record
 
-_(in te vullen door dev-story)_
-
 ### Agent Model Used
+
+claude-opus-4-8 (implement-sprint, epic-15 worktree).
 
 ### Debug Log References
 
+- `prisma migrate diff --from-url` toonde drift `ALTER TABLE retraining_notifications … DROP DEFAULT`; bewust weggelaten zodat 0017 uitsluitend de 15.4-DDL bevat.
+- `prisma migrate deploy` lokaal (localhost:5432 geverifieerd) → 0017 additief toegepast; `migrate status` up-to-date.
+
 ### Completion Notes
 
+**Effectieve-waarde-ontwerp (taak 2.3):** één gedeelde resolver `resolvePromotionThreshold(method)` in `services/flywheel/thresholds.ts` = `system_settings-override ?? env ?? default 0,90`. De override leeft per methode onder key `flywheel.promotionThreshold.<methode>`. De drie hot-path-callers (nominatie-gate, guardrail-drempelfase, batch-detail-scoreblok) zijn omgezet van de synchrone env-lezing naar deze async resolver, zodat een UI-drempelwijziging zonder deploy doorwerkt en er precies één leespad bestaat. `getPromotionThresholdForMethod` blijft de synchrone env/default-basis (door de resolver gebruikt als fallback en door de config-test).
+
+**Audittrail (AD-13):** `threshold_changes` is uitsluitend de audittrail — nooit de bron van de actuele waarde. `changeThreshold` schrijft override + audit-rij in één transactie; pauze/hervat-overgangen worden gelogd met `thresholdKey='flywheel.paused'` (oud/nieuw `true`/`false`).
+
+**Stilstand-record:** aparte persistente `flywheel.autoPauseStandstill`-setting (batchIds + k + tijd) omdat 13.6 de streak-teller ná auto-pauze reset; gewist bij bewuste hervatting. Voedt de rode banner met batch-links.
+
+**Pauze-idempotentie:** pauzeren terwijl al gepauzeerd overschrijft reden/tijd/gebruiker (13.6-gedrag) en logt de handmatige overgang opnieuw — herleidbaar. Geen 409 gekozen (de story vraagt bediening + zichtbaarheid, geen harde idempotentie-fout).
+
 ### File List
+
+**Nieuw (API):**
+- `apps/api/prisma/migrations/0017_add_threshold_changes/migration.sql` + `down.sql`
+- `apps/api/src/services/flywheel/thresholds.ts` (resolver + drempel-view + changeThreshold)
+- `apps/api/src/services/flywheel/pause-control.ts` (HTTP-laag bovenop 13.6-pauze + audit-logging)
+- `apps/api/src/services/flywheel/overview/standstill.ts` (stilstand-paneel)
+- `apps/api/src/__tests__/services/flywheel-thresholds.test.ts`
+- `apps/api/src/__tests__/services/flywheel-pause-control.test.ts`
+- `apps/api/src/__tests__/services/flywheel-standstill.test.ts`
+- `apps/api/src/__tests__/api/flywheel-thresholds-pause.routes.test.ts`
+
+**Gewijzigd (API):**
+- `apps/api/prisma/schema.prisma` (model `ThresholdChange`)
+- `apps/api/src/services/flywheel/config.ts` (`normalizeMethod`, `PROMOTION_METHODS`, `PROMOTION_THRESHOLD_DEFAULT`)
+- `apps/api/src/services/flywheel/system-settings.ts` (`invalidateSetting`, `AUTO_PAUSE_STANDSTILL`-key)
+- `apps/api/src/services/flywheel/pause.ts` (stilstand-record + `getStandstillRecord`, resume wist record)
+- `apps/api/src/services/flywheel/nomination.ts` / `guardrails.ts` / `batch-detail.ts` (async resolver)
+- `apps/api/src/services/flywheel/overview/index.ts` (standstill-paneel in compositie)
+- `apps/api/src/api/v1/flywheel.ts` (routes GET/PUT thresholds, POST pause)
+- `apps/api/src/__tests__/setup.ts` (`thresholdChange`-mockdelegate)
+
+**Nieuw (Web):**
+- `apps/web/src/components/flywheel/ThresholdModal.tsx` + `.test.tsx`
+- `apps/web/src/components/flywheel/PauseSwitch.tsx` + `.test.tsx`
+- `apps/web/src/components/flywheel/StandstillBanner.tsx` + `.test.tsx`
+
+**Gewijzigd (Web):**
+- `apps/web/src/services/flywheelService.ts` (standstill/threshold/pause types + mutaties)
+- `apps/web/src/pages/FlywheelPage.tsx` (header-controls + banners)
+- `apps/web/src/pages/FlywheelPage.test.tsx` (standstill-fixture, Link/queryClient-mocks)
+- `apps/web/src/i18n/locales/nl.json` (flywheel.thresholds/pause/standstill + common.close)
+
+### Reviewartefacten
+
+- `_bmad-output/implementation-artifacts/review-15-4.md` (verdict: PASS)
+- `_bmad-output/implementation-artifacts/ac-trace-15-4.md` (5/5 AC gedekt)
 
 ## Change Log
 

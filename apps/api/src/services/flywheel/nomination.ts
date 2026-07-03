@@ -38,9 +38,9 @@ import { isPaused } from './pause';
 import {
   isNominationEnabled,
   isKruischeckNominationEnabled,
-  getPromotionThresholdForMethod,
   NominationOrigin,
 } from './config';
+import { resolvePromotionThreshold } from './thresholds';
 
 const logger = createLogger('flywheel-nomination');
 
@@ -131,7 +131,9 @@ export async function nominateCandidate(
   //    menselijke bevestiging zélf de dubbele bevestiging; de model-confidence
   //    (die het item juist naar review stuurde) gate't dan niet.
   if (origin !== 'review') {
-    const threshold = getPromotionThresholdForMethod(detection.method);
+    // Effectieve drempel via de gedeelde resolver (system_settings-override ??
+    // env ?? default) — een UI-drempelwijziging (15.4) werkt zonder deploy door.
+    const threshold = await resolvePromotionThreshold(detection.method);
     if (detection.confidence < threshold) {
       return { status: 'skipped', reason: 'onder-drempel' };
     }

@@ -55,20 +55,47 @@ export function isKruischeckNominationEnabled(): boolean {
   );
 }
 
+/** De per-methode-drempels die het dashboard afzonderlijk toont (FR-5). */
+export const PROMOTION_METHODS: readonly NominationMethod[] = [
+  'template',
+  'embedding',
+  'classifier',
+] as const;
+
+/** De default per-methode-drempel (env ?? 0,90), gedeeld met de resolver. */
+export const PROMOTION_THRESHOLD_DEFAULT = DEFAULT_PROMOTION_THRESHOLD;
+
 /**
- * Promotiedrempel per methode (FR-5). Detecties zonder methode vallen — net als
- * in de crosscheck — onder de strengste (classifier).
+ * Normaliseer een (optionele) detectiemethode naar één van de drie bekende
+ * methoden. Detecties zonder methode vallen — net als in de crosscheck — onder
+ * de strengste (classifier). Dit is de ENIGE plek waar die val-terug leeft, zowel
+ * voor env als voor de system_settings-override.
+ */
+export function normalizeMethod(method?: string | null): NominationMethod {
+  switch (method) {
+    case 'template':
+    case 'embedding':
+    case 'classifier':
+      return method;
+    default:
+      return 'classifier';
+  }
+}
+
+/**
+ * De env-drempel per methode (env ?? 0,90) — de BASISWAARDE zonder de
+ * system_settings-override. Blijft synchroon zodat env-only callers (en tests)
+ * hem zonder DB kunnen lezen. De effectieve waarde (inclusief UI-override) loopt
+ * via `resolvePromotionThreshold` (async).
  */
 export function getPromotionThresholdForMethod(method?: string): number {
-  switch (method) {
+  switch (normalizeMethod(method)) {
     case 'template':
       return parseThreshold(process.env.FLYWHEEL_PROMOTION_THRESHOLD_TEMPLATE);
     case 'embedding':
       return parseThreshold(process.env.FLYWHEEL_PROMOTION_THRESHOLD_EMBEDDING);
     case 'classifier':
-      return parseThreshold(process.env.FLYWHEEL_PROMOTION_THRESHOLD_CLASSIFIER);
     default:
-      // Geen methode → strengste drempel (classifier).
       return parseThreshold(process.env.FLYWHEEL_PROMOTION_THRESHOLD_CLASSIFIER);
   }
 }

@@ -9,7 +9,7 @@
  * quarantainebadge, geen rood buiten regressie/stilstand).
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, within, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 
@@ -42,12 +42,24 @@ vi.mock('@ant-design/plots', () => ({
 const navigate = vi.fn();
 vi.mock('react-router-dom', () => ({
   useNavigate: () => navigate,
+  // Story 15.4: de rode stilstand-banner rendert batch-links via <Link>.
+  Link: ({ to, children, ...rest }: { to: string; children: React.ReactNode } & Record<string, unknown>) => (
+    <a href={to} {...rest}>
+      {children}
+    </a>
+  ),
 }));
 
 const mockUseFlywheelOverview = vi.fn();
 vi.mock('@/components/flywheel/useFlywheelOverview', () => ({
   useFlywheelOverview: () => mockUseFlywheelOverview(),
   FLYWHEEL_OVERVIEW_QUERY_KEY: ['flywheel-overview'],
+}));
+
+// useQueryClient (Story 15.4: PauseSwitch/ThresholdModal invalideren de overview-
+// query na een mutatie) — mock zodat de pagina zonder QueryClientProvider rendert.
+vi.mock('@tanstack/react-query', () => ({
+  useQueryClient: () => ({ invalidateQueries: vi.fn() }),
 }));
 
 // Service-mutaties mocken (rollback + outlier-decision) zodat we de aanroepen asserten.
@@ -75,6 +87,7 @@ function fullOverview(overrides: Record<string, unknown> = {}) {
     lastSuccessfulPromotionRun: '2026-07-01T03:12:00Z',
     paused: false,
     pause: { paused: false, reason: null, since: null, by: null },
+    standstill: { mode: 'running', paused: false, reason: null, since: null, by: null, batchIds: [], k: null },
     goldSetComposition: {
       size: 214,
       labelDistribution: { echt: 167, vals: 47, other: 0, echtRatio: 0.78 },

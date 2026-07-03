@@ -761,3 +761,25 @@ model SystemSetting {
 
   @@map("system_settings")
 }
+
+/// Drempel-/pauze-audittrail (Epic 15, Story 15.4, AD-13).
+/// Volgt EXACT het `ModelActivationLog`-patroon (flat audit-log, geen relaties):
+/// elke wijziging van een promotiedrempel — én elke pauze/hervat-overgang van het
+/// vliegwiel — wordt hier vastgelegd met oude waarde, nieuwe waarde, reden,
+/// gebruiker en tijdstempel. Dit is UITSLUITEND de audittrail: de actuele waarde
+/// leeft in `system_settings` (override) resp. env — nooit hier. `thresholdKey`
+/// draagt zowel de drempelsleutels (`flywheel.promotionThreshold.<methode>`) als
+/// de pauze-sleutel (`flywheel.paused`). De DESC-index dient de historie-weergave
+/// (nieuwste boven).
+model ThresholdChange {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  thresholdKey String   @map("threshold_key") @db.VarChar(255)
+  oldValue     String   @map("old_value") @db.VarChar(255)
+  newValue     String   @map("new_value") @db.VarChar(255)
+  reason       String?
+  userId       String   @map("user_id") @db.VarChar(255)
+  changedAt    DateTime @default(now()) @map("changed_at") @db.Timestamptz
+
+  @@index([changedAt(sort: Desc)])
+  @@map("threshold_changes")
+}

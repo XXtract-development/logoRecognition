@@ -52,6 +52,17 @@ import {
   BatchNotFullyReviewedError,
   BatchNotCloseableError,
 } from '../../services/flywheel/batch-close';
+import {
+  getThresholdsView,
+  changeThreshold,
+  ThresholdReasonRequiredError,
+  ThresholdMethodInvalidError,
+  ThresholdOutOfRangeError,
+} from '../../services/flywheel/thresholds';
+import {
+  pauseFlywheelControlled,
+  resumeFlywheelControlled,
+} from '../../services/flywheel/pause-control';
 
 const logger = createLogger('flywheel-routes');
 
@@ -371,6 +382,113 @@ export async function flywheelRoutes(fastify: FastifyInstance) {
           error: err instanceof Error ? err.message : 'unknown',
         });
         return reply.status(500).send({ error: 'Batch afsluiten mislukt' });
+      }
+    }
+  );
+
+  /**
+   * GET /api/v1/flywheel/thresholds
+   *
+   * Drempelbeheer-view (Story 15.4, AC2, FR-5). Levert per methode
+   * (template/embedding/classifier) de effectieve promotiedrempel + de env-basis
+   * + de bron (override/env/default), plus de wijzigingshistorie (nieuwste boven)
+   * uit `threshold_changes`. Read-only. Alleen ADMIN.
+   */
+  fastify.get(
+    '/flywheel/thresholds',
+    { preHandler: REQUIRE_ADMIN },
+    async (_request, reply) => {
+      const view = await getThresholdsView();
+      return reply.status(200).send(view);
+    }
+  );
+
+  /**
+   * PUT /api/v1/flywheel/thresholds
+   *
+   * Wijzig de effectieve promotiedrempel voor één methode (Story 15.4, AC2, FR-5,
+   * AD-13). Body `{ method, newValue, reason }`. De reden is SERVER-SIDE VERPLICHT
+   * (400 zonder). De wijziging persisteert de override in `system_settings` en
+   * logt atomair een `threshold_changes`-rij met oude+nieuwe waarde, gebruiker en
+   * reden. Buiten bereik (0,50–0,99, stap 0,01) → 400; onbekende methode → 400.
+   * Alleen ADMIN.
+   */
+  fastify.put<{ Body: { method?: string; newValue?: number; reason?: string } }>(
+    '/flywheel/thresholds',
+    { preHandler: REQUIRE_ADMIN },
+    async (request, reply) => {
+      const by = request.user?.userId ?? 'onbekend';
+      const { method, newValue, reason } = request.body ?? {};
+
+      if (typeof method !== 'string' || typeof newValue !== 'number') {
+        return reply.status(400).send({
+          error: 'Verwacht een methode en een numerieke nieuwe waarde.',
+        });
+      }
+
+      try {
+        const result = await changeThreshold({
+          method,
+          newValue,
+          reason: reason ?? '',
+          by,
+        });
+        return reply.status(200).send(result);
+      } catch (err) {
+        if (err instanceof ThresholdReasonRequiredError) {
+          return reply.status(400).send({ error: err.message });
+        }
+        if (err instanceof ThresholdMethodInvalidError) {
+          return reply.status(400).send({ error: err.message });
+        }
+        if (err instanceof ThresholdOutOfRangeError) {
+          return reply.status(400).send({ error: err.message });
+        }
+        logger.error('Drempel wijzigen mislukt', {
+          method,
+          error: err instanceof Error ? err.message : 'unknown',
+        });
+        return reply.status(500).send({ error: 'Drempel wijzigen mislukt' });
+      }
+    }
+  );
+
+  /**
+   * POST /api/v1/flywheel/pause
+   *
+   * Pauzeer of hervat het vliegwiel (Story 15.4, AC3/AC4, FR-19, AD-11/AD-13).
+   * Body `{ action: 'pause' | 'resume', reason? }`. Muteert de persistente
+   * pauze-stand in `system_settings` (13.6-service) en logt élke overgang met
+   * gebruiker + tijdstempel in `threshold_changes`. Hervatten BLOKKEERT NIET op
+   * openstaande quarantaines — de response geeft `openQuarantines` terug als
+   * waarschuwing voor de hervat-modal. Alleen ADMIN.
+   */
+  fastify.post<{ Body: { action?: string; reason?: string } }>(
+    '/flywheel/pause',
+    { preHandler: REQUIRE_ADMIN },
+    async (request, reply) => {
+      const by = request.user?.userId ?? 'onbekend';
+      const action = request.body?.action;
+      const reason = request.body?.reason ?? null;
+
+      if (action !== 'pause' && action !== 'resume') {
+        return reply.status(400).send({
+          error: "Ongeldige actie — verwacht 'pause' of 'resume'.",
+        });
+      }
+
+      try {
+        const result =
+          action === 'pause'
+            ? await pauseFlywheelControlled(by, reason)
+            : await resumeFlywheelControlled(by);
+        return reply.status(200).send(result);
+      } catch (err) {
+        logger.error('Pauze-actie mislukt', {
+          action,
+          error: err instanceof Error ? err.message : 'unknown',
+        });
+        return reply.status(500).send({ error: 'Pauze-actie mislukt' });
       }
     }
   );
