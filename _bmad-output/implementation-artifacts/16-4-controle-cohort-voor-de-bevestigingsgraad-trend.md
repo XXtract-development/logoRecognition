@@ -1,6 +1,6 @@
 # Story 16.4: Controle-cohort voor de bevestigingsgraad-trend
 
-Status: ready-for-dev
+Status: done
 
 <!-- Aangemaakt via create-story workflow, 2026-07-02. Epic 16 — Mismatch-stromen als brandstof en datakwaliteitssignaal. -->
 
@@ -113,16 +113,39 @@ So that **de stijging van de CONFIRMED-ratio aantoonbaar toe te schrijven is aan
 
 ## Dev Agent Record
 
-_(in te vullen door dev-story)_
-
 ### Agent Model Used
+
+Claude Opus 4.8 (1M context) — implement-sprint epic-agent, worktree epic/vliegwiel-16.
 
 ### Debug Log References
 
+- Adversarial self-review: `_bmad-output/implementation-artifacts/review-16-4.md` (verdict PASS).
+- AC→test-traceability: `_bmad-output/implementation-artifacts/ac-trace-16-4.md` (5/5 AC gedekt).
+
 ### Completion Notes
 
+- MIGRATIE-VRIJ: cohort-definitie in `system_settings` (key `flywheel.control-cohort`), meetuitkomsten als `mismatch_events` met herkomst `cohort-<runId>` — beide bestaande contracten.
+- Kern-High-bevinding (H1) opgelost: `runVerifyDeclared` kreeg `{ skipFlywheelHooks }` zodat de cohortrun nooit nominaties/kruischeck-events maakt, ook niet met `FLYWHEEL_KRUISCHECK_NOMINATION_ENABLED` aan (meetinstrument-isolatie).
+- Cohort-uitsluiting uit de reguliere aggregaties (16.1/16.2/16.3, `origin NOT LIKE 'cohort-%'`) was pre-existing; bevestigd met regressietests (16.1, 16.2) + code-inspectie (16.3).
+- apps/api vitest: 736 passed | 2 skipped | 27 todo (was 714 baseline; +22). web niet geraakt.
+- DB-veiligheid: enige DB = localhost:5432/logo_recognition (geverifieerd); tests volledig gemockt.
+
 ### File List
+
+- NIEUW `apps/api/src/services/flywheel/control-cohort.ts`
+- NIEUW `apps/api/src/services/flywheel/overview/cohort-trend.ts`
+- NIEUW `apps/api/src/scripts/seed-control-cohort.ts`
+- GEWIJZIGD `apps/api/src/services/flywheel/mismatch-events.ts` (registerCohortMismatchEvents)
+- GEWIJZIGD `apps/api/src/services/pipeline/verify-flow.ts` (skipFlywheelHooks-optie)
+- GEWIJZIGD `apps/api/src/services/flywheel/scheduler.ts` (flywheel-cohort-rerun-scheduler)
+- GEWIJZIGD `apps/api/src/services/pipeline/workers.ts` (flywheel-cohort-rerun-route)
+- GEWIJZIGD `apps/api/src/services/flywheel/config.ts` (getCohortCron/-MaxSeconds/-GtinDelayMs)
+- GEWIJZIGD `apps/api/src/services/flywheel/overview/index.ts` (cohortTrend-paneel)
+- GEWIJZIGD `.env.example` (FLYWHEEL_COHORT_*)
+- TESTS: `apps/api/src/__tests__/services/flywheel-control-cohort.atdd.test.ts` (RED→GREEN, 21 tests), +1 in `verify-flow.test.ts`, bijgewerkt `flywheel-worker-scheduler.test.ts`
+- `versions.md`
 
 ## Change Log
 
 - 2026-07-02: Story aangemaakt (create-story workflow) op basis van epics-vliegwiel.md Story 16.4, PRD SM-3 en de spine-orkestratieregels (AD-6/AD-11).
+- 2026-07-03: Geïmplementeerd (vast controle-cohort + maandelijkse herverwerkings-job + overview-trend + pauze-scope/isolatie); status → done.

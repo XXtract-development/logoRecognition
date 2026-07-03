@@ -303,6 +303,45 @@ describe('Story 12.8 — verify-flow', () => {
     expect(confirmedRow?.type).toBe('confirmed');
   });
 
+  // -------------------------------------------------------------------------
+  // Story 16.4 — skipFlywheelHooks suppresses nominations + mismatch events even
+  // with the kruischeck flag ON (the control-cohort measurement isolation).
+  // -------------------------------------------------------------------------
+  it('skipFlywheelHooks: no nomination/mismatch writes even with the flags ON (cohort isolation)', async () => {
+    process.env.FLYWHEEL_NOMINATION_ENABLED = 'true';
+    process.env.FLYWHEEL_KRUISCHECK_NOMINATION_ENABLED = 'true';
+    const { runVerifyDeclared } = await import('../../services/pipeline/verify-flow');
+
+    mockPrisma.artworkImport.findMany.mockResolvedValue([
+      { storagePath: 'artwork/x/a.png', mimeType: 'image/png', fileName: 'a.png', pages: null },
+    ]);
+    vi.spyOn(
+      await import('../../services/t3777-declarations'),
+      'resolveDeclarations'
+    ).mockResolvedValue({ codes: ['GREEN_DOT'], reason: 'ok' });
+    mockPrisma.referenceLogo.findMany.mockResolvedValue([{ t3777Code: 'GREEN_DOT' }]);
+    vi.spyOn(mlClient, 'localizeArtwork').mockResolvedValue({
+      detections: [{ t3777_code: 'GREEN_DOT', bbox: { x: 1, y: 2, width: 10, height: 10 } }],
+      truncated: false,
+    } as never);
+    vi.spyOn(mlClient, 'classifyArtwork').mockResolvedValue({
+      results: [
+        { bbox: { x: 1, y: 2, width: 10, height: 10 }, t3777_code: 'GREEN_DOT', confidence: 0.95, method: 'template' },
+      ],
+    } as never);
+    mockPrisma.mismatchEvent.createMany.mockResolvedValue({ count: 1 });
+
+    const state = await runVerifyDeclared('run-cohort-iso', GTIN, { skipFlywheelHooks: true });
+
+    // The verdict response is unchanged (CONFIRMED) — only the SIDE-effects are gone.
+    expect(state.verdicts.find((v) => v.declaredCode === 'GREEN_DOT')?.verdict).toBe('CONFIRMED');
+    // No kruischeck-origin mismatch events, despite both flags being ON.
+    expect(mockPrisma.mismatchEvent.createMany).not.toHaveBeenCalled();
+    // No review items / training data either (measurement-only).
+    expect(mockPrisma.artworkReviewItem.createMany).not.toHaveBeenCalled();
+    expect(mockPrisma.trainingData.create).not.toHaveBeenCalled();
+  });
+
   it('resolveArtworkImages expands a PDF import into one image per rasterized page', async () => {
     const { resolveArtworkImages } = await import('../../services/pipeline/verify-flow');
     mockPrisma.artworkImport.findMany.mockResolvedValue([

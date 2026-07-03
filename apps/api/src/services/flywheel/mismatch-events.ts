@@ -344,3 +344,34 @@ export async function registerKruischeckMismatchEvents(
     return 0;
   }
 }
+
+/**
+ * COHORT-pad (Story 16.4) — registreer de uitkomst van één cohort-GTIN met de
+ * herkomst `cohort-<runId>`. GEEN vlag: het controle-cohort IS het meetinstrument
+ * (SM-3), dus de events MOETEN geschreven worden ongeacht de nominatie-vlaggen —
+ * anders is er niets te meten. De `cohort-`-prefix zorgt dat alle reguliere
+ * aggregaties (16.1-trend, 16.2-werkvoorraad, 16.3-rapport) deze events via hun
+ * `origin NOT LIKE 'cohort-%'`-filter uitsluiten, zodat een maandelijkse cohortrun
+ * de reguliere stromen niet vervuilt (guardrail "cohort-events scheiden").
+ *
+ * Best-effort: een fout hier mag de cohortrun niet laten falen (de run gaat door
+ * met de volgende GTIN; deze GTIN telt als uitval, niet als "alles niet-gevonden").
+ *
+ * `runId` is verplicht (de cohort-run-id): elk meetpunt is herleidbaar naar zijn
+ * run (AD-13). De volledige herkomst wordt `cohort-<runId>`.
+ */
+export async function registerCohortMismatchEvents(
+  input: RegisterMismatchInput & { runId: string }
+): Promise<number> {
+  const origin = `cohort-${input.runId}`;
+  try {
+    return await register({ ...input, runId: input.runId }, origin);
+  } catch (err) {
+    logger.error('Mismatch-registratie (cohort) faalde (non-fataal)', {
+      gtin: input.gtin,
+      runId: input.runId,
+      error: err instanceof Error ? err.message : 'unknown',
+    });
+    return 0;
+  }
+}

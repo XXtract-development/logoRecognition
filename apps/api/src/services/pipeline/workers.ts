@@ -51,6 +51,7 @@ import { runPromotionLoop } from '../flywheel/promotion-batch';
 import { runWatchdogCheck } from '../flywheel/watchdog';
 import { runReembedJob, type ReembedJobData } from '../flywheel/reembed';
 import { runOutlierAudit } from '../flywheel/outlier-audit';
+import { runCohortRerun, COHORT_RERUN_JOB } from '../flywheel/control-cohort';
 
 const logger = createLogger('pipeline-workers');
 
@@ -391,6 +392,11 @@ let flywheelWorker: Worker | null = null;
  * `flywheel-outlier-audit` → runOutlierAudit (Story 14.3): wekelijkse bibliotheek-
  *                            brede outlier-signalering. Read-only + persistent;
  *                            deactiveert niets (FR-8).
+ * `flywheel-cohort-rerun`  → runCohortRerun (Story 16.4): maandelijkse herverwerking
+ *                            van het vaste controle-cohort (SM-3). Checkt de pauze
+ *                            bij start (AD-11), time-boxed (NFR-3); registreert
+ *                            events met herkomst cohort-<runId> — geen review-items,
+ *                            nominaties of trainingsdata (meetinstrument).
  */
 export async function processFlywheelJob(job: Pick<Job, 'name' | 'data'>): Promise<unknown> {
   switch (job.name) {
@@ -402,6 +408,8 @@ export async function processFlywheelJob(job: Pick<Job, 'name' | 'data'>): Promi
       return runReembedJob(job.data as ReembedJobData);
     case FLYWHEEL_OUTLIER_AUDIT_JOB:
       return runOutlierAudit();
+    case COHORT_RERUN_JOB:
+      return runCohortRerun();
     default:
       return undefined;
   }

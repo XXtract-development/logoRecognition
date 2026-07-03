@@ -77,8 +77,9 @@ describe('registerFlywheelSchedulers (AD-6 — upsertJobScheduler, geen repeat)'
     const queueInstance = (Queue as unknown as ReturnType<typeof vi.fn>).mock.results.at(-1)?.value;
     const upsert = queueInstance.upsertJobScheduler as ReturnType<typeof vi.fn>;
 
-    // Drie schedulers: promotie + watchdog + wekelijkse outlier-audit (Story 14.3).
-    expect(upsert).toHaveBeenCalledTimes(3);
+    // Vier schedulers: promotie + watchdog + wekelijkse outlier-audit (Story 14.3)
+    // + maandelijkse controle-cohort-herverwerking (Story 16.4).
+    expect(upsert).toHaveBeenCalledTimes(4);
     const promotionCall = upsert.mock.calls.find(
       (c) => (c[2] as { name?: string })?.name === 'flywheel-promotion'
     );
@@ -91,6 +92,13 @@ describe('registerFlywheelSchedulers (AD-6 — upsertJobScheduler, geen repeat)'
     );
     expect(outlierCall).toBeDefined();
     expect(outlierCall![1]).toMatchObject({ pattern: '0 5 * * 0', tz: 'Europe/Amsterdam' });
+
+    // Story 16.4: de cohort-rerun-scheduler is maandelijks (1e 03:23) met tz.
+    const cohortCall = upsert.mock.calls.find(
+      (c) => (c[2] as { name?: string })?.name === 'flywheel-cohort-rerun'
+    );
+    expect(cohortCall).toBeDefined();
+    expect(cohortCall![1]).toMatchObject({ pattern: '23 3 1 * *', tz: 'Europe/Amsterdam' });
 
     // Nooit het gedeprecieerde add(..., { repeat: { pattern } })-pad.
     const add = queueInstance.add as ReturnType<typeof vi.fn>;

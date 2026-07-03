@@ -26,6 +26,7 @@ import { getKpiPanel } from './kpi';
 import { getClassCapsPanel } from './class-caps';
 import { getHistoryPanel } from './history';
 import { getMismatchTrends } from './mismatch-trends';
+import { getCohortTrend } from './cohort-trend';
 import { getBootstrapQueueOverview } from './overview-bootstrap-queue';
 import { getGlnCoveragePanel } from './empty-panels';
 
@@ -78,6 +79,7 @@ export async function composeOverview() {
     classCaps,
     history,
     mismatchTrends,
+    cohortTrend,
     bootstrapQueue,
   ] = await Promise.all([
     panel('missedNominations', getMissedNominationCounts),
@@ -93,6 +95,7 @@ export async function composeOverview() {
     panel('classCaps', getClassCapsPanel),
     panel('history', getHistoryPanel),
     panel('mismatchTrends', getMismatchTrends),
+    panel('cohortTrend', getCohortTrend),
     panel('bootstrapQueue', getBootstrapQueueOverview),
   ]);
 
@@ -131,6 +134,10 @@ export async function composeOverview() {
     history,
     // Story 16.1: mismatch-aggregatie (ratio per code + per GLN + trend).
     mismatchTrends,
+    // Story 16.4: CONFIRMED-ratio-trend van het vaste controle-cohort (SM-3),
+    // één meetpunt per cohort-run (herkomst cohort-<runId>) — telt UITSLUITEND in
+    // deze trendlijn, nergens in de reguliere aggregaties.
+    cohortTrend,
     // Story 16.2: structurele werkvoorraad (bootstrap-wachtrij + aanvul-signalen,
     // on-read geaggregeerd uit declared-not-found-events, FR-15).
     bootstrapQueue,

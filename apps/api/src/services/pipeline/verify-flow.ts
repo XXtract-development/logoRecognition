@@ -359,10 +359,18 @@ export async function shadowLogRun(
  * Never throws for a "no artwork" situation (AC1): that is a terminal
  * `no-artwork` status, not an error. A genuine failure (ML down mid-run) marks
  * the run `failed` with a reason.
+ *
+ * `opts.skipFlywheelHooks` (Story 16.4): suppress the kruischeck nomination +
+ * mismatch-event hooks entirely — used by the control-cohort rerun, which is a
+ * MEASUREMENT instrument and must never create nominations or kruischeck-origin
+ * events (it registers its OWN cohort-origin events separately). Without this the
+ * cohort would leak side-effects whenever FLYWHEEL_KRUISCHECK_NOMINATION_ENABLED
+ * is on in production (guardrail "geen nominaties/registraties vanuit de cohortrun").
  */
 export async function runVerifyDeclared(
   runId: string,
-  gtin: string
+  gtin: string,
+  opts: { skipFlywheelHooks?: boolean } = {}
 ): Promise<VerifyRunState> {
   const startedAt = new Date().toISOString();
   const startMs = Date.now();
@@ -493,8 +501,12 @@ export async function runVerifyDeclared(
     //    hook failure never fails the run and never touches the response above.
     //    The declared codes are passed CANONICAL (alias-mapped) so the mismatch
     //    mapper compares declared/confirmed/detected in one code space (C1 fix).
-    const canonicalDeclared = aliased.map((a) => a.canonical);
-    await runFlywheelHooks(gtin, canonicalDeclared, verdicts, detections, runId);
+    //    Story 16.4: the control-cohort rerun passes skipFlywheelHooks so it never
+    //    creates nominations/kruischeck-origin events (measurement-only).
+    if (!opts.skipFlywheelHooks) {
+      const canonicalDeclared = aliased.map((a) => a.canonical);
+      await runFlywheelHooks(gtin, canonicalDeclared, verdicts, detections, runId);
+    }
 
     logger.info('Verify run complete', {
       runId,

@@ -6,7 +6,7 @@
  * `trigger.ts:registerRetrainingCronJob`, dat op de geïnstalleerde BullMQ 5.63
  * gedeprecieerd is (AD-6). Bestaande jobs blijven ongemoeid.
  *
- * Drie schedulers op de queue `flywheel` (worker-concurrency 1, dus serieel):
+ * Vier schedulers op de queue `flywheel` (worker-concurrency 1, dus serieel):
  *   1. `flywheel-promotion`     — nachtelijk, cadans `FLYWHEEL_PROMOTION_CRON`
  *      (default 01:00 Europe/Amsterdam, bewust vóór het harvest-venster ~03:23).
  *   2. `flywheel-watchdog`      — per uur; meldt stilstand als de laatste
@@ -14,6 +14,9 @@
  *   3. `flywheel-outlier-audit` — wekelijks, cadans `FLYWHEEL_OUTLIER_AUDIT_CRON`
  *      (default zondag 05:00 Europe/Amsterdam, buiten promotielus + harvest-
  *      venster). Bibliotheek-brede outlier-signalering (Story 14.3, FR-8/AD-9).
+ *   4. `flywheel-cohort-rerun`  — maandelijks, cadans `FLYWHEEL_COHORT_CRON`
+ *      (default 1e van de maand 03:23 Europe/Amsterdam). Herverwerkt het vaste
+ *      controle-cohort voor de bevestigingsgraad-trend (Story 16.4, SM-3).
  *
  * `upsertJobScheduler` is idempotent op de scheduler-id: bij herstart wordt de
  * bestaande scheduler bijgewerkt, niet gedupliceerd.
@@ -22,7 +25,13 @@
 import { Queue } from 'bullmq';
 import { getRedisConnection } from '../pipeline/queue';
 import { createLogger } from '../../core/logger';
-import { getPromotionCron, getOutlierAuditCron, FLYWHEEL_PROMOTION_TZ } from './config';
+import {
+  getPromotionCron,
+  getOutlierAuditCron,
+  getCohortCron,
+  FLYWHEEL_PROMOTION_TZ,
+} from './config';
+import { COHORT_RERUN_JOB } from './control-cohort';
 
 const logger = createLogger('flywheel-scheduler');
 
@@ -65,10 +74,19 @@ export async function registerFlywheelSchedulers(): Promise<void> {
       { name: OUTLIER_AUDIT_JOB, data: {} },
     );
 
+    // Story 16.4: maandelijkse controle-cohort-herverwerking (AD-6, Job Scheduler).
+    const cohortCron = getCohortCron();
+    await queue.upsertJobScheduler(
+      'flywheel-cohort-rerun-scheduler',
+      { pattern: cohortCron, tz: FLYWHEEL_PROMOTION_TZ },
+      { name: COHORT_RERUN_JOB, data: {} },
+    );
+
     logger.info('Flywheel Job Schedulers geregistreerd', {
       promotionCron,
       watchdogCron: WATCHDOG_CRON,
       outlierAuditCron,
+      cohortCron,
       tz: FLYWHEEL_PROMOTION_TZ,
     });
   } finally {

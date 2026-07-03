@@ -1,5 +1,14 @@
 # Versiegeschiedenis
 
+## 2026-07-03 (Vaste meetgroep laat zien of de keurmerkherkenning maand op maand écht beter wordt)
+
+### Een vast controle-cohort van ongeveer 100 producten wordt maandelijks opnieuw doorgemeten
+- Er is nu een vaste groep van circa 100 producten die het systeem elke maand automatisch opnieuw controleert op hun eigen gedeclareerde keurmerken. Omdat het altijd dezelfde producten zijn, is een stijgend bevestigingspercentage aantoonbaar toe te schrijven aan een betere/rijkere referentiebibliotheek — en niet aan een toevallig makkelijkere of moeilijkere selectie
+- De groep ligt bewust vast: gewone maandmetingen wijzigen de lijst nooit. Alleen een bewuste, gelogde ingreep kan de groep vernieuwen, en dat start dan expliciet een nieuwe meetlijn
+- Het maandelijkse bevestigingspercentage per meetronde is opvraagbaar op het Vliegwiel-overzicht, als een eigen trendlijn — één meetpunt per ronde
+- Deze controle-metingen staan volledig los van de dagelijkse cijfers: ze verschijnen niet in de gewone mismatch-trends, de werkvoorraad of het datakwaliteitsrapport, zodat een maandelijkse meetronde die overzichten niet vertekent
+- De meting is een puur meetinstrument: ze maakt geen review-taken, geen kandidaat-voorstellen en geen trainingsdata aan, en draait 's nachts op de achtergrond binnen een tijdslimiet zodat de live-herkenning er geen last van heeft. Staat het vliegwiel op pauze, dan slaat ook deze meetronde over
+
 ## 2026-07-03 (Kruischeck-endpoint: gedeclareerde keurmerken automatisch controleren op de verpakking)
 
 ### Nieuwe automatische controle of een product zijn eigen gedeclareerde keurmerken ook echt op de verpakking heeft staan

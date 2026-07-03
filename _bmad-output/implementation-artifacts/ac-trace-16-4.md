@@ -1,0 +1,21 @@
+# AC → test-traceability — Story 16.4
+
+Testbestand (tenzij anders vermeld): `apps/api/src/__tests__/services/flywheel-control-cohort.atdd.test.ts`.
+
+| AC | Eis | Dekkende test(s) | Status |
+|----|-----|------------------|--------|
+| **AC1** | Cohort-definitie (~100 GTINs) stabiel in `system_settings` (key `flywheel.control-cohort`: lijst + vastlegdatum + selectiecriterium); eenmalig via idempotent `--dry-run`-script; runs muteren de lijst nooit. | `resolveControlCohort leest + normaliseert de GTIN-lijst (dedup, trim)`; `resolveControlCohort geeft null bij ontbrekende/ongeldige definitie`; `seed selecteert GTINs gespreid over codes (round-robin, idempotent-deterministisch)`; `seed respecteert de doel-omvang`; stabiliteit: `twee runs gebruiken exact dezelfde GTIN-lijst (definitie ongemoeid)` (upsert niet aangeroepen). | GEDEKT |
+| **AC2** | Maandelijkse herverwerkings-job (queue `flywheel`, `upsertJobScheduler`, `FLYWHEEL_COHORT_CRON`); per GTIN het 12.8-verify-pad; ratio = confirmed/(confirmed+declared-not-found), UNSUPPORTED telt niet mee; events herkomst `cohort-<runId>`; randgevallen 0 confirmed / 0 events. | `cohortConfirmedRatio` (3 randgeval-tests: 0.75, 0-confirmed→0, noemer-0→null); `verdictsToCohortCounts: UNSUPPORTED telt NIET in de noemer, UNCERTAIN wél`; `runCohortRerun draait het verify-pad per GTIN en schrijft mismatch_events met origin cohort-<runId>`; `registerCohortMismatchEvents zet de herkomst op cohort-<runId> (zonder vlag)`; `scheduler registreert flywheel-cohort-rerun via upsertJobScheduler (geen repeat), maandelijkse cron + tz`; `worker routeert flywheel-cohort-rerun naar de cohort-flow`. | GEDEKT |
+| **AC3** | Ratio-trend per cohort-run opvraagbaar via de overview-API — één meetpunt per run, over de events met die run-herkomst; tweede run zelfde GTIN-lijst. | `buildCohortTrend: één meetpunt per run (origin), chronologisch, ratio per run`; `getCohortTrend leest UITSLUITEND cohort-events (origin LIKE cohort-%)`; `overview-composer neemt cohortTrend als paneel op`; stabiliteit: `twee runs gebruiken exact dezelfde GTIN-lijst`. | GEDEKT |
+| **AC4** | Pauze-scope (AD-11): job checkt persistente pauze bij start (gepauzeerd ⇒ geen verwerking, gelogde skip); isolatie (NFR-3): worker-pad, getemperd/time-boxed, nooit live-API. | `gepauzeerd → geen verwerking (skipped-paused), verify-flow niet aangeroepen`; `uitval (no-artwork/api-fout) telt als skipped, niet als declared-not-found`; `time-box: resterende GTINs vallen als uitval bij overschrijding`; isolatie: `skipFlywheelHooks: no nomination/mismatch writes even with the flags ON` (`verify-flow.test.ts`) + de job draait via `processFlywheelJob` op de flywheel-worker (concurrency 1). | GEDEKT |
+| **AC5** | Tests: ratio-randgevallen (0 confirmed, 0 events, UNSUPPORTED niet in noemer); cohort-resolutie uit settings; pauze-check bij job-start; integratie job-run met gemockte verify-flow ⇒ cohort-herkomst-events + trend; stabiliteit. Herkomst-scheiding: cohort-events niet in de reguliere aggregaties. | Alle bovenstaande + `16.1 mismatch-trends filtert origin NOT LIKE cohort-%`; `16.2 werkvoorraad-aggregatie sluit cohort-herkomst uit`. (16.3 data-quality-report filtert al `origin NOT LIKE 'cohort-%'` — pre-existing, geverifieerd in de code.) | GEDEKT |
+
+## Cohort-uitsluiting uit de reguliere aggregaties — bevestigd
+De uitsluiting was reeds door 16.1/16.2/16.3 geïmplementeerd (`origin NOT LIKE 'cohort-%'` in `overview/mismatch-trends.ts`, `mismatch-workload.ts` (raw + prisma-filter), `data-quality-report.ts`). Deze story bevestigt dat met regressietests op 16.1 en 16.2 (16.3 via code-inspectie: regels 138 `NOT: { origin: { startsWith: 'cohort-' } }`). De cohort-events landen dus UITSLUITEND in de `cohortTrend`-trendlijn.
+
+## Ratio-definitie (contract, gedocumenteerd)
+`confirmed / (confirmed + declared-not-found)`. `not-supported` telt NIET in de noemer (niet-ondersteunde klasse ≠ "niet gevonden"); `found-not-declared` evenmin (geen declaratie-uitkomst); GTIN-uitval (`api-fout`/`no-artwork`/time-box) telt als `skipped` en levert geen declaratie-uitkomst. Identiek aan de 16.1-definitie zodat cohort- en reguliere trend dezelfde meetlat gebruiken.
+
+## Samenvatting
+- AC's: 5/5 gedekt door geautomatiseerde tests die het AC-gedrag asserten.
+- Geen AC zonder dekkende test → geen waivers nodig.

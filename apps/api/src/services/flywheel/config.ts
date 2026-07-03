@@ -307,3 +307,47 @@ export function getStructuralM(): number {
   const v = parseInt(process.env.FLYWHEEL_STRUCTURAL_M ?? '', 10);
   return Number.isFinite(v) && v > 0 ? v : 5;
 }
+
+// ============================================
+// Story 16.4 — controle-cohort (maandelijkse herverwerkings-job, AD-6)
+// ============================================
+
+/**
+ * Cadans van de maandelijkse controle-cohort-herverwerking (AD-6, Story 16.4).
+ * Default: de 1e van de maand om 03:23 Europe/Amsterdam — bewust NA de nachtelijke
+ * promotielus (01:00) en samenvallend met het harvest-venster-tijdstip maar op
+ * één dag per maand, zodat de ~45–50 min cohortrun de dagelijkse stromen op de
+ * overige dagen niet raakt. De tijdzone wordt in de scheduler-opts expliciet gezet
+ * (`FLYWHEEL_PROMOTION_TZ`, gedeeld). Overschrijfbaar via `FLYWHEEL_COHORT_CRON`.
+ */
+export const FLYWHEEL_COHORT_CRON_DEFAULT = '23 3 1 * *';
+
+export function getCohortCron(): string {
+  const raw = process.env.FLYWHEEL_COHORT_CRON;
+  return raw && raw.trim().length > 0 ? raw : FLYWHEEL_COHORT_CRON_DEFAULT;
+}
+
+/**
+ * Time-box (wall-clock seconden) voor één cohortrun (Story 16.4, NFR-3/NFR-7).
+ * Conservatieve default 3600s (1 uur) — ~100 GTINs × ~28s lokalisatie ≈ 45–50 min
+ * plus marge. Bij overschrijding stopt de run netjes en registreert de tot dan
+ * verwerkte GTINs; de resterende GTINs vallen als uitval in deze run (gelogd),
+ * de cohort-definitie blijft ongewijzigd. Overschrijfbaar via
+ * `FLYWHEEL_COHORT_MAX_SECONDS`.
+ */
+export function getCohortMaxSeconds(): number {
+  const v = parseInt(process.env.FLYWHEEL_COHORT_MAX_SECONDS ?? '', 10);
+  return Number.isFinite(v) && v > 0 ? v : 3600;
+}
+
+/**
+ * Tempering: pauze (ms) tussen twee opeenvolgende GTIN-herverwerkingen binnen een
+ * cohortrun (Story 16.4, NFR-3). Voorkomt dat de cohortrun de detectie-worker/ML
+ * ononderbroken bezet houdt; de live-detectie en nachtelijke harvest houden lucht.
+ * Default 0 (geen extra pauze — de verwerking loopt al serieel op de flywheel-
+ * worker, concurrency 1). Overschrijfbaar via `FLYWHEEL_COHORT_GTIN_DELAY_MS`.
+ */
+export function getCohortGtinDelayMs(): number {
+  const v = parseInt(process.env.FLYWHEEL_COHORT_GTIN_DELAY_MS ?? '', 10);
+  return Number.isFinite(v) && v >= 0 ? v : 0;
+}
