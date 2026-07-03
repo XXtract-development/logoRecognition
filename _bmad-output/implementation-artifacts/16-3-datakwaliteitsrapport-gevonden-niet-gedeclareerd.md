@@ -1,6 +1,6 @@
 # Story 16.3: Datakwaliteitsrapport gevonden-niet-gedeclareerd
 
-Status: ready-for-dev
+Status: in-progress
 
 <!-- Aangemaakt via create-story workflow, 2026-07-02. Epic 16 — Mismatch-stromen als brandstof en datakwaliteitssignaal. -->
 
