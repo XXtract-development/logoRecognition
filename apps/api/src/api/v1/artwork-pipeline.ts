@@ -47,6 +47,7 @@ import { crosscheckDetections } from '../../services/artwork-crosscheck';
 import { enqueueDetectionForImport } from '../../services/pipeline/detection-flow';
 import { enqueueNominations } from '../../services/flywheel/crosscheck-hook';
 import { isNominationEnabled } from '../../services/flywheel/config';
+import { markBaselineStale } from '../../services/flywheel/baseline';
 import { resolveDeclaredMarks } from '../../services/t3777-declarations';
 import sharp from 'sharp';
 
@@ -1095,6 +1096,16 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
               added: ref.added,
               reason: ref.reason,
             });
+            // Baseline-invalidatie (Story 13.6, AC 3 / AD-5): legacy-12.3-
+            // registratie muteert de actieve set zolang de hoofdvlag uit staat →
+            // markeer de baseline verouderd wanneer er daadwerkelijk een
+            // referentie is toegevoegd. Best-effort.
+            if (ref.added) {
+              void markBaselineStale(
+                'legacy-12.3-registratie',
+                (request as { user?: { userId?: string } }).user?.userId ?? null
+              );
+            }
           } catch (err) {
             logger.warn('Review crop reference registration failed (non-fatal)', {
               reviewItemId: id,
@@ -1217,6 +1228,15 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
         try {
           const ref = await mlClient.registerReference(cropKey, code);
           referenceAdded = ref.added;
+          // Baseline-invalidatie (Story 13.6, AC 3 / AD-5): legacy-12.3-
+          // registratie muteert de actieve set → baseline verouderd markeren
+          // wanneer er daadwerkelijk een referentie is toegevoegd. Best-effort.
+          if (ref.added) {
+            void markBaselineStale(
+              'legacy-12.3-registratie',
+              (request as { user?: { userId?: string } }).user?.userId ?? null
+            );
+          }
         } catch (err) {
           logger.warn('Annotation reference registration failed (non-fatal)', {
             reviewItemId: id,

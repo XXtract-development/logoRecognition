@@ -20,6 +20,7 @@ import { logger } from '../../core/logger';
 import prisma from '../../core/db';
 import { KEURMERK_CATEGORY } from '../../services/provenance';
 import { mlClient } from '../../services/ml-client';
+import { markBaselineStale } from '../../services/flywheel/baseline';
 
 /** Allowed reference-logo file extensions. */
 const ALLOWED_EXTENSIONS = ['png', 'svg'] as const;
@@ -155,6 +156,12 @@ export async function referenceLogosRoutes(fastify: FastifyInstance) {
       });
 
       logger.info('Reference logo created', { id: record.id, t3777Code, variantLabel });
+
+      // Baseline-invalidatie (Story 13.6, AC 3 / AD-5): handmatige curatie muteert
+      // de actieve referentieset buiten batch-promotie om → markeer de baseline
+      // verouderd zodat de eerstvolgende poortrun een verse nulmeting draait.
+      // Best-effort — een markeerfout mag de (al geslaagde) creatie niet breken.
+      void markBaselineStale('reference-curatie', (request as { user?: { userId?: string } }).user?.userId ?? null);
 
       // 8-3O decision 2/O4: refresh the ML template cache after library mutations
       // (best-effort — a failure only means the TTL covers the gap).
@@ -305,6 +312,10 @@ export async function referenceLogosRoutes(fastify: FastifyInstance) {
         });
 
         logger.info('Reference logo deactivated', { id });
+
+        // Baseline-invalidatie (Story 13.6, AC 3 / AD-5): een handmatige
+        // deactivatie muteert de actieve set → baseline verouderd markeren.
+        void markBaselineStale('reference-curatie', (request as { user?: { userId?: string } }).user?.userId ?? null);
 
         // 8-3O decision 2/O4: best-effort ML template-cache refresh (see POST).
         void mlClient.reloadTemplates().catch((err: unknown) => {

@@ -29,8 +29,20 @@ vi.mock('../../services/flywheel/gold-set', () => ({
 
 // Mock de baseline-marker.
 const isBaselineStale = vi.fn();
+const consumeBaselineStale = vi.fn();
 vi.mock('../../services/flywheel/baseline', () => ({
   isBaselineStale: (...a: unknown[]) => isBaselineStale(...a),
+  consumeBaselineStale: (...a: unknown[]) => consumeBaselineStale(...a),
+}));
+
+// Mock de pauze-service (Story 13.6): de gate registreert quarantaines voor de
+// K=2-stilstand en reset de reeks bij een passed-batch. Hier gemockt zodat deze
+// suite de POORT test, niet de stilstand-logica (die heeft flywheel-pause.test.ts).
+const registerQuarantine = vi.fn();
+const resetQuarantineStreak = vi.fn();
+vi.mock('../../services/flywheel/pause', () => ({
+  registerQuarantine: (...a: unknown[]) => registerQuarantine(...a),
+  resetQuarantineStreak: (...a: unknown[]) => resetQuarantineStreak(...a),
 }));
 
 import prisma from '../../core/db';
@@ -84,6 +96,9 @@ beforeEach(() => {
   delete process.env.FLYWHEEL_REGRESSION_TOLERANCE_PP;
 
   isBaselineStale.mockResolvedValue(false);
+  consumeBaselineStale.mockResolvedValue(true);
+  registerQuarantine.mockResolvedValue(false);
+  resetQuarantineStreak.mockResolvedValue(undefined);
   getActiveGoldSet.mockResolvedValue([
     { id: 'g1', cropPath: 'crops/g1.jpg', label: 'ECHT', t3777Code: 'A', evidence: { contentHash: 'H1' } },
   ]);
@@ -240,6 +255,12 @@ describe('runRegressionGate (AC1/AC5 — meten en promoveren)', () => {
     expect(updateCall.data.closedAt).toBeInstanceOf(Date);
   });
 
+  it('passed doorbreekt de quarantaine-reeks — resetQuarantineStreak aangeroepen (AC 4)', async () => {
+    await runRegressionGate('batch-1', {});
+    expect(resetQuarantineStreak).toHaveBeenCalledTimes(1);
+    expect(registerQuarantine).not.toHaveBeenCalled();
+  });
+
   it('schaduw-meting draait met includeShadow=true (AC1)', async () => {
     await runRegressionGate('batch-1', {});
     // De schaduw-meting (na de nulmeting-baseline) is de laatste regressionEval-aanroep.
@@ -270,6 +291,8 @@ describe('runRegressionGate (AC6 — quarantaine)', () => {
     const updateCall = mockPrisma.promotionBatch.update.mock.calls.at(-1)![0];
     expect(updateCall.data.status).toBe('quarantined');
     expect(mockPrisma.retrainingNotification.create).toHaveBeenCalled();
+    // Story 13.6 (AC 4): een quarantaine registreert de reeks voor de K=2-stilstand.
+    expect(registerQuarantine).toHaveBeenCalledWith('batch-1');
   });
 });
 

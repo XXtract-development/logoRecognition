@@ -28,6 +28,7 @@ import {
 } from './guardrails';
 import { markPromotionRunSuccess } from './watchdog';
 import { runRegressionGate } from './gate';
+import { shouldSkipForPause } from './pause';
 import type { GatePhase, GatePhaseResult, GateResults } from './types';
 
 const logger = createLogger('flywheel-promotion-batch');
@@ -59,6 +60,17 @@ export interface PromotionRunResult {
  */
 export async function runPromotionLoop(): Promise<PromotionRunResult> {
   const resumedBatchIds: string[] = [];
+
+  // 0. PAUZE-CHECK bij job-start (Story 13.6, AD-11): met het vliegwiel
+  //    gepauzeerd wordt er GEEN batch verwerkt en niets gebundeld — de run wordt
+  //    overgeslagen (geen batch-werk). De pauze is persistent (system_settings),
+  //    dus een herstart hervat de pauze niet stilzwijgend. De watchdog-markering
+  //    slaan we hier bewust over: een overgeslagen-wegens-pauze-run telt niet als
+  //    "succesvolle promotielus".
+  if (await shouldSkipForPause('flywheel-promotion')) {
+    logger.info('Promotielus overgeslagen — vliegwiel gepauzeerd (AD-11)');
+    return { resumedBatchIds: [], newBatchId: null, bundledCandidates: 0 };
+  }
 
   // 1. CRASH-RECOVERY: hervat alle openstaande pending-batches, oudste eerst.
   const pending = await prisma.promotionBatch.findMany({

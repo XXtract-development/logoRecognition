@@ -76,3 +76,39 @@ export type GateDecision = 'promote' | 'quarantine';
 
 /** Reden waarom een batch gequarantaineerd is (AC 6/7). */
 export type QuarantineReason = 'regressie' | 'systeem-fout';
+
+// ============================================
+// Story 13.6 — hard-negative-herkomst (AD-12, AC 6)
+// ============================================
+
+/**
+ * De MENSELIJKE afkeuringsredenen waaronder een `hard_negatives`-rij mag
+ * ontstaan (AD-12). UITSLUITEND deze twee categorieën komen door het
+ * export-filter (AC 6). De waarden zijn een gedeeld contract: 14.1 (quarantaine-
+ * afhandeling) en 15.3 (reviewstation-reject) MOETEN exact deze strings schrijven
+ * als `hard_negatives.reason`, zodat de export ze herkent.
+ *
+ *   - `quarantaine-afkeuring`      — een datamanager keurt een gequarantaineerde
+ *                                    batch/kandidaat af (14.1).
+ *   - `reviewstation-geen-keurmerk`— een reviewer markeert een reviewitem als
+ *                                    "geen keurmerk" (15.3).
+ *
+ * Zachte guardrail-afwijzingen (`cap-bereikt`/`duplicaat`/`outlier`, zie
+ * `SoftRejectionReason`) ontstaan NOOIT als hard-negative (AD-12) en zitten dus
+ * per definitie niet in de export — het filter is defensief, óók al hoort er geen
+ * andere rij te bestaan.
+ */
+export const HUMAN_HARD_NEGATIVE_REASONS = [
+  'quarantaine-afkeuring',
+  'reviewstation-geen-keurmerk',
+] as const;
+
+/** Menselijke hard-negative-afkeuringsreden (AD-12, AC 6). */
+export type HumanHardNegativeReason = (typeof HUMAN_HARD_NEGATIVE_REASONS)[number];
+
+/** Is `reason` een menselijke afkeuring (komt door het export-filter, AC 6)? */
+export function isHumanHardNegativeReason(
+  reason: string
+): reason is HumanHardNegativeReason {
+  return (HUMAN_HARD_NEGATIVE_REASONS as readonly string[]).includes(reason);
+}

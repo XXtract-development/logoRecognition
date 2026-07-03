@@ -153,7 +153,7 @@ development_status:
   13-3-gold-set-naar-beheerde-opslag-met-seed-import: done
   13-4-nachtelijke-promotielus-batching-en-guardrails: done
   13-5-kwaliteitspoort-regressietest-promotie-en-quarantaine: done
-  13-6-rollback-persistente-pauze-en-automatische-stilstand: ready-for-dev
+  13-6-rollback-persistente-pauze-en-automatische-stilstand: done
   epic-13-retrospective: optional
 
   epic-14: in-progress

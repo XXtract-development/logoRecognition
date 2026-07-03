@@ -702,3 +702,29 @@ model GoldSetRecord {
   @@index([createdAt(sort: Desc)])
   @@map("gold_set_records")
 }
+
+// ============================================
+// SYSTEM SETTINGS (Epic 13, Story 13.6, AD-11)
+// ============================================
+
+/// Minimale, generieke key/value-store voor persistente systeeminstellingen
+/// (Story 13.6, AD-11). De ENIGE bron van waarheid voor:
+///   - `flywheel.paused`       — persistente pauze-stand (herstart heft niet op).
+///   - `flywheel.baselineStale`— baseline-invalidatie-marker (AD-5): élke mutatie
+///                               van de actieve referentieset buiten batch-promotie
+///                               om markeert de baseline verouderd; de volgende
+///                               poortrun leest + reset via `consumeBaselineStale`.
+///   - `flywheel.autoPauseStreak` — teller opeenvolgende quarantaines (K=2-stilstand).
+///
+/// Bewust minimaal (AD-11: "nieuwe, minimale key/value-tabel"): geen typering per
+/// key op DB-niveau — de vorm van `value` is een applicatie-contract in
+/// `services/flywheel/pause.ts` resp. `baseline.ts`. `updatedBy` legt vast wie de
+/// laatste mutatie deed (AD-13-herleidbaarheid, o.a. pauze/hervatten).
+model SystemSetting {
+  key       String   @id @db.VarChar(100)
+  value     Json     @default("{}")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  updatedBy String?  @map("updated_by") @db.VarChar(255)
+
+  @@map("system_settings")
+}

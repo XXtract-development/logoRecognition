@@ -5,24 +5,42 @@
  * stories (batches, kandidaten, drempels, pauze, rapporten) vullen het modulair
  * aan (coördinatie-noot epics, Structural Seed). Alle reads gaan uitsluitend via
  * dit v1-pad (AD-10) — de SPA praat nooit rechtstreeks met ml-service of de DB.
+ *
+ * Story 13.6 voegt toe: `POST batches/:id/rollback` (toegestane, gelogde
+ * statusmutatie — AD-15-verduidelijking, GÉÉN poort-executie),
+ * `GET hard-negatives/export` (gate-trainingsmateriaal, menselijke categorie) en
+ * de pauze-stand in de overview-response. De pauze/resume-HTTP-endpoints zelf
+ * zijn Story 15.4 (die op de `pause.ts`-service bouwt).
  */
 
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { authMiddleware } from '../../middleware/auth';
+import { authMiddleware, requireRole } from '../../middleware/auth';
 import { createLogger } from '../../core/logger';
 import { getMissedNominationCounts } from '../../services/flywheel/missed-nominations';
 import { getLastSuccessfulPromotionRun } from '../../services/flywheel/watchdog';
+import { getPauseState } from '../../services/flywheel/pause';
+import {
+  rollbackBatch,
+  BatchNotFoundError,
+  BatchNotRollbackableError,
+} from '../../services/flywheel/rollback';
+import {
+  getHardNegativeExport,
+  toCsv,
+} from '../../services/flywheel/hard-negative-export';
 
 const logger = createLogger('flywheel-routes');
+
+const REQUIRE_ADMIN = requireRole('ADMIN');
 
 export async function flywheelRoutes(fastify: FastifyInstance) {
   /**
    * GET /api/v1/flywheel/overview
    *
    * Vliegwiel-overzicht. Story 13.2 leverde hier de gemiste-nominatie-teller
-   * (`missedNominations`, per reden); Story 13.4 voegt de watchdog-observatie
-   * `lastSuccessfulPromotionRun` toe (ISO-timestamp of `null` als de promotielus
-   * nog nooit succesvol draaide). Latere stories (15.2 dashboard) breiden dit uit
+   * (`missedNominations`, per reden); Story 13.4 voegde de watchdog-observatie
+   * `lastSuccessfulPromotionRun` toe; Story 13.6 voegt de pauze-stand `paused`
+   * toe (AD-11-scope zichtbaar). Latere stories (15.2 dashboard) breiden dit uit
    * met batch-/kandidaat-/poort-statistieken.
    */
   fastify.get(
@@ -36,17 +54,104 @@ export async function flywheelRoutes(fastify: FastifyInstance) {
       );
 
       const lastSuccessfulPromotionRun = await getLastSuccessfulPromotionRun();
+      const pauseState = await getPauseState();
 
       logger.info('Flywheel overview opgevraagd', {
         missedNominationsTotal,
         lastSuccessfulPromotionRun,
+        paused: pauseState.paused,
       });
 
       return reply.status(200).send({
         missedNominations,
         missedNominationsTotal,
         lastSuccessfulPromotionRun,
+        paused: pauseState.paused,
+        pause: pauseState,
       });
+    }
+  );
+
+  /**
+   * POST /api/v1/flywheel/batches/:id/rollback
+   *
+   * Draai een gepasseerde batch als geheel terug (Story 13.6, AD-3/AD-13/AD-15).
+   * Dit is een TOEGESTANE, GELOGDE STATUSMUTATIE — GÉÉN poort-executie in het
+   * request-pad: het endpoint muteert alleen status + soft-delete + logt (de
+   * verse nulmeting gebeurt vanzelf bij de eerstvolgende worker-run via de stale-
+   * marker). Body `{ reason }` verplicht. 404 onbekende batch, 409 als status ≠
+   * `passed`, 400 zonder reden. Alleen ADMIN.
+   */
+  fastify.post<{ Params: { id: string }; Body: { reason?: string } }>(
+    '/flywheel/batches/:id/rollback',
+    { preHandler: REQUIRE_ADMIN },
+    async (request, reply) => {
+      const { id } = request.params;
+      const reason = request.body?.reason;
+      const by = request.user?.userId ?? 'onbekend';
+
+      if (!reason || reason.trim().length === 0) {
+        return reply.status(400).send({ error: 'Een reden is verplicht voor rollback (herleidbaarheid).' });
+      }
+
+      try {
+        const result = await rollbackBatch({ batchId: id, reason: reason.trim(), by });
+        logger.warn('Batch-rollback via endpoint', {
+          batchId: id,
+          by,
+          deactivatedReferences: result.deactivatedReferences,
+        });
+        return reply.status(200).send({
+          batchId: result.batchId,
+          status: 'rolled_back',
+          deactivatedReferences: result.deactivatedReferences,
+          candidateIds: result.candidateIds,
+        });
+      } catch (err) {
+        if (err instanceof BatchNotFoundError) {
+          return reply.status(404).send({ error: 'Batch niet gevonden' });
+        }
+        if (err instanceof BatchNotRollbackableError) {
+          return reply.status(409).send({
+            error: `Batch kan niet teruggedraaid worden (status ${err.status}) — alleen een passed-batch.`,
+          });
+        }
+        logger.error('Rollback mislukt', {
+          batchId: id,
+          error: err instanceof Error ? err.message : 'unknown',
+        });
+        return reply.status(500).send({ error: 'Rollback mislukt' });
+      }
+    }
+  );
+
+  /**
+   * GET /api/v1/flywheel/hard-negatives/export
+   *
+   * Exporteer de hard-negatives als gate-trainingsmateriaal (Story 13.6, AC 6,
+   * AD-12), GEFILTERD op uitsluitend de menselijke afkeuringscategorieën. Bevat
+   * uitsluitend eigen crop-paden (nooit GS1-gidsbeelden, NFR-6). `?format=csv`
+   * levert CSV; standaard JSON. Alleen ADMIN.
+   *
+   * Variance (Dev Notes): dit pad staat niet in de seed-endpointlijst; gekozen
+   * binnen `/api/v1/flywheel/` en gedocumenteerd in het Dev Agent Record.
+   */
+  fastify.get<{ Querystring: { format?: string } }>(
+    '/flywheel/hard-negatives/export',
+    { preHandler: REQUIRE_ADMIN },
+    async (request, reply) => {
+      const rows = await getHardNegativeExport();
+      logger.info('Hard-negative-export opgevraagd', { count: rows.length });
+
+      if (request.query?.format === 'csv') {
+        return reply
+          .status(200)
+          .header('Content-Type', 'text/csv; charset=utf-8')
+          .header('Content-Disposition', 'attachment; filename="hard-negatives.csv"')
+          .send(toCsv(rows));
+      }
+
+      return reply.status(200).send({ total: rows.length, rows });
     }
   );
 }

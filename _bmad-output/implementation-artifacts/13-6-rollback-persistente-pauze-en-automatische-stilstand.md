@@ -1,6 +1,6 @@
 # Story 13.6: Rollback, persistente pauze en automatische stilstand
 
-Status: ready-for-dev
+Status: done
 
 <!-- Aangemaakt via create-story workflow, 2026-07-02. Bron: epics-vliegwiel.md Epic 13 / Story 13.6 + ARCHITECTURE-SPINE (AD-3, AD-5, AD-11, AD-13, AD-15; ARCH-2, ARCH-4). Vereist: 13.2 (kandidaten/hard_negatives/events), 13.4 (batches/worker), 13.5 (poort/baseline) afgerond. Sluit Epic 13 backend-compleet af. -->
 
@@ -118,15 +118,48 @@ zodat **geen enkele fout onomkeerbaar of onopgemerkt is**.
 
 ## Dev Agent Record
 
-_(in te vullen door dev-story)_
-
 ### Agent Model Used
+
+claude-opus-4-8 (implement-sprint, epic-13 worktree).
 
 ### Debug Log References
 
+- Migratie 0015 lokaal toegepast via `prisma migrate deploy` op `localhost:5432/logo_recognition` (DB-veiligheid geverifieerd; alleen 0015 pending). Tabel `system_settings` bevestigd via `\d`.
+- Volledige apps/api vitest-suite: 445 passed / 2 skipped (447), +39 t.o.v. baseline (406).
+
 ### Completion Notes List
 
+- Rollback is een gelogde statusmutatie (AD-15) — geen poortlogica in het request-pad; soft-delete (`active=false`), nooit DELETE.
+- Baseline-terugval leunt op het bestaande 13.5-gedrag (`WHERE status='passed'`, `rolled_back` telt niet mee); rollback markeert daarnaast de baseline stale.
+- Pauze + baseline-stale + K=2-teller persistent in `system_settings` via de generieke `system-settings.ts`-store (korte read-cache, invalidatie bij schrijf).
+- Pauze-scope precies: check alleen in nominatie-insert en `runPromotionLoop` (job-start). `shouldSkipForPause` is het gedeelde contract voor `flywheel-bootstrap` (17.1). Read-only paden ongemoeid.
+- Reden-enum voor de hard-negative-export vastgelegd in `services/flywheel/types.ts` (`HUMAN_HARD_NEGATIVE_REASONS`) zodat 14.1/15.3 dezelfde waarden schrijven.
+- Outlier-deactivatie-trigger (15.x): `markBaselineStale` geëxporteerd + contract gedocumenteerd in `baseline.ts` — die story roept hem bij zijn geboorte aan.
+- Variance: het export-pad `GET /api/v1/flywheel/hard-negatives/export` staat niet in de seed-endpointlijst; gekozen binnen `/api/v1/flywheel/`.
+- HTTP pause/resume-endpoints bewust NIET gebouwd — 15.4-eigendom; wel pauze-status in de overview-response.
+
 ### File List
+
+Nieuw:
+- apps/api/prisma/migrations/0015_add_system_settings/{migration.sql,down.sql}
+- apps/api/src/services/flywheel/system-settings.ts
+- apps/api/src/services/flywheel/pause.ts
+- apps/api/src/services/flywheel/rollback.ts
+- apps/api/src/services/flywheel/hard-negative-export.ts
+- apps/api/src/__tests__/services/flywheel-pause.test.ts
+- apps/api/src/__tests__/services/flywheel-pause-scope.test.ts
+- apps/api/src/__tests__/services/flywheel-baseline-write.test.ts
+- apps/api/src/__tests__/services/flywheel-rollback.test.ts
+- apps/api/src/__tests__/services/flywheel-hard-negative-export.test.ts
+- apps/api/src/__tests__/api/flywheel-rollback-export.routes.test.ts
+- _bmad-output/implementation-artifacts/{review-13-6.md,ac-trace-13-6.md}
+
+Gewijzigd:
+- apps/api/prisma/schema.prisma (model SystemSetting)
+- apps/api/src/services/flywheel/{baseline.ts,gate.ts,nomination.ts,promotion-batch.ts,types.ts}
+- apps/api/src/api/v1/{flywheel.ts,reference-logos.ts,artwork-pipeline.ts}
+- apps/api/src/__tests__/{setup.ts,services/flywheel-gate.test.ts}
+- versions.md
 
 ## Change Log
 

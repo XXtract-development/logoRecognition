@@ -34,6 +34,7 @@ import { mlClient } from '../ml-client';
 import { downloadTrainingObject } from '../storage';
 import { createLogger } from '../../core/logger';
 import { recordMissedNomination } from './missed-nominations';
+import { isPaused } from './pause';
 import {
   isNominationEnabled,
   isKruischeckNominationEnabled,
@@ -103,6 +104,21 @@ export async function nominateCandidate(
       t3777Code: detection.t3777Code,
     });
     return { status: 'skipped', reason: 'vlag-uit' };
+  }
+
+  // 1b. Pauze-check (Story 13.6, AD-11): met het vliegwiel gepauzeerd ontstaan er
+  //     GEEN nieuwe kandidaten. Geweigerd mét gemiste-nominatie-event reden
+  //     `pauze` (het 13.2-event-mechanisme kent deze reden al) zodat het verlies
+  //     zichtbaar blijft. Read-only werk (live-detectie, trainingsdata,
+  //     outlier-audit, dashboard) draait ELDERS gewoon door — dit pad raakt
+  //     uitsluitend de nominatie-insert (pauze-scope AD-11).
+  if (await isPaused()) {
+    await recordMissedNomination('pauze', {
+      origin,
+      gtin,
+      t3777Code: detection.t3777Code,
+    });
+    return { status: 'skipped', reason: 'pauze' };
   }
 
   // 2. Veiligheidsregel: zonder declaratie-bevestiging geen kandidaat (FR-1).

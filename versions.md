@@ -1,5 +1,25 @@
 # Versiegeschiedenis
 
+## 2026-07-03 (veiligheidsrem: terugdraaien, pauzeren en automatisch stilvallen bij herhaald falen)
+
+### Een hele goedgekeurde lichting kan in één handeling worden teruggedraaid
+- Blijkt een eerder goedgekeurde lichting toch verkeerd, dan kan de datamanager die als geheel terugdraaien: alle voorbeelden uit die lichting worden op non-actief gezet en tellen niet meer mee in de herkenning
+- Terugdraaien wist nooit iets — de voorbeelden blijven bewaard (alleen uitgezet), met vastgelegd wie het deed, wanneer en waarom, zodat alles herleidbaar blijft
+- Na een terugdraaiing valt de vergelijkingsmaatstaf automatisch terug op de laatst overgebleven goedgekeurde lichting, en de eerstvolgende meting begint met een verse nulmeting op de dan actuele voorbeelden
+
+### Elke wijziging buiten de nachtelijke lichting om zet de meetlat op "opnieuw ijken"
+- Wordt de actieve set voorbeelden op een andere manier aangepast (handmatig toevoegen of uitzetten, een terugdraaiing, of de oude directe registratie), dan weet het systeem dat de nulmeting niet meer klopt en meet het bij de volgende ronde vers, zodat vergelijkingen altijd eerlijk blijven
+
+### Een pauzeknop die een herstart overleeft
+- Het leervliegwiel kan worden gepauzeerd: er ontstaan dan geen nieuwe kandidaten en er wordt niets goedgekeurd, terwijl de gewone herkenning, het vastleggen van trainingsdata en het dashboard gewoon blijven doorlopen
+- De pauze is echt persistent: een herstart van het systeem heft hem niet op — hervatten is altijd een bewuste actie, met wie en wanneer vastgelegd
+
+### Twee mislukte lichtingen op rij en het systeem legt zichzelf stil
+- Vallen er twee lichtingen achter elkaar in quarantaine, dan pauzeert het vliegwiel zichzelf en volgt er een melding met de aanleiding — zo kan een sluipend probleem nooit ongemerkt dooretteren; een geslaagde lichting ertussen zet de teller weer op nul
+
+### Slechte voorbeelden zijn te exporteren als lesmateriaal
+- De verzameling menselijk-afgekeurde voorbeelden (afgekeurd in de quarantaine of in het reviewstation als "geen keurmerk") is exporteerbaar als lesmateriaal om de herkenning scherper te trainen; automatisch/zacht geweigerde kandidaten zitten er per definitie niet in
+
 ## 2026-07-03 (kwaliteitspoort: een besmette lichting kan de herkenning nooit verslechteren)
 
 ### Elke nachtelijke lichting moet eerst langs een kwaliteitsmeting vóór hij meetelt

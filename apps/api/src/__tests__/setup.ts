@@ -233,6 +233,16 @@ vi.mock('@prisma/client', () => {
       delete: vi.fn(),
       count: vi.fn(),
     },
+    // System settings (Story 13.6) — persistente pauze + baseline-stale-marker.
+    systemSetting: {
+      findUnique: vi.fn().mockResolvedValue(null),
+      findMany: vi.fn().mockResolvedValue([]),
+      upsert: vi.fn().mockResolvedValue({}),
+      update: vi.fn().mockResolvedValue({}),
+      create: vi.fn().mockResolvedValue({}),
+      delete: vi.fn(),
+      count: vi.fn(),
+    },
     $executeRaw: vi.fn().mockResolvedValue(1),
     $queryRaw: vi.fn().mockResolvedValue([]),
     // Supports both Prisma transaction forms:

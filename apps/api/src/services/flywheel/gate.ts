@@ -34,7 +34,8 @@ import { socketIOManager } from '../socket-io-manager';
 import { mlClient } from '../ml-client';
 import { getRedisConnection } from '../pipeline/queue';
 import { getActiveGoldSet } from './gold-set';
-import { isBaselineStale } from './baseline';
+import { isBaselineStale, consumeBaselineStale } from './baseline';
+import { registerQuarantine, resetQuarantineStreak } from './pause';
 import { promoteBatchCandidates } from './promotion';
 import {
   getRegressionThreshold,
@@ -280,7 +281,17 @@ export async function resolveBaseline(
   }
 
   // Nulmeting: uitsluitend de actieve set (geen schaduwset).
-  return measureBatch(batchId, 'nulmeting');
+  const nulmeting = await measureBatch(batchId, 'nulmeting');
+
+  // Consumeer de stale-marker ná de verse nulmeting (Story 13.6, AD-5): een
+  // volgende run hoeft niet opnieuw nul te meten tenzij de set weer muteert. De
+  // reset gebeurt alleen als de nulmeting DOOR de staleness kwam (niet bij de
+  // "geen passed-batch"-nulmeting, die geen marker consumeert).
+  if (stale) {
+    await consumeBaselineStale();
+  }
+
+  return nulmeting;
 }
 
 // ============================================
@@ -528,6 +539,18 @@ async function promoteAndClose(
     return;
   }
 
+  // Een gepasseerde batch doorbreekt de opeenvolgende-quarantaine-reeks (Story
+  // 13.6, AC 4): reset de auto-stilstand-teller zodat alleen ÉCHT opeenvolgende
+  // quarantaines de K-drempel halen. Best-effort.
+  try {
+    await resetQuarantineStreak();
+  } catch (err) {
+    logger.warn('Kon auto-stilstand-teller niet resetten na promotie (non-fataal)', {
+      batchId,
+      error: err instanceof Error ? err.message : 'unknown',
+    });
+  }
+
   // Template-/embedding-cache ml-side verversen zodat nieuwe referenties direct
   // meedoen in detectie (best-effort, non-fataal).
   try {
@@ -588,6 +611,19 @@ async function quarantineBatch(
   });
 
   await notifyBatchQuarantined(batchId, info.reason, info.delta, info.mostAffectedClasses);
+
+  // Automatische stilstand (Story 13.6, AC 4): registreer deze quarantaine; bij
+  // K opeenvolgende quarantaines pauzeert het systeem zichzelf + notificatie.
+  // Best-effort — een fout in de stilstand-registratie mag de (al voltooide)
+  // quarantaine niet terugdraaien.
+  try {
+    await registerQuarantine(batchId);
+  } catch (err) {
+    logger.error('Kon auto-stilstand-teller niet bijwerken na quarantaine (non-fataal)', {
+      batchId,
+      error: err instanceof Error ? err.message : 'unknown',
+    });
+  }
 
   logger.warn('Batch gequarantaineerd', {
     batchId,
