@@ -147,7 +147,7 @@ development_status:
   # Volgorde: 12.8 (verify-flow) moet gebouwd/gemerged zijn vóór 16.4 (controle-cohort steunt op de verify-flow).
   # LET OP: elke story met schemawijziging (13.2, 13.3, 13.4, 13.6, 14.3, 15.4, 16.1, 16.2, 18.1) vereist expliciete migratie-toestemming per geval (teamregel) + down-script.
   # ============================================
-  epic-13: in-progress
+  epic-13: done  # 2026-07-03: 6/6 stories done, migraties 0012-0015 lokaal, adversarial PASS (review-epic-13-adversarial.md), vitest 449/2skip
   13-1-canonieke-inhouds-hash-service: done
   13-2-automatische-nominatie-bij-dubbele-bevestiging: done
   13-3-gold-set-naar-beheerde-opslag-met-seed-import: done
