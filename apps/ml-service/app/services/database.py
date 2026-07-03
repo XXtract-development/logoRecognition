@@ -523,25 +523,6 @@ class DatabaseService:
                     vectors.append(vec)
             return vectors
 
-    async def get_active_reference_classes(self) -> List[str]:
-        """Return the distinct t3777 classes that have ANY active reference logo.
-
-        Read-only helper for the weekly library-wide outlier audit (Story 14.3,
-        AD-9): the audit iterates every active class. A class counts as active if
-        it has ≥1 active ``reference_logos`` row (embeddings are read per class
-        afterwards). Sorted for deterministic iteration/logging.
-        """
-        async with self.get_connection() as conn:
-            rows = await conn.fetch(
-                """
-                SELECT DISTINCT t3777_code
-                FROM reference_logos
-                WHERE active = true
-                ORDER BY t3777_code
-                """
-            )
-            return [row["t3777_code"] for row in rows]
-
     async def get_active_reference_embeddings_with_ids_for_class(
         self, t3777_code: str
     ) -> List[Dict[str, Any]]:

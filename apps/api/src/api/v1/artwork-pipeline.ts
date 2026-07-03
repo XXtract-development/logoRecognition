@@ -1347,6 +1347,19 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
         reason = rawReason;
       }
 
+      // Idempotentie-guard (adversarial review M1): een reeds afgewezen item mag
+      // de registers NOOIT een tweede keer voeden. Zonder deze guard levert een
+      // dubbele reject-"geen keurmerk" (retry / dubbelklik) een tweede VALS-
+      // gold-set-record op — de gold-set is append-only, dus dat scheeft de
+      // 14.2-samenstellingsbewaking én de 13.5-regressiemeting. De hard-negative
+      // is al idempotent (upsert op contentHash); de gold-set-VALS was dat niet.
+      // Spiegelt de `status === 'registered'`-guard van het accept-pad. De
+      // status-update hieronder blijft ongewijzigd draaien (byte-gelijk legacy:
+      // een reject op een al-rejected item blijft 200 `rejected` teruggeven).
+      if (reason && item.status === 'rejected') {
+        reason = undefined;
+      }
+
       // Reden "geen-keurmerk": VALS-record + hard-negative, VÓÓR de status-update,
       // fail-closed. Faalt de hash → 503 en géén statuswijziging (nooit een halve
       // beslissing). De crop is vereist om een hash/hard-negative te maken.

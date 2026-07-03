@@ -923,6 +923,33 @@ describe('Artwork Pipeline Routes (ATDD — Epic 8)', () => {
       expect(mockPrisma.goldSetRecord.updateMany).not.toHaveBeenCalled();
       expect(mockPrisma.hardNegative.deleteMany).not.toHaveBeenCalled();
     });
+
+    it('vlag AAN: reject "geen-keurmerk" op een AL afgewezen item → GEEN tweede VALS (M1-idempotentie)', async () => {
+      process.env.FLYWHEEL_NOMINATION_ENABLED = 'true';
+      // Item is al afgewezen (dubbelklik/retry na een eerdere reject).
+      (mockPrisma.artworkReviewItem.findUnique as vi.Mock).mockResolvedValueOnce({
+        ...item,
+        status: 'rejected',
+      });
+
+      const res = await app.inject({
+        method: 'PATCH',
+        url: '/api/v1/artwork/review-items/ri-14/reject',
+        payload: { reason: 'geen-keurmerk' },
+      });
+
+      expect(res.statusCode).toBe(200);
+      // Geen registers opnieuw gevoed: geen phash, geen tweede VALS, geen
+      // hard-negative-upsert. De append-only gold-set wordt niet gescheefd.
+      expect(mlClient.computePhash).not.toHaveBeenCalled();
+      expect(mockPrisma.goldSetRecord.create).not.toHaveBeenCalled();
+      expect(mockPrisma.hardNegative.upsert).not.toHaveBeenCalled();
+      // De status-update draait wel (byte-gelijk legacy: reject blijft 200).
+      expect(mockPrisma.artworkReviewItem.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { status: 'rejected' } }),
+      );
+      expect(JSON.parse(res.body).reason).toBeNull();
+    });
   });
 
   // -------------------------------------------------------------------------
