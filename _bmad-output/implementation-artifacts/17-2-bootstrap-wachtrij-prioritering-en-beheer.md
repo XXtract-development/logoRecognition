@@ -1,6 +1,6 @@
 # Story 17.2: Bootstrap-wachtrij — prioritering en beheer
 
-Status: ready-for-dev
+Status: in-progress
 
 <!-- Aangemaakt via create-story workflow, 2026-07-02. Epic 17 — Seed-bootstrap voor lege klassen. -->
 
