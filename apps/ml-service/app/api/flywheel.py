@@ -42,6 +42,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field, model_validator
 
 from app.ml.model_manager import model_manager
+from app.services import bootstrap_search as bootstrap_search_service
 from app.services import outlier as outlier_service
 from app.services import phash as phash_service
 from app.services import regression_eval as regression_eval_service
@@ -422,4 +423,93 @@ async def regression_eval(request: RegressionEvalRequest) -> RegressionEvalRespo
         correct=result["correct"],
         per_class=result["perClass"],
         samples=result["samples"],
+    )
+
+
+# ============================================
+# Story 17.1 — /ml/bootstrap-search (zaad-zoektocht voor lege klassen)
+# ============================================
+
+
+class BootstrapGtinPage(BaseModel):
+    """Eén te doorzoeken GTIN + de door de API gekozen artwork-pagina."""
+
+    gtin: str
+    page_key: str
+
+
+class BootstrapSearchRequest(BaseModel):
+    """Zaad-zoek-verzoek (Story 17.1, AD-9).
+
+    De API resolvet het gids-zaad (``seed_path``, ``reference-logos/...``) en de te
+    doorzoeken GTIN-pagina's (uitsluitend declarerende GTINs — de declaratie-guard
+    leeft API-side, AC1). De ml-service is stateless compute: hij embed het zaad,
+    stelt regio's voor, meet cosine tegen de zaad-embedding en levert matches ≥
+    drempel als geüploade crops. Het zaad wordt NOOIT geüpload of geretourneerd
+    (NFR-6).
+    """
+
+    seed_path: str
+    gtin_pages: List[BootstrapGtinPage] = Field(default_factory=list)
+    threshold: float
+    per_code_cap: int = 25
+    max_seconds: float = 1000.0
+
+
+class BootstrapMatch(BaseModel):
+    gtin: str
+    bbox: Dict[str, int]
+    seed_cosine: float
+    crop_path: str
+    source_file: str
+
+
+class BootstrapSearchResponse(BaseModel):
+    seed_path: str
+    threshold: float
+    matches: List[BootstrapMatch]
+    gtins_processed: int
+    gtins_total: int
+    timed_out: bool
+    seed_leaks_skipped: int
+
+
+@router.post("/bootstrap-search", response_model=BootstrapSearchResponse)
+async def bootstrap_search(request: BootstrapSearchRequest) -> BootstrapSearchResponse:
+    """Zoek met het gids-zaad naar echte keurmerk-crops (Story 17.1, FR-12/AD-9).
+
+    Meet elke voorgestelde artwork-regio via cosine tegen de ZAAD-embedding (een
+    lege klasse heeft geen actieve referenties om tegen te zoeken) en retourneert
+    matches ≥ drempel als geüploade crops. Zacht falen per GTIN (onleesbaar/lege
+    pagina → volgende GTIN); time-box + per-code cap begrenzen de kosten. Het
+    gids-zaadbeeld zelf verschijnt NOOIT in de output-crops (NFR-6).
+
+    Een onleesbaar zaadbeeld → HTTP 422 (zonder zaad geen zoektocht — de API legt
+    de run dan vast als ``leeg`` met reden ``geen-zaad``).
+    """
+    try:
+        result = await bootstrap_search_service.search_with_seed(
+            seed_path=request.seed_path,
+            gtin_pages=[p.model_dump() for p in request.gtin_pages],
+            threshold=request.threshold,
+            per_code_cap=request.per_code_cap,
+            max_seconds=request.max_seconds,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    except Exception as exc:  # storage/model-fout — fail-closed naar de API
+        logger.warning(
+            "Bootstrap zaad-zoektocht mislukt",
+            extra={"seed_path": request.seed_path, "error": str(exc)},
+        )
+        raise HTTPException(status_code=503, detail=f"Bootstrap-zoektocht mislukt: {exc}")
+
+    return BootstrapSearchResponse(
+        seed_path=result["seed_path"],
+        threshold=float(result["threshold"]),
+        matches=[BootstrapMatch(**m) for m in result["matches"]],
+        gtins_processed=int(result["gtins_processed"]),
+        gtins_total=int(result["gtins_total"]),
+        timed_out=bool(result["timed_out"]),
+        seed_leaks_skipped=int(result["seed_leaks_skipped"]),
     )

@@ -629,6 +629,57 @@ export class MLClient {
     }
   }
 
+  /**
+   * Zaad-zoektocht voor de bootstrap van lege klassen (Story 17.1, AD-9).
+   *
+   * De API resolvet het gids-zaad (``reference-logos/...``, uitsluitend
+   * zoekinstrument — NFR-6) en de te doorzoeken GTIN-pagina's (uitsluitend
+   * declarerende GTINs; de declaratie-guard leeft API-side). De ml-service is
+   * stateless compute: hij embed het zaad, stelt regio's voor, meet cosine tegen
+   * de zaad-embedding en levert matches ≥ drempel als GEÜPLOADE crops
+   * (``artwork-crops/{gtin}/...``) — het zaad zelf komt nooit in de output.
+   *
+   * @param request.seedPath   MinIO-object-key van het gids-zaadbeeld.
+   * @param request.gtinPages  per GTIN de door de API gekozen artwork-pagina.
+   * @param request.threshold  bootstrap-cosine-drempel tegen het zaad (default 0,93).
+   * @param request.perCodeCap max aantal crops per run (budget-guard).
+   * @param request.maxSeconds wall-clock time-box (ml-side, defence-in-depth).
+   */
+  async bootstrapSearch(request: {
+    seedPath: string;
+    gtinPages: Array<{ gtin: string; pageKey: string }>;
+    threshold: number;
+    perCodeCap?: number;
+    maxSeconds?: number;
+  }): Promise<{
+    seed_path: string;
+    threshold: number;
+    matches: Array<{
+      gtin: string;
+      bbox: { x: number; y: number; width: number; height: number };
+      seed_cosine: number;
+      crop_path: string;
+      source_file: string;
+    }>;
+    gtins_processed: number;
+    gtins_total: number;
+    timed_out: boolean;
+    seed_leaks_skipped: number;
+  }> {
+    try {
+      const res = await this.client.post('/ml/bootstrap-search', {
+        seed_path: request.seedPath,
+        gtin_pages: request.gtinPages.map((p) => ({ gtin: p.gtin, page_key: p.pageKey })),
+        threshold: request.threshold,
+        per_code_cap: request.perCodeCap ?? 25,
+        max_seconds: request.maxSeconds ?? 1000,
+      });
+      return res.data;
+    } catch (error) {
+      throw this.handleError(error, 'Bootstrap search failed');
+    }
+  }
+
   // ==========================================
   // Synthetic batch fill (Epic 9, Story 9.3 — wiring of deferred 8.7 hook)
   // ==========================================

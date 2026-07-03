@@ -52,6 +52,7 @@ import { runWatchdogCheck } from '../flywheel/watchdog';
 import { runReembedJob, type ReembedJobData } from '../flywheel/reembed';
 import { runOutlierAudit } from '../flywheel/outlier-audit';
 import { runCohortRerun, COHORT_RERUN_JOB } from '../flywheel/control-cohort';
+import { runBootstrap, type BootstrapJobData } from '../flywheel/bootstrap-run';
 
 const logger = createLogger('pipeline-workers');
 
@@ -65,6 +66,8 @@ export const FLYWHEEL_WATCHDOG_JOB = 'flywheel-watchdog';
 export const FLYWHEEL_REEMBED_JOB = 'flywheel-reembed';
 // Wekelijkse bibliotheek-outlier-audit (Story 14.3, FR-8/AD-9).
 export const FLYWHEEL_OUTLIER_AUDIT_JOB = 'flywheel-outlier-audit';
+// Bootstrap-run per lege klasse (Story 17.1, FR-12/AD-6): on-demand/gequeued.
+export const FLYWHEEL_BOOTSTRAP_JOB = 'flywheel-bootstrap';
 
 // Detection-worker concurrency (Story 8-3O, decision 1). Default 2.
 const DETECTION_CONCURRENCY = parseInt(process.env.DETECTION_CONCURRENCY || '2', 10);
@@ -397,6 +400,11 @@ let flywheelWorker: Worker | null = null;
  *                            bij start (AD-11), time-boxed (NFR-3); registreert
  *                            events met herkomst cohort-<runId> — geen review-items,
  *                            nominaties of trainingsdata (meetinstrument).
+ * `flywheel-bootstrap`     → runBootstrap (Story 17.1): bootstrap-run per lege klasse.
+ *                            Checkt hoofdvlag (AD-8) + pauze (AD-11) bij start; zoekt
+ *                            met het gids-zaad binnen declarerende GTINs en nomineert
+ *                            vondsten ≥ drempel als kandidaat (herkomst bootstrap) via
+ *                            de 13.2-service. Run-budget + time-box (NFR-3).
  */
 export async function processFlywheelJob(job: Pick<Job, 'name' | 'data'>): Promise<unknown> {
   switch (job.name) {
@@ -410,6 +418,10 @@ export async function processFlywheelJob(job: Pick<Job, 'name' | 'data'>): Promi
       return runOutlierAudit();
     case COHORT_RERUN_JOB:
       return runCohortRerun();
+    case FLYWHEEL_BOOTSTRAP_JOB:
+      // Story 17.1: bootstrap-run per lege klasse. De handler doet zelf de
+      // job-start-guards (hoofdvlag AD-8 + pauze AD-11) en de run-budget/time-box.
+      return runBootstrap((job.data ?? {}) as BootstrapJobData);
     default:
       return undefined;
   }

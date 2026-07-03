@@ -351,3 +351,42 @@ export function getCohortGtinDelayMs(): number {
   const v = parseInt(process.env.FLYWHEEL_COHORT_GTIN_DELAY_MS ?? '', 10);
   return Number.isFinite(v) && v >= 0 ? v : 0;
 }
+
+// ============================================
+// Story 17.1 — bootstrap-run-config (drempel + run-budget + time-box)
+// ============================================
+
+/**
+ * Bootstrap-cosine-drempel tegen de zaad-embedding (AD-9, PRD-startwaarde). Een
+ * regio matcht het gids-zaad pas als de cosine ≥ deze drempel; alleen zulke
+ * vondsten worden genomineerd (herkomst `bootstrap`). Default 0,93 — bewust
+ * strenger dan de promotiedrempel (0,90) omdat de bootstrap zonder actieve
+ * referenties zoekt en dus conservatief moet zijn. Kalibreerbaar via
+ * `FLYWHEEL_BOOTSTRAP_THRESHOLD` (PRD FR-12).
+ */
+export function getBootstrapThreshold(): number {
+  const v = parseFloat(process.env.FLYWHEEL_BOOTSTRAP_THRESHOLD ?? '');
+  return Number.isFinite(v) && v > 0 && v <= 1 ? v : 0.93;
+}
+
+/**
+ * Run-budget: maximaal aantal GTINs dat één bootstrap-run verwerkt (AD-6/NFR-3).
+ * Beschermt tegen de ~28s/beeld-lokalisatiekosten — 200 GTINs × ~28s ≈ 1,5 uur.
+ * Het restant blijft `wachtend` in `bootstrap_queue` voor een volgende run.
+ * Default 200 (PRD FR-12). Overschrijfbaar via `FLYWHEEL_BOOTSTRAP_RUN_BUDGET`.
+ */
+export function getBootstrapRunBudget(): number {
+  const v = parseInt(process.env.FLYWHEEL_BOOTSTRAP_RUN_BUDGET ?? '', 10);
+  return Number.isFinite(v) && v > 0 ? v : 200;
+}
+
+/**
+ * Time-box (wall-clock seconden) voor één bootstrap-run (NFR-3, patroon
+ * `HARVEST_MAX_SECONDS`/`getCohortMaxSeconds`). Bij overschrijding stopt de run
+ * netjes; de niet-verwerkte klasse(n) blijven `wachtend`. Default 1800s (30 min).
+ * Overschrijfbaar via `FLYWHEEL_BOOTSTRAP_MAX_SECONDS`.
+ */
+export function getBootstrapMaxSeconds(): number {
+  const v = parseInt(process.env.FLYWHEEL_BOOTSTRAP_MAX_SECONDS ?? '', 10);
+  return Number.isFinite(v) && v > 0 ? v : 1800;
+}

@@ -1,5 +1,15 @@
 # Versiegeschiedenis
 
+## 2026-07-03 (Lege keurmerkklassen vullen zichzelf met echte voorbeelden uit declarerende producten)
+
+### Een keurmerk zonder referentiebeelden kan zichzelf op gang brengen zonder handwerk
+- Voor een keurmerk waarvoor het systeem nog géén eigen referentiebeelden heeft, kan nu automatisch een "opstart-zoektocht" draaien. Het systeem gebruikt het officiële GS1-gidslogo van dat keurmerk puur als zoekbeeld en speurt daarmee naar echte voorbeelden op de verpakkingen van producten die dat keurmerk zelf opgeven
+- Er wordt uitsluitend gezocht binnen producten die het keurmerk ook echt declareren: per product wordt de declaratie eerst geverifieerd, zodat er nooit buiten de opgegeven keurmerken gezocht wordt
+- Gevonden voorbeelden die genoeg lijken op het gidslogo worden als kandidaat aangedragen — via exact dezelfde kwaliteitscontrole als alle andere kandidaten. Het systeem zet zelf niets rechtstreeks live; een voorstel blijft een voorstel
+- Het GS1-gidslogo is enkel zoekinstrument: het komt zelf nooit als referentiebeeld in de bibliotheek, in exports of in rapporten terecht
+- Levert een zoektocht niets op, dan wordt dat netjes vastgelegd en blijft het keurmerk in de wachtrij voor een volgende poging
+- De zoektocht is begrensd op tijd en op het aantal producten per ronde, zodat de dagelijkse herkenning er geen last van heeft; de rest blijft klaarstaan voor een volgende ronde. Staat het vliegwiel op pauze of is het automatisch aandragen uitgezet, dan draait de zoektocht niet
+
 ## 2026-07-03 (Vaste meetgroep laat zien of de keurmerkherkenning maand op maand écht beter wordt)
 
 ### Een vast controle-cohort van ongeveer 100 producten wordt maandelijks opnieuw doorgemeten

@@ -440,6 +440,15 @@ vi.mock('../services/ml-client', () => ({
     generateEmbeddingFromBuffer: vi.fn().mockResolvedValue(new Array(512).fill(0.1)),
     outlierAudit: vi.fn().mockResolvedValue({ t3777_code: 'X', centroid_size: 0, threshold: 0, results: [] }),
     outlierAuditLibrary: vi.fn().mockResolvedValue({ t3777_code: 'X', centroid_size: 0, results: [] }),
+    bootstrapSearch: vi.fn().mockResolvedValue({
+      seed_path: 'reference-logos/X/default.png',
+      threshold: 0.93,
+      matches: [],
+      gtins_processed: 0,
+      gtins_total: 0,
+      timed_out: false,
+      seed_leaks_skipped: 0,
+    }),
     regressionEval: vi.fn().mockResolvedValue({
       precision: 1,
       total: 0,

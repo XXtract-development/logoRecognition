@@ -1,6 +1,6 @@
 # Story 17.1: Bootstrap-run per lege klasse
 
-Status: in-progress
+Status: done
 
 <!-- Aangemaakt via create-story workflow, 2026-07-02. Epic 17 — Seed-bootstrap voor lege klassen. -->
 
@@ -137,16 +137,56 @@ So that **ook onbediende keurmerken herkenbaar worden zonder handwerk (UJ-2)**.
 
 ## Dev Agent Record
 
-_(in te vullen door dev-story)_
-
 ### Agent Model Used
+
+claude-opus-4-8 (implement-sprint, epic/vliegwiel-17).
 
 ### Debug Log References
 
+- API vitest volledig: 754 passed | 2 skipped | 37 todo (DATABASE_URL lokaal).
+- ml pytest (zaad-match): 9 passed (pure `cosine` + `search_with_seed` met gemockte
+  model/storage/region/gate/cv2 — geen torch/OpenCV nodig).
+- tsc --noEmit + eslint changed files: schoon.
+
 ### Completion Notes
 
+- Job `flywheel-bootstrap` (queue `flywheel`, concurrency 1) on-demand/gequeued;
+  gerouteerd in `pipeline/workers.ts::processFlywheelJob`, enqueue via
+  `bootstrap-run.ts::enqueueBootstrapRun`. Job-start-guards: hoofdvlag (AD-8) +
+  pauze (AD-11, gedeelde `shouldSkipForPause`).
+- ml-service `/ml/bootstrap-search` (stateless, AD-9): zaad embedden → per GTIN-
+  pagina `propose_regions` → gate-v2 voorfilter → cosine tegen de ZAAD-embedding →
+  matches ≥ drempel als geüploade crops (`artwork-crops/{gtin}/...`). Zaad wordt
+  nooit geüpload; inhouds-digest-guard weert een meegelift zaadbeeld uit de output
+  (NFR-6). Zacht falen per GTIN.
+- Declaratie-guard per GTIN is HARD (AC1): `resolveDeclarations` reason `ok` én
+  code ∈ declaratie vóór nominatie. Kandidaat-GTINs uit `mismatch_events`
+  (declared-not-found, cohort uitgesloten).
+- Nominatie uitsluitend via de 13.2-service (herkomst `bootstrap`, synchrone
+  `/ml/phash`); nooit directe referentie-writes. Bootstrap-kandidaten doorlopen
+  exact dezelfde kwaliteitspoort.
+- Zaad ook uit een INACTIEVE `reference_logos`-rij (12.3-pivot). Geen zaad → run
+  `leeg` (reden `geen-zaad`), klasse blijft opneembaar.
+- Run-budget `FLYWHEEL_BOOTSTRAP_RUN_BUDGET` (200) + time-box
+  `FLYWHEEL_BOOTSTRAP_MAX_SECONDS` (1800s); restant blijft `wachtend`. Drempel
+  `FLYWHEEL_BOOTSTRAP_THRESHOLD` (0,93). Alle drie in `.env.example`.
+- MIGRATIE-VRIJ: `bootstrap_queue` (16.2) + `reference_candidates` (13.2) bestaan.
+
 ### File List
+
+- apps/ml-service/app/services/bootstrap_search.py (nieuw)
+- apps/ml-service/app/api/flywheel.py (endpoint `/ml/bootstrap-search`)
+- apps/api/src/services/flywheel/bootstrap-run.ts (nieuw)
+- apps/api/src/services/flywheel/config.ts (drempel/budget/time-box)
+- apps/api/src/services/ml-client.ts (`bootstrapSearch`)
+- apps/api/src/services/pipeline/workers.ts (job-route)
+- .env.example (3 env-vars)
+- apps/api/src/__tests__/services/flywheel-bootstrap-run.test.ts (nieuw, 18)
+- apps/ml-service/tests/unit/test_bootstrap_search_service.py (nieuw, 9)
+- apps/api/src/__tests__/setup.ts (mlClient-mock `bootstrapSearch`)
+- _bmad-output/implementation-artifacts/review-17-1.md, ac-trace-17-1.md
 
 ## Change Log
 
 - 2026-07-02: Story aangemaakt (create-story workflow) op basis van epics-vliegwiel.md Story 17.1, PRD FR-12 en codebase-verificatie van het 12.3/12.6-oogstpatroon (queue_harvest.py) als zoekfundament.
+- 2026-07-03: Geïmplementeerd (implement-sprint, epic/vliegwiel-17). ml-zaad-zoek-endpoint + API-job `flywheel-bootstrap`; migratie-vrij. 18 vitest + 9 pytest, volledige API-suite 754 groen. Zelf-review PASS (1 medium + 2 low gefixt).
