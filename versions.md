@@ -1,5 +1,16 @@
 # Versiegeschiedenis
 
+## 2026-07-03 (Zwakke keurmerken agenderen zichzelf als werkvoorraad)
+
+### Keurmerken die stelselmatig wél gedeclareerd maar niet teruggevonden worden, komen nu automatisch op een werklijst
+- Zodra een keurmerk vaak genoeg "wel verwacht, maar niet teruggevonden" oplevert — standaard bij minstens tien voorvallen verspreid over minstens vijf verschillende producten — agendeert het systeem die klasse voortaan zelf. Zo hoeft niemand meer handmatig te speuren naar waar de bibliotheek zwak is; de zwaktes melden zich vanzelf
+- Heeft de klasse nog helemaal geen voorbeelden in de bibliotheek, dan belandt hij op de bootstrap-wachtlijst (klaar om aangevuld te worden). Heeft hij al voorbeelden maar blijkbaar te weinig, dan verschijnt hij als aanvul-signaal. Beide zijn zichtbaar op het Vliegwiel-scherm
+- De grenswaarden (aantal voorvallen en aantal verschillende producten) zijn instelbaar, zodat de lijst niet te vol of te leeg loopt. Metingen uit speciale controle-rondes tellen hier bewust niet mee
+
+### Vanaf een werklijst-item doorklikken naar de onderliggende producten
+- Bij elk item op de werklijst kun je opvragen om welke producten (GTINs) en welke verwerkingen het precies gaat. Zo is altijd navolgbaar waaróm een keurmerk op de lijst staat, zonder giswerk
+- Deze lijst is puur agenderen en tonen: er wordt nog niets automatisch verwerkt of aangevuld — dat komt in een volgende stap
+
 ## 2026-07-03 (Mismatch-signalen vastleggen en samenvatten)
 
 ### Elke verwerking legt nu vast wat er met de gedeclareerde keurmerken gebeurde

@@ -820,3 +820,39 @@ model MismatchEvent {
   @@index([gln])
   @@map("mismatch_events")
 }
+
+/// Structurele werkvoorraad van het referentie-vliegwiel (Story 16.2, FR-15).
+///
+/// Elke rij is één T3777-code die door de structureel-drempel (≥N declared-not-
+/// found-events over ≥M verschillende GTINs) tot werkvoorraad is bevorderd omdat
+/// de klasse GEEN actieve referenties heeft (lege klasse → bootstrap-wachtrij).
+/// Codes mét actieve referenties (zwakke dekking) worden GEEN rij hier maar een
+/// aanvul-signaal in de overview-payload (geen aparte tabel).
+///
+/// `apps/api` is exclusief eigenaar (AD-2); ml-service leest/schrijft hem nooit.
+/// De aggregatie (Story 16.2) zet uitsluitend status `wachtend`; de overgangen
+/// `gedraaid`/`gevuld`/`leeg` zet Story 17.1, `uitgesloten` zet 17.2 (AD-16-analogie).
+/// `t3777Code` is UNIEK zodat herhaalde aggregatie-runs upserten i.p.v. dubbele
+/// wachtrij-rijen produceren (NFR-4-idempotentie). Een klasse met `excluded=true`
+/// (17.2) mag door de aggregatie nooit terug op `wachtend` gezet worden.
+model BootstrapQueue {
+  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  t3777Code            String    @unique @map("t3777_code") @db.VarChar(100)
+  /// Declaratiefrequentie-context (top-30/universum). Story 16.2 vult vanuit
+  /// FR-15-events (mag 0 starten); Story 17.2 verrijkt met de universum-vulling.
+  declarationFrequency Int       @default(0) @map("declaration_frequency")
+  /// Vaste waardenset (VarChar, géén Prisma-enum, patroon `ArtworkReviewItem.status`):
+  /// wachtend / gedraaid / gevuld / leeg / uitgesloten. Story 16.2 zet alleen `wachtend`.
+  status               String    @default("wachtend") @db.VarChar(20)
+  /// Handmatige prioriteits-override (Story 17.2). Story 16.2 laat null.
+  priorityOverride     Int?      @map("priority_override")
+  /// Uitgesloten-vlag (Story 17.2): uitgesloten blijft uitgesloten — de aggregatie
+  /// mag een rij met `excluded=true` nooit terug op `wachtend` zetten.
+  excluded             Boolean   @default(false)
+  /// Laatste bootstrap-run tegen deze klasse (Story 17.1). Story 16.2 laat null.
+  lastRunAt            DateTime? @map("last_run_at") @db.Timestamptz
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([status])
+  @@map("bootstrap_queue")
+}

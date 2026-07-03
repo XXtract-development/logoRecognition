@@ -1,6 +1,6 @@
 # Story 16.2: Gedeclareerd-niet-gevonden wordt werkvoorraad
 
-Status: in-progress
+Status: done
 
 <!-- Aangemaakt via create-story workflow, 2026-07-02. Epic 16 — Mismatch-stromen als brandstof en datakwaliteitssignaal. -->
 
@@ -105,15 +105,56 @@ So that **de zwaktes van de bibliotheek zichzelf agenderen**.
 
 ## Dev Agent Record
 
-_(in te vullen door dev-story)_
-
 ### Agent Model Used
+
+claude-opus-4-8 (implement-sprint, epic/vliegwiel-16 worktree).
 
 ### Debug Log References
 
+- Live-DB-integratiecheck van de HAVING-aggregatiequery (12 declared-not-found-
+  events over 6 GTINs + 1 cohort-event) → 12 events/6 GTINs geteld, cohort-event
+  correct uitgesloten. Migratie 0019 lokaal toegepast op localhost:5432; kolommen +
+  indexen geverifieerd tegen information_schema.
+
 ### Completion Notes
 
+- **Uitvoeringsmoment (taak 2.3):** ON-READ bij de overview-aanroep gekozen
+  (AD-6: geen nieuwe scheduler/queue; 14.2-precedent). `runMismatchWorkloadAggregation()`
+  is de ene ingang; de overview-sub-service roept hem aan en upsert de wachtrij
+  idempotent. Later kan Epic 17 dezelfde functie op een bestaande flywheel-job laten
+  meeliften zonder API-wijziging.
+- **Diff-drift bij de migratie:** `prisma migrate diff` produceerde naast de nieuwe
+  tabel een ongerelateerde `retraining_notifications ALTER … DROP DEFAULT` (pre-
+  bestaande schema/DB-mismatch). Die is handmatig weggelaten zodat 0019 additief en
+  16.2-only is.
+- **Routering-afweging:** de DB doet COUNT(*)+COUNT(DISTINCT) met HAVING (geen volle
+  event-tabel in het geheugen); de pure `aggregateDeclaredNotFound()` blijft de
+  canonieke, los geteste drempel-/routeringslogica.
+- **Excluded-guard:** een klasse met `excluded=true` (17.2) wordt nooit opnieuw
+  geupsert of terug op `wachtend` gezet.
+- AC4 (afstemming) n.v.t. voor 16.2; de wachtrij-mutaties (17.2) zijn bewust NIET
+  gebouwd — hier alleen de leeskant + de tabel.
+
 ### File List
+
+Nieuw:
+- `apps/api/prisma/migrations/0019_add_bootstrap_queue/migration.sql`
+- `apps/api/prisma/migrations/0019_add_bootstrap_queue/down.sql`
+- `apps/api/src/services/flywheel/mismatch-workload.ts`
+- `apps/api/src/services/flywheel/overview/overview-bootstrap-queue.ts`
+- `apps/api/src/__tests__/services/flywheel-workload.test.ts`
+- `apps/api/src/__tests__/api/flywheel-workload-traceability.routes.test.ts`
+- `_bmad-output/implementation-artifacts/review-16-2.md`
+- `_bmad-output/implementation-artifacts/ac-trace-16-2.md`
+
+Gewijzigd:
+- `apps/api/prisma/schema.prisma` (model `BootstrapQueue`)
+- `apps/api/src/services/flywheel/config.ts` (`getStructuralN`/`getStructuralM`)
+- `apps/api/src/services/flywheel/overview/index.ts` (bootstrapQueue via echte sub-service)
+- `apps/api/src/services/flywheel/overview/empty-panels.ts` (stub verwijderd)
+- `apps/api/src/api/v1/flywheel.ts` (herleidbaarheids-endpoint)
+- `apps/api/src/__tests__/setup.ts` (bootstrapQueue-mock)
+- `apps/api/src/__tests__/services/flywheel-overview-compose.test.ts` + `flywheel-overview-panels.test.ts` (stub-asserts bijgewerkt)
 
 ## Change Log
 

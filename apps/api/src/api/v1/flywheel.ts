@@ -64,6 +64,7 @@ import {
   pauseFlywheelControlled,
   resumeFlywheelControlled,
 } from '../../services/flywheel/pause-control';
+import { getWorkloadItemTraceability } from '../../services/flywheel/mismatch-workload';
 
 const logger = createLogger('flywheel-routes');
 
@@ -508,6 +509,45 @@ export async function flywheelRoutes(fastify: FastifyInstance) {
           error: err instanceof Error ? err.message : 'unknown',
         });
         return reply.status(500).send({ error: 'Pauze-actie mislukt' });
+      }
+    }
+  );
+
+  /**
+   * GET /api/v1/flywheel/bootstrap-queue/:code/traceability
+   *
+   * Herleidbaarheid van één werkvoorraad-item (Story 16.2, AC3, FR-15/NFR-1/AD-13).
+   * Levert de onderliggende GTINs + verwerkingen (declared-not-found-events, met
+   * runId/herkomst) die de code tot werkvoorraad deden ontstaan — puur uit
+   * `mismatch_events` (cohort uitgesloten), zonder tussenstappen te verzinnen.
+   *
+   * 404 als er geen onderliggende events zijn (dan is de code geen werkvoorraad).
+   * Read-only, GÉÉN verwerking (agenderen ≠ uitvoeren, Epic 17). Alleen ADMIN.
+   *
+   * De wachtrij-mutaties (volgorde/uitsluiten/toevoegen) zijn Story 17.2; hier
+   * uitsluitend de leeskant (AD-2-eigendom, Structural Seed `bootstrap-queue`).
+   */
+  fastify.get<{ Params: { code: string } }>(
+    '/flywheel/bootstrap-queue/:code/traceability',
+    { preHandler: REQUIRE_ADMIN },
+    async (request, reply) => {
+      const { code } = request.params;
+      try {
+        const trace = await getWorkloadItemTraceability(code);
+        if (trace.events.length === 0) {
+          return reply.status(404).send({
+            error: 'Geen onderliggende verwerkingen voor deze code — geen werkvoorraad.',
+          });
+        }
+        return reply.status(200).send(trace);
+      } catch (err) {
+        logger.error('Werkvoorraad-herleidbaarheid ophalen mislukt', {
+          t3777Code: code,
+          error: err instanceof Error ? err.message : 'unknown',
+        });
+        return reply
+          .status(500)
+          .send({ error: 'Herleidbaarheid kon niet geladen worden' });
       }
     }
   );

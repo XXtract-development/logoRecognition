@@ -13,10 +13,7 @@ import { getQuarantinePanel } from '../../services/flywheel/overview/quarantine'
 import { getKpiPanel } from '../../services/flywheel/overview/kpi';
 import { getClassCapsPanel } from '../../services/flywheel/overview/class-caps';
 import { getHistoryPanel } from '../../services/flywheel/overview/history';
-import {
-  getBootstrapQueuePanel,
-  getGlnCoveragePanel,
-} from '../../services/flywheel/overview/empty-panels';
+import { getGlnCoveragePanel } from '../../services/flywheel/overview/empty-panels';
 
 type Mock = ReturnType<typeof vi.fn>;
 async function db() {
@@ -203,10 +200,10 @@ describe('history (AC5) — gepasseerde + teruggedraaide batches', () => {
 });
 
 describe('lege-staat-panelen (UX-DR8) — bron-epic nog niet gebouwd', () => {
-  it('bootstrap/gln geven expliciete lege staat', () => {
+  it('gln geeft expliciete lege staat', () => {
     // mismatch-trends is per Story 16.1 een echte sub-service (zie
-    // flywheel-mismatch.test.ts) en geen lege-staat-stub meer.
-    expect(getBootstrapQueuePanel()).toEqual({ available: false, sourceEpic: 'epic-17', items: [] });
+    // flywheel-mismatch.test.ts) en de bootstrap-wachtrij per Story 16.2 (zie
+    // flywheel-workload.test.ts) — geen lege-staat-stubs meer.
     expect(getGlnCoveragePanel()).toEqual({ available: false, sourceEpic: 'epic-18', items: [] });
   });
 });

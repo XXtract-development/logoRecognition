@@ -277,6 +277,18 @@ vi.mock('@prisma/client', () => {
       createMany: vi.fn().mockResolvedValue({ count: 0 }),
       count: vi.fn().mockResolvedValue(0),
     },
+    // Bootstrap-wachtrij (Story 16.2) — structurele werkvoorraad (FR-15).
+    bootstrapQueue: {
+      findUnique: vi.fn().mockResolvedValue(null),
+      findFirst: vi.fn().mockResolvedValue(null),
+      findMany: vi.fn().mockResolvedValue([]),
+      create: vi.fn().mockResolvedValue({ id: 'bq-1' }),
+      upsert: vi.fn().mockResolvedValue({ id: 'bq-1' }),
+      update: vi.fn().mockResolvedValue({}),
+      updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+      delete: vi.fn(),
+      count: vi.fn().mockResolvedValue(0),
+    },
     $executeRaw: vi.fn().mockResolvedValue(1),
     $queryRaw: vi.fn().mockResolvedValue([]),
     // Supports both Prisma transaction forms:

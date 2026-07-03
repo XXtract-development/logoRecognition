@@ -281,3 +281,29 @@ export function getOutlierMinClassSize(): number {
   const v = parseInt(process.env.FLYWHEEL_OUTLIER_MIN_CLASS_SIZE ?? '', 10);
   return Number.isFinite(v) && v > 0 ? v : 3;
 }
+
+// ============================================
+// Story 16.2 — structureel-drempel (declared-not-found → werkvoorraad, FR-15)
+// ============================================
+
+/**
+ * Structureel-drempel N: minimaal aantal declared-not-found-events dat een
+ * T3777-code moet hebben vóór hij werkvoorraad wordt (FR-15, PRD-assumptie §4.5).
+ * Default 10. Samen met M (verschillende GTINs) voorkomt dit dat een incidentele
+ * mis of één afwijkende GTIN al een klasse agendeert.
+ */
+export function getStructuralN(): number {
+  const v = parseInt(process.env.FLYWHEEL_STRUCTURAL_N ?? '', 10);
+  return Number.isFinite(v) && v > 0 ? v : 10;
+}
+
+/**
+ * Structureel-drempel M: minimaal aantal VERSCHILLENDE GTINs waarover die
+ * declared-not-found-events verdeeld moeten zijn (FR-15, PRD-assumptie §4.5).
+ * Default 5. Voorkomt dat N herverwerkingen van dezelfde GTIN de drempel halen —
+ * pas een patroon over meerdere producten is structureel.
+ */
+export function getStructuralM(): number {
+  const v = parseInt(process.env.FLYWHEEL_STRUCTURAL_M ?? '', 10);
+  return Number.isFinite(v) && v > 0 ? v : 5;
+}

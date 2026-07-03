@@ -26,10 +26,8 @@ import { getKpiPanel } from './kpi';
 import { getClassCapsPanel } from './class-caps';
 import { getHistoryPanel } from './history';
 import { getMismatchTrends } from './mismatch-trends';
-import {
-  getBootstrapQueuePanel,
-  getGlnCoveragePanel,
-} from './empty-panels';
+import { getBootstrapQueueOverview } from './overview-bootstrap-queue';
+import { getGlnCoveragePanel } from './empty-panels';
 
 const logger = createLogger('flywheel-overview-compose');
 
@@ -80,6 +78,7 @@ export async function composeOverview() {
     classCaps,
     history,
     mismatchTrends,
+    bootstrapQueue,
   ] = await Promise.all([
     panel('missedNominations', getMissedNominationCounts),
     panel('lastSuccessfulPromotionRun', getLastSuccessfulPromotionRun),
@@ -94,6 +93,7 @@ export async function composeOverview() {
     panel('classCaps', getClassCapsPanel),
     panel('history', getHistoryPanel),
     panel('mismatchTrends', getMismatchTrends),
+    panel('bootstrapQueue', getBootstrapQueueOverview),
   ]);
 
   const missedNominationsTotal = isPanelError(missedNominations)
@@ -131,8 +131,10 @@ export async function composeOverview() {
     history,
     // Story 16.1: mismatch-aggregatie (ratio per code + per GLN + trend).
     mismatchTrends,
+    // Story 16.2: structurele werkvoorraad (bootstrap-wachtrij + aanvul-signalen,
+    // on-read geaggregeerd uit declared-not-found-events, FR-15).
+    bootstrapQueue,
     // Panelen waarvan de bron-epic nog niet gebouwd is (lege staat, UX-DR8).
-    bootstrapQueue: getBootstrapQueuePanel(),
     glnCoverage: getGlnCoveragePanel(),
   };
 }
