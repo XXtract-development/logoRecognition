@@ -28,14 +28,16 @@ Endpoints:
 
 import base64
 import logging
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field, model_validator
 
+from app.ml.model_manager import model_manager
 from app.services import outlier as outlier_service
 from app.services import phash as phash_service
+from app.services import regression_eval as regression_eval_service
 from app.services.database import db_service
 from app.services.storage import storage_service
 
@@ -185,4 +187,164 @@ async def outlier_audit(request: OutlierAuditRequest) -> OutlierAuditResponse:
         centroid_size=int(audit["centroid_size"]),
         threshold=float(audit["threshold"]),
         results=[OutlierResult(**r) for r in audit["results"]],  # type: ignore[arg-type]
+    )
+
+
+# ============================================
+# Story 13.5 — /ml/regression-eval
+# ============================================
+
+
+class GoldSetQuery(BaseModel):
+    """Eén geresolvede gold-set-crop (payload van de API, AD-4).
+
+    De ml-service leest de gold-set-tabellen NOOIT zelf; hij krijgt de actieve set
+    (``replacedById IS NULL``, crop-niveau) als payload. ``content_hash`` voedt de
+    self-match-guard (AD-5).
+    """
+
+    id: str
+    crop_path: str
+    label: str  # ECHT | VALS
+    t3777_code: str
+    content_hash: Optional[str] = None
+
+
+class ShadowCandidate(BaseModel):
+    """Eén schaduw-kandidaat (uitsluitend ``in_batch`` van deze batch, AD-5).
+
+    De API stuurt de kandidaat-embedding (kopie uit ``candidate_embeddings``) mee;
+    de ml-service herberekent hier niets (AD-3). ``content_hash`` + ``t3777_code``
+    voeden de self-match-guard en de klasse-scoping.
+    """
+
+    id: str
+    embedding: List[float]
+    t3777_code: str
+    content_hash: Optional[str] = None
+
+
+class RegressionEvalRequest(BaseModel):
+    """Gold-set-regressie-eval-verzoek (Story 13.5, AD-4/AD-5).
+
+    ``include_shadow=False`` = nulmeting-modus (uitsluitend de actieve set, AC 2/3).
+    ``threshold`` = de matchdrempel (cosine). De API resolvet de gold-set en de
+    schaduwset; de ml-service embed de query-crops, leest de actieve referenties
+    (read-only) en meet — hij schrijft niets.
+    """
+
+    gold_set: List[GoldSetQuery] = Field(default_factory=list)
+    shadow_candidates: List[ShadowCandidate] = Field(default_factory=list)
+    threshold: float
+    include_shadow: bool = True
+
+
+class RegressionEvalResponse(BaseModel):
+    precision: float
+    total: int
+    correct: int
+    per_class: Dict[str, Any]
+    samples: List[Dict[str, Any]]
+
+
+@router.post("/regression-eval", response_model=RegressionEvalResponse)
+async def regression_eval(request: RegressionEvalRequest) -> RegressionEvalResponse:
+    """Meet precisie@drempel over de gold-set (Story 13.5, AD-4/AD-5).
+
+    Stappen:
+      1. Lees de ACTIEVE ``ReferenceEmbedding`` (read-only PG).
+      2. In schaduw-modus: neem de meegegeven schaduw-kandidaten (``in_batch`` van
+         de batch-onder-meting, AD-5) erbij. In nulmeting-modus (``include_shadow=
+         False``) blijft de schaduwset leeg (AC 2/3).
+      3. Embed elke gold-set-query-crop (stateless compute; geen gold-set-read).
+      4. Meet precisie@drempel met de pure eval-service (self-match-guard, AD-5).
+
+    Een lege gold-set → HTTP 422 (een poort kan niet meten zonder gold-set; de API
+    vertaalt dat fail-closed naar quarantaine, AC 7). Een laad-/embed-fout op een
+    crop → HTTP 422 zodat de API de hele meting fail-closed quarantaineert (AD-11)
+    — nooit een stille partiële meting.
+    """
+    if not request.gold_set:
+        raise HTTPException(
+            status_code=422,
+            detail="Lege gold-set — regressie-eval niet uitvoerbaar (fail-closed).",
+        )
+
+    # 1. Actieve referentie-embeddings (read-only).
+    try:
+        active_rows = await db_service.get_active_reference_entries()
+    except Exception as exc:
+        logger.warning(
+            "Kon actieve referentie-embeddings niet lezen voor regressie-eval",
+            extra={"error": str(exc)},
+        )
+        raise HTTPException(
+            status_code=503,
+            detail=f"Kon actieve referentie-embeddings niet lezen: {exc}",
+        )
+
+    reference_entries: List[Dict[str, Any]] = [
+        {
+            "embedding": r["embedding"],
+            "t3777Code": r["t3777_code"],
+            "contentHash": None,  # referentie-rijen dragen geen bekende inhouds-hash
+            "cropPath": r.get("storage_path"),
+        }
+        for r in active_rows
+    ]
+
+    # 2. Schaduwset — uitsluitend in schaduw-modus (AD-5).
+    shadow_entries: List[Dict[str, Any]] = []
+    if request.include_shadow:
+        shadow_entries = [
+            {
+                "embedding": np.asarray(c.embedding, dtype=np.float32),
+                "t3777Code": c.t3777_code,
+                "contentHash": c.content_hash,
+                "cropPath": None,
+            }
+            for c in request.shadow_candidates
+        ]
+
+    # 3. Embed elke gold-set-query-crop (stateless compute, geen gold-set-read).
+    query_records: List[Dict[str, Any]] = []
+    for q in request.gold_set:
+        try:
+            data = storage_service.get_training_image(q.crop_path)
+            image = phash_service.load_image_from_bytes(data)
+            embedding = await model_manager.generate_embedding(image)
+        except Exception as exc:
+            logger.warning(
+                "Kon gold-set-crop niet embedden voor regressie-eval",
+                extra={"crop_path": q.crop_path, "error": str(exc)},
+            )
+            raise HTTPException(
+                status_code=422,
+                detail=f"Kon gold-set-crop niet embedden: {q.crop_path}: {exc}",
+            )
+        query_records.append(
+            {
+                "id": q.id,
+                "embedding": embedding,
+                "label": q.label,
+                "t3777Code": q.t3777_code,
+                "contentHash": q.content_hash,
+                "cropPath": q.crop_path,
+            }
+        )
+
+    # 4. Meet (pure service).
+    result = regression_eval_service.evaluate_precision(
+        query_records=query_records,
+        reference_entries=reference_entries,
+        shadow_entries=shadow_entries if request.include_shadow else None,
+        threshold=request.threshold,
+    )
+
+    return RegressionEvalResponse(
+        precision=result["precision"],
+        total=result["total"],
+        correct=result["correct"],
+        per_class=result["perClass"],
+        samples=result["samples"],
     )

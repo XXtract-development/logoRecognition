@@ -51,6 +51,16 @@ vi.mock('../../services/flywheel/watchdog', () => ({
   markPromotionRunSuccess: (...a: unknown[]) => markPromotionRunSuccess(...a),
 }));
 
+// --- Mock de regressie-poort (Story 13.5) ------------------------------------
+// Deze suite test de ORKESTRATIE (volgorde/claim/idempotentie), niet de poort
+// zelf; de regressie-fase (meten/promoveren/quarantaineren) heeft eigen tests
+// (flywheel-gate.test.ts). Hier verifiëren we alleen dát processBatch de poort
+// aanroept ná de guardrails.
+const runRegressionGate = vi.fn();
+vi.mock('../../services/flywheel/gate', () => ({
+  runRegressionGate: (...a: unknown[]) => runRegressionGate(...a),
+}));
+
 import prisma from '../../core/db';
 import {
   runPromotionLoop,
@@ -80,6 +90,7 @@ beforeEach(() => {
   runDedupPhase.mockResolvedValue(phaseRecord('dedup'));
   runOutlierPhase.mockResolvedValue(phaseRecord('outlier'));
   markPromotionRunSuccess.mockResolvedValue(undefined);
+  runRegressionGate.mockResolvedValue(undefined);
 
   mockPrisma.promotionBatch.findMany.mockResolvedValue([]);
   mockPrisma.promotionBatch.findUnique.mockResolvedValue({
@@ -183,19 +194,29 @@ describe('processBatch (AC7/AC8 — fase-idempotentie)', () => {
     expect(runOutlierPhase).toHaveBeenCalledTimes(1);
   });
 
-  it('initialiseert de regressie-fase als not-run en laat de batch pending (13.5-scope)', async () => {
+  it('roept de regressie-poort aan ná de guardrails (Story 13.5)', async () => {
     await processBatch('batch-1');
-    // Zoek de update die de regressie-placeholder schreef.
-    const calls = mockPrisma.promotionBatch.update.mock.calls;
-    const regressionWrite = calls.find(
-      (c) => (c[0].data.gateResults as Record<string, unknown>)?.regression
-    );
-    expect(regressionWrite).toBeDefined();
-    const reg = (regressionWrite![0].data.gateResults as Record<string, { outcome: string }>).regression;
-    expect(reg.outcome).toBe('not-run');
-    // Batch-status wordt nooit uit pending gehaald door 13.4.
-    const statusChange = calls.find((c) => c[0].data.status && c[0].data.status !== 'pending');
-    expect(statusChange).toBeUndefined();
+    // De vier guardrails draaiden, daarna de regressie-poort.
+    expect(runThresholdPhase).toHaveBeenCalledTimes(1);
+    expect(runOutlierPhase).toHaveBeenCalledTimes(1);
+    // De poort (meten/promoveren/quarantaineren) is aangeroepen met de batch-id.
+    expect(runRegressionGate).toHaveBeenCalledWith('batch-1', expect.any(Object));
+  });
+
+  it('slaat de regressie-poort over als de fase al afgerond is (crash-recovery)', async () => {
+    mockPrisma.promotionBatch.findUnique.mockResolvedValue({
+      id: 'batch-1',
+      status: 'pending',
+      gateResults: {
+        threshold: { phase: 'threshold', startedAt: 'x', finishedAt: 'x', outcome: 'passed', rejectedCandidateIds: [], details: {} },
+        cap: { phase: 'cap', startedAt: 'x', finishedAt: 'x', outcome: 'passed', rejectedCandidateIds: [], details: {} },
+        dedup: { phase: 'dedup', startedAt: 'x', finishedAt: 'x', outcome: 'passed', rejectedCandidateIds: [], details: {} },
+        outlier: { phase: 'outlier', startedAt: 'x', finishedAt: 'x', outcome: 'passed', rejectedCandidateIds: [], details: {} },
+        regression: { phase: 'regression', startedAt: 'x', finishedAt: 'x', outcome: 'passed', rejectedCandidateIds: [], details: {} },
+      },
+    });
+    await processBatch('batch-1');
+    expect(runRegressionGate).not.toHaveBeenCalled();
   });
 
   it('slaat een batch over die niet (meer) pending is', async () => {

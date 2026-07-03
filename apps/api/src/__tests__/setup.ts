@@ -199,6 +199,13 @@ vi.mock('@prisma/client', () => {
       create: vi.fn(),
       count: vi.fn(),
     },
+    referenceEmbedding: {
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
+      create: vi.fn(),
+      createMany: vi.fn(),
+      count: vi.fn(),
+    },
     hardNegative: {
       findUnique: vi.fn().mockResolvedValue(null),
       findMany: vi.fn(),
@@ -375,6 +382,13 @@ vi.mock('../services/ml-client', () => ({
     computePhash: vi.fn().mockResolvedValue({ content_hash: 'hash-default', phash: 'phash-default' }),
     generateEmbeddingFromBuffer: vi.fn().mockResolvedValue(new Array(512).fill(0.1)),
     outlierAudit: vi.fn().mockResolvedValue({ t3777_code: 'X', centroid_size: 0, threshold: 0, results: [] }),
+    regressionEval: vi.fn().mockResolvedValue({
+      precision: 1,
+      total: 0,
+      correct: 0,
+      per_class: {},
+      samples: [],
+    }),
   },
   MLServiceError: class MLServiceError extends Error {
     statusCode: number;

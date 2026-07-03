@@ -517,6 +517,76 @@ export class MLClient {
     }
   }
 
+  /**
+   * Gold-set-regressie-eval — schaduw-evaluatie (Story 13.5, AD-4/AD-5).
+   *
+   * Meet precisie@drempel over de door de API geresolvede gold-set (payload — de
+   * ml-service leest de gold-set-tabellen NOOIT zelf, AD-4) tegen de actieve
+   * `ReferenceEmbedding` UNION de schaduwset. De schaduwset is uitsluitend de
+   * `in_batch`-kandidaten van de batch-onder-meting (AD-5); de API stuurt hun
+   * embedding-kopie mee (nooit herberekend, AD-3).
+   *
+   * `includeShadow=false` = nulmeting-modus (uitsluitend de actieve set) voor de
+   * eenmalige pre-vliegwiel-baseline en de verse nulmeting bij een verouderde
+   * baseline (AC 2/3).
+   *
+   * Elke fout (lege gold-set, embed-fout, ml-service onbereikbaar) gooit — de
+   * poort-orkestratie vangt dat op en quarantaineert fail-closed (AD-11, AC 7).
+   */
+  async regressionEval(request: {
+    goldSet: Array<{
+      id: string;
+      cropPath: string;
+      label: string;
+      t3777Code: string;
+      contentHash?: string | null;
+    }>;
+    shadowCandidates: Array<{
+      id: string;
+      embedding: number[];
+      t3777Code: string;
+      contentHash?: string | null;
+    }>;
+    threshold: number;
+    includeShadow: boolean;
+  }): Promise<{
+    precision: number;
+    total: number;
+    correct: number;
+    per_class: Record<string, { total: number; correct: number; precision: number }>;
+    samples: Array<{
+      id: string;
+      t3777Code: string;
+      label: string;
+      topSimilarity: number;
+      recognized: boolean;
+      correct: boolean;
+    }>;
+  }> {
+    try {
+      const res = await this.client.post('/ml/regression-eval', {
+        gold_set: request.goldSet.map((g) => ({
+          id: g.id,
+          crop_path: g.cropPath,
+          label: g.label,
+          t3777_code: g.t3777Code,
+          content_hash: g.contentHash ?? null,
+        })),
+        shadow_candidates: request.shadowCandidates.map((c) => ({
+          id: c.id,
+          embedding: c.embedding,
+          t3777_code: c.t3777Code,
+          content_hash: c.contentHash ?? null,
+        })),
+        threshold: request.threshold,
+        include_shadow: request.includeShadow,
+      });
+      return res.data;
+    } catch (error) {
+      throw this.handleError(error, 'Regression eval failed');
+    }
+  }
+
   // ==========================================
   // Synthetic batch fill (Epic 9, Story 9.3 — wiring of deferred 8.7 hook)
   // ==========================================

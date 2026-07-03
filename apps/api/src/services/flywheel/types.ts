@@ -36,3 +36,43 @@ export type GateResults = Partial<Record<GatePhase, GatePhaseResult>>;
 
 /** Batch-statussen (AD-16). `pending` = nog niet afgesloten. */
 export type BatchStatus = 'pending' | 'passed' | 'quarantined' | 'rolled_back';
+
+// ============================================
+// Story 13.5 — regressie-meting + kwaliteitspoort
+// ============================================
+
+/** Eén per-sample-uitkomst van de regressie-eval (ml-service, AD-5). */
+export interface RegressionSample {
+  id: string;
+  t3777Code: string;
+  label: string;
+  topSimilarity: number;
+  recognized: boolean;
+  correct: boolean;
+}
+
+/**
+ * Volledige gold-set-meting (AD-5) zoals vastgelegd op `promotionBatch.
+ * baselineMeasurement` (bij `passed`) en in `gateResults.regression.details`.
+ * Historisch opvraagbaar (AC 5).
+ */
+export interface RegressionMeasurement {
+  /** Precisie@drempel over de volledige (crop-niveau) gold-set. */
+  precision: number;
+  total: number;
+  correct: number;
+  threshold: number;
+  /** Was dit een nulmeting (zonder schaduwset) of een schaduw-meting? */
+  mode: 'nulmeting' | 'shadow';
+  /** Per gold-set-klasse: total/correct/precision. */
+  perClass: Record<string, { total: number; correct: number; precision: number }>;
+  /** Per-sample-uitkomsten — nodig voor de "≥2 netto verslechterd"-vergelijking. */
+  samples: RegressionSample[];
+  measuredAt: string;
+}
+
+/** De poort-beslissing t.o.v. de baseline (AD-5). */
+export type GateDecision = 'promote' | 'quarantine';
+
+/** Reden waarom een batch gequarantaineerd is (AC 6/7). */
+export type QuarantineReason = 'regressie' | 'systeem-fout';

@@ -121,3 +121,47 @@ export function getWatchdogStaleHours(): number {
   const v = parseFloat(process.env.FLYWHEEL_WATCHDOG_STALE_HOURS ?? '');
   return Number.isFinite(v) && v > 0 ? v : 26;
 }
+
+// ============================================
+// Story 13.5 — regressie-gate-config (drempel + tolerantie)
+// ============================================
+
+/**
+ * Matchdrempel (cosine) voor de gold-set-regressie-eval (AD-5). Default 0,90 —
+ * de PRD-promotiedrempel; documenteren zodat de eerste draai-weken hem kunnen
+ * kalibreren (PRD OQ-1). Bewust los van de per-methode-promotiedrempels: dit is
+ * de drempel waarmee de POORT meet, niet waarmee een detectie auto-accept haalt.
+ */
+export function getRegressionThreshold(): number {
+  const v = parseFloat(process.env.FLYWHEEL_REGRESSION_THRESHOLD ?? '');
+  return Number.isFinite(v) ? v : 0.9;
+}
+
+/**
+ * Sample-gebaseerde tolerantie zolang de actieve gold-set klein is (AD-5): bij
+ * ≥ `getRegressionMinWorsened()` netto verslechterde gold-set-samples t.o.v. de
+ * baseline → quarantaine. Default 2.
+ */
+export function getRegressionMinWorsened(): number {
+  const v = parseInt(process.env.FLYWHEEL_REGRESSION_MIN_WORSENED ?? '', 10);
+  return Number.isFinite(v) && v > 0 ? v : 2;
+}
+
+/**
+ * Grootte-omschakelpunt (AD-5): vanaf een actieve gold-set van dit aantal samples
+ * geldt de precisie-percentagepunt-drempel i.p.v. de sample-telling. Default 200.
+ */
+export function getRegressionSampleSwitch(): number {
+  const v = parseInt(process.env.FLYWHEEL_REGRESSION_SAMPLE_SWITCH ?? '', 10);
+  return Number.isFinite(v) && v > 0 ? v : 200;
+}
+
+/**
+ * Precisie-tolerantie in procentpunten (AD-5, PRD) — geldt pas vanaf ≥
+ * `getRegressionSampleSwitch()` samples: een precisie-daling > dit aantal pp
+ * t.o.v. de baseline → quarantaine. Default 1pp.
+ */
+export function getRegressionTolerancePp(): number {
+  const v = parseFloat(process.env.FLYWHEEL_REGRESSION_TOLERANCE_PP ?? '');
+  return Number.isFinite(v) && v >= 0 ? v : 1;
+}

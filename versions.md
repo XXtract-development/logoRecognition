@@ -1,5 +1,17 @@
 # Versiegeschiedenis
 
+## 2026-07-03 (kwaliteitspoort: een besmette lichting kan de herkenning nooit verslechteren)
+
+### Elke nachtelijke lichting moet eerst langs een kwaliteitsmeting vóór hij meetelt
+- Voordat automatisch geleerde voorbeelden echt gaan meedoen in de herkenning, meet het systeem eerst op de vaste goudstandaard of de herkenning er niet slechter van wordt — pas bij een goede uitslag worden de voorbeelden actief
+- De meting gebeurt "in de schaduw": de bestaande herkenning wordt tijdens het meten nooit aangeraakt, dus gebruikers merken er niets van en er kan niets kapot
+- Een voorbeeld dat later zelf de meetlat wordt, wordt tijdens de meting niet tegen zichzelf vergeleken — dat zou een oneerlijk perfecte score geven
+- De allereerste keer legt het systeem een nulmeting vast als ijkpunt; latere lichtingen worden daar steeds tegen afgezet
+- Wordt de herkenning door een lichting merkbaar slechter, dan gaat die lichting in quarantaine (niets ervan wordt actief) met vermelding van de zwaarst getroffen keurmerken, plus een melding voor de datamanager
+- Kan de meting niet betrouwbaar draaien (goudstandaard onbereikbaar of de meetdienst ligt eruit), dan gaat de lichting uit voorzorg óók in quarantaine — bij twijfel nooit zomaar doorlaten
+- Voorbeelden die met een verouderd herkenningsmodel zijn gemaakt, worden niet meegemeten maar netjes opnieuw ingepland voordat ze een kans krijgen
+- Goedgekeurde voorbeelden worden één voor één veilig en in één keer toegevoegd; gaat er onderweg iets mis met één voorbeeld, dan blijven de andere gewoon staan
+
 ## 2026-07-03 (leergeheugen: kandidaten worden 's nachts gebundeld en langs de vangrails geleid)
 
 ### Kandidaat-voorbeelden gaan 's nachts automatisch langs caps en ontdubbeling

@@ -1,6 +1,6 @@
 # Story 13.5: Kwaliteitspoort — regressietest, promotie en quarantaine
 
-Status: ready-for-dev
+Status: done
 
 <!-- Aangemaakt via create-story workflow, 2026-07-02. Bron: epics-vliegwiel.md Epic 13 / Story 13.5 + ARCHITECTURE-SPINE (AD-3, AD-4, AD-5, AD-11, AD-16). Vereist: 13.3 (gold-set) en 13.4 (batching/gateResults) afgerond. -->
 
@@ -117,16 +117,86 @@ zodat **een besmette batch de herkenning nooit kan verslechteren**.
 
 ## Dev Agent Record
 
-_(in te vullen door dev-story)_
-
 ### Agent Model Used
+
+claude-opus-4-8 (implement-sprint, epic/vliegwiel-13 worktree).
 
 ### Debug Log References
 
+- apps/api vitest: 406 passed, 2 skipped (pre-existing). ml-service pure-pytest:
+  regression_eval 12 + outlier 11 = 23 passed (lokale venv met numpy/pytest; torch/
+  asyncpg niet nodig voor de pure-functie-tests via importlib, zelfde patroon als 13.4).
+- Migratie-vrij bevestigd: geen schema-wijziging; alle velden bestonden (13.4-migratie).
+
 ### Completion Notes List
 
+**Gemaakte keuzes (gedocumenteerd conform story-taken):**
+
+1. **Query-embedding in ml-service (taak 1.1).** De gold-set-query-crops worden in
+   de ml-service ingebed (stateless compute vanaf `cropPath`), niet in de API. Dit
+   is géén gold-set-tabel-read (AD-4): de gold-set komt als payload; de ml-service
+   embedt uitsluitend de meegegeven crops. Referentie/schaduw-embeddings komen uit
+   PG (read-only) resp. de payload (kopie, niet herberekend, AD-3).
+2. **Self-match-guard-sleutel (taak 1.2).** Primair op inhouds-hash (beide zijden
+   bekend + gelijk → zelfmatch). Bestaande `ReferenceLogo`-rijen dragen geen
+   bekende inhouds-hash → terugval op identiek `cropPath` (referentie-`storagePath`
+   vs. gold-set-`cropPath`). Schaduw-kandidaten dragen wél een contentHash. Zo
+   matcht een gold-set-crop die (later) referentie werd nooit tegen zichzelf.
+3. **Versie-guard-modelversie (taak 3.1, M1).** Actieve modelversie = `ModelVersion`
+   met `isActive=true`, veld `version`; vergeleken met `evidence.
+   embeddingModelVersion` per kandidaat (13.2-contract). Mismatch → conditional
+   update `in_batch → candidate` + `promotionBatchId=null` (AD-16) + her-embed-taak
+   (`flywheel-reembed`) op de flywheel-queue. Geen actief model → guard overgeslagen.
+4. **Baseline-marker-abstractie (`baseline.ts`, Project Structure variance).** De
+   invalidatie-triggers zijn 13.6; deze story implementeert het GEDRAG (verse
+   nulmeting bij verouderde baseline) achter `isBaselineStale()` (default false;
+   env-override `FLYWHEEL_BASELINE_STALE` voor test/handmatig). 13.6 koppelt de
+   bron aan `system_settings` zonder de aanroeper (`gate.ts`) te wijzigen.
+5. **Modelactivatie-invalidatie-hook (taak 3.2).** De invalidatie is
+   pull-gebaseerd via de versie-guard: bij elke poortrun worden kandidaten met een
+   verouderde embedding-modelversie teruggezet + her-embed-getaakt. Er is geen
+   aparte push-hook op het Epic 9-activatiepad nodig omdat de poort de enige
+   consument van `candidate_embeddings` is (AD-15) en fase-idempotent draait; de
+   guard vangt elke versie-drift bij de eerstvolgende run. Gedocumenteerd als
+   bewuste keuze.
+6. **Whole-batch-consistentie (review C1).** Per-kandidaat-promoties zijn atomair
+   (AD-3); een gefaalde kandidaat-transactie stopt de batch niet (`result.failed`,
+   blijft `in_batch`). De promotie + batch-afsluiting staan BUITEN de
+   fail-closed-try zodat een infra-fout ná gecommitte promoties nooit alsnog
+   quarantaineert; een gefaalde afsluit-UPDATE laat de batch `pending` voor
+   crash-recovery.
+
+**Hook in 13.4:** `promotion-batch.ts:processBatch` roept ná de vier guardrails
+`runRegressionGate` aan (vervangt de `not-run`-placeholder); fase-idempotent via
+`gateResults.regression.finishedAt`.
+
 ### File List
+
+**Nieuw (apps/ml-service):**
+- `app/services/regression_eval.py` — pure eval (precisie@drempel, self-match-guard, UNION).
+
+**Gewijzigd (apps/ml-service):**
+- `app/api/flywheel.py` — `/ml/regression-eval` endpoint (payload-only, geen writes).
+- `app/services/database.py` — `get_active_reference_entries()` (read-only, incl. storage_path).
+- `tests/unit/test_regression_eval_service.py` — pytest (12).
+
+**Nieuw (apps/api):**
+- `src/services/flywheel/gate.ts` — poort-orkestratie (versie-guard, baseline, meting, tolerantie, promotie/quarantaine, fail-closed).
+- `src/services/flywheel/promotion.ts` — atomaire per-kandidaat-promotie + cap-in-tx + variantLabel.
+- `src/services/flywheel/baseline.ts` — baseline-marker-abstractie.
+
+**Gewijzigd (apps/api):**
+- `src/services/ml-client.ts` — `regressionEval()`-methode.
+- `src/services/flywheel/config.ts` — regressie-drempel + tolerantie-env-getters.
+- `src/services/flywheel/types.ts` — `RegressionMeasurement`/`RegressionSample`/`GateDecision`/`QuarantineReason`.
+- `src/services/flywheel/promotion-batch.ts` — regressie-fase ingehaakt (i.p.v. not-run).
+- `src/__tests__/setup.ts` — mock `referenceEmbedding` + `mlClient.regressionEval`.
+- `src/__tests__/services/flywheel-{gate,promotion,baseline,config}.test.ts` — nieuwe/uitgebreide tests.
+- `src/__tests__/services/flywheel-promotion-batch.test.ts` — 13.4-test bijgewerkt naar 13.5-gedrag.
+
+**Artefacten:** `review-13-5.md`, `ac-trace-13-5.md`.
 
 ## Change Log
 
 - 2026-07-02: Story aangemaakt (create-story workflow); doeltabellen en uniekheids-constraint geverifieerd (schema.prisma:243–283); story bewust migratie-vrij gescoped (FK zit in 13.4).
+- 2026-07-03: Geïmplementeerd (dev-story). Regressie-eval (ml-service, pure + endpoint), poort-orkestratie, atomaire promotie, quarantaine, fail-closed, versie-guard, baseline/nulmeting. Migratie-vrij bevestigd. Adversarial self-review PASS (C1 gefixt). AC→test 7/7 gedekt. apps/api vitest 406 passed; ml-service pytest 23 passed.

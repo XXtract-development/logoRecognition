@@ -27,6 +27,7 @@ import {
   type GuardrailCandidate,
 } from './guardrails';
 import { markPromotionRunSuccess } from './watchdog';
+import { runRegressionGate } from './gate';
 import type { GatePhase, GatePhaseResult, GateResults } from './types';
 
 const logger = createLogger('flywheel-promotion-batch');
@@ -183,20 +184,17 @@ export async function processBatch(batchId: string): Promise<void> {
     await persistGateResults(batchId, gateResults);
   }
 
-  // Regressie-fase-placeholder (13.5-scope): expliciet not-run markeren.
+  // Regressie-fase (Story 13.5): meet, beslis, promoveer of quarantaineer. Deze
+  // fase muteert de batch-status zelf (passed/quarantined) — fase-idempotent via
+  // `finishedAt` (crash-recovery, AD-12). Fail-closed: elke fout in de meetketen
+  // wordt intern een quarantaine (AD-11), dus `runRegressionGate` gooit niet.
   if (!isPhaseComplete(gateResults, 'regression')) {
-    gateResults.regression = {
-      phase: 'regression',
-      startedAt: new Date().toISOString(),
-      finishedAt: null,
-      outcome: 'not-run',
-      rejectedCandidateIds: [],
-      details: { note: 'Regressie-fase is Story 13.5-scope' },
-    };
-    await persistGateResults(batchId, gateResults);
+    await runRegressionGate(batchId, gateResults);
+    logger.info('Regressie-poort afgerond', { batchId });
+    return;
   }
 
-  logger.info('Batch door alle guardrails — blijft pending voor 13.5', { batchId });
+  logger.info('Regressie-fase al afgerond — batch al beslist (crash-recovery)', { batchId });
 }
 
 /** Laad de nog-in-batch-kandidaten (survivors) van een batch als guardrail-input. */

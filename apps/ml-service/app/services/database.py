@@ -523,6 +523,48 @@ class DatabaseService:
                     vectors.append(vec)
             return vectors
 
+    async def get_active_reference_entries(self) -> List[Dict[str, Any]]:
+        """Return ALL active reference embeddings for the regression-eval (Story 13.5).
+
+        Read-only accessor for the gold-set regression gate (AD-5): each row
+        carries the embedding vector, the class (``t3777_code``) and the crop
+        location (``storage_path`` → ``cropPath``) so the self-match-guard can
+        exclude a reference that is the same crop as a gold-set query (AD-5,
+        leave-one-out). Reference logos carry no stored content-hash, so the guard
+        falls back on ``cropPath`` equality for these rows.
+
+        Only ACTIVE reference variants are returned — soft-deleted variants must
+        not influence the measurement. Malformed/empty vectors are skipped so a
+        corrupt row never poisons the eval.
+        """
+        async with self.get_connection() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT
+                    re.reference_logo_id,
+                    rl.t3777_code,
+                    rl.storage_path,
+                    re.embedding::text AS embedding_text
+                FROM reference_embeddings re
+                JOIN reference_logos rl ON re.reference_logo_id = rl.id
+                WHERE rl.active = true
+                """
+            )
+            results: List[Dict[str, Any]] = []
+            for row in rows:
+                vec = _parse_pgvector(row["embedding_text"])
+                if vec.size == 0:
+                    continue
+                results.append(
+                    {
+                        "reference_logo_id": str(row["reference_logo_id"]),
+                        "t3777_code": row["t3777_code"],
+                        "storage_path": row["storage_path"],
+                        "embedding": vec,
+                    }
+                )
+            return results
+
     async def find_similar_references(
         self,
         embedding: np.ndarray,

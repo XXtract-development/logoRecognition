@@ -109,3 +109,33 @@ describe('Story 13.2 — gemiste-nominatie-teller (AC7, NFR-5)', () => {
     ).resolves.toBeUndefined();
   });
 });
+
+describe('Story 13.5 — regressie-gate-config (AD-5)', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    delete process.env.FLYWHEEL_REGRESSION_THRESHOLD;
+    delete process.env.FLYWHEEL_REGRESSION_MIN_WORSENED;
+    delete process.env.FLYWHEEL_REGRESSION_SAMPLE_SWITCH;
+    delete process.env.FLYWHEEL_REGRESSION_TOLERANCE_PP;
+  });
+
+  it('defaults: drempel 0,90 · min-worsened 2 · sample-switch 200 · tolerantie 1pp', async () => {
+    const c = await import('../../services/flywheel/config');
+    expect(c.getRegressionThreshold()).toBe(0.9);
+    expect(c.getRegressionMinWorsened()).toBe(2);
+    expect(c.getRegressionSampleSwitch()).toBe(200);
+    expect(c.getRegressionTolerancePp()).toBe(1);
+  });
+
+  it('env-overrides worden gerespecteerd', async () => {
+    process.env.FLYWHEEL_REGRESSION_THRESHOLD = '0.85';
+    process.env.FLYWHEEL_REGRESSION_MIN_WORSENED = '3';
+    process.env.FLYWHEEL_REGRESSION_SAMPLE_SWITCH = '500';
+    process.env.FLYWHEEL_REGRESSION_TOLERANCE_PP = '2';
+    const c = await import('../../services/flywheel/config');
+    expect(c.getRegressionThreshold()).toBe(0.85);
+    expect(c.getRegressionMinWorsened()).toBe(3);
+    expect(c.getRegressionSampleSwitch()).toBe(500);
+    expect(c.getRegressionTolerancePp()).toBe(2);
+  });
+});
