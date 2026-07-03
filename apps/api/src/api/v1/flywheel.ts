@@ -14,8 +14,11 @@
  */
 
 import { FastifyInstance, FastifyReply } from 'fastify';
+import sharp from 'sharp';
+import prisma from '../../core/db';
 import { authMiddleware, requireRole } from '../../middleware/auth';
 import { createLogger } from '../../core/logger';
+import { downloadTrainingObject } from '../../services/storage';
 import {
   rollbackBatch,
   BatchNotFoundError,
@@ -32,6 +35,23 @@ import {
   OutlierFindingAlreadyDecidedError,
   type OutlierDecision,
 } from '../../services/flywheel/outlier-decision';
+import {
+  getBatchDetail,
+  BatchDetailNotFoundError,
+} from '../../services/flywheel/batch-detail';
+import {
+  decideCandidate,
+  isCandidateDecision,
+  CandidateNotFoundError,
+  CandidateBatchProcessingError,
+  CandidateConflictError,
+} from '../../services/flywheel/candidate-decision';
+import {
+  closeBatch,
+  BatchCloseNotFoundError,
+  BatchNotFullyReviewedError,
+  BatchNotCloseableError,
+} from '../../services/flywheel/batch-close';
 
 const logger = createLogger('flywheel-routes');
 
@@ -191,6 +211,167 @@ export async function flywheelRoutes(fastify: FastifyInstance) {
       }
 
       return reply.status(200).send({ total: rows.length, rows });
+    }
+  );
+
+  /**
+   * GET /api/v1/flywheel/batches/:id
+   *
+   * Batch-detail voor de quarantaine-afhandelpagina (Story 15.3, AC1). Levert de
+   * batch-kop (faalreden, poort-uitkomsten), de kandidatenlijst (status, T3777-
+   * code, evidence-contract) en per kandidaat of er een crop/actieve referentie
+   * is. ON-READ, GÉÉN poortlogica (AD-15). 404 bij onbekende id. Alleen ADMIN.
+   */
+  fastify.get<{ Params: { id: string } }>(
+    '/flywheel/batches/:id',
+    { preHandler: REQUIRE_ADMIN },
+    async (request, reply) => {
+      const { id } = request.params;
+      try {
+        const detail = await getBatchDetail(id);
+        return reply.status(200).send(detail);
+      } catch (err) {
+        if (err instanceof BatchDetailNotFoundError) {
+          return reply.status(404).send({ error: 'Batch niet gevonden' });
+        }
+        logger.error('Batch-detail ophalen mislukt', {
+          batchId: id,
+          error: err instanceof Error ? err.message : 'unknown',
+        });
+        return reply.status(500).send({ error: 'Batch-detail kon niet geladen worden' });
+      }
+    }
+  );
+
+  /**
+   * GET /api/v1/flywheel/candidates/:id/crop
+   *
+   * Streamt het crop-beeld van een kandidaat door de API (cookie-auth same-origin;
+   * MinIO blijft intern) — patroon van de reviewstation-crop-route. 404 als de
+   * kandidaat of zijn crop-object ontbreekt. Alleen ADMIN.
+   */
+  fastify.get<{ Params: { id: string } }>(
+    '/flywheel/candidates/:id/crop',
+    { preHandler: REQUIRE_ADMIN },
+    async (request, reply) => {
+      const { id } = request.params;
+      const candidate = await prisma.referenceCandidate.findUnique({
+        where: { id },
+        select: { cropPath: true },
+      });
+      if (!candidate || !candidate.cropPath) {
+        return reply.status(404).send({ error: 'Geen crop voor deze kandidaat' });
+      }
+      const buffer = await downloadTrainingObject(candidate.cropPath);
+      if (!buffer) {
+        return reply.status(404).send({ error: 'Crop niet gevonden in opslag' });
+      }
+      reply.header('Cache-Control', 'private, max-age=300');
+      const ext = candidate.cropPath.split('.').pop()?.toLowerCase();
+      if (ext === 'svg') return reply.type('image/svg+xml').send(buffer);
+      try {
+        const out = await sharp(buffer).resize({ width: 400, withoutEnlargement: true }).png().toBuffer();
+        return reply.type('image/png').send(out);
+      } catch {
+        const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : 'image/png';
+        return reply.type(mime).send(buffer);
+      }
+    }
+  );
+
+  /**
+   * POST /api/v1/flywheel/candidates/:id/decision
+   *
+   * Beslis per kandidaat bij quarantaine-afhandeling (Story 15.3, AC2/AC3, FR-18,
+   * AD-12/AD-15/AD-16). Body `{ decision: 'afkeuren' | 'vrijgeven' | 'undo' }`.
+   *   - afkeuren  → rejected + hard-negative (`quarantaine-afkeuring`) + gold-set-
+   *                 VALS-aanwas (14.1-service, bron `quarantaine`), conditional.
+   *   - vrijgeven → candidate + losgekoppeld; GÉÉN poortlogica in dit pad (AD-15):
+   *                 de eerstvolgende worker-run herbundelt in een nieuwe batch die
+   *                 opnieuw de volledige poort doorloopt.
+   *   - undo      → laatste beslissing terugnemen (spiegel 14.1-undo).
+   * 400 ongeldige decision, 404 onbekende kandidaat, 409 kandidaat in een batch in
+   * verwerking (AD-16) of een verloren conditional-update-race. Alleen ADMIN.
+   */
+  fastify.post<{ Params: { id: string }; Body: { decision?: string } }>(
+    '/flywheel/candidates/:id/decision',
+    { preHandler: REQUIRE_ADMIN },
+    async (request, reply) => {
+      const { id } = request.params;
+      const decision = request.body?.decision;
+      const by = request.user?.userId ?? null;
+
+      if (!decision || !isCandidateDecision(decision)) {
+        return reply.status(400).send({
+          error: "Ongeldige beslissing — verwacht 'afkeuren', 'vrijgeven' of 'undo'.",
+        });
+      }
+
+      try {
+        const result = await decideCandidate({ candidateId: id, decision, by });
+        return reply.status(200).send(result);
+      } catch (err) {
+        if (err instanceof CandidateNotFoundError) {
+          return reply.status(404).send({ error: 'Kandidaat niet gevonden' });
+        }
+        if (err instanceof CandidateBatchProcessingError) {
+          return reply.status(409).send({
+            error:
+              'Deze kandidaat zit in een batch die nog verwerkt wordt — beslissen kan pas als de batch is afgesloten.',
+          });
+        }
+        if (err instanceof CandidateConflictError) {
+          return reply.status(409).send({
+            error: 'De kandidaat is intussen gewijzigd — vernieuw en probeer opnieuw.',
+          });
+        }
+        logger.error('Kandidaat-beslissing mislukt', {
+          candidateId: id,
+          decision,
+          error: err instanceof Error ? err.message : 'unknown',
+        });
+        return reply.status(500).send({ error: 'Beslissing niet opgeslagen — probeer opnieuw.' });
+      }
+    }
+  );
+
+  /**
+   * POST /api/v1/flywheel/batches/:id/close
+   *
+   * Sluit een gequarantaineerde batch af (Story 15.3, AC4). Zet `closedAt`; de
+   * batch-status BLIJFT `quarantined` (herleidbaarheid). Pas toegestaan als álle
+   * kandidaten beoordeeld zijn (geen `in_batch` meer). GÉÉN poortlogica (AD-15).
+   * 404 onbekende batch, 409 niet-afsluitbaar of nog onbeoordeelde kandidaten.
+   * Alleen ADMIN.
+   */
+  fastify.post<{ Params: { id: string } }>(
+    '/flywheel/batches/:id/close',
+    { preHandler: REQUIRE_ADMIN },
+    async (request, reply) => {
+      const { id } = request.params;
+      try {
+        const result = await closeBatch(id);
+        return reply.status(200).send(result);
+      } catch (err) {
+        if (err instanceof BatchCloseNotFoundError) {
+          return reply.status(404).send({ error: 'Batch niet gevonden' });
+        }
+        if (err instanceof BatchNotFullyReviewedError) {
+          return reply.status(409).send({
+            error: `Nog ${err.pending} kandidaten wachten op jouw beoordeling — sluit ze eerst af.`,
+          });
+        }
+        if (err instanceof BatchNotCloseableError) {
+          return reply.status(409).send({
+            error: 'Deze batch is niet (meer) afsluitbaar.',
+          });
+        }
+        logger.error('Batch afsluiten mislukt', {
+          batchId: id,
+          error: err instanceof Error ? err.message : 'unknown',
+        });
+        return reply.status(500).send({ error: 'Batch afsluiten mislukt' });
+      }
     }
   );
 }

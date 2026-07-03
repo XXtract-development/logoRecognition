@@ -1,6 +1,6 @@
 # Story 15.3: Quarantaine-afhandeling met volledig bewijs
 
-Status: ready-for-dev
+Status: done
 
 <!-- Aangemaakt via create-story workflow, 2026-07-02. Bron: epics-vliegwiel.md Epic 15. -->
 
@@ -136,16 +136,26 @@ _(1-op-1 uit epics-vliegwiel.md, Story 15.3)_
 
 ## Dev Agent Record
 
-_(in te vullen door dev-story)_
-
 ### Agent Model Used
 
-### Debug Log References
+claude-opus-4-8 (implement-sprint, epic/vliegwiel-15).
 
 ### Completion Notes
 
+- **Undo-implementatie (taak 4.3 keuze):** `decision: 'undo'` op hetzelfde endpoint `POST candidates/:id/decision` (geen apart sub-pad). De service spiegelt het 14.1-undo-patroon: afkeuring-undo verwijdert de hard-negative + trekt het gold-set-record in via self-tombstone (`withdrawGoldSetRecord`) + status terug naar `in_batch`; vrijgave-undo herstelt `candidate → in_batch` en herkoppelt de oorspronkelijke batch via de bewaarde `evidence.undoBatchId` (mits de worker de kandidaat nog niet claimde, anders 409).
+- **Batch afsluiten:** `closedAt` gezet op de batch; status blijft `quarantined` (herleidbaarheid) — de openstaande-quarantainetabel filtert al op `closedAt IS NULL` (15.2), dus de batch verdwijnt vanzelf.
+- **Geen migratie:** `promotion_batches.closedAt` zit al in de 13.4-migratie (schema regel 672 geverifieerd).
+- **Declaratieblok-velden** (`declaredCodes`/`gln`) zitten nog niet in het nominatie-evidence-contract; het bewijspaneel leest ze defensief en valt terug op de gematchte code met ✓ (zie review-15-3.md L1).
+- **Beeld-serveerroute** toegevoegd: `GET candidates/:id/crop` (patroon reviewstation-crop); referentiebeeld hergebruikt de bestaande `reference-logos/code/:code/image`.
+
 ### File List
+
+**Nieuw (API):** `apps/api/src/services/flywheel/batch-detail.ts`, `apps/api/src/services/flywheel/candidate-decision.ts`, `apps/api/src/services/flywheel/batch-close.ts` · tests `apps/api/src/__tests__/services/flywheel-candidate-decision.test.ts`, `apps/api/src/__tests__/services/flywheel-batch-detail.test.ts`, `apps/api/src/__tests__/api/flywheel-batch-detail.routes.test.ts`.
+**Nieuw (web):** `apps/web/src/pages/FlywheelBatchDetailPage.tsx`, `apps/web/src/components/flywheel/CandidateList.tsx`, `apps/web/src/components/flywheel/EvidencePanel.tsx`, `apps/web/src/components/flywheel/useCandidateKeyboard.ts`, `apps/web/src/components/flywheel/candidateStatus.ts` · test `apps/web/src/pages/FlywheelBatchDetailPage.test.tsx` (ex-atdd).
+**Gewijzigd:** `apps/api/src/api/v1/flywheel.ts` (3 routes + crop-stream), `apps/web/src/services/flywheelService.ts` (batch-detail/decision/close/crop-blob), `apps/web/src/App.tsx` (route `/flywheel/batches/:id`), `apps/web/src/pages/FlywheelPage.tsx` (onOpenBatch → navigatie), `apps/web/src/pages/FlywheelPage.test.tsx` (drawer→navigatie), `versions.md`.
+**Artefacten:** `review-15-3.md`, `ac-trace-15-3.md`.
 
 ## Change Log
 
 - 2026-07-02: Story aangemaakt (create-story workflow) uit epics-vliegwiel.md Epic 15, sneltoetsen-patroon geverifieerd op MobileReviewDeck.tsx:363-410.
+- 2026-07-03: Geïmplementeerd (implement-sprint). API-decision-endpoint + batch-detail + batch-close, master-detail-pagina met sneltoetsen/auto-advance, onOpenBatch-koppeling. 35 API- + 11 web-tests. Migratie-vrij. Status → done.

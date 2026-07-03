@@ -20,6 +20,7 @@
 import React from 'react';
 import { Typography, Card, Skeleton, Alert, Button, App } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { FlywheelThemeProvider } from '@/components/flywheel/FlywheelThemeProvider';
 import { useFlywheelOverview } from '@/components/flywheel/useFlywheelOverview';
@@ -42,6 +43,7 @@ const APP_BG = '#EDF1F7';
 
 const FlywheelContent: React.FC = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { data, isLoading, isError, refetch, isFetching } = useFlywheelOverview();
 
   const quarantineRef = React.useRef<HTMLDivElement>(null);
@@ -59,9 +61,8 @@ const FlywheelContent: React.FC = () => {
     map[section].current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  // Batch-detail: 15.3 levert /flywheel/batches/:id. Zolang die route niet
-  // bestaat, valt QuarantineCard terug op een Drawer (geen onOpenBatch doorgeven).
-  // Wij geven de navigatie NIET door → Drawer-fallback (Dev Agent Record).
+  // Batch-detail (Story 15.3): navigeer naar /flywheel/batches/:id. Met
+  // onOpenBatch doorgegeven vervalt de 15.2-Drawer-fallback in QuarantineCard.
 
   return (
     <div data-testid="flywheel-page" style={{ minHeight: '100vh', background: APP_BG, padding: '24px 28px' }}>
@@ -146,6 +147,7 @@ const FlywheelContent: React.FC = () => {
                   <QuarantineCard
                     quarantine={data.quarantine}
                     history={data.history}
+                    onOpenBatch={(batchId) => navigate(`/flywheel/batches/${batchId}`)}
                     onRolledBack={() => refetch()}
                   />
                 </div>

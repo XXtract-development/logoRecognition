@@ -1,5 +1,15 @@
 # Versiegeschiedenis
 
+## 2026-07-03 (Quarantainebatch afhandelen met volledig bewijs)
+
+### Wachtende batches beoordeel je nu kandidaat-voor-kandidaat op een eigen pagina
+- Klik je in de quarantainetabel op "Openen", dan kom je op een nieuwe detailpagina voor die batch. Links een lijst met alle kandidaat-referenties (elk met een statusbadge: amber "te beoordelen", groen "vrijgegeven", grijs "afgekeurd" — nooit rood, want afkeuren is gewoon werk). Rechts het bewijs van de geselecteerde kandidaat: het uitgesneden beeld naast de bestaande referentie, de scores tegenover de promotiedrempel, het declaratieblok (GTIN, leverancier, gedeclareerde keurmerken) en de uitkomst van de kwaliteitspoort per controle
+- Bovenaan staat de faalreden van de batch in gewone taal ("wacht op jouw beoordeling", geen fout-toon) en een voortgangsbalk "3 van 8 beoordeeld"
+- Per kandidaat kies je Afkeuren of Vrijgeven. Afkeuren markeert het beeld als tegenvoorbeeld (hard-negative) waar het systeem van leert. Vrijgeven zet de kandidaat terug in de aanvoer: hij wordt bij de eerstvolgende nachtelijke ronde opnieuw gebundeld en gaat dan opnieuw volledig door de kwaliteitspoort — vrijgeven slaat de poort dus nooit over
+- Je werkt vlot met het toetsenbord, net als in het reviewstation: A = vrijgeven, R = afkeuren, U = laatste beslissing ongedaan, pijltjes = vorige/volgende, Esc = sluiten. Na elke beslissing springt de weergave automatisch naar de volgende nog-onbeoordeelde kandidaat. De sneltoetsen doen niets zolang je in een invoerveld typt
+- Zodra álle kandidaten beoordeeld zijn, wordt "Batch afsluiten" actief. Een samenvatting bevestigt wat er gebeurt ("3 afgekeurd → tegenvoorbeeld; 5 vrijgegeven → nieuwe batch, opnieuw door de poort"). Na bevestigen verdwijnt de batch uit de wachtlijst
+- Alles is toetsenbord- en schermlezer-toegankelijk (de geselecteerde kandidaat scrolt in beeld en wordt aangekondigd) en volledig in het Nederlands
+
 ## 2026-07-03 (Vliegwiel-overzichtsscherm: de gezondheid in één blik)
 
 ### Het Vliegwiel-onderdeel toont nu een volledig overzicht

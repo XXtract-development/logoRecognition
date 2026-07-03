@@ -178,3 +178,126 @@ export async function decideOutlier(
   const res = await apiClient.post(`/flywheel/outliers/${findingId}/decision`, { decision });
   return res.data;
 }
+
+// ── Batch-detail (Story 15.3) ───────────────────────────────────────────────
+
+/** Eén poort-fase-uitkomst in het bewijspaneel. */
+export interface GateOutcomeView {
+  phase: string;
+  outcome: string;
+  blocked: boolean;
+  label: string;
+}
+
+/** De batch-kop van de detailpagina. */
+export interface BatchDetailHead {
+  batchId: string;
+  status: string;
+  createdAt: string;
+  closedAt: string | null;
+  candidateCount: number;
+  failReason: string;
+  deltaPp: number | null;
+  mostAffectedClasses: string[];
+  gateOutcomes: GateOutcomeView[];
+}
+
+/** Eén kandidaat in de master-lijst + bewijspaneel. */
+export interface BatchCandidateView {
+  id: string;
+  t3777Code: string;
+  status: string;
+  origin: string;
+  hasCrop: boolean;
+  hasReference: boolean;
+  confidence: number | null;
+  method: string | null;
+  sourceGtin: string | null;
+  sourceFile: string | null;
+  bbox: { x: number; y: number; width: number; height: number } | null;
+  declarationOutcome: string | null;
+  declaredCodes: string[];
+  gln: string | null;
+}
+
+/** De volledige batch-detail-payload. */
+export interface BatchDetail {
+  batch: BatchDetailHead;
+  candidates: BatchCandidateView[];
+  promotionThresholds: Record<string, number>;
+}
+
+/** De kandidaat-beslissingen (spiegelt de API-enum). */
+export type CandidateDecisionKind = 'afkeuren' | 'vrijgeven' | 'undo';
+
+export interface CandidateDecisionResult {
+  candidateId: string;
+  status: string;
+  decision: CandidateDecisionKind;
+}
+
+export interface BatchCloseResult {
+  batchId: string;
+  closedAt: string;
+  rejected: number;
+  released: number;
+}
+
+/** Haal de batch-detail-payload op (Story 15.3-endpoint). */
+export async function fetchBatchDetail(batchId: string): Promise<BatchDetail> {
+  const res = await apiClient.get<BatchDetail>(`/flywheel/batches/${batchId}`);
+  return res.data;
+}
+
+/**
+ * Beslis per kandidaat (Story 15.3-endpoint): afkeuren/vrijgeven/undo. Gooit door
+ * bij een fout (409 op een batch in verwerking of een verloren race) zodat de
+ * caller de faalpad-toast toont en de kandidaat op `te beoordelen` houdt.
+ */
+export async function decideCandidate(
+  candidateId: string,
+  decision: CandidateDecisionKind
+): Promise<CandidateDecisionResult> {
+  const res = await apiClient.post<CandidateDecisionResult>(
+    `/flywheel/candidates/${candidateId}/decision`,
+    { decision }
+  );
+  return res.data;
+}
+
+/** Sluit een gequarantaineerde batch af (Story 15.3-endpoint). */
+export async function closeBatch(batchId: string): Promise<BatchCloseResult> {
+  const res = await apiClient.post<BatchCloseResult>(`/flywheel/batches/${batchId}/close`, {});
+  return res.data;
+}
+
+/**
+ * Haal het crop-beeld van een kandidaat als geauthenticeerde blob-URL (cookie-
+ * auth + juiste baseURL, patroon `fetchReviewItemCropBlob`). De caller doet
+ * `URL.revokeObjectURL` bij opruimen. `null` als er geen crop is.
+ */
+export async function fetchCandidateCropBlob(candidateId: string): Promise<string | null> {
+  try {
+    const res = await apiClient.get(`/flywheel/candidates/${candidateId}/crop`, {
+      responseType: 'blob',
+    });
+    return URL.createObjectURL(res.data as Blob);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Haal het actieve-referentiebeeld van een T3777-code als blob-URL (patroon van
+ * de reviewstation-referentiebeeld-route). `null` als er geen actieve referentie is.
+ */
+export async function fetchReferenceCodeImageBlob(code: string): Promise<string | null> {
+  try {
+    const res = await apiClient.get(`/reference-logos/code/${encodeURIComponent(code)}/image`, {
+      responseType: 'blob',
+    });
+    return URL.createObjectURL(res.data as Blob);
+  } catch {
+    return null;
+  }
+}

@@ -29,6 +29,7 @@ const ReferenceLibraryPage = React.lazy(() => import('@/pages/ReferenceLibraryPa
 const ArtworkReviewPage = React.lazy(() => import('@/pages/ArtworkReviewPage'));
 const ApprovalQueuePage = React.lazy(() => import('@/pages/ApprovalQueuePage'));
 const FlywheelPage = React.lazy(() => import('@/pages/FlywheelPage'));
+const FlywheelBatchDetailPage = React.lazy(() => import('@/pages/FlywheelBatchDetailPage'));
 const LoginPage = React.lazy(() => import('@/pages/LoginPage'));
 
 /**
@@ -140,6 +141,12 @@ const router = createBrowserRouter(
               // zelf (FlywheelThemeProvider), niet in AppLayout/RootLayout.
               path: 'flywheel',
               element: <FlywheelPage />,
+            },
+            {
+              // Story 15.3: quarantaine-afhandeling (master-detail). Binnen dezelfde
+              // FlywheelThemeProvider-scope; de route die 15.1 bewust wegliet.
+              path: 'flywheel/batches/:id',
+              element: <FlywheelBatchDetailPage />,
             },
             {
               path: 'models/approval',

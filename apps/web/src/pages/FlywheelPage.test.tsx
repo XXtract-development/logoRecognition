@@ -36,6 +36,14 @@ vi.mock('@ant-design/plots', () => ({
   Line: () => <div data-testid="mock-line-chart" />,
 }));
 
+// react-router: Story 15.3 gebruikt useNavigate om de quarantainerij door te
+// koppelen naar /flywheel/batches/:id (onOpenBatch). Mock zodat de casco-/
+// overzichtstests zonder Router-context blijven werken en de navigatie spybaar is.
+const navigate = vi.fn();
+vi.mock('react-router-dom', () => ({
+  useNavigate: () => navigate,
+}));
+
 const mockUseFlywheelOverview = vi.fn();
 vi.mock('@/components/flywheel/useFlywheelOverview', () => ({
   useFlywheelOverview: () => mockUseFlywheelOverview(),
@@ -303,14 +311,16 @@ describe('FlywheelPage — 15.2 AC6: outlier-beoordeling (Behouden/Deactiveren)'
   });
 });
 
-describe('FlywheelPage — 15.2 AC3: quarantaine-rij opent de batch (drawer-fallback)', () => {
-  it('klik op "Openen" toont de detail-drawer met poort-uitkomsten', async () => {
+describe('FlywheelPage — 15.3 AC5: quarantaine-rij navigeert naar de batch-detailpagina', () => {
+  it('klik op "Openen" navigeert naar /flywheel/batches/:id (Drawer-fallback vervalt)', async () => {
     const user = userEvent.setup();
+    navigate.mockClear();
     mockLoaded();
     render(<FlywheelPage />);
     await user.click(screen.getByTestId('quarantine-open'));
-    const drawer = await screen.findByTestId('batch-drawer');
-    expect(within(drawer).getByText(/Poort-uitkomsten/)).toBeInTheDocument();
+    // Story 15.3 koppelt onOpenBatch door → navigatie i.p.v. de 15.2-Drawer.
+    expect(navigate).toHaveBeenCalledWith(expect.stringMatching(/^\/flywheel\/batches\//));
+    expect(screen.queryByTestId('batch-drawer')).not.toBeInTheDocument();
   });
 });
 
