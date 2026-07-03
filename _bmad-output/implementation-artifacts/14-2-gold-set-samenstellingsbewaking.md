@@ -1,6 +1,6 @@
 # Story 14.2: Gold-set-samenstellingsbewaking
 
-Status: ready-for-dev
+Status: in-progress
 
 <!-- Aangemaakt door create-story workflow, 2026-07-02. Bron: epics-vliegwiel.md Epic 14 / Story 14.2. -->
 

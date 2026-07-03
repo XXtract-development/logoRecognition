@@ -158,7 +158,7 @@ development_status:
 
   epic-14: in-progress
   14-1-gold-set-aanwas-uit-reviewbeslissingen: done  # 2026-07-03: accept/annotate→ECHT + reject-twee-redenen (geen-keurmerk→VALS+hard-negative fail-closed) + undo self-tombstone, alles achter FLYWHEEL_NOMINATION_ENABLED; api vitest 469/2skip; migratie-vrij. AC6 (afstemming reviewstation-gebruikers) = open menselijke taak
-  14-2-gold-set-samenstellingsbewaking: ready-for-dev
+  14-2-gold-set-samenstellingsbewaking: in-progress
   14-3-wekelijkse-outlier-audit-op-de-referentiebibliotheek: ready-for-dev
   epic-14-retrospective: optional
 
