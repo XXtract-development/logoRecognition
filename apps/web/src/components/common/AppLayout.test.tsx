@@ -40,10 +40,11 @@ vi.mock('@/services/apiClient', () => ({
   default: { post: vi.fn() },
 }));
 
-const mockUseFlywheelOverview = vi.fn();
+const mockUseQuarantineBadgeCount = vi.fn();
 vi.mock('@/components/flywheel/useFlywheelOverview', () => ({
-  useFlywheelOverview: () => mockUseFlywheelOverview(),
+  useQuarantineBadgeCount: () => mockUseQuarantineBadgeCount(),
   FLYWHEEL_OVERVIEW_QUERY_KEY: ['flywheel-overview'],
+  FLYWHEEL_QUARANTINE_COUNT_QUERY_KEY: ['flywheel-quarantine-count'],
 }));
 
 import { AppLayout } from './AppLayout';
@@ -51,11 +52,11 @@ import { AppLayout } from './AppLayout';
 describe('AppLayout — Vliegwiel-nav (Story 15.1)', () => {
   beforeEach(() => {
     navigateMock.mockReset();
-    mockUseFlywheelOverview.mockReset();
+    mockUseQuarantineBadgeCount.mockReset();
   });
 
   it('toont het nav-item "Vliegwiel" naast Review', () => {
-    mockUseFlywheelOverview.mockReturnValue({ data: { quarantineCount: 0 } });
+    mockUseQuarantineBadgeCount.mockReturnValue({ data: 0 });
     render(<AppLayout />);
     expect(screen.getByTestId('nav-flywheel')).toBeInTheDocument();
     expect(screen.getByText('Vliegwiel')).toBeInTheDocument();
@@ -63,8 +64,8 @@ describe('AppLayout — Vliegwiel-nav (Story 15.1)', () => {
     expect(screen.getByText('Review')).toBeInTheDocument();
   });
 
-  it('toont de quarantaine-badge met de count uit de overview-hook', () => {
-    mockUseFlywheelOverview.mockReturnValue({ data: { quarantineCount: 2 } });
+  it('toont de quarantaine-badge met de count uit de badge-hook', () => {
+    mockUseQuarantineBadgeCount.mockReturnValue({ data: 2 });
     render(<AppLayout />);
     const badge = screen.getByTestId('flywheel-quarantine-badge');
     expect(badge).toBeInTheDocument();
@@ -72,13 +73,13 @@ describe('AppLayout — Vliegwiel-nav (Story 15.1)', () => {
   });
 
   it('toont GEEN badge als er geen openstaande quarantainebatches zijn', () => {
-    mockUseFlywheelOverview.mockReturnValue({ data: { quarantineCount: 0 } });
+    mockUseQuarantineBadgeCount.mockReturnValue({ data: 0 });
     render(<AppLayout />);
     expect(screen.queryByTestId('flywheel-quarantine-badge')).not.toBeInTheDocument();
   });
 
-  it('valt terug op 0 als de overview-hook nog geen data heeft', () => {
-    mockUseFlywheelOverview.mockReturnValue({ data: undefined });
+  it('valt terug op 0 als de badge-hook nog geen data heeft', () => {
+    mockUseQuarantineBadgeCount.mockReturnValue({ data: undefined });
     render(<AppLayout />);
     expect(screen.getByTestId('nav-flywheel')).toBeInTheDocument();
     expect(screen.queryByTestId('flywheel-quarantine-badge')).not.toBeInTheDocument();
@@ -86,7 +87,7 @@ describe('AppLayout — Vliegwiel-nav (Story 15.1)', () => {
 
   it('navigeert naar /flywheel bij klik op het nav-item', async () => {
     const user = userEvent.setup();
-    mockUseFlywheelOverview.mockReturnValue({ data: { quarantineCount: 1 } });
+    mockUseQuarantineBadgeCount.mockReturnValue({ data: 1 });
     render(<AppLayout />);
     await user.click(screen.getByText('Vliegwiel'));
     expect(navigateMock).toHaveBeenCalledWith('/flywheel');

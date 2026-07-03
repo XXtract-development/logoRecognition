@@ -28,7 +28,7 @@ import {
 import { useThemeStore } from '@/stores/themeStore';
 import { useBackendStatus } from '@/contexts/BackendStatusContext';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
-import { useFlywheelOverview } from '@/components/flywheel/useFlywheelOverview';
+import { useQuarantineBadgeCount } from '@/components/flywheel/useFlywheelOverview';
 import { MaterialSymbol } from '@/components/flywheel/MaterialSymbol';
 import apiClient from '@/services/apiClient';
 
@@ -119,14 +119,12 @@ export const AppLayout: React.FC = () => {
   const { isDarkMode, toggleTheme } = useThemeStore();
   const { isApiHealthy, isWebSocketHealthy } = useBackendStatus();
   const { user, loading: userLoading } = useCurrentUser();
-  // Story 15.1: aantal openstaande quarantainebatches voor de nav-badge.
-  // refetch-on-mount, geen polling (patroon RetrainingNotificationBanner).
-  const { data: flywheelOverview } = useFlywheelOverview();
-  // `quarantineCount` kan sectie-lokaal `{ error }` zijn (Story 15.2) — dan 0.
-  const quarantineCount =
-    typeof flywheelOverview?.quarantineCount === 'number'
-      ? flywheelOverview.quarantineCount
-      : 0;
+  // Story 15.1: aantal openstaande quarantainebatches voor de nav-badge. Via de
+  // LICHTE count-hook (niet het volle /overview): AppLayout mount op élke pagina,
+  // dus de badge mag niet de 12-panel-aggregatie (Story 15.2) per navigatie
+  // afvuren. refetch-on-mount, geen polling (patroon RetrainingNotificationBanner).
+  const { data: badgeCount } = useQuarantineBadgeCount();
+  const quarantineCount = typeof badgeCount === 'number' ? badgeCount : 0;
 
   // Logout: clear the session server-side, then send the user to /login.
   // /login lives outside AppLayout, so the layout unmounts and useCurrentUser

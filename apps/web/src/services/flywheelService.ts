@@ -172,6 +172,16 @@ export async function fetchFlywheelOverview(): Promise<FlywheelOverview> {
 }
 
 /**
+ * Lichte teller voor de app-brede navigatie-badge (Story 15.1). Losgekoppeld van
+ * `fetchFlywheelOverview`: de badge mount op elke pagina via AppLayout, dus hij
+ * mag niet de volle 12-panel-aggregatie (Story 15.2) op elke navigatie afvuren.
+ */
+export async function fetchQuarantineCount(): Promise<number> {
+  const res = await apiClient.get<{ quarantineCount: number }>('/flywheel/quarantine-count');
+  return typeof res.data?.quarantineCount === 'number' ? res.data.quarantineCount : 0;
+}
+
+/**
  * Draai een gepasseerde batch terug (Story 13.6-endpoint). Verplicht redenveld —
  * de server valideert het ook (UX-DR11); een lege reden wordt hier al geweigerd.
  */

@@ -29,6 +29,7 @@ import {
   toCsv,
 } from '../../services/flywheel/hard-negative-export';
 import { composeOverview } from '../../services/flywheel/overview';
+import { getQuarantineCount } from '../../services/flywheel/quarantine-count';
 import {
   decideOutlier,
   OutlierFindingNotFoundError,
@@ -90,6 +91,24 @@ export async function flywheelRoutes(fastify: FastifyInstance) {
         paused: overview.paused,
       });
       return reply.status(200).send(overview);
+    }
+  );
+
+  /**
+   * GET /api/v1/flywheel/quarantine-count
+   *
+   * Lichte teller voor de app-brede navigatie-badge (Story 15.1). De badge zit in
+   * `AppLayout` en mount daardoor op ÉLKE pagina; hem via het volle `/overview`
+   * voeden zou de 12-panel-aggregatie (Story 15.2) op elke navigatie afvuren. Deze
+   * route doet één `promotion_batches`-count (best-effort → 0) en houdt de badge
+   * goedkoop; het volle overzicht blijft voorbehouden aan de /flywheel-pagina zelf.
+   */
+  fastify.get(
+    '/flywheel/quarantine-count',
+    { preHandler: authMiddleware },
+    async (_request, reply: FastifyReply) => {
+      const quarantineCount = await getQuarantineCount();
+      return reply.status(200).send({ quarantineCount });
     }
   );
 

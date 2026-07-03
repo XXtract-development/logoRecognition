@@ -137,4 +137,33 @@ describe('Story 13.2 — GET /api/v1/flywheel/overview (AC7)', () => {
     expect(res.statusCode).toBe(200);
     expect(JSON.parse(res.body).quarantineCount).toBe(0);
   });
+
+  // Story 15.1 (review-fix): de lichte badge-teller-route levert enkel de count,
+  // zónder de volle 12-panel-aggregatie — de badge mount app-breed via AppLayout.
+  it('GET /flywheel/quarantine-count levert alleen de count (badge, geen overview-aggregatie)', async () => {
+    const prisma = (await import('../../core/db')).default as unknown as {
+      promotionBatch: { count: ReturnType<typeof vi.fn> };
+    };
+    prisma.promotionBatch.count.mockResolvedValueOnce(4);
+
+    const res = await app.inject({ method: 'GET', url: '/api/v1/flywheel/quarantine-count' });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body).toEqual({ quarantineCount: 4 });
+    // Alleen de count-query — geen andere overview-panelen.
+    expect(prisma.promotionBatch.count).toHaveBeenCalledWith({
+      where: { status: 'quarantined', closedAt: null },
+    });
+  });
+
+  it('GET /flywheel/quarantine-count valt best-effort terug op 0 bij een leesfout', async () => {
+    const prisma = (await import('../../core/db')).default as unknown as {
+      promotionBatch: { count: ReturnType<typeof vi.fn> };
+    };
+    prisma.promotionBatch.count.mockRejectedValueOnce(new Error('db down'));
+
+    const res = await app.inject({ method: 'GET', url: '/api/v1/flywheel/quarantine-count' });
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body)).toEqual({ quarantineCount: 0 });
+  });
 });
