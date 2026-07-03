@@ -199,3 +199,58 @@ export function getGoldSetEchtMax(): number {
   const v = parseFloat(process.env.FLYWHEEL_GOLDSET_ECHT_MAX ?? '');
   return Number.isFinite(v) && v >= 0 && v <= 1 ? v : 0.9;
 }
+
+// ============================================
+// Story 14.3 — wekelijkse outlier-audit-config (cadans + drempels)
+// ============================================
+
+/**
+ * Cadans van de wekelijkse bibliotheek-outlier-audit (AD-6/AD-9). Default zondag
+ * 05:00 Europe/Amsterdam — bewust BUITEN kantooruren, buiten het harvest-venster
+ * (~03:23) én de promotielus (01:00), zodat de drie flywheel-jobs (concurrency 1)
+ * elkaar niet in de weg zitten. De tijdzone wordt in de scheduler-opts expliciet
+ * gezet (`FLYWHEEL_PROMOTION_TZ`).
+ */
+export const FLYWHEEL_OUTLIER_AUDIT_CRON_DEFAULT = '0 5 * * 0';
+
+export function getOutlierAuditCron(): string {
+  const raw = process.env.FLYWHEEL_OUTLIER_AUDIT_CRON;
+  return raw && raw.trim().length > 0 ? raw : FLYWHEEL_OUTLIER_AUDIT_CRON_DEFAULT;
+}
+
+/**
+ * Percentiel-drempel (0..1) waarboven een referentie een outlier-melding krijgt
+ * (FR-8, AD-9 "bovenste 5%-percentiel"). Default 0,95 — de ml-service levert per
+ * referentie een percentiel-rang (fractie referenties met afstand ≤ deze); een
+ * rang ≥ deze drempel = bovenste (1−p)·100%. Startwaarde PRD, kalibreerbaar.
+ */
+export function getOutlierPercentile(): number {
+  const v = parseFloat(process.env.FLYWHEEL_OUTLIER_PERCENTILE ?? '');
+  return Number.isFinite(v) && v > 0 && v <= 1 ? v : 0.95;
+}
+
+/**
+ * Absolute cosine-afstandsgrens (AD-9): een referentie boven deze afstand tot het
+ * klasse-centroid is óók een outlier-melding, ongeacht percentiel — zo vangt de
+ * audit een klasse waar de hele set ver van het centroid ligt (percentiel alleen
+ * zou daar niets markeren). Default 0,45 — bewust ruimer dan de per-batch
+ * guardrail (0,35, DEFAULT_OUTLIER_DISTANCE in de ml-service) omdat een
+ * bestaande, actieve referentie meer marge verdient dan een verse kandidaat.
+ * Startwaarde PRD, kalibreerbaar.
+ */
+export function getOutlierAbsDistance(): number {
+  const v = parseFloat(process.env.FLYWHEEL_OUTLIER_ABS_DISTANCE ?? '');
+  return Number.isFinite(v) && v > 0 ? v : 0.45;
+}
+
+/**
+ * Minimaal aantal actieve referenties in een klasse vóór het percentiel-pad
+ * betekenis heeft (AD-9-verduidelijking uit de story-testrichtlijn): bij < dit
+ * aantal levert "top 5%" altijd minstens één "outlier" op een te kleine set —
+ * dus onder deze grens telt ALLEEN de absolute-afstandsgrens, nooit het
+ * percentiel. Default 3.
+ */
+export function getOutlierMinClassSize(): number {
+  const v = parseInt(process.env.FLYWHEEL_OUTLIER_MIN_CLASS_SIZE ?? '', 10);
+  return Number.isFinite(v) && v > 0 ? v : 3;
+}

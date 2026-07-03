@@ -1,6 +1,6 @@
 # Story 14.3: Wekelijkse outlier-audit op de referentiebibliotheek
 
-Status: in-progress
+Status: done
 
 <!-- Aangemaakt door create-story workflow, 2026-07-02. Bron: epics-vliegwiel.md Epic 14 / Story 14.3. -->
 
@@ -123,15 +123,39 @@ zodat **een RECYCLABLE-achtig incident voortaan vooraf gevangen wordt** (FR-8).
 
 ## Dev Agent Record
 
-_(in te vullen door dev-story)_
-
 ### Agent Model Used
+
+claude-opus-4-8 (implement-sprint, epic-14-agent), 2026-07-03.
 
 ### Debug Log References
 
+- Migratie 0016 lokaal toegepast op `postgresql://…@localhost:5432/logo_recognition` (localhost bevestigd vóór elke migrate-actie). `prisma migrate diff` toonde na deploy alleen nog de onafhankelijke, pre-bestaande `retraining_notifications`-drift — niet `outlier_findings` (additief + geïsoleerd, drift-regel handmatig uit 0016 geweerd).
+- Vitest volledige suite: 507 passed / 2 skipped / 16 todo (was 492). Pytest (pure outlier-uitbreiding): 16 passed.
+
 ### Completion Notes
 
+- **Request-contract-keuze (samenloop 13.4):** één endpoint `/ml/outlier-audit`, twee modi via `library_mode: bool`. 13.4 (candidate-payload) ongewijzigd; 14.3 voegt bibliotheek-modus toe die per actieve referentie afstand + percentiel-rang levert. `response_model` van het endpoint verwijderd (twee respons-vormen); handler retourneert nog gevalideerde pydantic-modellen.
+- **Drempel-eigendom (AD-2/AD-9):** ml-service levert vergelijkingsdata (geen oordeel); API past `FLYWHEEL_OUTLIER_PERCENTILE` (0,95) + `FLYWHEEL_OUTLIER_ABS_DISTANCE` (0,45) toe. Extra poort `FLYWHEEL_OUTLIER_MIN_CLASS_SIZE` (3): onder die grens telt alleen de absolute grens (voorkomt percentiel-schijn-outlier op klein-N).
+- **Pauze-scope (AD-11/AC5):** job doet bewust GEEN pauze-check; expliciet code-comment tegen een latere consistentie-fix.
+- **Deactiveert niets (FR-8):** enige writes zijn `outlier_findings`-inserts; test bewijst geen mutatie op `reference_logos`. Beoordelingsflow (`outliers/:id/decision`) = Story 15.2, hier niet gebouwd.
+- **ACC-integratie:** niet uitgevoerd (implement-sprint draait niet tegen ACC; geen push/deploy). Deploy-volgorde ml-service → api en ghcr-afwachten blijven operationele taken voor de eigenlijke uitrol.
+
 ### File List
+
+- `apps/api/prisma/schema.prisma` (model `OutlierFinding` + relatie op `ReferenceLogo`)
+- `apps/api/prisma/migrations/0016_add_outlier_findings/migration.sql` + `down.sql`
+- `apps/api/src/services/flywheel/outlier-audit.ts` (nieuw — job-flow + `selectOutliers`)
+- `apps/api/src/services/flywheel/outliers-overview.ts` (nieuw — overview-paneel)
+- `apps/api/src/services/flywheel/config.ts` (4 getters: cron/percentiel/abs/min-class-size)
+- `apps/api/src/services/flywheel/scheduler.ts` (scheduler `flywheel-outlier-audit`)
+- `apps/api/src/services/pipeline/workers.ts` (job-route)
+- `apps/api/src/services/ml-client.ts` (`outlierAuditLibrary`)
+- `apps/api/src/api/v1/flywheel.ts` (overview `outliers`-paneel)
+- `apps/ml-service/app/services/outlier.py` (`audit_reference_library`)
+- `apps/ml-service/app/api/flywheel.py` (library-modus op `/ml/outlier-audit`)
+- `apps/ml-service/app/services/database.py` (2 read-helpers)
+- Tests: `apps/api/src/__tests__/services/flywheel-outlier-audit.test.ts` (nieuw), `flywheel-worker-scheduler.test.ts` (uitgebreid), `setup.ts` (mocks), `apps/ml-service/tests/unit/test_outlier_service.py` (uitgebreid)
+- `_bmad-output/implementation-artifacts/{review-14-3,ac-trace-14-3}.md`; `versions.md`
 
 ## Change Log
 

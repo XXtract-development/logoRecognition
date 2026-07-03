@@ -30,6 +30,7 @@ import {
 } from '../../services/flywheel/hard-negative-export';
 import { isNominationEnabled } from '../../services/flywheel/config';
 import { getGoldSetComposition } from '../../services/flywheel/gold-set-composition';
+import { getOutliersPanel } from '../../services/flywheel/outliers-overview';
 
 const logger = createLogger('flywheel-routes');
 
@@ -65,6 +66,8 @@ export async function flywheelRoutes(fastify: FastifyInstance) {
       const pauseState = await getPauseState();
       // Story 14.2: ON-READ samenstellingsbewaking (paneel goldSetComposition).
       const goldSetComposition = await getGoldSetComposition();
+      // Story 14.3: open outlier-meldingen + laatste audit-run (paneel outliers).
+      const outliers = await getOutliersPanel();
 
       logger.info('Flywheel overview opgevraagd', {
         missedNominationsTotal,
@@ -72,6 +75,7 @@ export async function flywheelRoutes(fastify: FastifyInstance) {
         paused: pauseState.paused,
         goldSetSize: goldSetComposition.size,
         goldSetSkewSignals: goldSetComposition.skewSignals.length,
+        outliersOpen: outliers.openCount,
       });
 
       return reply.status(200).send({
@@ -87,6 +91,9 @@ export async function flywheelRoutes(fastify: FastifyInstance) {
         // Story 14.2 (FR-11): gold-set-omvang, ECHT/VALS-verdeling, top-5
         // meest/minst vertegenwoordigde klassen en scheefgroei-signalen.
         goldSetComposition,
+        // Story 14.3 (FR-8): open outlier-meldingen van de wekelijkse audit +
+        // laatste run-tijdstempel. Beoordeling (Behouden/Deactiveren) = Story 15.2.
+        outliers,
       });
     }
   );

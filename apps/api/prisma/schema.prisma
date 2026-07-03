@@ -262,10 +262,43 @@ model ReferenceLogo {
   embeddings ReferenceEmbedding[]
   // Kandidaten die naar deze referentie zijn gepromoveerd (Story 13.2, AD-3).
   candidates ReferenceCandidate[]
+  // Outlier-meldingen van de wekelijkse bibliotheek-audit (Story 14.3, AD-9).
+  outlierFindings OutlierFinding[]
 
   @@unique([t3777Code, variantLabel])
   @@index([t3777Code])
   @@map("reference_logos")
+}
+
+/// Wekelijkse outlier-audit-melding op de referentiebibliotheek (Story 14.3, AD-9).
+///
+/// De wekelijkse audit (`flywheel-outlier-audit`, queue `flywheel`) meet elke
+/// ACTIEVE referentie tegen het klasse-centroid en markeert referenties in het
+/// bovenste percentiel of boven de absolute afstandsgrens als `open` melding —
+/// mét vergelijkingsdata (`distance`, `percentile`). De audit deactiveert NIETS
+/// (FR-8): dit is uitsluitend signalering + persistentie. De beoordelingsacties
+/// (Behouden/Deactiveren → status `behouden`/`gedeactiveerd`, `decidedBy`/
+/// `decidedAt`) verlopen via de dashboard-flow van Story 15.2 (endpoint
+/// `outliers/:id/decision`) — buiten deze story. `auditRunAt` is het run-
+/// tijdstempel (NFR-5), één waarde per audit-run.
+model OutlierFinding {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  auditRunAt      DateTime  @map("audit_run_at") @db.Timestamptz
+  referenceLogoId String    @map("reference_logo_id") @db.Uuid
+  distance        Float
+  percentile      Float
+  status          String    @default("open") @db.VarChar(20)
+  decidedBy       String?   @map("decided_by") @db.VarChar(255)
+  decidedAt       DateTime? @map("decided_at") @db.Timestamptz
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  referenceLogo ReferenceLogo @relation(fields: [referenceLogoId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
+  @@index([referenceLogoId])
+  @@map("outlier_findings")
 }
 
 /// Reference keurmerk embeddings (Epic 8, Story 8.4)

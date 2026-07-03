@@ -1,5 +1,13 @@
 # Versiegeschiedenis
 
+## 2026-07-03 (wekelijkse controle op afwijkende referentiebeelden)
+
+### Afwijkende referentiebeelden worden voortaan wekelijks gesignaleerd
+- Eén keer per week loopt het systeem automatisch alle actieve referentiebeelden na (de voorbeelden waarmee keurmerken worden herkend) en meet per keurmerk hoe ver elk beeld van de "gemiddelde" van dat keurmerk af ligt. Beelden die er duidelijk uitspringen — de meest afwijkende, of beelden boven een vaste afstandsgrens — worden als aandachtspunt gemeld
+- Ook handmatig toegevoegde referentiebeelden worden meegenomen. Juist zo'n handmatig geplaatst, afwijkend beeld veroorzaakte eerder een herkenningsprobleem; die situatie wordt nu vooraf gevangen
+- De melding is puur signalering: het systeem zet zelf niets uit. Het beoordelen (behouden of uitzetten) gebeurt straks via het dashboard. De aandachtspunten zijn zichtbaar in het vliegwiel-overzicht, met het tijdstip van de laatste controle, en blijven bewaard ook na een herstart
+- De wekelijkse controle draait gewoon door wanneer het leervliegwiel gepauzeerd is — ze verandert immers niets, ze kijkt alleen mee
+
 ## 2026-07-03 (zicht op de gezondheid van de goudstandaard)
 
 ### De datamanager ziet nu de omvang en samenstelling van de goudstandaard

@@ -148,3 +148,81 @@ def test_percentile_threshold_path():
     # De verste kandidaat ligt strikt boven het 75e-percentiel.
     assert "c3" in outliers
     assert "c0" not in outliers
+
+
+# ---------------------------------------------------------------------------
+# 14.3 — audit_reference_library (bibliotheek-brede modus)
+# ---------------------------------------------------------------------------
+
+
+def test_library_audit_returns_distance_and_percentile_per_reference():
+    """Elke referentie krijgt afstand tot het centroid + percentiel-rang."""
+    references = [
+        {"id": "r0", "embedding": [1.0, 0.0]},
+        {"id": "r1", "embedding": [0.95, 0.05]},
+        {"id": "r2", "embedding": [0.9, 0.1]},
+        {"id": "r3", "embedding": [0.0, 1.0]},  # duidelijke buitenbeen
+    ]
+    result = outlier_service.audit_reference_library(references)
+    assert result["centroid_size"] == 4
+    by_id = {r["id"]: r for r in result["results"]}
+    # Alle vier referenties komen terug, elk met distance + percentile.
+    assert set(by_id) == {"r0", "r1", "r2", "r3"}
+    for r in result["results"]:
+        assert "distance" in r and "percentile" in r
+        assert 0.0 <= r["percentile"] <= 1.0
+    # De buitenbeen (r3) heeft de grootste afstand → percentiel-rang 1,0.
+    assert by_id["r3"]["distance"] == max(r["distance"] for r in result["results"])
+    assert by_id["r3"]["percentile"] == 1.0
+    # De dichtstbijzijnde bij het centroid heeft een lagere rang dan de verste.
+    assert by_id["r0"]["percentile"] < by_id["r3"]["percentile"]
+
+
+def test_library_audit_percentile_is_fraction_le_including_self():
+    """Percentiel-rang = fractie referenties met afstand ≤ deze (incl. zichzelf)."""
+    references = [
+        {"id": "a", "embedding": [1.0, 0.0]},
+        {"id": "b", "embedding": [1.0, 0.0]},
+        {"id": "c", "embedding": [0.0, 1.0]},
+    ]
+    result = outlier_service.audit_reference_library(references)
+    by_id = {r["id"]: r for r in result["results"]}
+    # a en b liggen op het centroid (afstand ~0); c ver weg (afstand ~1).
+    # a/b: 2 van de 3 hebben afstand ≤ die van a/b → rang 2/3.
+    assert abs(by_id["a"]["percentile"] - 2 / 3) < 1e-6
+    assert abs(by_id["b"]["percentile"] - 2 / 3) < 1e-6
+    # c: alle 3 ≤ die van c → rang 1,0.
+    assert by_id["c"]["percentile"] == 1.0
+
+
+def test_library_audit_empty_class_no_crash():
+    """Lege klasse → centroid_size 0, lege results (geen crash)."""
+    result = outlier_service.audit_reference_library([])
+    assert result["centroid_size"] == 0
+    assert result["results"] == []
+
+
+def test_library_audit_single_reference_defines_trivial_rank():
+    """Eén referentie → centroid = zichzelf, afstand ~0, percentiel 1,0 (rang triviaal)."""
+    result = outlier_service.audit_reference_library([{"id": "solo", "embedding": [1.0, 0.0]}])
+    assert result["centroid_size"] == 1
+    assert len(result["results"]) == 1
+    solo = result["results"][0]
+    assert solo["id"] == "solo"
+    assert solo["distance"] < 1e-5
+    assert solo["percentile"] == 1.0
+
+
+def test_library_audit_skips_zero_vectors_in_centroid():
+    """Een nul-vector vervuilt het centroid niet, maar telt wel als referentie."""
+    references = [
+        {"id": "good", "embedding": [1.0, 0.0]},
+        {"id": "zero", "embedding": [0.0, 0.0]},  # nul-vector
+    ]
+    result = outlier_service.audit_reference_library(references)
+    # Beide referenties komen terug (2 results).
+    assert result["centroid_size"] == 2
+    by_id = {r["id"]: r for r in result["results"]}
+    # De nul-vector krijgt de maximale afstand (1,0) tot het centroid.
+    assert by_id["zero"]["distance"] == 1.0
+    assert by_id["good"]["distance"] < 1e-5

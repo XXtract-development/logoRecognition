@@ -518,6 +518,40 @@ export class MLClient {
   }
 
   /**
+   * Bibliotheek-brede outlier-audit (Story 14.3, AD-9) — bibliotheek-modus van
+   * hetzelfde `/ml/outlier-audit`-endpoint (`library_mode: true`).
+   *
+   * Meet elke ACTIEVE referentie van `t3777Code` tegen het klasse-centroid van
+   * diezelfde set en retourneert vergelijkingsdata per referentie: de cosine-
+   * afstand en de percentiel-rang binnen de klasse (fractie referenties met
+   * afstand ≤ deze). De ml-service velt GEEN grens-oordeel — de API past de
+   * drempels toe (percentiel + absolute grens) en beslist (AD-2). Dekt óók
+   * handmatig gecureerde referenties (elke actieve referentie).
+   *
+   * `centroid_size=0` = klasse zonder bruikbare actieve referentie → lege
+   * `results` (geen crash).
+   */
+  async outlierAuditLibrary(request: { t3777_code: string }): Promise<{
+    t3777_code: string;
+    centroid_size: number;
+    results: Array<{ reference_logo_id: string; distance: number; percentile: number }>;
+  }> {
+    try {
+      const res = await this.client.post('/ml/outlier-audit', {
+        t3777_code: request.t3777_code,
+        library_mode: true,
+      });
+      return res.data as {
+        t3777_code: string;
+        centroid_size: number;
+        results: Array<{ reference_logo_id: string; distance: number; percentile: number }>;
+      };
+    } catch (error) {
+      throw this.handleError(error, 'Library outlier audit failed');
+    }
+  }
+
+  /**
    * Gold-set-regressie-eval — schaduw-evaluatie (Story 13.5, AD-4/AD-5).
    *
    * Meet precisie@drempel over de door de API geresolvede gold-set (payload — de

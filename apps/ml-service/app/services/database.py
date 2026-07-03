@@ -523,6 +523,66 @@ class DatabaseService:
                     vectors.append(vec)
             return vectors
 
+    async def get_active_reference_classes(self) -> List[str]:
+        """Return the distinct t3777 classes that have ANY active reference logo.
+
+        Read-only helper for the weekly library-wide outlier audit (Story 14.3,
+        AD-9): the audit iterates every active class. A class counts as active if
+        it has ≥1 active ``reference_logos`` row (embeddings are read per class
+        afterwards). Sorted for deterministic iteration/logging.
+        """
+        async with self.get_connection() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT DISTINCT t3777_code
+                FROM reference_logos
+                WHERE active = true
+                ORDER BY t3777_code
+                """
+            )
+            return [row["t3777_code"] for row in rows]
+
+    async def get_active_reference_embeddings_with_ids_for_class(
+        self, t3777_code: str
+    ) -> List[Dict[str, Any]]:
+        """Return the ACTIVE reference embeddings of one class WITH their ids.
+
+        Read-only helper for the library-wide outlier audit (Story 14.3, AD-9):
+        the weekly audit needs, per active reference of the class, both the
+        embedding vector (to measure distance to the class centroid) and the
+        ``reference_logo_id`` (so the API can persist a finding tied to that
+        reference). Unlike ``get_reference_embeddings_for_class`` (13.4, vectors
+        only), this returns id + vector.
+
+        Covers ALL active references regardless of ``source`` — so manually
+        curated references (``source`` != flywheel-promotion) are audited too
+        (FR-8, the RECYCLABLE incident). Malformed/empty vectors are skipped so a
+        corrupt row never poisons the centroid. Returns an empty list when the
+        class has no active reference embeddings (leeg-klasse-randgeval).
+        """
+        async with self.get_connection() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT re.reference_logo_id, re.embedding::text AS embedding_text
+                FROM reference_embeddings re
+                JOIN reference_logos rl ON re.reference_logo_id = rl.id
+                WHERE rl.active = true AND rl.t3777_code = $1
+                """,
+                t3777_code,
+            )
+            results: List[Dict[str, Any]] = []
+            for row in rows:
+                vec = _parse_pgvector(row["embedding_text"])
+                if vec.size == 0:
+                    continue
+                results.append(
+                    {
+                        "reference_logo_id": str(row["reference_logo_id"]),
+                        "embedding": vec,
+                    }
+                )
+            return results
+
     async def get_active_reference_entries(self) -> List[Dict[str, Any]]:
         """Return ALL active reference embeddings for the regression-eval (Story 13.5).
 

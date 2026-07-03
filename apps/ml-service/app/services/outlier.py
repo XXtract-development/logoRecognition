@@ -135,3 +135,66 @@ def audit_candidates(
         "threshold": float(threshold),
         "results": results,
     }
+
+
+def audit_reference_library(
+    references: List[Dict[str, object]],
+) -> Dict[str, object]:
+    """Bibliotheek-brede audit-modus (Story 14.3, AD-9): meet elke ACTIEVE
+    referentie van één klasse tegen het klasse-centroid van diezelfde set.
+
+    Anders dan ``audit_candidates`` (13.4: externe kandidaten tegen de klasse)
+    zijn hier de referenties zelf de te beoordelen set én de centroid-basis. Per
+    referentie levert deze functie *vergelijkingsdata* — de cosine-afstand tot
+    het centroid en de percentiel-rang binnen de klasse — maar velt geen
+    grens-oordeel: de API bezit de drempels (``FLYWHEEL_OUTLIER_PERCENTILE`` /
+    ``FLYWHEEL_OUTLIER_ABS_DISTANCE``) en beslist op de geretourneerde scores
+    (AD-2/AD-9). De ml-service schrijft niets.
+
+    Percentiel-rang: de fractie referenties (0..1) met een afstand ≤ die van de
+    referentie zelf (inclusief zichzelf). De verste referentie krijgt zo rang
+    1,0; de dichtstbijzijnde de laagste. Zo kan de API "bovenste 5%-percentiel"
+    lezen als ``percentile >= 0.95``.
+
+    Args:
+        references: lijst van ``{"id": str, "embedding": Sequence[float]}`` — de
+            actieve referenties van de klasse.
+
+    Returns:
+        ``{"centroid_size": int, "results": [{id, distance, percentile}]}``.
+
+    Randgevallen:
+      * 0 bruikbare referenties → ``centroid_size=0``, lege ``results``.
+      * 1 referentie → centroid = zichzelf, afstand ~0, percentiel 1,0
+        (de klasse-rang is triviaal). De <3-referentie-drempel-keuze
+        (alleen absolute grens, geen percentiel-outlier) leeft in de API, niet
+        hier — deze functie levert altijd rauwe vergelijkingsdata.
+    """
+    vectors: List[np.ndarray] = [
+        np.asarray(r.get("embedding", []), dtype=np.float32) for r in references
+    ]
+    centroid = compute_centroid(vectors)
+
+    if centroid is None:
+        return {"centroid_size": 0, "results": []}
+
+    distances = [cosine_distance(vectors[i], centroid) for i in range(len(references))]
+    n = len(distances)
+
+    results: List[Dict[str, object]] = []
+    for i, r in enumerate(references):
+        d = distances[i]
+        # Percentiel-rang: fractie met afstand ≤ deze (inclusief zichzelf).
+        rank = sum(1 for other in distances if other <= d) / n
+        results.append(
+            {
+                "id": str(r.get("id")),
+                "distance": float(d),
+                "percentile": float(rank),
+            }
+        )
+
+    return {
+        "centroid_size": n,
+        "results": results,
+    }

@@ -15,15 +15,22 @@ Endpoints:
     normalisatie) én de perceptual hash (pHash) in één response (AD-14). Dit is
     de enige route voor een inhouds-hash; er bestaat geen Node-implementatie.
 
-  POST /ml/outlier-audit  (Story 13.4)
-    Body: { "t3777_code": str, "candidates": [{ "id": str, "embedding": [float] }],
+  POST /ml/outlier-audit  (Story 13.4 + 14.3) — twee modi, één endpoint (AD-9)
+    Modus 1 (13.4, per-batch): { "t3777_code": str, "candidates": [{...}],
             "percentile": float? }
-    Response: { "t3777_code": str, "centroid_size": int, "threshold": float,
-                "results": [{ "id": str, "distance": float, "is_outlier": bool }] }
-
-    Berekent per kandidaat de cosine-afstand tot het klasse-centroid (uit de
-    ACTIEVE referentie-embeddings van de klasse — read-only) en velt een
-    grens-oordeel (AD-9). ml-service schrijft niets.
+      Response: { "t3777_code", "centroid_size", "threshold",
+                  "results": [{ "id", "distance", "is_outlier" }] }
+      Berekent per kandidaat de cosine-afstand tot het klasse-centroid (uit de
+      ACTIEVE referentie-embeddings van de klasse — read-only) en velt een
+      grens-oordeel.
+    Modus 2 (14.3, bibliotheek-breed): { "t3777_code": str, "library_mode": true }
+      Response: { "t3777_code", "centroid_size",
+                  "results": [{ "reference_logo_id", "distance", "percentile" }] }
+      Meet elke ACTIEVE referentie van de klasse tegen het centroid van diezelfde
+      set en levert vergelijkingsdata (afstand + percentiel-rang) per referentie —
+      GEEN grens-oordeel: de API bezit de drempels (AD-2). Dekt óók handmatig
+      gecureerde referenties.
+    ml-service schrijft in beide modi niets (AD-2).
 """
 
 import base64
@@ -122,17 +129,26 @@ class OutlierCandidate(BaseModel):
 
 
 class OutlierAuditRequest(BaseModel):
-    """Per-batch outlier-audit-verzoek (Story 13.4, AD-9).
+    """Outlier-audit-verzoek — twee modi, één endpoint (Story 13.4 + 14.3, AD-9).
 
-    De API stuurt de kandidaat-vectoren; de ml-service leest de actieve
-    referentie-embeddings van ``t3777_code`` (read-only) voor het centroid.
-    ``percentile`` (0..1) is optioneel — gezet = 14.3-percentiel-pad, weg =
-    13.4-absolute-grens-pad.
+    Modus 1 (13.4, per-batch): ``library_mode=False`` (default). De API stuurt de
+    kandidaat-vectoren; de ml-service leest de actieve referentie-embeddings van
+    ``t3777_code`` (read-only) voor het centroid en velt een grens-oordeel per
+    kandidaat. ``percentile`` (0..1) optioneel — gezet = percentiel-pad, weg =
+    absolute-grens-pad.
+
+    Modus 2 (14.3, bibliotheek-breed): ``library_mode=True``. Er zijn geen
+    externe kandidaten; de ml-service leest de ACTIEVE referenties van
+    ``t3777_code`` (incl. hun ``reference_logo_id``) en meet elke referentie
+    tegen het centroid van diezelfde set. Retourneert vergelijkingsdata per
+    referentie (afstand + percentiel-rang) — GEEN grens-oordeel: de API bezit de
+    drempels en beslist (AD-2). ``candidates``/``percentile`` worden genegeerd.
     """
 
     t3777_code: str
     candidates: List[OutlierCandidate] = Field(default_factory=list)
     percentile: Optional[float] = None
+    library_mode: bool = False
 
 
 class OutlierResult(BaseModel):
@@ -148,15 +164,74 @@ class OutlierAuditResponse(BaseModel):
     results: List[OutlierResult]
 
 
-@router.post("/outlier-audit", response_model=OutlierAuditResponse)
-async def outlier_audit(request: OutlierAuditRequest) -> OutlierAuditResponse:
-    """Beoordeel kandidaten tegen het klasse-centroid van hun klasse (Story 13.4).
+class LibraryOutlierResult(BaseModel):
+    """Vergelijkingsdata per actieve referentie (14.3-modus)."""
 
-    Leest de actieve referentie-embeddings van ``t3777_code`` (read-only) voor
-    het centroid en berekent per kandidaat de cosine-afstand + grens-oordeel. Een
-    klasse zonder actieve referentie levert een gedefinieerd antwoord
-    (``centroid_size=0``, geen outliers) — geen crash. ml-service schrijft niets.
+    reference_logo_id: str
+    distance: float
+    percentile: float
+
+
+class OutlierLibraryResponse(BaseModel):
+    """Bibliotheek-brede audit-respons (14.3): per referentie afstand + rang."""
+
+    t3777_code: str
+    centroid_size: int
+    results: List[LibraryOutlierResult]
+
+
+@router.post("/outlier-audit")
+async def outlier_audit(request: OutlierAuditRequest):
+    """Outlier-audit tegen het klasse-centroid — twee modi (Story 13.4 + 14.3).
+
+    ``library_mode=False`` (13.4): beoordeel de meegestuurde kandidaten tegen het
+    klasse-centroid en vel een grens-oordeel per kandidaat.
+
+    ``library_mode=True`` (14.3): meet elke ACTIEVE referentie van de klasse tegen
+    het centroid van diezelfde set en retourneer afstand + percentiel-rang per
+    referentie (met ``reference_logo_id``) — de API past de drempels toe. Dekt
+    óók handmatig gecureerde referenties (elke actieve referentie, ongeacht
+    ``source``).
+
+    Een klasse zonder actieve referentie levert een gedefinieerd antwoord
+    (``centroid_size=0``, lege/geen outliers) — geen crash. ml-service schrijft
+    nooit (AD-2).
     """
+    if request.library_mode:
+        try:
+            references = await db_service.get_active_reference_embeddings_with_ids_for_class(
+                request.t3777_code
+            )
+        except Exception as exc:
+            logger.warning(
+                "Kon referentie-embeddings niet lezen voor bibliotheek-audit",
+                extra={"t3777_code": request.t3777_code, "error": str(exc)},
+            )
+            raise HTTPException(
+                status_code=503,
+                detail=f"Kon referentie-embeddings niet lezen: {exc}",
+            )
+
+        audit = outlier_service.audit_reference_library(
+            references=[
+                {"id": r["reference_logo_id"], "embedding": r["embedding"]}
+                for r in references
+            ]
+        )
+
+        return OutlierLibraryResponse(
+            t3777_code=request.t3777_code,
+            centroid_size=int(audit["centroid_size"]),
+            results=[
+                LibraryOutlierResult(
+                    reference_logo_id=str(r["id"]),
+                    distance=float(r["distance"]),
+                    percentile=float(r["percentile"]),
+                )
+                for r in audit["results"]  # type: ignore[union-attr]
+            ],
+        )
+
     try:
         reference_vectors = await db_service.get_reference_embeddings_for_class(
             request.t3777_code

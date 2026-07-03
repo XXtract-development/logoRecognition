@@ -159,7 +159,7 @@ development_status:
   epic-14: in-progress
   14-1-gold-set-aanwas-uit-reviewbeslissingen: done  # 2026-07-03: accept/annotate→ECHT + reject-twee-redenen (geen-keurmerk→VALS+hard-negative fail-closed) + undo self-tombstone, alles achter FLYWHEEL_NOMINATION_ENABLED; api vitest 469/2skip; migratie-vrij. AC6 (afstemming reviewstation-gebruikers) = open menselijke taak
   14-2-gold-set-samenstellingsbewaking: done  # 2026-07-03: on-read samenstellingsbewaking (omvang, ECHT/VALS, top-5 klassen, scheefgroei-signalen >20%/60-90%) als paneel goldSetComposition in /overview + niet-blokkerende gold-set-dekkings-markering in de batch-poort (gateResults.goldSetCoverage); geen job/scheduler (AD-6 ongeraakt), migratie-vrij; api vitest 492 pass/2 skip. AC3 volledig ingehaakt (poort 13.4/13.5 bestond al)
-  14-3-wekelijkse-outlier-audit-op-de-referentiebibliotheek: in-progress
+  14-3-wekelijkse-outlier-audit-op-de-referentiebibliotheek: done  # 2026-07-03: wekelijkse job flywheel-outlier-audit (queue flywheel, upsertJobScheduler zondag 05:00) meet elke actieve referentie tegen het klasse-centroid via /ml/outlier-audit library-modus; bovenste percentiel (0,95) OF absolute grens (0,45) → open outlier_findings mét vergelijkingsdata; dekt gecureerde referenties; deactiveert niets (FR-8); draait door bij pauze (AD-11); overview-paneel outliers + run-tijdstempel. Migratie 0016 lokaal (localhost) additief + down. api vitest 507 pass/2 skip; ml pure pytest 16 pass. Beoordelingsflow = 15.2
   epic-14-retrospective: optional
 
   epic-15: in-progress

@@ -77,19 +77,43 @@ describe('registerFlywheelSchedulers (AD-6 — upsertJobScheduler, geen repeat)'
     const queueInstance = (Queue as unknown as ReturnType<typeof vi.fn>).mock.results.at(-1)?.value;
     const upsert = queueInstance.upsertJobScheduler as ReturnType<typeof vi.fn>;
 
-    // Twee schedulers: promotie + watchdog.
-    expect(upsert).toHaveBeenCalledTimes(2);
+    // Drie schedulers: promotie + watchdog + wekelijkse outlier-audit (Story 14.3).
+    expect(upsert).toHaveBeenCalledTimes(3);
     const promotionCall = upsert.mock.calls.find(
       (c) => (c[2] as { name?: string })?.name === 'flywheel-promotion'
     );
     expect(promotionCall).toBeDefined();
     expect(promotionCall![1]).toMatchObject({ pattern: '0 1 * * *', tz: 'Europe/Amsterdam' });
 
+    // Story 14.3: de outlier-audit-scheduler is wekelijks (zondag 05:00) met tz.
+    const outlierCall = upsert.mock.calls.find(
+      (c) => (c[2] as { name?: string })?.name === 'flywheel-outlier-audit'
+    );
+    expect(outlierCall).toBeDefined();
+    expect(outlierCall![1]).toMatchObject({ pattern: '0 5 * * 0', tz: 'Europe/Amsterdam' });
+
     // Nooit het gedeprecieerde add(..., { repeat: { pattern } })-pad.
     const add = queueInstance.add as ReturnType<typeof vi.fn>;
     for (const call of add.mock.calls) {
       expect(call[2]?.repeat).toBeUndefined();
     }
+  });
+
+  it('routeert flywheel-outlier-audit naar de audit-flow (Story 14.3)', async () => {
+    // De worker-route roept runOutlierAudit aan; die leest de actieve klassen via
+    // prisma. We bewijzen dat de route de audit-flow raakt (referenceLogo.findMany
+    // met active-filter) i.p.v. een no-op default-tak.
+    const { processFlywheelJob } = await import('../../services/pipeline/workers');
+    const prisma = (await import('../../core/db')).default as unknown as {
+      referenceLogo: { findMany: ReturnType<typeof vi.fn> };
+    };
+    prisma.referenceLogo.findMany.mockResolvedValueOnce([]);
+
+    await processFlywheelJob({ name: 'flywheel-outlier-audit' } as never);
+
+    expect(prisma.referenceLogo.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { active: true } })
+    );
   });
 
   it('respecteert FLYWHEEL_PROMOTION_CRON als die gezet is', async () => {

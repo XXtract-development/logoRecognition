@@ -49,6 +49,7 @@ import {
 import { runPromotionLoop } from '../flywheel/promotion-batch';
 import { runWatchdogCheck } from '../flywheel/watchdog';
 import { runReembedJob, type ReembedJobData } from '../flywheel/reembed';
+import { runOutlierAudit } from '../flywheel/outlier-audit';
 
 const logger = createLogger('pipeline-workers');
 
@@ -60,6 +61,8 @@ export const FLYWHEEL_PROMOTION_JOB = 'flywheel-promotion';
 export const FLYWHEEL_WATCHDOG_JOB = 'flywheel-watchdog';
 // Her-embed-taak van de versie-guard (Story 13.5, gate.ts::enforceVersionGuard).
 export const FLYWHEEL_REEMBED_JOB = 'flywheel-reembed';
+// Wekelijkse bibliotheek-outlier-audit (Story 14.3, FR-8/AD-9).
+export const FLYWHEEL_OUTLIER_AUDIT_JOB = 'flywheel-outlier-audit';
 
 // Detection-worker concurrency (Story 8-3O, decision 1). Default 2.
 const DETECTION_CONCURRENCY = parseInt(process.env.DETECTION_CONCURRENCY || '2', 10);
@@ -372,13 +375,16 @@ let flywheelWorker: Worker | null = null;
  * Route a flywheel-queue job to its handler by job name. Exported so tests can
  * drive the handler without a live Worker/Redis.
  *
- * `flywheel-promotion` → runPromotionLoop (crash-recovery → bundle → guardrails).
- * `flywheel-watchdog`  → runWatchdogCheck (stall-notification).
- * `flywheel-reembed`   → runReembedJob (versie-guard her-embed, Story 13.5): een
- *                        kandidaat met verouderde modelversie krijgt een verse
- *                        embedding tegen het actieve model. Zonder deze route
- *                        bleef de enqueued taak een no-op en stagneerde de
- *                        kandidaat na een modelactivatie (livelock).
+ * `flywheel-promotion`     → runPromotionLoop (crash-recovery → bundle → guardrails).
+ * `flywheel-watchdog`      → runWatchdogCheck (stall-notification).
+ * `flywheel-reembed`       → runReembedJob (versie-guard her-embed, Story 13.5): een
+ *                            kandidaat met verouderde modelversie krijgt een verse
+ *                            embedding tegen het actieve model. Zonder deze route
+ *                            bleef de enqueued taak een no-op en stagneerde de
+ *                            kandidaat na een modelactivatie (livelock).
+ * `flywheel-outlier-audit` → runOutlierAudit (Story 14.3): wekelijkse bibliotheek-
+ *                            brede outlier-signalering. Read-only + persistent;
+ *                            deactiveert niets (FR-8).
  */
 export async function processFlywheelJob(job: Pick<Job, 'name' | 'data'>): Promise<unknown> {
   switch (job.name) {
@@ -388,6 +394,8 @@ export async function processFlywheelJob(job: Pick<Job, 'name' | 'data'>): Promi
       return runWatchdogCheck();
     case FLYWHEEL_REEMBED_JOB:
       return runReembedJob(job.data as ReembedJobData);
+    case FLYWHEEL_OUTLIER_AUDIT_JOB:
+      return runOutlierAudit();
     default:
       return undefined;
   }
