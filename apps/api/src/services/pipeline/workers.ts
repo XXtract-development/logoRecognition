@@ -48,6 +48,7 @@ import {
 } from '../flywheel/crosscheck-hook';
 import { runPromotionLoop } from '../flywheel/promotion-batch';
 import { runWatchdogCheck } from '../flywheel/watchdog';
+import { runReembedJob, type ReembedJobData } from '../flywheel/reembed';
 
 const logger = createLogger('pipeline-workers');
 
@@ -57,6 +58,8 @@ const TRAINING_QUEUE = 'training';
 const FLYWHEEL_QUEUE = 'flywheel';
 export const FLYWHEEL_PROMOTION_JOB = 'flywheel-promotion';
 export const FLYWHEEL_WATCHDOG_JOB = 'flywheel-watchdog';
+// Her-embed-taak van de versie-guard (Story 13.5, gate.ts::enforceVersionGuard).
+export const FLYWHEEL_REEMBED_JOB = 'flywheel-reembed';
 
 // Detection-worker concurrency (Story 8-3O, decision 1). Default 2.
 const DETECTION_CONCURRENCY = parseInt(process.env.DETECTION_CONCURRENCY || '2', 10);
@@ -371,13 +374,20 @@ let flywheelWorker: Worker | null = null;
  *
  * `flywheel-promotion` → runPromotionLoop (crash-recovery → bundle → guardrails).
  * `flywheel-watchdog`  → runWatchdogCheck (stall-notification).
+ * `flywheel-reembed`   → runReembedJob (versie-guard her-embed, Story 13.5): een
+ *                        kandidaat met verouderde modelversie krijgt een verse
+ *                        embedding tegen het actieve model. Zonder deze route
+ *                        bleef de enqueued taak een no-op en stagneerde de
+ *                        kandidaat na een modelactivatie (livelock).
  */
-export async function processFlywheelJob(job: Pick<Job, 'name'>): Promise<unknown> {
+export async function processFlywheelJob(job: Pick<Job, 'name' | 'data'>): Promise<unknown> {
   switch (job.name) {
     case FLYWHEEL_PROMOTION_JOB:
       return runPromotionLoop();
     case FLYWHEEL_WATCHDOG_JOB:
       return runWatchdogCheck();
+    case FLYWHEEL_REEMBED_JOB:
+      return runReembedJob(job.data as ReembedJobData);
     default:
       return undefined;
   }
