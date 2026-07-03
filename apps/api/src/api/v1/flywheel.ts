@@ -28,6 +28,10 @@ import {
   getHardNegativeExport,
   toCsv,
 } from '../../services/flywheel/hard-negative-export';
+import {
+  buildDataQualityReport,
+  toDataQualityCsv,
+} from '../../services/flywheel/data-quality-report';
 import { composeOverview } from '../../services/flywheel/overview';
 import { getQuarantineCount } from '../../services/flywheel/quarantine-count';
 import {
@@ -242,6 +246,49 @@ export async function flywheelRoutes(fastify: FastifyInstance) {
       }
 
       return reply.status(200).send({ total: rows.length, rows });
+    }
+  );
+
+  /**
+   * GET /api/v1/flywheel/reports/data-quality
+   *
+   * Datakwaliteitsrapport "gevonden-niet-gedeclareerd" (Story 16.3, FR-16):
+   * keurmerken die wél op verpakkingen staan maar niet gedeclareerd zijn,
+   * gegroepeerd per informatieleverancier (GLN). Leesprojectie over de
+   * `found-not-declared`-events (Story 16.1) — GEEN tweede confidence-drempel
+   * (die zit in de registratie). Cohort-herkomst is uitgesloten (Story 16.4).
+   *
+   * Query: `from`/`to` (ISO-datum; half-open interval [from, to)), optionele
+   * `gln`-filter, `format=csv` voor een CSV-download (anders JSON). Bevat
+   * uitsluitend eigen crop-verwijzingen — nooit GS1-gidsbeelden (NFR-6-guard).
+   * Alleen ADMIN. Endpoint uit de spine-endpointset.
+   */
+  fastify.get<{ Querystring: { from?: string; to?: string; gln?: string; format?: string } }>(
+    '/flywheel/reports/data-quality',
+    { preHandler: REQUIRE_ADMIN },
+    async (request, reply) => {
+      const parseDate = (v?: string): Date | null => {
+        if (!v) return null;
+        const d = new Date(v);
+        return Number.isNaN(d.getTime()) ? null : d;
+      };
+
+      const gln = request.query?.gln?.trim() || null;
+      const report = await buildDataQualityReport({
+        from: parseDate(request.query?.from),
+        to: parseDate(request.query?.to),
+        gln,
+      });
+
+      if (request.query?.format === 'csv') {
+        return reply
+          .status(200)
+          .header('Content-Type', 'text/csv; charset=utf-8')
+          .header('Content-Disposition', 'attachment; filename="data-quality-report.csv"')
+          .send(toDataQualityCsv(report));
+      }
+
+      return reply.status(200).send(report);
     }
   );
 

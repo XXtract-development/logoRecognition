@@ -1,6 +1,6 @@
 # Story 16.3: Datakwaliteitsrapport gevonden-niet-gedeclareerd
 
-Status: in-progress
+Status: done
 
 <!-- Aangemaakt via create-story workflow, 2026-07-02. Epic 16 — Mismatch-stromen als brandstof en datakwaliteitssignaal. -->
 
@@ -97,15 +97,34 @@ So that **ik leveranciers gericht op declaratie-omissies kan wijzen**.
 
 ## Dev Agent Record
 
-_(in te vullen door dev-story)_
-
 ### Agent Model Used
+
+Claude Opus 4.8 (implement-sprint).
 
 ### Debug Log References
 
+- api vitest (nieuwe tests): 27 pass (guard 10, service 11, route 6).
+- api vitest (volledige suite): zie sprint-status-notitie hieronder.
+
 ### Completion Notes
 
+- **Migratie-vrij bevestigd.** Rapport is een leesprojectie over `mismatch_events` (type `found-not-declared`), geen schemawijziging.
+- **Bronbestand zonder schemawijziging (ARCH-2).** `mismatch_events` draagt geen crop-/bronbestand-kolom (schema.prisma:807). Het "bronbestand" per geval wordt deterministisch afgeleid uit de eigen-crop-conventie `artwork-crops/{gtin}/` — een eigen-crop-verwijzing (nooit een gidsbeeld); `runId` reist mee voor herleidbaarheid (AD-13). Dit is de bewuste invulling van de story-eis binnen de "geen schemawijziging"-guardrail.
+- **NFR-6 afgedwongen.** Herbruikbare pad-guard `services/flywheel/reference-path-guard.ts` (`isReferenceLogoPath` / `sanitizeSourcePath`) weigert elk `reference-logos/`-pad en logt een waarschuwing. Elk pad in de payload passeert de guard; guard-test dekt kaal/`./`/`/`-prefix + de gelogde waarschuwing + bewijs dat een gidspad niet in de rapport-payload verschijnt.
+- **Geen tweede confidence-drempel** (FR-16-voorwaarde blijft in de 16.1-registratie); getest.
+- **Cohort-uitsluiting** (`origin NOT LIKE 'cohort-%'`, Story 16.4) consistent met mismatch-workload.ts en overview/mismatch-trends.ts.
+- **Endpoint** `GET /api/v1/flywheel/reports/data-quality` (spine-endpointset :241), ADMIN-only (`requireRole('ADMIN')`), query `from`/`to` (half-open [from, to)) + optionele `gln` + `format=csv`-download. CSV/route-patroon gespiegeld op `hard-negatives/export`.
+- **Taak 4 (dashboard-export-knop):** de /flywheel-rapportpagina's (15.2/latere UX) bevatten nog geen mismatch-/rapportpaneel om de knop op te hangen; het endpoint is zelfstandig bruikbaar en volledig getest (JSON + CSV-download). Web niet geraakt in deze story. Knop volgt in een latere UX-story wanneer het paneel bestaat.
+
 ### File List
+
+- apps/api/src/services/flywheel/reference-path-guard.ts (NIEUW)
+- apps/api/src/services/flywheel/data-quality-report.ts (NIEUW)
+- apps/api/src/api/v1/flywheel.ts (route + import)
+- apps/api/src/__tests__/services/flywheel-reference-path-guard.test.ts (NIEUW)
+- apps/api/src/__tests__/services/flywheel-data-quality-report.atdd.test.ts (scaffold → echte tests)
+- apps/api/src/__tests__/api/flywheel-data-quality-report.routes.test.ts (NIEUW)
+- _bmad-output/implementation-artifacts/review-16-3.md, ac-trace-16-3.md (NIEUW)
 
 ## Change Log
 

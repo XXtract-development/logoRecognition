@@ -1,5 +1,14 @@
 # Versiegeschiedenis
 
+## 2026-07-03 (Datakwaliteitsrapport: keurmerken die wél op de verpakking staan maar niet gedeclareerd zijn)
+
+### Nieuw rapport toont per informatieleverancier de gemiste declaraties
+- Er is een nieuw, exporteerbaar overzicht van keurmerken die met hoge zekerheid op een verpakking zijn gevonden, maar níet door de leverancier zijn gedeclareerd. Zo kan een datamanager leveranciers gericht wijzen op wat ze vergeten zijn op te geven
+- Het overzicht is gegroepeerd per informatieleverancier (GLN; ontbreekt de leverancier, dan komt het geval in de groep "onbekend") en toont per geval het product (GTIN), het keurmerk, de zekerheid en een verwijzing naar het eigen bronbeeld — genoeg om het met de hand te controleren
+- Je kunt een periode kiezen (van/tot) en op één leverancier filteren, en het geheel downloaden als CSV naast de weergave op het scherm
+- Het rapport toont uitsluitend eigen beeldmateriaal; officiële referentie-/gidsbeelden komen er bewust nooit in terecht
+- Dit is een intern hulpmiddel: er gaat geen automatische melding naar leveranciers — die terugkoppeling blijft mensenwerk
+
 ## 2026-07-03 (Zwakke keurmerken agenderen zichzelf als werkvoorraad)
 
 ### Keurmerken die stelselmatig wél gedeclareerd maar niet teruggevonden worden, komen nu automatisch op een werklijst
