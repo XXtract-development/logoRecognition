@@ -31,6 +31,7 @@ import {
 import { isNominationEnabled } from '../../services/flywheel/config';
 import { getGoldSetComposition } from '../../services/flywheel/gold-set-composition';
 import { getOutliersPanel } from '../../services/flywheel/outliers-overview';
+import { getQuarantineCount } from '../../services/flywheel/quarantine-count';
 
 const logger = createLogger('flywheel-routes');
 
@@ -68,6 +69,8 @@ export async function flywheelRoutes(fastify: FastifyInstance) {
       const goldSetComposition = await getGoldSetComposition();
       // Story 14.3: open outlier-meldingen + laatste audit-run (paneel outliers).
       const outliers = await getOutliersPanel();
+      // Story 15.1: aantal openstaande quarantainebatches (voedt de nav-badge).
+      const quarantineCount = await getQuarantineCount();
 
       logger.info('Flywheel overview opgevraagd', {
         missedNominationsTotal,
@@ -76,6 +79,7 @@ export async function flywheelRoutes(fastify: FastifyInstance) {
         goldSetSize: goldSetComposition.size,
         goldSetSkewSignals: goldSetComposition.skewSignals.length,
         outliersOpen: outliers.openCount,
+        quarantineCount,
       });
 
       return reply.status(200).send({
@@ -94,6 +98,9 @@ export async function flywheelRoutes(fastify: FastifyInstance) {
         // Story 14.3 (FR-8): open outlier-meldingen van de wekelijkse audit +
         // laatste run-tijdstempel. Beoordeling (Behouden/Deactiveren) = Story 15.2.
         outliers,
+        // Story 15.1 (AC2): aantal openstaande quarantainebatches voor de
+        // navigatie-badge. Story 15.2 breidt dit paneel verder uit.
+        quarantineCount,
       });
     }
   );

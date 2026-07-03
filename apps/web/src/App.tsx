@@ -28,6 +28,7 @@ const ModelsPage = React.lazy(() => import('@/pages/ModelsPage'));
 const ReferenceLibraryPage = React.lazy(() => import('@/pages/ReferenceLibraryPage'));
 const ArtworkReviewPage = React.lazy(() => import('@/pages/ArtworkReviewPage'));
 const ApprovalQueuePage = React.lazy(() => import('@/pages/ApprovalQueuePage'));
+const FlywheelPage = React.lazy(() => import('@/pages/FlywheelPage'));
 const LoginPage = React.lazy(() => import('@/pages/LoginPage'));
 
 /**
@@ -133,6 +134,12 @@ const router = createBrowserRouter(
             {
               path: 'artwork-review',
               element: <ArtworkReviewPage />,
+            },
+            {
+              // Story 15.1: het vliegwiel-casco. Scoped theming zit in de pagina
+              // zelf (FlywheelThemeProvider), niet in AppLayout/RootLayout.
+              path: 'flywheel',
+              element: <FlywheelPage />,
             },
             {
               path: 'models/approval',

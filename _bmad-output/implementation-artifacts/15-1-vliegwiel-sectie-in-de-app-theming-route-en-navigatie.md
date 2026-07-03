@@ -1,6 +1,6 @@
 # Story 15.1: Vliegwiel-sectie in de app — theming, route en navigatie
 
-Status: ready-for-dev
+Status: done
 
 <!-- Aangemaakt via create-story workflow, 2026-07-02. Bron: epics-vliegwiel.md Epic 15. -->
 
@@ -123,15 +123,46 @@ _(1-op-1 uit epics-vliegwiel.md, Story 15.1)_
 
 ## Dev Agent Record
 
-_(in te vullen door dev-story)_
-
 ### Agent Model Used
+
+claude-opus-4-8 (implement-sprint, epic/vliegwiel-15).
 
 ### Debug Log References
 
+- Worktree miste `node_modules`; root- en per-package node_modules van de hoofdrepo gesymlinkt om tsc/vitest te draaien (buiten de commit).
+
 ### Completion Notes
 
+- **Gescopeerde theming (AC1):** `FlywheelThemeProvider.tsx` — geneste antd 5 `ConfigProvider` met de DESIGN.md-tokenset (navy #2F5A7A, teal #54949E, groen #B7D945, amber #E6A817, rood #D64545, Inter 14px, borderRadius 8, Card 12px). Uitsluitend rond de FlywheelPage-subtree; `App.tsx:49-57` byte-ongewijzigd. Forceert het lichte antd-algoritme (het dashboard is een licht besturingsscherm, app-bg #EDF1F7).
+- **Route + casco (AC2):** lazy `FlywheelPage` als child van `AppLayout` in `App.tsx`; skeleton-/empty-/error-staten conform UX-DR8 (géén spinner-op-wit).
+- **Nav + badge (AC2):** item "Vliegwiel" (Material Symbols `autorenew`) direct naast Review; amber `Badge` (#E6A817, UX-DR5 — nooit fout-rood) met het aantal openstaande quarantainebatches; `getActiveKey` uitgebreid met `/flywheel` (houdt ook de batch-detailroute actief).
+- **Data:** `flywheelService.ts` + `useFlywheelOverview` (TanStack Query, refetch-on-mount, géén polling); API-veld `quarantineCount` via dunne sub-service `quarantine-count.ts` (count op `promotion_batches` status `quarantined` + `closedAt IS NULL`), best-effort → 0.
+- **i18n:** `flywheel.*`-namespace + `nav.flywheel` in `nl.json` (NL leidend); overige locales vallen terug via `defaultValue`. Glossary exact (promotiebatch, quarantaine, "wacht op jouw beoordeling").
+- **Variance 1 — route-stub `/flywheel/batches/:id`:** bewust WEGGELATEN (taak 2.2-optie); Story 15.3 voegt de detailpagina + route toe. Voorkomt een wegwerp-placeholder.
+- **Variance 2 — Material Symbols + Inter:** geladen via Google Fonts-`<link>` in `index.html` (conform de mockup), niet self-gehost — er is geen fontbestand-asset in de repo en de app had nog geen font-infra. Alleen fontlaadwerk, inert tot referentie; verandert niets aan bestaande schermen. `.material-symbol`-utility in `globals.css`, gerenderd via `MaterialSymbol.tsx` (ligature).
+- **Migratie:** geen (schema ongewijzigd).
+
 ### File List
+
+Nieuw:
+- `apps/web/src/components/flywheel/FlywheelThemeProvider.tsx`
+- `apps/web/src/components/flywheel/MaterialSymbol.tsx`
+- `apps/web/src/components/flywheel/useFlywheelOverview.ts`
+- `apps/web/src/pages/FlywheelPage.tsx`
+- `apps/web/src/services/flywheelService.ts`
+- `apps/api/src/services/flywheel/quarantine-count.ts`
+- Tests: `FlywheelPage.test.tsx`, `AppLayout.test.tsx`, `FlywheelThemeProvider.test.tsx`, `MaterialSymbol.test.tsx`, `useFlywheelOverview.test.tsx`, `flywheelService.test.ts`
+- Review-artefacten: `review-15-1.md`, `ac-trace-15-1.md`
+
+Gewijzigd:
+- `apps/web/src/App.tsx` (lazy import + route)
+- `apps/web/src/components/common/AppLayout.tsx` (nav-item + badge + getActiveKey)
+- `apps/web/src/i18n/locales/nl.json` (`nav.flywheel`, `flywheel.*`)
+- `apps/web/index.html` (fontlink)
+- `apps/web/src/styles/globals.css` (`.material-symbol`-utility)
+- `apps/api/src/api/v1/flywheel.ts` (overview `quarantineCount`)
+- `apps/api/src/__tests__/api/flywheel.routes.test.ts` (3 tests)
+- `versions.md`, `sprint-status.yaml`
 
 ## Change Log
 

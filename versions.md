@@ -1,5 +1,14 @@
 # Versiegeschiedenis
 
+## 2026-07-03 (Vliegwiel-onderdeel in de app)
+
+### Nieuw menu-item "Vliegwiel" met een teller voor wachtende batches
+- In de bovenbalk staat naast "Review" voortaan een nieuw onderdeel "Vliegwiel". Daar komt het overzicht van het leervliegwiel — de plek waar de datamanager straks in één blik de gezondheid van het proces ziet
+- Op het menu-item verschijnt een amber (oranje) telbolletje zodra er promotiebatches in quarantaine staan die op beoordeling wachten. De kleur is bewust géén alarmrood: quarantaine is de kwaliteitspoort die zijn werk doet, niet een fout
+- Deze eerste stap levert het casco: het onderdeel opent netjes met een lege of ladende weergave zolang er nog geen gegevens zijn — geen leeg wit scherm en geen foutmelding. De inhoudelijke overzichtspanelen volgen in een volgende stap
+- Het Vliegwiel-onderdeel gebruikt de XXtract-huisstijl (de vertrouwde blauw/groen/teal-kleuren en het Inter-lettertype). Die stijl geldt alléén binnen het Vliegwiel; de bestaande schermen blijven ongewijzigd
+- Alle teksten zijn in het Nederlands
+
 ## 2026-07-03 (wekelijkse controle op afwijkende referentiebeelden)
 
 ### Afwijkende referentiebeelden worden voortaan wekelijks gesignaleerd

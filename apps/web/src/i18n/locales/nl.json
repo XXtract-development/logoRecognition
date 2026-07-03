@@ -392,7 +392,22 @@
     "trainModel": "Model Trainen",
     "models": "Modellen",
     "dashboard": "Dashboard",
-    "artworkReview": "Review"
+    "artworkReview": "Review",
+    "flywheel": "Vliegwiel"
+  },
+  "flywheel": {
+    "pageTitle": "Vliegwiel",
+    "pageSubtitle": "Referentie-vliegwiel — gezondheid in één blik",
+    "refresh": "Vernieuwen",
+    "retry": "Opnieuw proberen",
+    "errorTitle": "Overzicht kon niet geladen worden",
+    "errorDescription": "Probeer het overzicht opnieuw te laden.",
+    "emptyTitle": "Nog geen promotiebatches — het vliegwiel nomineert bij de volgende verwerking.",
+    "emptyQuarantine_zero": "Geen batch wacht op jouw beoordeling.",
+    "emptyQuarantine_one": "{{count}} batch wacht op jouw beoordeling.",
+    "emptyQuarantine_other": "{{count}} batches wachten op jouw beoordeling.",
+    "badgeTitle_one": "{{count}} batch wacht op jouw beoordeling",
+    "badgeTitle_other": "{{count}} batches wachten op jouw beoordeling"
   },
   "emptyState": {
     "noImages": {

@@ -1,5 +1,26 @@
 /* Global CSS Variables and Base Styles */
 
+/* Story 15.1: Material Symbols Outlined icon-utility. Het font wordt geladen in
+   index.html; deze class rendert een ligature-icoon (bijv. "autorenew"). Alleen
+   gebruikt binnen de vliegwiel-subtree — verandert niets aan bestaande schermen. */
+.material-symbol {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  font-variation-settings:
+    'FILL' 0,
+    'wght' 400,
+    'GRAD' 0,
+    'opsz' 20;
+}
+
 :root {
   --primary-color: #007AFF;
   --success-color: #52c41a;

@@ -28,13 +28,17 @@ import {
 import { useThemeStore } from '@/stores/themeStore';
 import { useBackendStatus } from '@/contexts/BackendStatusContext';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useFlywheelOverview } from '@/components/flywheel/useFlywheelOverview';
+import { MaterialSymbol } from '@/components/flywheel/MaterialSymbol';
 import apiClient from '@/services/apiClient';
 
 const { Header, Content } = Layout;
 const { Text } = Typography;
 
-// Navigation items configuration - simplified for better fit
-const getNavigationItems = (t: TFunction) => [
+// Navigation items configuration - simplified for better fit.
+// Story 15.1: `quarantineCount` voedt de amber badge op het Vliegwiel-item
+// (UX-DR5: quarantaine is wachtend, nooit fout-rood).
+const getNavigationItems = (t: TFunction, quarantineCount: number) => [
   {
     key: '/',
     icon: <HomeOutlined />,
@@ -78,6 +82,30 @@ const getNavigationItems = (t: TFunction) => [
     label: t('nav.artworkReview', { defaultValue: 'Review' }),
   },
   {
+    // Story 15.1: nav-item "Vliegwiel" direct naast Review (EXPERIENCE.md IA:
+    // tussen Review en Dashboard), icoon autorenew (Material Symbols), badge met
+    // het aantal openstaande quarantainebatches (amber — UX-DR5, nooit rood).
+    key: '/flywheel',
+    icon: <MaterialSymbol name="autorenew" size={16} />,
+    label: (
+      <span data-testid="nav-flywheel">
+        {t('nav.flywheel', { defaultValue: 'Vliegwiel' })}
+        {quarantineCount > 0 && (
+          <Badge
+            count={quarantineCount}
+            color="#E6A817"
+            data-testid="flywheel-quarantine-badge"
+            title={t('flywheel.badgeTitle', {
+              defaultValue: '{{count}} batch wacht op jouw beoordeling',
+              count: quarantineCount,
+            })}
+            style={{ marginLeft: 8 }}
+          />
+        )}
+      </span>
+    ),
+  },
+  {
     key: '/dashboard',
     icon: <DashboardOutlined />,
     label: t('nav.dashboard', { defaultValue: 'Dashboard' }),
@@ -91,6 +119,10 @@ export const AppLayout: React.FC = () => {
   const { isDarkMode, toggleTheme } = useThemeStore();
   const { isApiHealthy, isWebSocketHealthy } = useBackendStatus();
   const { user, loading: userLoading } = useCurrentUser();
+  // Story 15.1: aantal openstaande quarantainebatches voor de nav-badge.
+  // refetch-on-mount, geen polling (patroon RetrainingNotificationBanner).
+  const { data: flywheelOverview } = useFlywheelOverview();
+  const quarantineCount = flywheelOverview?.quarantineCount ?? 0;
 
   // Logout: clear the session server-side, then send the user to /login.
   // /login lives outside AppLayout, so the layout unmounts and useCurrentUser
@@ -114,6 +146,8 @@ export const AppLayout: React.FC = () => {
     if (path.startsWith('/models')) return '/models';
     if (path.startsWith('/reference-library')) return '/reference-library';
     if (path.startsWith('/artwork-review')) return '/artwork-review';
+    // Story 15.1: houd het Vliegwiel-nav-item ook actief op de batch-detailroute.
+    if (path.startsWith('/flywheel')) return '/flywheel';
     if (path.startsWith('/dashboard')) return '/dashboard';
     return '/';
   };
@@ -186,7 +220,7 @@ export const AppLayout: React.FC = () => {
           mode="horizontal"
           selectedKeys={[getActiveKey()]}
           onClick={handleMenuClick}
-          items={getNavigationItems(t)}
+          items={getNavigationItems(t, quarantineCount)}
           style={{
             flex: 1,
             minWidth: 0,

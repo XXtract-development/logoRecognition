@@ -101,4 +101,40 @@ describe('Story 13.2 — GET /api/v1/flywheel/overview (AC7)', () => {
       g.skewSignals.some((s: { type: string }) => s.type === 'echt-aandeel-buiten-band')
     ).toBe(false);
   });
+
+  // Story 15.1 (AC2): de overview ontsluit quarantineCount — het aantal
+  // openstaande quarantainebatches dat de nav-badge voedt. Gemockte count = 0.
+  it('ontsluit quarantineCount (Story 15.1, AC2) — default 0', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/v1/flywheel/overview' });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect('quarantineCount' in body).toBe(true);
+    expect(body.quarantineCount).toBe(0);
+  });
+
+  it('telt alleen openstaande quarantainebatches (status quarantined, closedAt null) (Story 15.1, AC2)', async () => {
+    const prisma = (await import('../../core/db')).default as unknown as {
+      promotionBatch: { count: ReturnType<typeof vi.fn> };
+    };
+    prisma.promotionBatch.count.mockResolvedValueOnce(3);
+
+    const res = await app.inject({ method: 'GET', url: '/api/v1/flywheel/overview' });
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body).quarantineCount).toBe(3);
+    // De query filtert op status 'quarantined' en niet-afgesloten batches.
+    expect(prisma.promotionBatch.count).toHaveBeenCalledWith({
+      where: { status: 'quarantined', closedAt: null },
+    });
+  });
+
+  it('valt best-effort terug op 0 als de quarantaine-count-lees faalt (Story 15.1)', async () => {
+    const prisma = (await import('../../core/db')).default as unknown as {
+      promotionBatch: { count: ReturnType<typeof vi.fn> };
+    };
+    prisma.promotionBatch.count.mockRejectedValueOnce(new Error('db down'));
+
+    const res = await app.inject({ method: 'GET', url: '/api/v1/flywheel/overview' });
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body).quarantineCount).toBe(0);
+  });
 });
