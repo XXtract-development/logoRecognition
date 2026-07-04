@@ -1,6 +1,6 @@
 # Epic 17 — Post-implementation adversarial review (seed-bootstrap voor lege klassen)
 
-reviewed_commit: 6c8f2921f86a1a13d0ec1a3a06f6a3bc064691c1   # == code-dragende HEAD na fixes
+reviewed_commit: 7458b49e95cc5674232adec52a212f3f2ec4b595   # code-dragende commit; alle fix-code zit in de tree van deze en de opvolgende doc-commit
 base: 5c922a0 (acc, Epics 13-16 + 12.8)
 verdict: PASS
 
