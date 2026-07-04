@@ -489,6 +489,11 @@ model ArtworkImport {
   mimeType       String?  @map("mime_type") @db.VarChar(100)
   status         String   @default("imported") @db.VarChar(20)
   failureReason  String?  @map("failure_reason")
+  /// Story 18.1 (FR-21): reden waarom de GLN-backfill géén GLN kon vaststellen
+  /// (bv. `geen-tradeitem`, `meerdere-glns`). NIET failureReason hergebruiken —
+  /// dat veld is import-status-semantiek. NULL = geen backfill-uitval (record
+  /// heeft óf een GLN, óf is nog niet door de backfill gezien).
+  glnBackfillReason String? @map("gln_backfill_reason") @db.VarChar(50)
   importRunId    String   @map("import_run_id") @db.Uuid
   pages          Json     @default("{}")
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz

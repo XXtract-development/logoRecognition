@@ -1,5 +1,14 @@
 # Versiegeschiedenis
 
+## 2026-07-04 (Historische artwork-archief krijgt zijn GLN terug voor declaratie-controle)
+
+### Oude verpakkingsbeelden kunnen alsnog aan hun leverancier gekoppeld worden
+- Er is nu een eenmalig, handmatig te starten hulpmiddel dat oude verpakkingsbeelden zonder bekende leverancier (GLN) alsnog aan de juiste leverancier koppelt, door die op te zoeken in de productbron. Zo kan ook het historische archief straks meedoen aan de declaratie-controle en de dubbele bevestiging
+- Het hulpmiddel raakt nooit een al bekende leverancier aan (alleen ontbrekende worden ingevuld) en kan zonder risico opnieuw draaien: een tweede keer voegt niets nieuws toe
+- Elk beeld dat géén eenduidige leverancier krijgt, krijgt een zichtbare reden — "geen productgegevens gevonden" of "meerdere mogelijke leveranciers" — zodat niets stilletjes wegvalt; bij twijfel tussen meerdere leveranciers gokt het systeem bewust niet
+- Er is eerst een veilige proefstand die alleen laat zien wat er zou gebeuren (aantallen per uitkomst) zonder ook maar iets te wijzigen; pas met een expliciete bevestiging schrijft het hulpmiddel de gegevens weg
+- Het Vliegwiel-overzicht toont nu de dekkingsgraad: welk percentage van het archief een leverancier heeft (doel: minstens 90%) plus de verdeling van de resterende uitval per reden
+
 ## 2026-07-04 (Overzicht en beheer van de opstart-wachtrij voor lege keurmerken)
 
 ### De datamanager ziet en stuurt welke lege keurmerken als eerste worden opgestart

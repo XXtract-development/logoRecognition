@@ -13,7 +13,6 @@ import { getQuarantinePanel } from '../../services/flywheel/overview/quarantine'
 import { getKpiPanel } from '../../services/flywheel/overview/kpi';
 import { getClassCapsPanel } from '../../services/flywheel/overview/class-caps';
 import { getHistoryPanel } from '../../services/flywheel/overview/history';
-import { getGlnCoveragePanel } from '../../services/flywheel/overview/empty-panels';
 
 type Mock = ReturnType<typeof vi.fn>;
 async function db() {
@@ -21,6 +20,7 @@ async function db() {
     promotionBatch: { findMany: Mock; findFirst: Mock; count: Mock };
     referenceLogo: { findMany: Mock; groupBy: Mock };
     referenceCandidate: { groupBy: Mock };
+    artworkImport: { count: Mock; groupBy: Mock };
   };
 }
 
@@ -199,11 +199,6 @@ describe('history (AC5) — gepasseerde + teruggedraaide batches', () => {
   });
 });
 
-describe('lege-staat-panelen (UX-DR8) — bron-epic nog niet gebouwd', () => {
-  it('gln geeft expliciete lege staat', () => {
-    // mismatch-trends is per Story 16.1 een echte sub-service (zie
-    // flywheel-mismatch.test.ts) en de bootstrap-wachtrij per Story 16.2 (zie
-    // flywheel-workload.test.ts) — geen lege-staat-stubs meer.
-    expect(getGlnCoveragePanel()).toEqual({ available: false, sourceEpic: 'epic-18', items: [] });
-  });
-});
+// Story 18.1: het gln-dekkingsgraad-paneel is nu een echte on-read sub-service
+// (zie flywheel-gln-coverage.test.ts) — de lege-staat-stub (empty-panels.ts) is
+// vervallen, net als de mismatch-trends- (16.1) en bootstrap-wachtrij-stubs (16.2).

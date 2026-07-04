@@ -28,7 +28,7 @@ import { getHistoryPanel } from './history';
 import { getMismatchTrends } from './mismatch-trends';
 import { getCohortTrend } from './cohort-trend';
 import { getBootstrapQueueOverview } from './overview-bootstrap-queue';
-import { getGlnCoveragePanel } from './empty-panels';
+import { getGlnCoveragePanel } from './gln-coverage';
 
 const logger = createLogger('flywheel-overview-compose');
 
@@ -81,6 +81,7 @@ export async function composeOverview() {
     mismatchTrends,
     cohortTrend,
     bootstrapQueue,
+    glnCoverage,
   ] = await Promise.all([
     panel('missedNominations', getMissedNominationCounts),
     panel('lastSuccessfulPromotionRun', getLastSuccessfulPromotionRun),
@@ -97,6 +98,7 @@ export async function composeOverview() {
     panel('mismatchTrends', getMismatchTrends),
     panel('cohortTrend', getCohortTrend),
     panel('bootstrapQueue', getBootstrapQueueOverview),
+    panel('glnCoverage', getGlnCoveragePanel),
   ]);
 
   const missedNominationsTotal = isPanelError(missedNominations)
@@ -141,7 +143,8 @@ export async function composeOverview() {
     // Story 16.2: structurele werkvoorraad (bootstrap-wachtrij + aanvul-signalen,
     // on-read geaggregeerd uit declared-not-found-events, FR-15).
     bootstrapQueue,
-    // Panelen waarvan de bron-epic nog niet gebouwd is (lege staat, UX-DR8).
-    glnCoverage: getGlnCoveragePanel(),
+    // Story 18.1: GLN-dekkingsgraad van het artwork-archief (percentage
+    // records-met-GLN, doel ≥90%) + uitval-verdeling per reden (FR-21, UX-DR3).
+    glnCoverage,
   };
 }

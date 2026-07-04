@@ -39,8 +39,9 @@ describe('composeOverview (AC1) — sectie-lokale fouttolerantie', () => {
     // bootstrap-wachtrij is per Story 16.2 een echte sub-service (available: true,
     // best-effort leeg bij leesfout — nooit een lege-staat-stub meer).
     expect(overview.bootstrapQueue).toMatchObject({ available: true });
-    // Lege-staat-paneel (UX-DR8) — nog geen bron-epic.
-    expect(overview.glnCoverage).toMatchObject({ available: false });
+    // gln-dekkingsgraad is per Story 18.1 een echte on-read sub-service
+    // (available: true; percentage/uitval-verdeling) — geen lege-staat-stub meer.
+    expect(overview.glnCoverage).toMatchObject({ available: true });
     // Server-tijdstempel voor de "verouderde data"-melding (AC8).
     expect(typeof overview.generatedAt).toBe('string');
   });

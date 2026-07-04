@@ -1,6 +1,6 @@
 # Story 18.1: GLN-backfill via batch-export
 
-Status: in-progress
+Status: review
 
 <!-- Aangemaakt door create-story workflow, 2026-07-02. Bron: epics-vliegwiel.md Epic 18 / Story 18.1. -->
 
@@ -112,15 +112,69 @@ zodat **het 39k-archief declaratie-lookup en dubbele bevestiging kan krijgen** (
 
 ## Dev Agent Record
 
-_(in te vullen door dev-story)_
-
 ### Agent Model Used
+
+claude-opus-4-8 (1M context) via /implement-sprint (epic/vliegwiel-18 worktree).
+
+### Governance (AC1) — vervuld
+
+Friso heeft op **2026-07-04** EXPLICIET akkoord gegeven op de eenmalige read-only
+prod-MongoDB-export op `application.tradeItems` (off-peak, alleen `_id`/GLN per GTIN,
+geen mutaties, via de bestaande read-only prod-verbinding). AC1 is dus vervuld en
+gedocumenteerd; het is een go/no-go-moment, geen geautomatiseerde test.
+
+Binnen deze implementatie-run is NOOIT de echte prod-export gedraaid: alle tests
+mocken MongoDB + catalog-API. De echte read-only export is een aparte operationele
+stap die de mens (Friso) los aftrapt met dit script (`--dry-run` eerst, dan `--apply`).
 
 ### Debug Log References
 
+- Migratie 0020 lokaal toegepast op `postgresql://postgres:postgres@localhost:5432/logo_recognition`
+  (localhost bevestigd vóór `prisma migrate deploy`). Additief: één nullable kolom
+  `gln_backfill_reason VARCHAR(50)`. Down-script meegeleverd.
+- Diff-drift-noot: `prisma migrate diff` toonde ook een niet-gerelateerde
+  `retraining_notifications.reasons DROP DEFAULT` (pre-existing schema/DB-discrepantie
+  uit een eerdere migratie). Die is BEWUST NIET in migratie 0020 opgenomen — 0020
+  bevat uitsluitend de 18.1-DDL.
+- vitest: 3 nieuwe/aangepaste testbestanden, 26 tests groen; volledige api-suite groen.
+
 ### Completion Notes
 
+1. **Migratie 0020** (`add_gln_backfill_reason`): `artwork_imports.gln_backfill_reason`
+   nullable VARCHAR(50) + `down.sql`. `failureReason` NIET hergebruikt (andere semantiek).
+2. **Exportscript** `apps/api/scripts/backfill-gln-from-tradeitems.ts`: idempotent,
+   `--dry-run` default (schrijft NIETS — 0 PG, 0 Redis), `--apply` voor de echte run,
+   `--skip-preload` optioneel. Pure kern (`parseGlnFromId`/`decideOutcome`/`summarize`/
+   `runBackfill`) is I/O-vrij en injecteerbaar; de MongoDB-driver wordt lazy dynamisch
+   geïmporteerd zodat tests/dry-run hem nooit nodig hebben. Nooit-overschrijven: PG-update
+   filtert op `gln: null`. >1 GLN → `meerdere-glns` (niet gokken); 0 → `geen-tradeitem`.
+3. **Redis-preload** (apply-fase): roept de bestaande `resolveDeclarations`-provider aan
+   (gln-lookup → cache → catalog → cache-write incl. negative caching); fail-safe.
+4. **GLN-dekkingspaneel** `apps/api/src/services/flywheel/overview/gln-coverage.ts`:
+   on-read percentage records-met-GLN (doel ≥90%), totalen, uitval-verdeling per reden
+   (null → `niet-verwerkt`), deling-door-nul → `percentage: null`. Vervangt de
+   lege-staat-stub (`empty-panels.ts` verwijderd; `index.ts` en het 15.2-paneeltest
+   bijgewerkt).
+5. **Tests** (vitest, gemockt Mongo/prisma/redis): `_id`-parse incl. randgevallen,
+   uitvalreden-toekenning, nooit-overschrijven, idempotentie, dry-run-nul-writes,
+   coverage-paneel + lege-tabel-rand.
+
+De echte dekkingsgraad vóór/ná (≥90%-toets) volgt uit de aparte operationele run
+(taak 6) die Friso los aftrapt; die is buiten scope van /implement-sprint.
+
 ### File List
+
+- `apps/api/prisma/schema.prisma` (M — kolom `glnBackfillReason`)
+- `apps/api/prisma/migrations/0020_add_gln_backfill_reason/migration.sql` (A)
+- `apps/api/prisma/migrations/0020_add_gln_backfill_reason/down.sql` (A)
+- `apps/api/scripts/backfill-gln-from-tradeitems.ts` (A)
+- `apps/api/src/services/flywheel/overview/gln-coverage.ts` (A)
+- `apps/api/src/services/flywheel/overview/index.ts` (M — echte glnCoverage-sub-service)
+- `apps/api/src/services/flywheel/overview/empty-panels.ts` (D — stub vervallen)
+- `apps/api/src/__tests__/setup.ts` (M — artworkImport groupBy/updateMany mock)
+- `apps/api/src/__tests__/services/gln-coverage.test.ts` → `flywheel-gln-coverage.test.ts` (A)
+- `apps/api/src/__tests__/services/backfill-gln-from-tradeitems.test.ts` (A)
+- `apps/api/src/__tests__/services/flywheel-overview-panels.test.ts` (M — stale stub-test vervangen)
 
 ## Change Log
 
