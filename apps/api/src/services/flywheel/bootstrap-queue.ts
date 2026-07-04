@@ -58,6 +58,13 @@ export interface BootstrapQueueItem {
   createdAt: string;
   /** True als deze klasse "nieuw geactiveerd" is (AC3, read-side bepaald). */
   newlyActivated: boolean;
+  /**
+   * De promotie-batch (Story 15.3) die de bootstrap-kandidaat van deze klasse
+   * promoveerde — het doorklik-doel voor het evidence-contract (AC4). Alleen gezet
+   * als `newlyActivated`; de batch-detail-route resolvet op DIT batch-id (UUID),
+   * niet op de T3777-code.
+   */
+  activatedBatchId: string | null;
 }
 
 /** De wachtrij-view (endpoint-GET + paneel-payload). */
@@ -117,19 +124,27 @@ export function effectiveQueueOrder<T extends SortableQueueRow>(rows: T[]): T[] 
  * daadwerkelijk via de bootstrap-lus (17.1) door de poort gepromoveerd werd —
  * niet een klasse die langs een ander pad referenties kreeg.
  *
+ * Retourneert een map code→promotie-batch-id: het batch-id (UUID) van de
+ * promotie-batch die de kandidaat promoveerde, zodat het paneel voor de doorklik
+ * (AC4) de batch-detail-route (`/flywheel/batches/:id`) op het JUISTE id kan
+ * aanroepen — die route resolvet op batch-UUID, nooit op de T3777-code. Bij
+ * meerdere gepromoveerde bootstrap-kandidaten voor één code wint de nieuwste batch.
+ *
  * `filledCodes` = de codes met wachtrij-status `gevuld` (voorgefilterd door de
  * caller); we bevestigen per code de actieve bootstrap-promotie via één
  * gegroepeerde query over de gepromoveerde kandidaten.
  */
 export async function determineNewlyActivatedCodes(
   filledCodes: string[]
-): Promise<Set<string>> {
-  if (filledCodes.length === 0) return new Set();
+): Promise<Map<string, string | null>> {
+  if (filledCodes.length === 0) return new Map();
 
   // Kandidaten met herkomst `bootstrap` die naar een ACTIEVE, via-promotie
   // referentie van een `gevuld`-klasse verwijzen. `referenceLogoId` is gezet zodra
   // een kandidaat gepromoveerd is (13.2/AD-3); de referentie moet actief zijn en
-  // `source='flywheel-promotion'` dragen (AC3-contract).
+  // `source='flywheel-promotion'` dragen (AC3-contract). `promotionBatchId` is het
+  // doorklik-doel (AC4). Nieuwste eerst zodat de eerste rij per code de meest
+  // recente promotie-batch is.
   const rows = await prisma.referenceCandidate.findMany({
     where: {
       origin: 'bootstrap',
@@ -139,11 +154,15 @@ export async function determineNewlyActivatedCodes(
         source: 'flywheel-promotion',
       },
     },
-    select: { t3777Code: true },
-    distinct: ['t3777Code'],
+    select: { t3777Code: true, promotionBatchId: true },
+    orderBy: { createdAt: 'desc' },
   });
 
-  return new Set(rows.map((r) => r.t3777Code));
+  const byCode = new Map<string, string | null>();
+  for (const r of rows) {
+    if (!byCode.has(r.t3777Code)) byCode.set(r.t3777Code, r.promotionBatchId ?? null);
+  }
+  return byCode;
 }
 
 // ============================================================================
@@ -180,6 +199,7 @@ export async function getBootstrapQueue(): Promise<BootstrapQueueView> {
     lastRunAt: r.lastRunAt ? r.lastRunAt.toISOString() : null,
     createdAt: r.createdAt.toISOString(),
     newlyActivated: newlyActivated.has(r.t3777Code),
+    activatedBatchId: newlyActivated.get(r.t3777Code) ?? null,
   }));
 
   return {
@@ -374,5 +394,6 @@ function toItem(row: {
     lastRunAt: row.lastRunAt ? row.lastRunAt.toISOString() : null,
     createdAt: row.createdAt.toISOString(),
     newlyActivated: false,
+    activatedBatchId: null,
   };
 }

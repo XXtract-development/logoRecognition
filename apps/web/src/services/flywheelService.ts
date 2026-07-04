@@ -141,6 +141,12 @@ export interface BootstrapQueueItem {
   createdAt: string;
   /** Read-side "nieuw geactiveerde klasse"-markering (AC3). */
   newlyActivated: boolean;
+  /**
+   * Promotie-batch-id (UUID) van de doorklik naar het evidence-contract (AC4).
+   * Alleen gezet als `newlyActivated`; de batch-detail-route resolvet op dit id,
+   * niet op de T3777-code.
+   */
+  activatedBatchId: string | null;
 }
 
 /** De bootstrap-wachtrij-view (endpoint `GET /flywheel/bootstrap-queue`). */

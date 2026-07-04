@@ -78,15 +78,32 @@ describe('Story 17.2 AC3 — determineNewlyActivatedCodes (read-side)', () => {
     expect(mockPrisma.referenceCandidate.findMany).not.toHaveBeenCalled();
   });
 
-  it('code met actieve bootstrap-promotie → wél nieuw geactiveerd', async () => {
-    mockPrisma.referenceCandidate.findMany.mockResolvedValue([{ t3777Code: 'FILLED' }]);
+  it('code met actieve bootstrap-promotie → wél nieuw geactiveerd, met promotie-batch-id (AC4)', async () => {
+    mockPrisma.referenceCandidate.findMany.mockResolvedValue([
+      { t3777Code: 'FILLED', promotionBatchId: 'batch-uuid-1' },
+    ]);
     const out = await determineNewlyActivatedCodes(['FILLED']);
     expect(out.has('FILLED')).toBe(true);
-    // Query eist origin=bootstrap + actieve, via-promotie referentie (AC3-contract).
+    // AC4: het doorklik-doel is het promotie-batch-id (UUID), niet de T3777-code.
+    expect(out.get('FILLED')).toBe('batch-uuid-1');
+    // Query eist origin=bootstrap + actieve, via-promotie referentie (AC3-contract)
+    // en selecteert het batch-id, nieuwste eerst (AC4-doorklik-doel).
     const arg = mockPrisma.referenceCandidate.findMany.mock.calls[0][0];
     expect(arg.where.origin).toBe('bootstrap');
     expect(arg.where.referenceLogo).toEqual({ active: true, source: 'flywheel-promotion' });
     expect(arg.where.t3777Code).toEqual({ in: ['FILLED'] });
+    expect(arg.select.promotionBatchId).toBe(true);
+    expect(arg.orderBy).toEqual({ createdAt: 'desc' });
+  });
+
+  it('meerdere promoties per code → nieuwste batch wint (AC4)', async () => {
+    // Nieuwste eerst (orderBy createdAt desc); de eerste rij per code wint.
+    mockPrisma.referenceCandidate.findMany.mockResolvedValue([
+      { t3777Code: 'FILLED', promotionBatchId: 'batch-new' },
+      { t3777Code: 'FILLED', promotionBatchId: 'batch-old' },
+    ]);
+    const out = await determineNewlyActivatedCodes(['FILLED']);
+    expect(out.get('FILLED')).toBe('batch-new');
   });
 
   it('code zonder actieve bootstrap-promotie → NIET nieuw geactiveerd', async () => {
@@ -107,12 +124,19 @@ describe('Story 17.2 AC2/AC3 — getBootstrapQueue', () => {
       { t3777Code: 'FILLED', status: 'gevuld', declarationFrequency: 5, priorityOverride: null, excluded: false, lastRunAt: new Date('2026-07-02'), createdAt: new Date('2026-07-01') },
       { t3777Code: 'HIGH', status: 'wachtend', declarationFrequency: 100, priorityOverride: null, excluded: false, lastRunAt: null, createdAt: new Date('2026-07-01') },
     ]);
-    mockPrisma.referenceCandidate.findMany.mockResolvedValue([{ t3777Code: 'FILLED' }]);
+    mockPrisma.referenceCandidate.findMany.mockResolvedValue([
+      { t3777Code: 'FILLED', promotionBatchId: 'batch-uuid-1' },
+    ]);
 
     const view = await getBootstrapQueue();
     expect(view.items.map((i) => i.t3777Code)).toEqual(['HIGH', 'LOW', 'FILLED']);
     expect(view.newlyActivatedCodes).toEqual(['FILLED']);
-    expect(view.items.find((i) => i.t3777Code === 'FILLED')!.newlyActivated).toBe(true);
+    const filled = view.items.find((i) => i.t3777Code === 'FILLED')!;
+    expect(filled.newlyActivated).toBe(true);
+    // AC4: de view draagt het promotie-batch-id voor de doorklik.
+    expect(filled.activatedBatchId).toBe('batch-uuid-1');
+    // Niet-geactiveerde rijen dragen geen batch-id.
+    expect(view.items.find((i) => i.t3777Code === 'HIGH')!.activatedBatchId).toBeNull();
   });
 });
 

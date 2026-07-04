@@ -71,6 +71,7 @@ function item(overrides: Record<string, unknown> = {}) {
     lastRunAt: null,
     createdAt: '2026-07-01T00:00:00Z',
     newlyActivated: false,
+    activatedBatchId: null,
     ...overrides,
   };
 }
@@ -140,9 +141,18 @@ describe('AC2-UI — render, sortering, statusbadges', () => {
 });
 
 describe('AC3/AC4-UI — nieuw geactiveerde klasse + doorklik', () => {
-  it('toont de melding en navigeert bij doorklik naar de batch-detail', async () => {
+  it('toont de melding en navigeert bij doorklik naar de batch-detail op het batch-id (AC4)', async () => {
+    // AC4: de doorklik moet naar de PROMOTIE-BATCH (UUID) — de batch-detail-route
+    // resolvet op batch-id, niet op de T3777-code. De read-side levert `activatedBatchId`.
     queryState.data = {
-      items: [item({ t3777Code: 'ACTIVATED', status: 'gevuld', newlyActivated: true })],
+      items: [
+        item({
+          t3777Code: 'ACTIVATED',
+          status: 'gevuld',
+          newlyActivated: true,
+          activatedBatchId: 'batch-uuid-123',
+        }),
+      ],
       newlyActivatedCodes: ['ACTIVATED'],
     };
     renderPanel();
@@ -151,7 +161,29 @@ describe('AC3/AC4-UI — nieuw geactiveerde klasse + doorklik', () => {
     expect(alert).toHaveTextContent('1 nieuw geactiveerde klasse');
 
     await userEvent.click(screen.getByTestId('bootstrap-drilldown-ACTIVATED'));
-    expect(navigate).toHaveBeenCalledWith('/flywheel/batches/ACTIVATED');
+    expect(navigate).toHaveBeenCalledWith('/flywheel/batches/batch-uuid-123');
+    // NOOIT op de T3777-code (dat zou een 404 op de batch-detail geven).
+    expect(navigate).not.toHaveBeenCalledWith('/flywheel/batches/ACTIVATED');
+  });
+
+  it('nieuw-geactiveerd zonder batch-id → doorklik uitgeschakeld, geen navigatie', async () => {
+    queryState.data = {
+      items: [
+        item({
+          t3777Code: 'NOBATCH',
+          status: 'gevuld',
+          newlyActivated: true,
+          activatedBatchId: null,
+        }),
+      ],
+      newlyActivatedCodes: ['NOBATCH'],
+    };
+    renderPanel();
+
+    const btn = screen.getByTestId('bootstrap-drilldown-NOBATCH');
+    expect(btn).toBeDisabled();
+    await userEvent.click(btn);
+    expect(navigate).not.toHaveBeenCalled();
   });
 
   it('zonder nieuw-geactiveerde klasse geen melding', () => {

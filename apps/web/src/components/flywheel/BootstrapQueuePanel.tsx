@@ -218,8 +218,14 @@ export const BootstrapQueuePanel: React.FC = () => {
                   type="link"
                   size="small"
                   style={{ padding: 0, height: 'auto' }}
+                  disabled={!i.activatedBatchId}
                   data-testid={`bootstrap-drilldown-${i.t3777Code}`}
-                  onClick={() => navigate(`/flywheel/batches/${i.t3777Code}`)}
+                  // AC4: doorklik naar de batch-detail (15.3) op het promotie-batch-id
+                  // (UUID) dat de read-side meelevert — die route resolvet op batch-id,
+                  // niet op de T3777-code.
+                  onClick={() =>
+                    i.activatedBatchId && navigate(`/flywheel/batches/${i.activatedBatchId}`)
+                  }
                 >
                   {t('flywheel.bootstrap.viewEvidence', {
                     defaultValue: '{{code}} — bekijk gepromoveerde referenties',
