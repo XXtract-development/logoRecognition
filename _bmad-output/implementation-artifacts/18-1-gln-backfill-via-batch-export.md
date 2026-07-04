@@ -1,6 +1,6 @@
 # Story 18.1: GLN-backfill via batch-export
 
-Status: review
+Status: done
 
 <!-- Aangemaakt door create-story workflow, 2026-07-02. Bron: epics-vliegwiel.md Epic 18 / Story 18.1. -->
 

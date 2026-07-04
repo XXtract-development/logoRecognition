@@ -1,6 +1,6 @@
 # Adversarial self-review — Story 18.1 (GLN-backfill via batch-export)
 
-reviewed_commit: (deze commit — implementatie + review samen)
+reviewed_commit: 4ce6d21
 verdict: PASS
 reviewer: self (adversarial), severity critical → low
 
