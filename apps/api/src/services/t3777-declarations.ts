@@ -335,32 +335,74 @@ export interface DeclaredMarksResult {
   reason: DeclarationReason;
 }
 
-/** GS1 declaration element (XML local-name) → GS1 codelist name (fieldType). */
+/**
+ * GS1 declaration element (XML local-name) → GS1 codelist name (fieldType).
+ *
+ * Story 19.2 (FR-22): volledige 5/5 keurmerkveld-dekking. Vier van de vijf velden
+ * hebben een SPECIFIEKE local-name en worden hier plat gematcht; het vijfde
+ * (`enumerationValue`, Logo-gebruiksinformatie) is te generiek voor platte matching
+ * en wordt apart, gescopet binnen `consumerUsageLabelCode`, geparsed (zie hieronder).
+ */
 const MARK_FIELDS: Array<{ tag: string; fieldType: string }> = [
   { tag: 'packagingMarkedLabelAccreditationCode', fieldType: 'PackagingMarkedLabelAccreditationCode' },
+  { tag: 'localPackagingMarkedLabelAccreditationCodeReference', fieldType: 'AdditionalPackagingMarkingsCode' },
   { tag: 'dietTypeCode', fieldType: 'DietTypeCode' },
   { tag: 'nutritionalScore', fieldType: 'NutritionalScore' },
 ];
 
 /**
+ * fieldType voor de gescopete consumerUsageLabelCode/…/enumerationValue-parse
+ * (Logo-gebruiksinformatie). Waarde MOET de canonieke `reference_logos.fieldType`
+ * zijn zodat gematchte marks tegen een logo koppelen: de frontend-bron
+ * (`apps/web/src/data/spoor-codes.ts`, `fieldTypeForCode`) gebruikt hiervoor
+ * `EU_consumerUsageLabelCodeList` (AISE/NIX18-pictogrammen).
+ */
+const CONSUMER_USAGE_FIELD_TYPE = 'EU_consumerUsageLabelCodeList';
+
+/**
  * Namespace-agnostic parse on local-name for every recognised mark element.
  * Union over all layers, trim, uppercase, dedup per (fieldType, code).
+ *
+ * De vier specifieke velden lopen via MARK_FIELDS (platte local-name-match). De
+ * Logo-gebruiksinformatie zit als `consumerUsageLabelCode/enumerationValueInformation/
+ * enumerationValue`: de leaf-tag `enumerationValue` is generiek in GDSN (komt ook in
+ * andere modules voor en botst met `enumerationValueInformation`), dus die extractie
+ * wordt bewust gescopet binnen elk `consumerUsageLabelCode`-blok.
  */
 export function parseDeclaredMarks(xml: string): DeclaredMark[] {
   const seen = new Set<string>();
   const out: DeclaredMark[] = [];
+  const push = (fieldType: string, raw: string): void => {
+    const code = raw.trim().toUpperCase();
+    if (!code) return;
+    const k = `${fieldType}:${code}`;
+    if (seen.has(k)) return;
+    seen.add(k);
+    out.push({ code, fieldType });
+  };
+
   for (const { tag, fieldType } of MARK_FIELDS) {
     const re = new RegExp(`<(?:[\\w.-]+:)?${tag}[^>]*>([^<]+)<`, 'g');
     let m: RegExpExecArray | null;
     while ((m = re.exec(xml)) !== null) {
-      const code = m[1].trim().toUpperCase();
-      if (!code) continue;
-      const k = `${fieldType}:${code}`;
-      if (seen.has(k)) continue;
-      seen.add(k);
-      out.push({ code, fieldType });
+      push(fieldType, m[1]);
     }
   }
+
+  // Gescopete parse: alleen `enumerationValue`-waarden BINNEN een
+  // `consumerUsageLabelCode`-blok tellen (voorkomt matchen van niet-gerelateerde
+  // enumerationValues elders en van `enumerationValueInformation`).
+  const blockRe =
+    /<(?:[\w.-]+:)?consumerUsageLabelCode\b[^>]*>([\s\S]*?)<\/(?:[\w.-]+:)?consumerUsageLabelCode>/g;
+  let block: RegExpExecArray | null;
+  while ((block = blockRe.exec(xml)) !== null) {
+    const valRe = /<(?:[\w.-]+:)?enumerationValue\b[^>]*>([^<]+)</g;
+    let v: RegExpExecArray | null;
+    while ((v = valRe.exec(block[1])) !== null) {
+      push(CONSUMER_USAGE_FIELD_TYPE, v[1]);
+    }
+  }
+
   return out;
 }
 

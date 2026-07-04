@@ -268,24 +268,65 @@ describe('T3777 declaration provider (8-3D)', () => {
       <tradeItem xmlns:gs1="urn:gs1">
         <gs1:packagingMarkedLabelAccreditationCode>GREEN_DOT</gs1:packagingMarkedLabelAccreditationCode>
         <packagingMarkedLabelAccreditationCode> certified_b_corporation </packagingMarkedLabelAccreditationCode>
+        <gs1:localPackagingMarkedLabelAccreditationCodeReference>SEPARATE_COLLECTION</gs1:localPackagingMarkedLabelAccreditationCodeReference>
         <dietTypeCode>VEGAN</dietTypeCode>
         <dietTypeCode>lactose_free</dietTypeCode>
         <isDietTypeMarkedOnPackage>TRUE</isDietTypeMarkedOnPackage>
         <nutritionalScore>A</nutritionalScore>
+        <consumerUsageLabelCode>
+          <enumerationValueInformation>
+            <enumerationValue>NIX18</enumerationValue>
+          </enumerationValueInformation>
+        </consumerUsageLabelCode>
       </tradeItem>`;
 
-    it('parses every spoor with the right fieldType, trim/uppercase/dedup', () => {
+    it('parses every spoor (5/5 velden) with the right fieldType, trim/uppercase/dedup', () => {
       const marks = parseDeclaredMarks(MARKS_XML);
       expect(marks).toEqual(
         expect.arrayContaining([
           { code: 'GREEN_DOT', fieldType: 'PackagingMarkedLabelAccreditationCode' },
           { code: 'CERTIFIED_B_CORPORATION', fieldType: 'PackagingMarkedLabelAccreditationCode' },
+          { code: 'SEPARATE_COLLECTION', fieldType: 'AdditionalPackagingMarkingsCode' },
           { code: 'VEGAN', fieldType: 'DietTypeCode' },
           { code: 'LACTOSE_FREE', fieldType: 'DietTypeCode' },
           { code: 'A', fieldType: 'NutritionalScore' },
+          { code: 'NIX18', fieldType: 'EU_consumerUsageLabelCodeList' },
         ])
       );
-      expect(marks).toHaveLength(5);
+      expect(marks).toHaveLength(7);
+    });
+
+    it('19.2: enumerationValue wordt gescopet binnen consumerUsageLabelCode (negeert strays + *Information)', () => {
+      const xml = `
+        <tradeItem xmlns:gs1="urn:gs1">
+          <gs1:consumerUsageLabelCode>
+            <enumerationValueInformation>
+              <enumerationValue>PREGNANCY_WARNING</enumerationValue>
+            </enumerationValueInformation>
+          </gs1:consumerUsageLabelCode>
+          <someUnrelatedModule>
+            <enumerationValue>SHOULD_NOT_MATCH</enumerationValue>
+          </someUnrelatedModule>
+        </tradeItem>`;
+      const marks = parseDeclaredMarks(xml);
+      expect(marks).toContainEqual({ code: 'PREGNANCY_WARNING', fieldType: 'EU_consumerUsageLabelCodeList' });
+      expect(marks.some((m) => m.code === 'SHOULD_NOT_MATCH')).toBe(false);
+      // de wrapper-tag enumerationValueInformation levert nooit een eigen (lege) code op
+      expect(marks.every((m) => m.code.length > 0)).toBe(true);
+    });
+
+    it('19.2: XML met alleen de oude 3 velden geeft byte-gelijke output (geen regressie)', () => {
+      const xml = `
+        <tradeItem>
+          <packagingMarkedLabelAccreditationCode>MSC</packagingMarkedLabelAccreditationCode>
+          <dietTypeCode>HALAL</dietTypeCode>
+          <nutritionalScore>B</nutritionalScore>
+        </tradeItem>`;
+      expect(parseDeclaredMarks(xml)).toEqual([
+        { code: 'MSC', fieldType: 'PackagingMarkedLabelAccreditationCode' },
+        { code: 'HALAL', fieldType: 'DietTypeCode' },
+        { code: 'B', fieldType: 'NutritionalScore' },
+      ]);
     });
 
     it('resolveDeclaredMarks returns marks + reason ok and caches under marks:', async () => {

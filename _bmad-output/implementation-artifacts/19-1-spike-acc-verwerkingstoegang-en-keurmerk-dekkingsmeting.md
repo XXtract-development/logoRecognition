@@ -63,8 +63,26 @@ zodat **de bouwstories (19.2-19.4) op een bewezen toegangsroute en echte dekking
 ### Agent Model Used
 _(in te vullen bij uitvoering)_
 
+### Spike-bevindingen deel 1 — ROUTEBESLUIT (2026-07-04, read-only)
+
+**Route A is haalbaar en aanbevolen.** De prod-media-503 was een rode haring: `media.xxtract.com` (503) en `catalog.xxtract.com` (000) zijn dode legacy-hosts. De **echte werkende prod-endpoints draaien op `.stage.xxtract.com`** (ondanks "stage" draaien ze op Banana-PROD en serveren de echte `/media/Xmedia`-corpus; traefik-Host = `media.stage.xxtract.com`):
+
+- `https://media.stage.xxtract.com/uploaded?gtin=…` → **HTTP 200 met echte artwork** (geverifieerd op 3 GTINs met bekende artwork: active-arrays met previewUrl/fileName/thumbnailUrl).
+- `https://catalog.stage.xxtract.com/api/tradeitemxml/…` → **HTTP 401** (host werkt, alleen prod-key nodig).
+
+**Aanbevolen Route A-config op ACC (alleen env, GEEN ACC-DB-schrijf → Route B niet nodig):**
+- `MEDIASERVER_DOMAIN=https://media.stage.xxtract.com`
+- `CATALOG_API_BASE=https://catalog.stage.xxtract.com`
+- `CATALOG_API_KEY=<prod/stage-key uit de prod-catalog-container-env>`
+
+Aandachtspunt: ACC→prod-leeskoppeling (read-only); tempering/NFR-7-cache bij bulk-download. Env-wijziging + ACC-containerherstart = bewuste stap MET expliciete toestemming (Constraint 1).
+
+### Nog te doen binnen 19.1 (deel 2)
+- Dekkingsmeting per keurmerkcode over de artwork-GTINs tegen het 951-universum (leunt op 19.2's 5/5-parser; catalog-XML-lezer).
+- Proof-of-access end-to-end op ACC met de Route A-env (vereist env-wijziging + toestemming).
+
 ### Completion Notes
-_(routebesluit + dekkingsrapport hier samenvatten)_
+_(dekkingsrapport + proof-of-access hier zodra deel 2 draait; status blijft ready-for-dev)_
 
 ## Change Log
 - 2026-07-04: aangemaakt via prepare-sprint (Epic 19, correct-course).

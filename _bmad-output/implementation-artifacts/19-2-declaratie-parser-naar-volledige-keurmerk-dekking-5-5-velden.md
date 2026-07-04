@@ -1,6 +1,6 @@
 # Story 19.2: Declaratie-parser naar volledige keurmerk-dekking (5/5 velden)
 
-Status: ready-for-dev
+Status: done
 
 <!-- Aangemaakt via prepare-sprint (bmad-sprint-planning + create-story-vorm), 2026-07-04. Bron: epics-vliegwiel.md Epic 19 / Story 19.2. -->
 
@@ -55,7 +55,20 @@ zodat **het vliegwiel geen keurmerken meer mist die in `enumerationValue` of het
 ## Dev Agent Record
 
 ### Agent Model Used
-_(in te vullen bij uitvoering)_
+claude-opus-4-8 (implement-sprint orchestrator, inline)
+
+### Completion Notes
+- `MARK_FIELDS` uitgebreid met `localPackagingMarkedLabelAccreditationCodeReference` → fieldType `AdditionalPackagingMarkingsCode` (platte local-name-match; specifieke tag, veilig).
+- `enumerationValue` (Logo-gebruiksinformatie) GESCOPET binnen `consumerUsageLabelCode`-blokken i.p.v. platte match — de leaf-tag is generiek in GDSN (botst met `enumerationValueInformation` en met enumerationValues elders). `\b`-word-boundaries dragen de scoping.
+- **fieldType-correctie na review:** consumer-usage fieldType = **`EU_consumerUsageLabelCodeList`** (canonieke `reference_logos.fieldType`, bron `apps/web/src/data/spoor-codes.ts` `fieldTypeForCode`) — niet het aanvankelijke `ConsumerUsageLabelCode`, dat de marks nooit aan een logo had gekoppeld.
+- Adversarial review: **VERDICT PASS** (geen regressie/over-matching/backtracking; regex-logica correct). Rapport-observatie (fieldType-mapping) is opgevolgd met de correctie hierboven.
+- **Tests:** 22/22 in het parser-bestand; volledige api-suite **827 passed / 2 skip / 37 todo**; `tsc --noEmit` exit 0; eslint 0 errors.
+- **AC-trace 2/2:** AC1 (beide nieuwe velden + juiste fieldType) → "parses every spoor (5/5 velden)"; AC2 (byte-gelijk oude 3 + namespace-agnostisch + scoping) → "byte-gelijke output" + "enumerationValue gescopet" + `gs1:`-prefixen.
+
+### File List
+- gewijzigd: `apps/api/src/services/t3777-declarations.ts` (MARK_FIELDS +1, gescopete consumerUsageLabelCode-parse, push-helper)
+- gewijzigd: `apps/api/src/__tests__/services/t3777-declarations.test.ts` (5/5-veld + scoping + byte-gelijk-tests)
 
 ## Change Log
 - 2026-07-04: aangemaakt via prepare-sprint (Epic 19, correct-course).
+- 2026-07-04: geïmplementeerd + review PASS + fieldType-correctie; status → done.
