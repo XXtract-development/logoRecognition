@@ -390,3 +390,33 @@ export function getBootstrapMaxSeconds(): number {
   const v = parseInt(process.env.FLYWHEEL_BOOTSTRAP_MAX_SECONDS ?? '', 10);
   return Number.isFinite(v) && v > 0 ? v : 1800;
 }
+
+// ============================================
+// Story 18.2 — restant-route via mediaserver-re-import (dosering, NFR-3)
+// ============================================
+
+/**
+ * Batch-grootte (aantal GTINs per re-import-run) voor de gedoseerde terugval-route
+ * op het GLN-restant (Story 18.2, AD-7 route (b), NFR-3). Elke batch draait als één
+ * import-run (het bestaande 8-3O-mechanisme) en het script wacht op afronding vóór
+ * de volgende batch — zo raakt de live-verwerking niet verzadigd. Conservatieve
+ * default 25; verlaag bij twijfel. Overschrijfbaar via
+ * `FLYWHEEL_GLN_REIMPORT_BATCH_SIZE`.
+ */
+export function getGlnReimportBatchSize(): number {
+  const v = parseInt(process.env.FLYWHEEL_GLN_REIMPORT_BATCH_SIZE ?? '', 10);
+  return Number.isFinite(v) && v > 0 ? v : 25;
+}
+
+/**
+ * Pauze (ms) tussen twee opeenvolgende re-import-batches van de terugval-route
+ * (Story 18.2, NFR-3 — de les van 2026-06-15: ongetemperde bulk deed de frontend-
+ * health-check timeouten). CPU-getemperd: de import-worker en de live-detectie
+ * krijgen tussen de batches lucht. Conservatieve default 30000 (30s); verhoog om
+ * de live-stromen nóg meer ruimte te geven. Overschrijfbaar via
+ * `FLYWHEEL_GLN_REIMPORT_PAUSE_MS`.
+ */
+export function getGlnReimportPauseMs(): number {
+  const v = parseInt(process.env.FLYWHEEL_GLN_REIMPORT_PAUSE_MS ?? '', 10);
+  return Number.isFinite(v) && v >= 0 ? v : 30000;
+}

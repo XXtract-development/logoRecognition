@@ -139,3 +139,38 @@ describe('Story 13.5 — regressie-gate-config (AD-5)', () => {
     expect(c.getRegressionTolerancePp()).toBe(2);
   });
 });
+
+describe('Story 18.2 — GLN-restant-re-import-dosering (NFR-3, AD-7)', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    delete process.env.FLYWHEEL_GLN_REIMPORT_BATCH_SIZE;
+    delete process.env.FLYWHEEL_GLN_REIMPORT_PAUSE_MS;
+  });
+
+  it('conservatieve defaults: batch 25, pauze 30000 ms', async () => {
+    const c = await import('../../services/flywheel/config');
+    expect(c.getGlnReimportBatchSize()).toBe(25);
+    expect(c.getGlnReimportPauseMs()).toBe(30000);
+  });
+
+  it('env-overrides worden gerespecteerd', async () => {
+    process.env.FLYWHEEL_GLN_REIMPORT_BATCH_SIZE = '10';
+    process.env.FLYWHEEL_GLN_REIMPORT_PAUSE_MS = '60000';
+    const c = await import('../../services/flywheel/config');
+    expect(c.getGlnReimportBatchSize()).toBe(10);
+    expect(c.getGlnReimportPauseMs()).toBe(60000);
+  });
+
+  it('pauze 0 is toegestaan (geen tempering); ongeldige/negatieve waarden vallen terug op de default', async () => {
+    process.env.FLYWHEEL_GLN_REIMPORT_PAUSE_MS = '0';
+    let c = await import('../../services/flywheel/config');
+    expect(c.getGlnReimportPauseMs()).toBe(0);
+
+    vi.resetModules();
+    process.env.FLYWHEEL_GLN_REIMPORT_BATCH_SIZE = '0'; // ongeldig (> 0 vereist)
+    process.env.FLYWHEEL_GLN_REIMPORT_PAUSE_MS = '-5'; // ongeldig (≥ 0 vereist)
+    c = await import('../../services/flywheel/config');
+    expect(c.getGlnReimportBatchSize()).toBe(25);
+    expect(c.getGlnReimportPauseMs()).toBe(30000);
+  });
+});

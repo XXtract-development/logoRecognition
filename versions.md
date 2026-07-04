@@ -1,5 +1,14 @@
 # Versiegeschiedenis
 
+## 2026-07-04 (Restant zonder leverancier krijgt een tweede kans via de bestaande her-inleesroute)
+
+### Beelden die na de eerste koppelronde nog geen leverancier hadden, worden alsnog aangevuld
+- Voor de verpakkingsbeelden die na de eerste koppelronde nog altijd geen leverancier (GLN) hadden, is er nu een tweede, handmatig te starten hulpmiddel dat die alsnog probeert aan te vullen via de bestaande her-inleesroute uit de mediaserver — er komt geen nieuw mechanisme bij, het hergebruikt wat er al is
+- Het draait bewust rustig en gedoseerd: in kleine porties met een pauze ertussen (beide instelbaar), zodat de dagelijkse verwerking er geen last van heeft. Het wacht netjes tot een portie klaar is voordat de volgende begint
+- Elk beeld houdt een actuele reden: lukt de koppeling nu wél, dan verdwijnt de eerdere uitvalreden; lukt het nog steeds niet, dan komt er een preciezere reden voor terug — "mediaserver leverde geen leverancier" of "mediaserver leverde geen beeld". Zo valt nog steeds niets stilletjes weg
+- Ook hier is er eerst een veilige proefstand die alleen het plan toont (aantal beelden en de porties) zonder iets te wijzigen; pas met een expliciete bevestiging gaat het echt draaien, en het kan zonder risico opnieuw gestart worden
+- Na afloop toont het Vliegwiel-overzicht vanzelf de bijgewerkte dekkingsgraad en het definitieve restant met redenen — via hetzelfde overzicht als voorheen
+
 ## 2026-07-04 (Historische artwork-archief krijgt zijn GLN terug voor declaratie-controle)
 
 ### Oude verpakkingsbeelden kunnen alsnog aan hun leverancier gekoppeld worden

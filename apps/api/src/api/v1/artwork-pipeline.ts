@@ -96,7 +96,7 @@ const ARTWORK_RASTER_DPI = parseInt(process.env.ARTWORK_RASTER_DPI || '300', 10)
  * Mark stale runs (no heartbeat for > IMPORT_RUN_STALE_MINUTES) as failed.
  * Called at the start of each new import to clean up previous crashes.
  */
-async function markStaleRuns(): Promise<void> {
+export async function markStaleRuns(): Promise<void> {
   const cutoff = new Date(Date.now() - IMPORT_RUN_STALE_MINUTES * 60 * 1000);
   await prisma.artworkImportRun.updateMany({
     where: { status: 'running', heartbeatAt: { lt: cutoff } },
@@ -404,7 +404,7 @@ async function importGtin(runId: string, gtin: string): Promise<void> {
  * Run the import loop for a set of GTINs with configurable concurrency.
  * Marks the run as completed (or failed) when done.
  */
-async function runImportLoop(runId: string, gtins: string[]): Promise<void> {
+export async function runImportLoop(runId: string, gtins: string[]): Promise<void> {
   const concurrency = DEFAULT_CONCURRENCY;
 
   try {

@@ -1,6 +1,6 @@
 # Story 18.2: Restant-route via mediaserver-re-import
 
-Status: ready-for-dev
+Status: done
 
 <!-- Aangemaakt door create-story workflow, 2026-07-02. Bron: epics-vliegwiel.md Epic 18 / Story 18.2. -->
 
@@ -100,15 +100,58 @@ zodat **de dekkingsgraad richting het doel kruipt zonder nieuwe mechanismen** (F
 
 ## Dev Agent Record
 
-_(in te vullen door dev-story)_
-
 ### Agent Model Used
+
+claude-opus-4-8 (1M context) via /implement-sprint (epic/vliegwiel-18 worktree).
 
 ### Debug Log References
 
+- Migratie-VRIJ zoals verwacht: hergebruikt de `glnBackfillReason`-kolom uit 18.1;
+  de nieuwe redenen (`mediaserver-geen-gln` / `mediaserver-geen-media`) zijn
+  stringwaarden in die bestaande VARCHAR(50)-kolom.
+- Lokale DB = `postgresql://postgres:postgres@localhost:5432/logo_recognition`
+  (localhost bevestigd). Geen prod-toegang: de re-import draait tegen het bestaande
+  mediaserver-pad; in de tests volledig gemockt (mediaserver/prisma/import-loop).
+- vitest: 2 test(bestanden) met 15 nieuwe tests groen; volledige apps/api-suite
+  825 pass / 2 skip / 37 todo (baseline 810, geen regressie). `tsc --noEmit` schoon.
+- De echte, gedoseerde uitvoering (dry-run → --apply, off-peak) + de dekkingsgraad
+  vóór/ná uit het `glnCoverage`-paneel is een aparte operationele stap die de mens
+  aftrapt; buiten scope van /implement-sprint (net als 18.1).
+
 ### Completion Notes
 
+1. **Driver-script** `apps/api/scripts/gln-reimport-restant.ts`: handmatig gestart,
+   `--dry-run` default (nul I/O, alleen plan), `--apply` voor de echte run. Pure kern
+   (`chunkIntoBatches`/`reasonForUnresolved`/`runReimport`) is I/O-vrij en injecteerbaar;
+   de prod-deps doen Prisma/mediaserver/import-loop. Selectie = 18.1-restant
+   (`gln IS NULL` + gezette `glnBackfillReason`), distinct op GTIN.
+2. **Mechanisme hergebruikt, niet geforkt**: `runImportBatch` roept de geëxporteerde
+   `runImportLoop` + `markStaleRuns` uit `artwork-pipeline.ts` aan (run-record → loop →
+   wachten op afronding), identiek aan het `POST /artwork-import/runs`-pad. `force`
+   nergens gebruikt — de delta-strategie triggert de goedkope gln-backfill-tak (8-3O).
+3. **CPU-getemperd (NFR-3)**: batch-grootte `FLYWHEEL_GLN_REIMPORT_BATCH_SIZE` (default
+   25) + pauze `FLYWHEEL_GLN_REIMPORT_PAUSE_MS` (default 30000 ms) via `flywheel/config.ts`;
+   gedocumenteerd in `.env.example`. Sequentiële batches, pauze TUSSEN (niet na de laatste).
+4. **Reden-bijwerking (geen stille uitval, FR-21)**: ná elke batch per GTIN — gevuld →
+   `glnBackfillReason = NULL`; nog geen GLN → `mediaserver-geen-gln` (media zonder
+   afleidbare GLN) of `mediaserver-geen-media` (geen media). Discovery-fout degradeert
+   veilig naar `mediaserver-geen-media` (record houdt altijd een actuele reden).
+5. **Dekkingsgraad-hermeting (AC2)**: geen nieuwe meetlogica — het 18.1-paneel
+   `glnCoverage` rekent on-read; het script print de dekking vóór/ná als samenvatting.
+6. **Tests** (vitest, gemockt): selectie, batch-indeling + pauze-respect (fake timers),
+   reden-bijwerking beide paden, dry-run-nul-writes, idempotente herstart, envvar-defaults.
+   Bestaande importloop-tests (8-3O) ongemoeid en groen.
+
+Review: `review-18-2.md` (verdict PASS) · AC→test: `ac-trace-18-2.md` (2/2 gedekt).
+
 ### File List
+
+- `apps/api/scripts/gln-reimport-restant.ts` (A — driver-script)
+- `apps/api/src/services/flywheel/config.ts` (M — `getGlnReimportBatchSize`/`getGlnReimportPauseMs`)
+- `apps/api/src/api/v1/artwork-pipeline.ts` (M — `runImportLoop`/`markStaleRuns` geëxporteerd)
+- `.env.example` (M — twee doseringsvariabelen)
+- `apps/api/src/__tests__/scripts/gln-reimport-restant.test.ts` (A)
+- `apps/api/src/__tests__/services/flywheel-config.test.ts` (M — 18.2-config-tests)
 
 ## Change Log
 
