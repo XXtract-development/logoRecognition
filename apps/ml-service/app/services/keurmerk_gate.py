@@ -56,11 +56,19 @@ def _load_gate() -> Optional[object]:
         _GATE = gate
         logger.info(
             "Keurmerk gate loaded",
-            extra={"key": GATE_KEY, "version": m.get("version"), "auc": m.get("auc"), "dim": coef.shape[0]},
+            extra={
+                "key": GATE_KEY,
+                "version": m.get("version"),
+                "auc": m.get("auc"),
+                "dim": coef.shape[0],
+            },
         )
         return gate
     except Exception as exc:  # fail-open: no gate → never block
-        logger.warning("Keurmerk gate unavailable — passing all crops", extra={"key": GATE_KEY, "error": str(exc)})
+        logger.warning(
+            "Keurmerk gate unavailable — passing all crops",
+            extra={"key": GATE_KEY, "error": str(exc)},
+        )
         _GATE = False
         return None
 

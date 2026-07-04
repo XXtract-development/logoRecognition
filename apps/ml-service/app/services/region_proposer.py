@@ -11,6 +11,7 @@ Moved from scripts/spike_region_proposer.py into the app package so the
 server-side queue harvester (queue_harvest.py) can import it from the image
 (the Docker build only copies app/, not scripts/).
 """
+
 from __future__ import annotations
 
 import time
@@ -63,7 +64,11 @@ def propose_regions(image_bgr: np.ndarray):
     t0 = time.perf_counter()
     H, W = image_bgr.shape[:2]
     scale = min(1.0, PROPOSE_MAX_DIM / float(max(H, W)))
-    small = cv2.resize(image_bgr, (int(W * scale), int(H * scale))) if scale < 1.0 else image_bgr
+    small = (
+        cv2.resize(image_bgr, (int(W * scale), int(H * scale)))
+        if scale < 1.0
+        else image_bgr
+    )
     sh, sw = small.shape[:2]
     img_area = sh * sw
     gray = cv2.cvtColor(small, cv2.COLOR_BGR2GRAY)
@@ -100,7 +105,10 @@ def propose_regions(image_bgr: np.ndarray):
 
     # map back to original coords
     inv = 1.0 / scale
-    boxes = [(int(x * inv), int(y * inv), int(w * inv), int(h * inv)) for (x, y, w, h) in kept]
+    boxes = [
+        (int(x * inv), int(y * inv), int(w * inv), int(h * inv))
+        for (x, y, w, h) in kept
+    ]
     stats = {
         "image": f"{W}x{H}",
         "raw_regions": len(raw),

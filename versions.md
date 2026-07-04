@@ -236,6 +236,13 @@
 - Er is bewust maar één plek die deze vingerafdruk berekent, zodat het geheugen van het systeem nooit stil kan falen door twee verschillende definities
 - Nog geen zichtbare wijziging in de reviewschermen; dit legt alleen de basis voor de automatische ontdubbeling en het leergeheugen die hierna volgen
 
+## 2026-06-21 (specialistische symboolherkenning)
+
+### Symbolen kunnen gecontroleerd aan de labelketen worden geleverd
+- De herkenningsservice kan keurmerken, Nutri-Score en GHS-symbolen in een vast antwoordformaat teruggeven
+- Onbekende of onzekere symbolen worden apart gemarkeerd, zodat ze eerst beoordeeld kunnen worden
+- Alleen symbolen die bij het actieve profiel passen worden als kandidaat doorgegeven
+
 ## 2026-06-18 (review: direct tekenen, slepen en verwijderen op de afbeelding)
 
 ### De afbeelding is nu volledig interactief
@@ -615,3 +622,8 @@
 - Inloggen met bestaande xxtract-portal inloggegevens
 - Login pagina toegevoegd
 - 40 API unit tests en 14 E2E tests voor authenticatie
+# 2026-06-21
+
+- Vision-service krijgt een nieuw `/v1/detect-symbols` contract voor keurmerken, Nutri-Score en GHS-symbolen.
+- Onbekende of niet-toegestane codes worden fail-closed behandeld en verlaten het contract niet als gok.
+- Detectieresultaten bevatten nu modelversie, methode, confidence, bounding box en crop-referentie voor downstream bewijsvoering.
