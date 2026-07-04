@@ -1,6 +1,6 @@
 # Adversarial self-review — Story 18.2 (Restant-route via mediaserver-re-import)
 
-reviewed_commit: TO_BE_PINNED_AFTER_COMMIT
+reviewed_commit: 9379d72f8c6847944328c92964fa3b14c1bfcbb4
 verdict: PASS
 
 Scope van de review: de 18.2-diff (driver-script + dosering-config + twee exports +
