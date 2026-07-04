@@ -120,6 +120,35 @@ export interface EmptyPanel {
   items: never[];
 }
 
+// ── Bootstrap-wachtrij (Story 17.2, FR-13) ──────────────────────────────────
+
+/** Wachtrij-statussen (vaste waardenset, spiegelt de API). */
+export type BootstrapQueueStatus =
+  | 'wachtend'
+  | 'gedraaid'
+  | 'gevuld'
+  | 'leeg'
+  | 'uitgesloten';
+
+/** Eén rij in de bootstrap-wachtrij-view (endpoint-GET + paneel). */
+export interface BootstrapQueueItem {
+  t3777Code: string;
+  status: string;
+  declarationFrequency: number;
+  priorityOverride: number | null;
+  excluded: boolean;
+  lastRunAt: string | null;
+  createdAt: string;
+  /** Read-side "nieuw geactiveerde klasse"-markering (AC3). */
+  newlyActivated: boolean;
+}
+
+/** De bootstrap-wachtrij-view (endpoint `GET /flywheel/bootstrap-queue`). */
+export interface BootstrapQueueView {
+  items: BootstrapQueueItem[];
+  newlyActivatedCodes: string[];
+}
+
 export interface PauseState {
   paused: boolean;
   reason: string | null;
@@ -450,5 +479,61 @@ export async function resumeFlywheel(): Promise<PauseControlResult> {
   const res = await apiClient.post<PauseControlResult>('/flywheel/pause', {
     action: 'resume',
   });
+  return res.data;
+}
+
+// ── Bootstrap-wachtrij-beheer (Story 17.2) ──────────────────────────────────
+
+/** Haal de bootstrap-wachtrij op (Story 17.2-endpoint), effectief geordend. */
+export async function fetchBootstrapQueue(): Promise<BootstrapQueueView> {
+  const res = await apiClient.get<BootstrapQueueView>('/flywheel/bootstrap-queue');
+  return res.data;
+}
+
+/** Zet of wis de prioriteits-override van een klasse (`null` = wissen). */
+export async function setBootstrapPriorityOverride(
+  t3777Code: string,
+  priorityOverride: number | null
+): Promise<BootstrapQueueItem> {
+  const res = await apiClient.patch<BootstrapQueueItem>(
+    `/flywheel/bootstrap-queue/${encodeURIComponent(t3777Code)}`,
+    { priorityOverride }
+  );
+  return res.data;
+}
+
+/** Sluit een klasse uit of includeer hem weer (status uitgesloten ↔ wachtend). */
+export async function setBootstrapExcluded(
+  t3777Code: string,
+  excluded: boolean
+): Promise<BootstrapQueueItem> {
+  const res = await apiClient.patch<BootstrapQueueItem>(
+    `/flywheel/bootstrap-queue/${encodeURIComponent(t3777Code)}`,
+    { excluded }
+  );
+  return res.data;
+}
+
+/** Voeg een klasse handmatig toe aan de wachtrij (idempotent). */
+export async function addBootstrapClass(
+  t3777Code: string,
+  declarationFrequency = 0
+): Promise<BootstrapQueueItem> {
+  const res = await apiClient.post<BootstrapQueueItem>('/flywheel/bootstrap-queue', {
+    action: 'add',
+    t3777Code,
+    declarationFrequency,
+  });
+  return res.data;
+}
+
+/** Agendeer een bootstrap-run (17.1) vanuit het paneel (AD-15: enqueue-en). */
+export async function enqueueBootstrapRun(
+  t3777Code?: string
+): Promise<{ enqueued: boolean; t3777Code: string | null }> {
+  const res = await apiClient.post<{ enqueued: boolean; t3777Code: string | null }>(
+    '/flywheel/bootstrap-queue',
+    { action: 'enqueue', t3777Code }
+  );
   return res.data;
 }

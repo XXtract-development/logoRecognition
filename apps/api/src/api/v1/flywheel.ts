@@ -69,6 +69,15 @@ import {
   resumeFlywheelControlled,
 } from '../../services/flywheel/pause-control';
 import { getWorkloadItemTraceability } from '../../services/flywheel/mismatch-workload';
+import {
+  getBootstrapQueue,
+  setPriorityOverride,
+  setExcluded,
+  addClass,
+  BootstrapQueueCodeNotFoundError,
+  BootstrapQueueInvalidCodeError,
+} from '../../services/flywheel/bootstrap-queue';
+import { enqueueBootstrapRun } from '../../services/flywheel/bootstrap-run';
 
 const logger = createLogger('flywheel-routes');
 
@@ -595,6 +604,138 @@ export async function flywheelRoutes(fastify: FastifyInstance) {
         return reply
           .status(500)
           .send({ error: 'Herleidbaarheid kon niet geladen worden' });
+      }
+    }
+  );
+
+  /**
+   * GET /api/v1/flywheel/bootstrap-queue
+   *
+   * De bootstrap-wachtrij op declaratiefrequentie geprioriteerd (Story 17.2, AC2,
+   * FR-13). Levert de rijen in EFFECTIEVE volgorde (priorityOverride eerst, dan
+   * frequentie aflopend, gelijke frequentie deterministisch) + per rij de "nieuw
+   * geactiveerde klasse"-markering (AC3, read-side). Read-only. Alleen ADMIN.
+   */
+  fastify.get(
+    '/flywheel/bootstrap-queue',
+    { preHandler: REQUIRE_ADMIN },
+    async (_request, reply) => {
+      const view = await getBootstrapQueue();
+      logger.info('Bootstrap-wachtrij opgevraagd', {
+        items: view.items.length,
+        newlyActivated: view.newlyActivatedCodes.length,
+      });
+      return reply.status(200).send(view);
+    }
+  );
+
+  /**
+   * POST /api/v1/flywheel/bootstrap-queue
+   *
+   * Voeg een klasse toe aan de wachtrij, of enqueue een bootstrap-run (Story 17.2,
+   * AC2 + taak 5). Body-varianten:
+   *   { action: 'add', t3777Code, declarationFrequency? }  → klasse toevoegen (idempotent)
+   *   { action: 'enqueue', t3777Code? }                    → 17.1-run agenderen (AD-15)
+   * Beide muteren alleen wachtrij-state / agenderen werk — nooit poortlogica in het
+   * request-pad. Elke toevoeging gelogd (AD-13). Alleen ADMIN.
+   */
+  fastify.post<{
+    Body: { action?: string; t3777Code?: string; declarationFrequency?: number };
+  }>(
+    '/flywheel/bootstrap-queue',
+    { preHandler: REQUIRE_ADMIN },
+    async (request, reply) => {
+      const by = request.user?.userId ?? 'onbekend';
+      const action = request.body?.action;
+
+      if (action === 'enqueue') {
+        // Agendeer een 17.1-run (AD-15: enqueue-en, niet uitvoeren). Best-effort in
+        // de service; een specifieke code beperkt tot die klasse, anders alle wachtenden.
+        const code = request.body?.t3777Code?.trim() || undefined;
+        await enqueueBootstrapRun(code);
+        logger.info('Bootstrap-run geagendeerd vanuit paneel', { t3777Code: code ?? '(alle)', by });
+        return reply.status(202).send({ enqueued: true, t3777Code: code ?? null });
+      }
+
+      if (action === 'add') {
+        try {
+          const item = await addClass(
+            request.body?.t3777Code ?? '',
+            typeof request.body?.declarationFrequency === 'number'
+              ? request.body.declarationFrequency
+              : 0,
+            by
+          );
+          return reply.status(200).send(item);
+        } catch (err) {
+          if (err instanceof BootstrapQueueInvalidCodeError) {
+            return reply.status(400).send({ error: err.message });
+          }
+          logger.error('Klasse toevoegen aan wachtrij mislukt', {
+            error: err instanceof Error ? err.message : 'unknown',
+          });
+          return reply.status(500).send({ error: 'Klasse toevoegen mislukt' });
+        }
+      }
+
+      return reply.status(400).send({
+        error: "Ongeldige actie — verwacht 'add' of 'enqueue'.",
+      });
+    }
+  );
+
+  /**
+   * PATCH /api/v1/flywheel/bootstrap-queue/:code
+   *
+   * Muteer één wachtrij-rij (Story 17.2, AC2): de prioriteits-override zetten/wissen
+   * en/of de klasse uitsluiten/weer insluiten. Body `{ priorityOverride?, excluded? }`
+   * — `priorityOverride: null` wist de override. Elke mutatie gelogd met gebruiker +
+   * tijdstempel (AD-13/NFR-5). 404 onbekende code, 400 lege body. Alleen ADMIN.
+   */
+  fastify.patch<{
+    Params: { code: string };
+    Body: { priorityOverride?: number | null; excluded?: boolean };
+  }>(
+    '/flywheel/bootstrap-queue/:code',
+    { preHandler: REQUIRE_ADMIN },
+    async (request, reply) => {
+      const { code } = request.params;
+      const by = request.user?.userId ?? 'onbekend';
+      const body = request.body ?? {};
+      const hasOverride = Object.prototype.hasOwnProperty.call(body, 'priorityOverride');
+      const hasExcluded = typeof body.excluded === 'boolean';
+
+      if (!hasOverride && !hasExcluded) {
+        return reply.status(400).send({
+          error: 'Geef minstens één wijziging op (priorityOverride of excluded).',
+        });
+      }
+
+      try {
+        let item;
+        if (hasOverride) {
+          const raw = body.priorityOverride;
+          const value =
+            raw === null || raw === undefined
+              ? null
+              : Number.isFinite(raw)
+                ? Math.floor(raw as number)
+                : null;
+          item = await setPriorityOverride(code, value, by);
+        }
+        if (hasExcluded) {
+          item = await setExcluded(code, body.excluded as boolean, by);
+        }
+        return reply.status(200).send(item);
+      } catch (err) {
+        if (err instanceof BootstrapQueueCodeNotFoundError) {
+          return reply.status(404).send({ error: 'Wachtrij-code niet gevonden' });
+        }
+        logger.error('Bootstrap-wachtrij-mutatie mislukt', {
+          t3777Code: code,
+          error: err instanceof Error ? err.message : 'unknown',
+        });
+        return reply.status(500).send({ error: 'Wachtrij-mutatie mislukt' });
       }
     }
   );

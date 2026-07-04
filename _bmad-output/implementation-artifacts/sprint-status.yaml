@@ -178,7 +178,7 @@ development_status:
 
   epic-17: in-progress
   17-1-bootstrap-run-per-lege-klasse: done  # 2026-07-03: bootstrap-run per lege klasse — job flywheel-bootstrap (queue flywheel, concurrency 1, on-demand) + ml-endpoint /ml/bootstrap-search (stateless: zaad embedden → propose_regions → gate-v2 → cosine tegen ZAAD-embedding → matches ≥ FLYWHEEL_BOOTSTRAP_THRESHOLD 0,93 als geüploade crops). HARDE declaratie-guard per GTIN (reason ok + code ∈ declaratie; niet-declarerend overgeslagen/geteld/gelogd). Nominatie via 13.2-service (herkomst bootstrap, /ml/phash), nooit directe referentie-writes; zelfde kwaliteitspoort. NFR-6: zaad nooit referentie/crop (API nomineert enkel artwork-crops/; ml inhouds-digest-guard). Zaad ook uit inactieve rij (12.3-pivot); geen zaad → leeg (geen-zaad), klasse opneembaar. Statusovergangen wachtend→gedraaid→gevuld|leeg + lastRunAt. Run-budget FLYWHEEL_BOOTSTRAP_RUN_BUDGET 200 + time-box FLYWHEEL_BOOTSTRAP_MAX_SECONDS 1800, restant blijft wachtend. AD-8 hoofdvlag + AD-11 pauze bij job-start. Migratie-vrij. api vitest 754 pass/2 skip/37 todo; ml pytest zaad-match 9 pass
-  17-2-bootstrap-wachtrij-prioritering-en-beheer: in-progress
+  17-2-bootstrap-wachtrij-prioritering-en-beheer: done  # 2026-07-04: wachtrij-prioritering op declaratiefrequentie + beheer (override/uitsluiten/toevoegen, AD-13-logging), initiële vulling alle lege klassen, nieuw-geactiveerde-klasse-doorklik naar 15.3; migratie-vrij; api vitest 791 pass, web 124 pass
   epic-17-retrospective: optional
 
   epic-18: in-progress

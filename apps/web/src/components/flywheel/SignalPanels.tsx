@@ -210,17 +210,10 @@ const EmptyStatePanel: React.FC<{ testid: string; title: string; hint: string }>
  * De lege-staat-panelen accepteren de (nu lege) `panel`-payload zodat de props-
  * vorm stabiel blijft: zodra de bron-epic landt, vervangt hij deze component door
  * een echte weergave met dezelfde prop en hoeft de pagina niet te veranderen.
+ *
+ * Story 17.2 verving het bootstrap-wachtrij-lege-staat-paneel door het echte,
+ * zelf-ophalende `BootstrapQueuePanel` (components/flywheel/BootstrapQueuePanel.tsx).
  */
-export const BootstrapQueuePanel: React.FC<{ panel: EmptyPanel }> = () => {
-  const { t } = useTranslation();
-  return (
-    <EmptyStatePanel
-      testid="bootstrap-queue-panel"
-      title={t('flywheel.bootstrap.title', { defaultValue: 'Bootstrap-wachtrij' })}
-      hint={t('flywheel.bootstrap.empty', { defaultValue: 'Nog niet beschikbaar — komt met de seed-bootstrap (Epic 17).' })}
-    />
-  );
-};
 
 /**
  * Story 16.1 levert de mismatch-aggregatie in de backend; het volledige

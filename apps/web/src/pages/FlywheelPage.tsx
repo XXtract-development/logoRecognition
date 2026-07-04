@@ -31,10 +31,10 @@ import { GoldSetCompositionCard } from '@/components/flywheel/GoldSetComposition
 import {
   ClassCapsPanel,
   OutlierPanel,
-  BootstrapQueuePanel,
   MismatchTrendsPanel,
   GlnCoveragePanel,
 } from '@/components/flywheel/SignalPanels';
+import { BootstrapQueuePanel } from '@/components/flywheel/BootstrapQueuePanel';
 import { StaleDataAlert } from '@/components/flywheel/StaleDataAlert';
 import { StandstillBanner } from '@/components/flywheel/StandstillBanner';
 import { PauseSwitch } from '@/components/flywheel/PauseSwitch';
@@ -189,7 +189,7 @@ const FlywheelContent: React.FC = () => {
                   <ClassCapsPanel classCaps={data.classCaps} />
                 </div>
                 <OutlierPanel outliers={data.outliers} onDecided={() => refetch()} />
-                <BootstrapQueuePanel panel={data.bootstrapQueue} />
+                <BootstrapQueuePanel />
                 <div ref={glnRef}>
                   <GlnCoveragePanel panel={data.glnCoverage} />
                 </div>

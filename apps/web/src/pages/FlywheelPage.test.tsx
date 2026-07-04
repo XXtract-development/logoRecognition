@@ -60,6 +60,10 @@ vi.mock('@/components/flywheel/useFlywheelOverview', () => ({
 // query na een mutatie) — mock zodat de pagina zonder QueryClientProvider rendert.
 vi.mock('@tanstack/react-query', () => ({
   useQueryClient: () => ({ invalidateQueries: vi.fn() }),
+  // Story 17.2: het echte BootstrapQueuePanel haalt zijn eigen endpoint op via
+  // useQuery. Mock als lege, geladen wachtrij zodat de pagina zonder
+  // QueryClientProvider rendert en het paneel (met testid) zichtbaar is.
+  useQuery: () => ({ data: { items: [], newlyActivatedCodes: [] }, isLoading: false, isError: false, refetch: vi.fn() }),
 }));
 
 // Service-mutaties mocken (rollback + outlier-decision) zodat we de aanroepen asserten.
@@ -221,15 +225,18 @@ describe('FlywheelPage — 15.2 AC1: alle panelen + lege staten', () => {
     expect(screen.getByTestId('outlier-panel')).toBeInTheDocument();
   });
 
-  it('toont de lege staat voor de nog-niet-gebouwde panelen (16/17/18, UX-DR8)', () => {
+  it('toont de lege staat voor de nog-niet-gebouwde panelen (16/18, UX-DR8) + het gebouwde bootstrap-paneel (17.2)', () => {
     mockLoaded();
     render(<FlywheelPage />);
+    // Bootstrap-wachtrij is nu een echt, zelf-ophalend paneel (Story 17.2) — het
+    // rendert (met dezelfde testid) i.p.v. een Epic-17-lege-staat-hint.
     expect(screen.getByTestId('bootstrap-queue-panel')).toBeInTheDocument();
     expect(screen.getByTestId('mismatch-trends-panel')).toBeInTheDocument();
     expect(screen.getByTestId('gln-coverage-panel')).toBeInTheDocument();
-    expect(screen.getByText(/Epic 17/)).toBeInTheDocument();
+    // 16 en 18 tonen nog hun lege staat; 17 niet meer.
     expect(screen.getByText(/Epic 16/)).toBeInTheDocument();
     expect(screen.getByText(/Epic 18/)).toBeInTheDocument();
+    expect(screen.queryByText(/Epic 17/)).not.toBeInTheDocument();
   });
 
   it('een sectie-lokaal falend paneel toont zijn foutkaart, de rest blijft staan', () => {

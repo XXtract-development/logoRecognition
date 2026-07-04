@@ -1,5 +1,14 @@
 # Versiegeschiedenis
 
+## 2026-07-04 (Overzicht en beheer van de opstart-wachtrij voor lege keurmerken)
+
+### De datamanager ziet en stuurt welke lege keurmerken als eerste worden opgestart
+- Er is nu een wachtrij-overzicht dat alle keurmerken zonder eigen referentiebeelden toont, gerangschikt op hoe vaak leveranciers ze opgeven — de meest voorkomende lege keurmerken staan bovenaan, waar de opstart-zoektocht het eerst loont
+- Per keurmerk is de status zichtbaar: wachtend, gedraaid, gevuld, leeg (niets gevonden) of uitgesloten. Keurmerken die niet visueel te herkennen zijn, staan meteen op uitgesloten
+- De datamanager kan de volgorde zelf overrulen, keurmerken uitsluiten of toevoegen, en vanuit het overzicht direct een opstart-zoektocht starten; elke ingreep wordt vastgelegd met wie en wanneer
+- Zodra een lege klasse via de opstart zijn eerste referentie krijgt, verschijnt die als "nieuw geactiveerde klasse", met doorklik naar de onderliggende voorbeelden en hun herkomst
+
+
 ## 2026-07-03 (Lege keurmerkklassen vullen zichzelf met echte voorbeelden uit declarerende producten)
 
 ### Een keurmerk zonder referentiebeelden kan zichzelf op gang brengen zonder handwerk
