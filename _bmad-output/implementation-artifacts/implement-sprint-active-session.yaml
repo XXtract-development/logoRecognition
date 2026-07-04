@@ -5,11 +5,17 @@ source_epics: _bmad-output/planning-artifacts/epics-vliegwiel.md
 worktree_root: /private/tmp/logoRecognition-implement-sprint
 base_branch: acc
 scope: epic-19
-current_phase: kickoff
+current_phase: RUN-COMPLETE
 active_epics: [epic-19]
-status: running
+status: partial
+result:
+  epic-19: in-progress  # 1/4 stories done
+  19-2: done  # parser 5/5 velden, merged naar acc @ fcc7833, adversarial PASS, api vitest 827
+  19-1: ready-for-dev  # SPIKE deel 1 (routebesluit) klaar: Route A via media.stage/catalog.stage.xxtract.com; deel 2 (dekkingsmeting + proof-of-access met ACC-env-wijziging) vereist gebruikerstoestemming
+  19-3: ready-for-dev  # geblokkeerd op 19.1 deel 2 (route-activering + dekkingscijfers)
+  19-4: ready-for-dev  # geblokkeerd op 19.1 + 19.3
 notes: >
-  Epic 19 scope-assessment (Fase 0): 19.2 (parser) is autonoom implementeerbaar als geteste code.
-  19.1 is een SPIKE (routebesluit + dekkingsrapport) met externe blokkade (prod-media-503) en
-  ACC-DB-schrijf-goedkeuringspoort — niet autonoom afrondbaar, past niet in de AC->test-cyclus.
-  19.3/19.4 geblokkeerd op 19.1. Wacht op scope-bevestiging voor agent-spawn.
+  PARTIAL. Alleen 19.2 was autonoom afrondbaar (geteste code) en is gemerged naar acc.
+  19.1 is een spike: route beslist (Route A, read-only, media.stage/catalog.stage), maar de
+  proof-of-access + Route A-activering vereisen een ACC-env-wijziging + containerherstart met
+  expliciete toestemming (Constraint 1) — bewust NIET autonoom gedaan. 19.3/19.4 geblokkeerd op 19.1.
