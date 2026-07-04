@@ -4,7 +4,7 @@
 # project_key: NOKEY
 # tracking_system: file-system
 # story_location: _bmad-output/implementation-artifacts
-# scope: Epic 7-12 + Epics 13-18 Referentie-vliegwiel (Epic 1-6 afgerond, zie docs/sprint-artifacts/sprint-status.yaml)
+# scope: Epic 7-12 + Epics 13-18 Referentie-vliegwiel + Epic 19 Gerichte brandstofselectie (correct-course 2026-07-04) (Epic 1-6 afgerond, zie docs/sprint-artifacts/sprint-status.yaml)
 
 # STATUS DEFINITIONS:
 # ==================
@@ -185,3 +185,10 @@ development_status:
   18-1-gln-backfill-via-batch-export: done  # governance-akkoord prod-read gegeven 2026-07-04 (ARCH-8); script+migratie 0020+glnCoverage-paneel+tests; review-18-1 PASS; echte prod-export is aparte handmatige stap
   18-2-restant-route-via-mediaserver-re-import: done  # 2026-07-04: gedoseerd handmatig driver-script gln-reimport-restant.ts — het 18.1-restant (gln IS NULL + gezette reden) alsnog via het bestaande 8-3O-re-importmechanisme (runImportLoop/markStaleRuns geëxporteerd, geen fork, force:false/delta-strategie) van een GLN voorzien. CPU-getemperd: FLYWHEEL_GLN_REIMPORT_BATCH_SIZE 25 + FLYWHEEL_GLN_REIMPORT_PAUSE_MS 30000, sequentiële batches, pauze tussen. Reden-bijwerking geen stille uitval: gevuld→NULL; anders mediaserver-geen-gln/-geen-media. AC2-hermeting via bestaand on-read glnCoverage-paneel (18.1), geen dupliceerlogica. Migratie-vrij (bestaande gln_backfill_reason-kolom). review-18-2 PASS; ac-trace 2/2. api vitest 825 pass/2 skip/37 todo; web niet geraakt
   epic-18-retrospective: optional
+
+  epic-19: in-progress  # 2026-07-04: toegevoegd via correct-course (sprint-change-proposal-2026-07-04) — gerichte brandstofselectie via declaraties; 4 stories (1 spike + 3 bouw); story-bestanden aangemaakt via prepare-sprint
+  19-1-spike-acc-verwerkingstoegang-en-keurmerk-dekkingsmeting: ready-for-dev  # SPIKE (start hier): routebesluit ACC-verwerkingstoegang (A env→prod vs B DB-replicatie index+tradeItems→Cherry; bestanden al gesynct) + keurmerk-dekkingsmeting tegen 951-code-universum. ACC-DB-schrijf/herstart met expliciete toestemming.
+  19-2-declaratie-parser-naar-volledige-keurmerk-dekking-5-5-velden: ready-for-dev  # onafhankelijk van spike (parallel): parseDeclaredMarks/MARK_FIELDS uitbreiden met enumerationValue + localPackagingMarkedLabelAccreditationCodeReference; byte-gelijk gedrag bestaande 3 velden; unit-test per veld
+  19-3-keurmerk-etiket-index-uit-declaraties: ready-for-dev  # idempotent seed-script (droge-run, ARCH-4): index {keurmerkcode → [GTIN → etiket]} + tellingen via catalog-XML; NA 19.1+19.2 (taakdetail scherpt aan na spike)
+  19-4-gebalanceerde-sampler-en-nominatie-aansluiting: ready-for-dev  # sampler N/keurmerk (FLYWHEEL_-env) door bestaande nominatie-/bootstrap-pad + kwaliteitspoort; class-cap/dedup gerespecteerd; NA 19.1+19.3
+  epic-19-retrospective: optional

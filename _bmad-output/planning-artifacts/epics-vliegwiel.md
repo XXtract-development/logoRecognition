@@ -39,6 +39,7 @@ FR-18: Quarantaine-afhandeling — per kandidaat afkeuren (hard-negative) of vri
 FR-19: Pauzeknop + automatische stilstand (K=2) — nominatie/promotie stoppen, detectie loopt door; hervatten expliciet; notificatie bij automatische stilstand.
 FR-20: Kruischeck-verdicts voeden nominatie — CONFIRMED boven promotiedrempel via zelfde pad als FR-1; achter configuratievlag (default uit); verdict-responses ongewijzigd.
 FR-21: GLN-dekking voor het 39k-archief — backfill met doel ≥90%; restant gemarkeerd met reden; dekkingsgraad in dashboard.
+FR-22: Gerichte, gebalanceerde brandstofselectie via declaraties — etiketten die gegarandeerd een gedeclareerd keurmerk bevatten worden per keurmerk gebalanceerd geselecteerd (configureerbaar N/klasse, tot de class-cap) en via het bestaande nominatiepad door de kwaliteitspoort gevoerd; de declaratie-lezer dekt alle vijf GDSN-keurmerkvelden (5/5).
 
 ### NonFunctional Requirements
 
@@ -99,6 +100,7 @@ FR-18: Epic 15 — quarantaine-afhandeling
 FR-19: Epic 13 (automatische stilstand + persistente pauze, backend) / Epic 15 (pauzebediening + banners, UI)
 FR-20: Epic 13 — kruischeck-voeding achter vlag
 FR-21: Epic 18 — GLN-dekking historisch archief
+FR-22: Epic 19 — gerichte brandstofselectie via declaraties (5/5-velddekking raakt tevens FR-1/12/15/20)
 
 ## Epic List
 
@@ -126,7 +128,11 @@ Keurmerkklassen zonder referenties vullen zichzelf: het gids-logo als zoekzaad b
 Het historische archief (39k producten) krijgt GLN-dekking zodat declaratie-lookup en dubbele bevestiging mogelijk worden; de dekkingsgraad is zichtbaar in het dashboard. Na deze epic is de brandstoftank van het vliegwiel ontsloten (de bulk-run zelf is operationeel vervolgwerk, buiten scope).
 **FRs covered:** FR-21
 
-**Volgorde en afhankelijkheden:** 13 → 14 → 15 → 16 → 17 → 18. Epic 13 is standalone; 14 bouwt op de gold-set-opslag uit 13; 15 leest de state uit 13/14; 16 haakt op dezelfde paden als 13 maar staat functioneel los; 17 vereist de poort uit 13; 18 is onafhankelijk van 14–17 en kan desgewenst parallel.
+### Epic 19: Gerichte brandstofselectie via declaraties
+Het vliegwiel wordt gericht gevoed: via de GS1-declaraties selecteren we etiketten die gegarandeerd een keurmerk bevatten, gebalanceerd per keurmerk (tot de class-cap), in plaats van blind het hele archief te verwerken. Een spike ontsluit eerst de ACC-verwerkingstoegang (media-index + catalog-baseline; bestanden staan al gesynct) en meet de werkelijke dekking; daarna parser-uitbreiding naar 5/5 velden, de keurmerk→etiket-index, en de gebalanceerde sampler. Na deze epic wordt de brandstoftank (Epic 18) gericht én gebalanceerd benut.
+**FRs covered:** FR-22 (+ 5/5-dekking raakt FR-1/12/15/20)
+
+**Volgorde en afhankelijkheden:** 13 → 14 → 15 → 16 → 17 → 18 → 19. Epic 13 is standalone; 14 bouwt op de gold-set-opslag uit 13; 15 leest de state uit 13/14; 16 haakt op dezelfde paden als 13 maar staat functioneel los; 17 vereist de poort uit 13; 18 is onafhankelijk van 14–17 en kan desgewenst parallel; 19 bouwt op de poort (13), het bootstrap-/nominatiepad (17) en de brandstoftoegang (18), en start met een spike die de ACC-verwerkingstoegang ontsluit.
 
 **Coördinatie-noot (overview-endpoint en crosscheck-hook):** het endpoint `/api/v1/flywheel/overview` wordt modulair opgebouwd — per dashboard-paneel een eigen sub-service — omdat vijf epics (13 t/m 17) er panelen aan leveren; zo blijft elke epic zelfstandig integreerbaar zonder merge-conflicten op één monoliet-handler. Story 16.1 hergebruikt exact de 13.2-hook-plek in `apps/api/src/services/artwork-crosscheck.ts` (één instrumentatiepunt, twee afnemers).
 
@@ -788,3 +794,94 @@ So that de dekkingsgraad richting het doel kruipt zonder nieuwe mechanismen.
 **Then** toont het dashboard de bijgewerkte dekking en het definitieve restant met redenen (FR-21).
 
 *Bronnen: FR-21; AD-7; NFR-3.*
+
+---
+
+## Epic 19: Gerichte brandstofselectie via declaraties
+
+Het vliegwiel wordt gericht gevoed in plaats van het hele archief blind te verwerken: via de GS1-declaraties selecteren we etiketten die gegarandeerd een gedeclareerd keurmerk bevatten, gebalanceerd per keurmerk (configureerbaar N/klasse, tot de class-cap), en voeren ze via het bestaande nominatiepad door de kwaliteitspoort. Vooraf ontsluit een spike de ACC-verwerkingstoegang (media-index + catalog-baseline; de artwork-bestanden staan al gesynct sinds 2026-06-08) en meet de werkelijke keurmerk-dekking, zodat de bouwstories op feiten rusten. Na deze epic wordt de brandstoftank niet alleen ontsloten (Epic 18) maar ook gericht en gebalanceerd benut. (FR-22 + dekkingsuitbreiding op FR-1/12/15/20 · AD-1/AD-2/AD-6/AD-9 · ARCH-4)
+
+**FRs covered:** FR-22 (de 5/5-veld-dekking raakt tevens FR-1, FR-12, FR-15, FR-20)
+
+**Volgorde:** 19.1 (spike) is een harde voorwaarde voor 19.3/19.4 (route + dekkingscijfers); 19.2 (parser) kan parallel en is nodig vóór een volledige 19.3-index.
+
+### Story 19.1: Spike — ACC-verwerkingstoegang en keurmerk-dekkingsmeting
+
+As a datamanager/ontwikkelaar,
+I want de ACC-verwerkingstoegang tot het gesyncte 39k-corpus ontsluiten en de werkelijke keurmerk-dekking meten,
+So that de bouwstories op een bewezen toegangsroute en echte dekkingscijfers rusten.
+
+**Acceptance Criteria:**
+
+**Given** de twee toegangsroutes
+**When** de spike de route bepaalt
+**Then** wordt gekozen tussen Route A (ACC-env `MEDIASERVER_DOMAIN`/`CATALOG_API_BASE`→prod, mits de prod-media-503 verklaard/opgelost is) en Route B (resterende DB-replicatie: prod media-index → ACC Cherry MySQL `xxtractdbmedia`, en prod `tradeItems` → ACC Cherry MongoDB `application`; de artwork-bestanden staan al gesynct)
+**And** wordt voor elke ACC-DB-schrijf en containerherstart eerst expliciete toestemming gevraagd (Constraint 1 / database-veiligheid).
+
+**Given** de gekozen route (proof-of-access)
+**When** een handvol GTINs verwerkt wordt
+**Then** leveren discovery + download + crosscheck een geslaagde dubbele bevestiging (crops + declaratie) — read-only op prod waar van toepassing, geen productiewijziging zonder aparte toestemming.
+
+**Given** de declaratiebron
+**When** de dekkingsmeting over de artwork-GTINs draait
+**Then** ontstaat een dekkingsrapport: per keurmerkcode (getoetst aan het 951-code-universum, `Result_4.xlsx`) het aantal producten mét etiket, de scheefheid en de lege klassen — als go/no-go-input voor de sampler (19.4).
+
+*Bronnen: FR-22; AD-6; ARCH-4; besluit-39k-toegang-2026-06-07. Spike-deliverable: routebesluit + dekkingsrapport.*
+
+### Story 19.2: Declaratie-parser naar volledige keurmerk-dekking (5/5 velden)
+
+As a ontwikkelaar,
+I want de declaratie-lezer alle vijf GDSN-keurmerkvelden laten herkennen,
+So that het vliegwiel geen keurmerken meer mist die in `enumerationValue` of het aanvullende-logo-veld staan.
+
+**Acceptance Criteria:**
+
+**Given** `parseDeclaredMarks`/`MARK_FIELDS` in `apps/api/src/services/t3777-declarations.ts` (nu 3 velden)
+**When** de story klaar is
+**Then** herkent de lezer ook `enumerationValue` (`consumerInstructionsModule/consumerInstructions/consumerUsageLabelCode/enumerationValueInformation/enumerationValue`) en `localPackagingMarkedLabelAccreditationCodeReference` (`packagingMarkingModule/packagingMarking/localPackagingMarkedLabelAccreditationCodeReference`), elk met de juiste `fieldType`/codelijst-mapping.
+
+**Given** de bestaande afnemers (crosscheck FR-1, kruischeck FR-20, bootstrap FR-12, mismatch FR-15)
+**When** de dekking uitbreidt
+**Then** blijft het gedrag voor de al-gedekte 3 velden byte-gelijk, zijn de 2 nieuwe velden namespace-agnostisch geparsed (local-name), en is er een unit-test per veld.
+
+*Bronnen: FR-22 (dekking); raakt FR-1/12/15/20; codelijst-universum `Result_4.xlsx`.*
+
+### Story 19.3: Keurmerk→etiket-index uit declaraties
+
+As a datamanager,
+I want een keurmerk→etiket-index uit de declaraties,
+So that ik per keurmerk weet welke etiketten het gegarandeerd bevatten.
+
+**Acceptance Criteria:**
+
+**Given** het artwork-GTIN-universum en de declaratiebron
+**When** het idempotente indexscript draait (met `--dry-run` die alleen het plan toont)
+**Then** ontstaat een index `{keurmerkcode → [GTIN → etiketbestand(en)]}` + tellingen per code, gelezen via de betrouwbare catalog-XML-lezer (niet de diep-geneste, ongeïndexeerde Mongo-vorm), getoetst aan het 951-code-universum.
+
+**Given** ARCH-4 (operationele envelope)
+**When** het script wordt opgeleverd
+**Then** is het een handmatig, idempotent seed-script met droge-run; de output staat in beheerde opslag; herdraaien wijzigt niets ongewenst (idempotentie, NFR-4).
+
+*Bronnen: FR-22; ARCH-4; AD-9; afhankelijk van 19.2 (volledige velddekking) en 19.1 (toegang).*
+
+### Story 19.4: Gebalanceerde sampler en nominatie-aansluiting
+
+As a datamanager,
+I want per keurmerk N gebalanceerde etiketten door de poort voeden,
+So that elke keurmerkklasse sterk vertegenwoordigd de referentiebibliotheek in groeit tot de cap.
+
+**Acceptance Criteria:**
+
+**Given** de index (19.3)
+**When** de sampler draait
+**Then** kiest hij per keurmerkcode tot N etiketten (configureerbaar via een `FLYWHEEL_`-envvar met conservatieve default), gebalanceerd, en voert de geselecteerde etiketten via het bestaande nominatie-/bootstrap-pad (passende herkomst) door de kwaliteitspoort — nooit rechtstreeks in `reference_logos`; gate, tweetraps-dedup en class-cap worden gerespecteerd (AD-1/AD-2; FR-2/6/7).
+
+**Given** de class-cap (start 10)
+**When** een klasse zijn cap bereikt
+**Then** stopt de selectie voor die klasse en wordt overschot geregistreerd als overgeslagen mét reden — geen stille brandstofverliezen (NFR-5).
+
+**Given** de vliegwiel-vlaggen (default uit)
+**When** de sampler in productie zou draaien
+**Then** gebeurt dat achter de bestaande nominatie-vlag en met expliciete toestemming voor elke ACC-schrijf/herstart (Constraint 1).
+
+*Bronnen: FR-22; AD-1/AD-2/AD-6; FR-2/6/7; NFR-5; afhankelijk van 19.1 + 19.3.*

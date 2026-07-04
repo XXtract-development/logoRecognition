@@ -1,9 +1,15 @@
-started_at: 2026-06-09
+started_at: 2026-07-04
 sprint_status: _bmad-output/implementation-artifacts/sprint-status.yaml
-current_phase: checkpoint
-active_epics: [epic-12]
-story_12_1: done   # proof-slice AC1-5 live op ACC (5->10 klassen) + RECYCLABLE-fix
-story_12_2: spike-stap-1-done   # region-proposer POC; stappen 2-5 resteren
-live_acc_image: 16c8a5f
-handover: _bmad-output/implementation-artifacts/handover-2026-06-09.md
-status: paused-clean-checkpoint
+story_files: _bmad-output/implementation-artifacts/19-*.md
+source_epics: _bmad-output/planning-artifacts/epics-vliegwiel.md
+worktree_root: /private/tmp/logoRecognition-implement-sprint
+base_branch: acc
+scope: epic-19
+current_phase: kickoff
+active_epics: [epic-19]
+status: running
+notes: >
+  Epic 19 scope-assessment (Fase 0): 19.2 (parser) is autonoom implementeerbaar als geteste code.
+  19.1 is een SPIKE (routebesluit + dekkingsrapport) met externe blokkade (prod-media-503) en
+  ACC-DB-schrijf-goedkeuringspoort — niet autonoom afrondbaar, past niet in de AC->test-cyclus.
+  19.3/19.4 geblokkeerd op 19.1. Wacht op scope-bevestiging voor agent-spawn.
