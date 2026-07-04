@@ -126,7 +126,11 @@ def audit_candidates(
         threshold = DEFAULT_OUTLIER_DISTANCE
 
     results = [
-        {"id": ids[i], "distance": float(distances[i]), "is_outlier": distances[i] > threshold}
+        {
+            "id": ids[i],
+            "distance": float(distances[i]),
+            "is_outlier": distances[i] > threshold,
+        }
         for i in range(len(ids))
     ]
 

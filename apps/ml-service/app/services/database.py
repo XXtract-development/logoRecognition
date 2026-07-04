@@ -307,8 +307,7 @@ class DatabaseService:
     async def get_logo_training_progress(self) -> List[Dict[str, Any]]:
         """Get training progress for all logos."""
         async with self.get_connection() as conn:
-            rows = await conn.fetch(
-                """
+            rows = await conn.fetch("""
                 SELECT
                     id, category, value,
                     training_samples, accuracy, confidence_threshold,
@@ -320,8 +319,7 @@ class DatabaseService:
                 FROM logos
                 WHERE is_active = true
                 ORDER BY category, value
-                """
-            )
+                """)
             return [dict(row) for row in rows]
 
     # ============================================
@@ -434,15 +432,13 @@ class DatabaseService:
         failure (the caller counts it as a non-fatal error).
         """
         async with self.get_connection() as conn:
-            row = await conn.fetchrow(
-                """
+            row = await conn.fetchrow("""
                 SELECT indexname
                 FROM pg_indexes
                 WHERE tablename = 'reference_embeddings'
                   AND indexdef ILIKE '%ivfflat%'
                 LIMIT 1
-                """
-            )
+                """)
             if row is None:
                 logger.warning(
                     "No ivfflat index found on reference_embeddings — REINDEX skipped"
@@ -470,8 +466,7 @@ class DatabaseService:
         verification and tests — NOT for per-crop similarity in the hot path.
         """
         async with self.get_connection() as conn:
-            rows = await conn.fetch(
-                """
+            rows = await conn.fetch("""
                 SELECT
                     re.reference_logo_id,
                     rl.t3777_code,
@@ -480,8 +475,7 @@ class DatabaseService:
                 FROM reference_embeddings re
                 JOIN reference_logos rl ON re.reference_logo_id = rl.id
                 WHERE rl.active = true
-                """
-            )
+                """)
             results: List[Dict[str, Any]] = []
             for row in rows:
                 results.append(
@@ -579,8 +573,7 @@ class DatabaseService:
         corrupt row never poisons the eval.
         """
         async with self.get_connection() as conn:
-            rows = await conn.fetch(
-                """
+            rows = await conn.fetch("""
                 SELECT
                     re.reference_logo_id,
                     rl.t3777_code,
@@ -589,8 +582,7 @@ class DatabaseService:
                 FROM reference_embeddings re
                 JOIN reference_logos rl ON re.reference_logo_id = rl.id
                 WHERE rl.active = true
-                """
-            )
+                """)
             results: List[Dict[str, Any]] = []
             for row in rows:
                 vec = _parse_pgvector(row["embedding_text"])
@@ -655,14 +647,12 @@ class DatabaseService:
     async def get_active_reference_logos(self) -> List[Dict[str, Any]]:
         """Return all active reference keurmerk variants (one row per variant)."""
         async with self.get_connection() as conn:
-            rows = await conn.fetch(
-                """
+            rows = await conn.fetch("""
                 SELECT id, t3777_code, variant_label, storage_path
                 FROM reference_logos
                 WHERE active = true
                 ORDER BY t3777_code, variant_label
-                """
-            )
+                """)
             return [dict(row) for row in rows]
 
     # ============================================
@@ -749,13 +739,11 @@ class DatabaseService:
     async def count_holdout_images(self) -> int:
         """Count the validated holdout records (NFR3 minimum-size guard)."""
         async with self.get_connection() as conn:
-            row = await conn.fetchrow(
-                """
+            row = await conn.fetchrow("""
                 SELECT COUNT(*) AS count
                 FROM training_data
                 WHERE validated = true AND holdout = true
-                """
-            )
+                """)
             return int(row["count"]) if row else 0
 
     # ============================================

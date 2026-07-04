@@ -25,6 +25,7 @@ Zacht falen per GTIN (NFR-3): een onleesbaar/ontbrekend beeld of een lege pagina
 laat de run doorgaan met de volgende GTIN — één corrupt beeld stopt de bootstrap
 niet. Time-box + per-code cap begrenzen de ~28s/beeld-lokalisatiekosten.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -86,7 +87,9 @@ def _content_digest(crop_bgr: np.ndarray) -> str:
 
     rgb = cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2RGB)
     small = cv2.resize(rgb, (64, 64), interpolation=cv2.INTER_AREA)
-    return hashlib.sha256(np.ascontiguousarray(small.astype("uint8")).tobytes()).hexdigest()
+    return hashlib.sha256(
+        np.ascontiguousarray(small.astype("uint8")).tobytes()
+    ).hexdigest()
 
 
 async def search_with_seed(
@@ -132,7 +135,9 @@ async def search_with_seed(
     seed_img = cv2.imdecode(np.frombuffer(seed_data, np.uint8), cv2.IMREAD_COLOR)
     if seed_img is None:
         raise ValueError(f"Zaadbeeld is geen leesbare afbeelding: {seed_path}")
-    seed_emb = np.asarray(await model_manager.generate_embedding(_to_pil(seed_img)), np.float32)
+    seed_emb = np.asarray(
+        await model_manager.generate_embedding(_to_pil(seed_img)), np.float32
+    )
     seed_digest = _content_digest(seed_img)
 
     matches: List[Dict[str, Any]] = []
@@ -188,7 +193,9 @@ async def search_with_seed(
             if c is None:
                 continue
 
-            emb = np.asarray(await model_manager.generate_embedding(_to_pil(c)), np.float32)
+            emb = np.asarray(
+                await model_manager.generate_embedding(_to_pil(c)), np.float32
+            )
 
             # Gate-v2 als voorfilter (ruisreductie): niet-keurmerk-achtige regio's weg.
             kp = keurmerk_probability(emb)

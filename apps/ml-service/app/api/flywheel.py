@@ -200,8 +200,10 @@ async def outlier_audit(request: OutlierAuditRequest):
     """
     if request.library_mode:
         try:
-            references = await db_service.get_active_reference_embeddings_with_ids_for_class(
-                request.t3777_code
+            references = (
+                await db_service.get_active_reference_embeddings_with_ids_for_class(
+                    request.t3777_code
+                )
             )
         except Exception as exc:
             logger.warning(
@@ -502,7 +504,9 @@ async def bootstrap_search(request: BootstrapSearchRequest) -> BootstrapSearchRe
             "Bootstrap zaad-zoektocht mislukt",
             extra={"seed_path": request.seed_path, "error": str(exc)},
         )
-        raise HTTPException(status_code=503, detail=f"Bootstrap-zoektocht mislukt: {exc}")
+        raise HTTPException(
+            status_code=503, detail=f"Bootstrap-zoektocht mislukt: {exc}"
+        )
 
     return BootstrapSearchResponse(
         seed_path=result["seed_path"],
