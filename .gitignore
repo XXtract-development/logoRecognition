@@ -82,3 +82,10 @@ secrets/
 credentials/
 .tar.gz
 tests/fixtures/*.page-*.png
+
+# BMAD framework-installatie (per-dev tooling, niet in git — migratie 2026-07-04)
+# Oude layout (bmad/ + .claude/commands/bmad/) vervangen door skills-based _bmad/ + .claude/skills/
+/bmad/
+/_bmad/
+.claude/commands/bmad/
+.claude/skills/
