@@ -181,7 +181,7 @@ development_status:
   17-2-bootstrap-wachtrij-prioritering-en-beheer: done  # 2026-07-04: wachtrij-prioritering op declaratiefrequentie + beheer (override/uitsluiten/toevoegen, AD-13-logging), initiële vulling alle lege klassen, nieuw-geactiveerde-klasse-doorklik naar 15.3; migratie-vrij; api vitest 791 pass, web 124 pass
   epic-17-retrospective: optional
 
-  epic-18: in-progress
+  epic-18: done  # 2026-07-04: 2/2 stories done, migratie 0020 lokaal, adversarial PASS (schoon); prod-export = aparte operationele stap; api vitest 825
   18-1-gln-backfill-via-batch-export: done  # governance-akkoord prod-read gegeven 2026-07-04 (ARCH-8); script+migratie 0020+glnCoverage-paneel+tests; review-18-1 PASS; echte prod-export is aparte handmatige stap
   18-2-restant-route-via-mediaserver-re-import: done  # 2026-07-04: gedoseerd handmatig driver-script gln-reimport-restant.ts — het 18.1-restant (gln IS NULL + gezette reden) alsnog via het bestaande 8-3O-re-importmechanisme (runImportLoop/markStaleRuns geëxporteerd, geen fork, force:false/delta-strategie) van een GLN voorzien. CPU-getemperd: FLYWHEEL_GLN_REIMPORT_BATCH_SIZE 25 + FLYWHEEL_GLN_REIMPORT_PAUSE_MS 30000, sequentiële batches, pauze tussen. Reden-bijwerking geen stille uitval: gevuld→NULL; anders mediaserver-geen-gln/-geen-media. AC2-hermeting via bestaand on-read glnCoverage-paneel (18.1), geen dupliceerlogica. Migratie-vrij (bestaande gln_backfill_reason-kolom). review-18-2 PASS; ac-trace 2/2. api vitest 825 pass/2 skip/37 todo; web niet geraakt
   epic-18-retrospective: optional
