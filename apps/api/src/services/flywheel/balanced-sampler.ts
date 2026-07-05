@@ -2,9 +2,19 @@
  * Gebalanceerde sampler — referentie-vliegwiel Epic 19, Story 19.4 (FR-22).
  *
  * Leest de keurmerk→etiket-index (Story 19.3) en selecteert per keurmerkklasse tot
- * N etiketten, GEBALANCEERD gespreid over verschillende GTINs/producten, en voert de
- * geselecteerde etiketten door het BESTAANDE nominatie-/kwaliteitspad (13.2-poort) —
- * nooit rechtstreeks in `reference_logos`/`reference_candidates`.
+ * N etiketten, GEBALANCEERD gespreid over verschillende GTINs/producten. De
+ * geselecteerde GTINs lopen per klasse door het CROP-PRODUCERENDE bootstrap-pad
+ * (`searchAndNominateClass`): het gids-zaad zoekt in de ARTWORK van elke GTIN de
+ * ECHTE keurmerk-crops, en enkel die uitgesneden crops gaan door het BESTAANDE
+ * nominatie-/kwaliteitspad (13.2-poort) — nooit rechtstreeks in `reference_logos`/
+ * `reference_candidates`.
+ *
+ * KRITIEK (defect-fix Story 19.4): een referentie-logo MOET een uitgesneden
+ * keurmerk-regio zijn. De sampler biedt daarom NOOIT het hele etiketbestand
+ * (previewUrl van de verpakking) als "crop" aan de poort aan — dat is semantisch
+ * fout (vervuilt de kandidaten) of een no-op (een PDF-previewUrl is geen
+ * hash-/embedbaar beeld). De localisatie (zaad → artwork-search → crop) gebeurt in
+ * `searchAndNominateClass`; de sampler levert alleen de gebalanceerde GTIN-set aan.
  *
  * Bindende randvoorwaarden:
  *   AD-8   Alles achter `isNominationEnabled()` (`FLYWHEEL_NOMINATION_ENABLED`, default
@@ -27,8 +37,13 @@
  */
 
 import { createLogger } from '../../core/logger';
-import { nominateCandidate, type NominationOutcome } from './nomination';
-import { isNominationEnabled, getSamplePerClass } from './config';
+import { searchAndNominateClass } from './bootstrap-run';
+import {
+  isNominationEnabled,
+  getSamplePerClass,
+  getBootstrapRunBudget,
+  getBootstrapMaxSeconds,
+} from './config';
 
 const logger = createLogger('flywheel-balanced-sampler');
 
@@ -45,11 +60,16 @@ export interface KeurmerkIndexInput {
   entries: Record<string, IndexLabelEntry[]>;
 }
 
-/** Eén geselecteerd etiket-label (kandidaat om door de poort te voeren). */
+/**
+ * Eén geselecteerd etiket-label. Het `label` (previewUrl/opslagpad van de
+ * verpakking) identificeert het etiket in de 19.3-index; het is NIET de crop die
+ * genomineerd wordt — de crop wordt uit de ARTWORK van de GTIN gesneden door
+ * `searchAndNominateClass`. De GTIN is de eenheid die het crop-pad in gaat.
+ */
 export interface SelectedLabel {
   gtin: string;
   gln: string;
-  /** Het etiketbestand (previewUrl/opslagpad) dat als crop-bron door de poort gaat. */
+  /** Het etiketbestand (previewUrl/opslagpad) uit de 19.3-index — index-identiteit. */
   label: string;
 }
 
@@ -163,12 +183,36 @@ export interface SamplerRunResult {
   skipReason?: 'vlag-uit';
   /** Het (altijd berekende) selectieplan per klasse. */
   plan: ClassSelection[];
-  /** Aantal labels dat daadwerkelijk aan de nominatie-poort is aangeboden. */
+  /**
+   * Aantal GTINs dat daadwerkelijk het crop-producerende pad in ging (declaratie-
+   * check verbruikt). NIET het aantal labels: de eenheid is de GTIN, want de crop
+   * wordt uit de artwork van de GTIN gesneden.
+   */
   offered: number;
-  /** Aantal poort-uitkomsten per status (nominated/skipped/refused). */
+  /** Aantal poort-uitkomsten per status over de ECHTE crops (nominated/skipped/refused). */
   outcomes: { nominated: number; skipped: number; refused: number };
   /** Totaal overschot over alle klassen (NFR-5). */
   totalSkippedOverCap: number;
+  /** Aantal klassen dat overgeslagen is omdat er geen gids-zaad was (net als bootstrap). */
+  classesSkippedNoSeed: number;
+}
+
+/**
+ * Leid de gebalanceerd geselecteerde, DISTINCTE GTINs van een klasse af, in
+ * selectievolgorde (spreiding over producten blijft behouden). De crop-eenheid is
+ * de GTIN — meerdere geselecteerde labels van dezelfde GTIN leiden tot één
+ * artwork-zoektocht, want de crops komen uit de artwork van de GTIN, niet uit het
+ * losse etiketbestand.
+ */
+export function distinctGtins(cls: ClassSelection): string[] {
+  const seen = new Set<string>();
+  const gtins: string[] = [];
+  for (const sel of cls.selected) {
+    if (seen.has(sel.gtin)) continue;
+    seen.add(sel.gtin);
+    gtins.push(sel.gtin);
+  }
+  return gtins;
 }
 
 /**
@@ -177,11 +221,14 @@ export interface SamplerRunResult {
  *   - Bereken ALTIJD het selectieplan (puur, geen writes).
  *   - Vlag UIT (`isNominationEnabled()` false) → STOP: retourneer het plan als
  *     dry-run, geen enkele nominatie/write (AD-8).
- *   - Vlag AAN → bied elk geselecteerd label aan de BESTAANDE nominatie-poort aan
- *     (`nominateCandidate`, herkomst `bootstrap`): de poort handhaaft gate,
- *     tweetraps-dedup en promotie-class-cap. De code van de klasse wordt als
- *     `declared`-bevestiging meegegeven (het label draagt de code per 19.3-index
- *     gegarandeerd). Nooit een directe referentie-write.
+ *   - Vlag AAN → voer per klasse de gebalanceerd geselecteerde GTINs door het
+ *     CROP-PRODUCERENDE bootstrap-pad (`searchAndNominateClass`, herkomst
+ *     `bootstrap`): dat resolveert het gids-zaad, verifieert de declaratie per GTIN
+ *     hard, laat de ml-service de ECHTE keurmerk-crops in de artwork vinden en biedt
+ *     ALLEEN die uitgesneden crops aan de bestaande 13.2-poort aan (gate, tweetraps-
+ *     dedup, promotie-class-cap downstream). NOOIT het hele etiketbestand als crop,
+ *     nooit een directe referentie-write. Klassen zonder zaad worden overgeslagen
+ *     (geteld), net als in de bootstrap-run — geen brandstofverlies-nominatie.
  *
  * `dryRun` forceert het plan-only-pad óók met de vlag aan (voor operationeel
  * vooraf-inzicht zonder te schrijven).
@@ -209,6 +256,7 @@ export async function runBalancedSampler(
       offered: 0,
       outcomes: emptyOutcomes,
       totalSkippedOverCap,
+      classesSkippedNoSeed: 0,
     };
   }
 
@@ -224,35 +272,42 @@ export async function runBalancedSampler(
       offered: 0,
       outcomes: emptyOutcomes,
       totalSkippedOverCap,
+      classesSkippedNoSeed: 0,
     };
   }
 
-  // Vlag aan → aanbieden aan de bestaande poort. Elk label onafhankelijk; de poort
-  // beslist (gate/dedup/cap). We schrijven NOOIT zelf in de referentietabellen.
+  // Vlag aan → per klasse de gebalanceerde GTIN-set door het crop-producerende
+  // bootstrap-pad. De poort beslist per ECHTE crop (gate/dedup/cap). We schrijven
+  // NOOIT zelf in de referentietabellen en bieden nooit het label zelf als crop aan.
+  // Budget/time-box worden per klasse opnieuw uit de bootstrap-config gelezen (elke
+  // klasse mag tot het volledige run-budget aan GTINs verwerken; de sampler-cap N
+  // begrenst de selectie al bovenstrooms).
   let offered = 0;
+  let classesSkippedNoSeed = 0;
   const outcomes = { nominated: 0, skipped: 0, refused: 0 };
   for (const cls of plan) {
-    for (const sel of cls.selected) {
-      offered += 1;
-      const outcome: NominationOutcome = await nominateCandidate({
-        detection: {
-          t3777Code: cls.code,
-          // De sampler brengt geen model-confidence mee; de bevestiging is de
-          // declaratie (label draagt de code gegarandeerd per 19.3-index). Om de
-          // per-methode-drempel niet als valse horde te laten werken op een
-          // declaratie-bevestigde bron gebruiken we de review-herkomst-semantiek
-          // niet; we geven confidence 1 mee zodat de gate op de declaratie steunt.
-          confidence: 1,
-          method: 'embedding',
-          cropPath: sel.label,
-          sourceFile: sel.label,
-        },
-        origin: 'bootstrap',
-        gtin: sel.gtin,
-        declared: [cls.code],
-      });
-      outcomes[outcome.status] += 1;
+    const gtins = distinctGtins(cls);
+    if (gtins.length === 0) continue;
+
+    const budget = getBootstrapRunBudget();
+    const deadline = Date.now() + getBootstrapMaxSeconds() * 1000;
+    const res = await searchAndNominateClass(cls.code, gtins, {
+      remainingBudget: budget,
+      deadline,
+      origin: 'bootstrap',
+    });
+
+    if (!res.hadSeed) {
+      // Geen gids-zaad voor de klasse → niets te lokaliseren; overslaan (geteld).
+      classesSkippedNoSeed += 1;
+      logger.info('Sampler: klasse zonder zaad overgeslagen', { code: cls.code });
+      continue;
     }
+
+    offered += res.budgetSpent;
+    outcomes.nominated += res.outcomes.nominated;
+    outcomes.skipped += res.outcomes.skipped;
+    outcomes.refused += res.outcomes.refused;
   }
 
   logger.info('Sampler-run voltooid', {
@@ -260,7 +315,15 @@ export async function runBalancedSampler(
     offered,
     outcomes,
     totalSkippedOverCap,
+    classesSkippedNoSeed,
   });
 
-  return { skipped: false, plan, offered, outcomes, totalSkippedOverCap };
+  return {
+    skipped: false,
+    plan,
+    offered,
+    outcomes,
+    totalSkippedOverCap,
+    classesSkippedNoSeed,
+  };
 }
