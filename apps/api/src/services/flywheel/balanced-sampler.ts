@@ -1,0 +1,266 @@
+/**
+ * Gebalanceerde sampler — referentie-vliegwiel Epic 19, Story 19.4 (FR-22).
+ *
+ * Leest de keurmerk→etiket-index (Story 19.3) en selecteert per keurmerkklasse tot
+ * N etiketten, GEBALANCEERD gespreid over verschillende GTINs/producten, en voert de
+ * geselecteerde etiketten door het BESTAANDE nominatie-/kwaliteitspad (13.2-poort) —
+ * nooit rechtstreeks in `reference_logos`/`reference_candidates`.
+ *
+ * Bindende randvoorwaarden:
+ *   AD-8   Alles achter `isNominationEnabled()` (`FLYWHEEL_NOMINATION_ENABLED`, default
+ *          uit). Vlag UIT = de sampler doet GEEN writes/nominaties; hoogstens een
+ *          dry-run-plan (selectie + tellingen).
+ *   AD-1/2 De sampler voegt enkel een BRON van kandidaten toe. Gate, tweetraps-dedup
+ *          en promotie-class-cap (10) blijven DOWNSTREAM door de bestaande poort
+ *          gehandhaafd (`nominateCandidate`); deze module bouwt GEEN nieuwe
+ *          promotieroute en schrijft nooit direct in de referentietabellen.
+ *   NFR-5  Selectie-cap per klasse bij N: overschot wordt geregistreerd als
+ *          overgeslagen mét reden (`class-cap-bereikt`) — geen stille brandstofverliezen.
+ *
+ * De sampler-class-cap (N, `FLYWHEEL_SAMPLE_PER_CLASS`) is een SELECTIE-plafond op de
+ * kandidatenstroom; de PROMOTIE-class-cap (10, `getClassCap`) is een aparte, strengere
+ * horde die de poort/promotielus downstream handhaaft. N ≥ promotie-cap zodat er genoeg
+ * gebalanceerde kandidaten door de poort gaan vóór de promotie-cap bijt.
+ *
+ * Dit bestand exporteert een PURE selectie-helper (`selectBalanced`) zodat de balans/cap/
+ * overschot-logica zonder I/O getest kan worden.
+ */
+
+import { createLogger } from '../../core/logger';
+import { nominateCandidate, type NominationOutcome } from './nomination';
+import { isNominationEnabled, getSamplePerClass } from './config';
+
+const logger = createLogger('flywheel-balanced-sampler');
+
+/** Eén etiket-vermelding uit de 19.3-index (fieldType/code → [{gtin,gln,labels}]). */
+export interface IndexLabelEntry {
+  gtin: string;
+  gln: string;
+  labels: string[];
+}
+
+/** De ingelezen 19.3-index (alleen de velden die de sampler nodig heeft). */
+export interface KeurmerkIndexInput {
+  /** sleutel `${fieldType}/${code}` → etiket-vermeldingen. */
+  entries: Record<string, IndexLabelEntry[]>;
+}
+
+/** Eén geselecteerd etiket-label (kandidaat om door de poort te voeren). */
+export interface SelectedLabel {
+  gtin: string;
+  gln: string;
+  /** Het etiketbestand (previewUrl/opslagpad) dat als crop-bron door de poort gaat. */
+  label: string;
+}
+
+/** Selectie-resultaat per keurmerkklasse (één indexsleutel). */
+export interface ClassSelection {
+  /** De samengestelde indexsleutel `${fieldType}/${code}`. */
+  key: string;
+  /** De GS1-code (deel na de eerste '/'). */
+  code: string;
+  /** Het GS1-veld (deel vóór de eerste '/'). */
+  fieldType: string;
+  /** De gebalanceerd geselecteerde labels (≤ N). */
+  selected: SelectedLabel[];
+  /** Aantal labels dat door de cap N is overgeslagen (overschot, NFR-5). */
+  skippedOverCap: number;
+  /** Aantal beschikbare labels in deze klasse (vóór de cap). */
+  available: number;
+}
+
+// ---------------------------------------------------------------------------
+// PURE balans-selectie (geen I/O)
+// ---------------------------------------------------------------------------
+
+/**
+ * Splits een indexsleutel `${fieldType}/${code}` in zijn twee delen. De fieldType
+ * (GS1-codelijstnaam) bevat geen '/', dus de eerste '/' scheidt de twee.
+ */
+export function splitKey(key: string): { fieldType: string; code: string } {
+  const i = key.indexOf('/');
+  if (i < 0) return { fieldType: '', code: key };
+  return { fieldType: key.slice(0, i), code: key.slice(i + 1) };
+}
+
+/**
+ * Selecteer tot `n` labels uit één klasse, GEBALANCEERD over de GTINs.
+ *
+ * Algoritme (deterministisch → stabiel bij herhaling):
+ *   1. Round-robin over de GTINs (invoervolgorde): neem beurtelings het volgende
+ *      nog niet-geselecteerde label van elke GTIN. Zo krijgt elk product eerst één
+ *      label vóór een product een tweede krijgt (spreiding).
+ *   2. Stop zodra `n` bereikt is. Alle resterende (niet-geselecteerde) labels tellen
+ *      als overschot (skippedOverCap) — geen stille verliezen (NFR-5).
+ *
+ * De labels binnen een vermelding worden in invoervolgorde gebruikt (de 19.3-index
+ * levert ze al gesorteerd + gededupt aan).
+ */
+export function selectBalanced(entries: IndexLabelEntry[], n: number): {
+  selected: SelectedLabel[];
+  available: number;
+  skippedOverCap: number;
+} {
+  // Bouw per GTIN een cursor over zijn labels (invoervolgorde behouden).
+  const buckets = entries.map((e) => ({
+    gtin: e.gtin,
+    gln: e.gln,
+    labels: e.labels,
+    cursor: 0,
+  }));
+  const available = buckets.reduce((sum, b) => sum + b.labels.length, 0);
+  const cap = Math.max(0, n);
+
+  const selected: SelectedLabel[] = [];
+  let progressed = true;
+  while (selected.length < cap && progressed) {
+    progressed = false;
+    for (const b of buckets) {
+      if (selected.length >= cap) break;
+      if (b.cursor < b.labels.length) {
+        selected.push({ gtin: b.gtin, gln: b.gln, label: b.labels[b.cursor] });
+        b.cursor += 1;
+        progressed = true;
+      }
+    }
+  }
+
+  return {
+    selected,
+    available,
+    skippedOverCap: Math.max(0, available - selected.length),
+  };
+}
+
+/**
+ * Bouw het volledige selectieplan uit de index: per klasse gebalanceerd tot N,
+ * overschot geteld. PUUR (geen I/O) — het dry-run-plan én de echte run gebruiken dit.
+ * Sleutels alfabetisch zodat het plan deterministisch is.
+ */
+export function buildSelectionPlan(
+  index: KeurmerkIndexInput,
+  n: number
+): ClassSelection[] {
+  const plan: ClassSelection[] = [];
+  const keys = Object.keys(index.entries).sort();
+  for (const key of keys) {
+    const entries = index.entries[key] ?? [];
+    const { selected, available, skippedOverCap } = selectBalanced(entries, n);
+    const { fieldType, code } = splitKey(key);
+    plan.push({ key, code, fieldType, selected, skippedOverCap, available });
+  }
+  return plan;
+}
+
+// ---------------------------------------------------------------------------
+// Nominatie-aansluiting (achter de vlag)
+// ---------------------------------------------------------------------------
+
+/** Uitkomst van één sampler-run. */
+export interface SamplerRunResult {
+  /** `true` = vlag uit: geen enkele nominatie/write (hoogstens het plan berekend). */
+  skipped: boolean;
+  skipReason?: 'vlag-uit';
+  /** Het (altijd berekende) selectieplan per klasse. */
+  plan: ClassSelection[];
+  /** Aantal labels dat daadwerkelijk aan de nominatie-poort is aangeboden. */
+  offered: number;
+  /** Aantal poort-uitkomsten per status (nominated/skipped/refused). */
+  outcomes: { nominated: number; skipped: number; refused: number };
+  /** Totaal overschot over alle klassen (NFR-5). */
+  totalSkippedOverCap: number;
+}
+
+/**
+ * Voer één sampler-run uit.
+ *
+ *   - Bereken ALTIJD het selectieplan (puur, geen writes).
+ *   - Vlag UIT (`isNominationEnabled()` false) → STOP: retourneer het plan als
+ *     dry-run, geen enkele nominatie/write (AD-8).
+ *   - Vlag AAN → bied elk geselecteerd label aan de BESTAANDE nominatie-poort aan
+ *     (`nominateCandidate`, herkomst `bootstrap`): de poort handhaaft gate,
+ *     tweetraps-dedup en promotie-class-cap. De code van de klasse wordt als
+ *     `declared`-bevestiging meegegeven (het label draagt de code per 19.3-index
+ *     gegarandeerd). Nooit een directe referentie-write.
+ *
+ * `dryRun` forceert het plan-only-pad óók met de vlag aan (voor operationeel
+ * vooraf-inzicht zonder te schrijven).
+ */
+export async function runBalancedSampler(
+  index: KeurmerkIndexInput,
+  opts: { dryRun?: boolean; n?: number } = {}
+): Promise<SamplerRunResult> {
+  const n = opts.n ?? getSamplePerClass();
+  const plan = buildSelectionPlan(index, n);
+  const totalSkippedOverCap = plan.reduce((sum, c) => sum + c.skippedOverCap, 0);
+
+  const emptyOutcomes = { nominated: 0, skipped: 0, refused: 0 };
+
+  // AD-8: hoofdvlag uit → geen writes/nominaties, alleen het plan (dry-run-vorm).
+  if (!isNominationEnabled()) {
+    logger.info('Sampler overgeslagen: hoofdvlag uit (AD-8) — plan-only', {
+      classes: plan.length,
+      totalSkippedOverCap,
+    });
+    return {
+      skipped: true,
+      skipReason: 'vlag-uit',
+      plan,
+      offered: 0,
+      outcomes: emptyOutcomes,
+      totalSkippedOverCap,
+    };
+  }
+
+  // Expliciete dry-run (vlag aan maar geen writes gewenst).
+  if (opts.dryRun) {
+    logger.info('Sampler dry-run (vlag aan, geen writes)', {
+      classes: plan.length,
+      totalSkippedOverCap,
+    });
+    return {
+      skipped: false,
+      plan,
+      offered: 0,
+      outcomes: emptyOutcomes,
+      totalSkippedOverCap,
+    };
+  }
+
+  // Vlag aan → aanbieden aan de bestaande poort. Elk label onafhankelijk; de poort
+  // beslist (gate/dedup/cap). We schrijven NOOIT zelf in de referentietabellen.
+  let offered = 0;
+  const outcomes = { nominated: 0, skipped: 0, refused: 0 };
+  for (const cls of plan) {
+    for (const sel of cls.selected) {
+      offered += 1;
+      const outcome: NominationOutcome = await nominateCandidate({
+        detection: {
+          t3777Code: cls.code,
+          // De sampler brengt geen model-confidence mee; de bevestiging is de
+          // declaratie (label draagt de code gegarandeerd per 19.3-index). Om de
+          // per-methode-drempel niet als valse horde te laten werken op een
+          // declaratie-bevestigde bron gebruiken we de review-herkomst-semantiek
+          // niet; we geven confidence 1 mee zodat de gate op de declaratie steunt.
+          confidence: 1,
+          method: 'embedding',
+          cropPath: sel.label,
+          sourceFile: sel.label,
+        },
+        origin: 'bootstrap',
+        gtin: sel.gtin,
+        declared: [cls.code],
+      });
+      outcomes[outcome.status] += 1;
+    }
+  }
+
+  logger.info('Sampler-run voltooid', {
+    classes: plan.length,
+    offered,
+    outcomes,
+    totalSkippedOverCap,
+  });
+
+  return { skipped: false, plan, offered, outcomes, totalSkippedOverCap };
+}

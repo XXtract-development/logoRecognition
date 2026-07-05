@@ -395,6 +395,24 @@ export function getBootstrapMaxSeconds(): number {
 // Story 18.2 — restant-route via mediaserver-re-import (dosering, NFR-3)
 // ============================================
 
+// ============================================
+// Story 19.4 — gebalanceerde sampler (N per keurmerk, FR-22)
+// ============================================
+
+/**
+ * Aantal etiketten (labels) dat de sampler per keurmerkklasse maximaal selecteert
+ * (Story 19.4, AC1/AC2). GEBALANCEERD: eerst één label per GTIN (spreiding over
+ * producten), daarna pas aanvullen, zodat een klasse niet uit varianten van één
+ * product bestaat. Conservatieve default 50 — ruim boven de promotie-class-cap (10,
+ * die downstream door de poort blijft gelden), zodat er genoeg gebalanceerde
+ * kandidaten door de poort kunnen vóór de cap bijt. Overschrijfbaar via
+ * `FLYWHEEL_SAMPLE_PER_CLASS`.
+ */
+export function getSamplePerClass(): number {
+  const v = parseInt(process.env.FLYWHEEL_SAMPLE_PER_CLASS ?? '', 10);
+  return Number.isFinite(v) && v > 0 ? v : 50;
+}
+
 /**
  * Batch-grootte (aantal GTINs per re-import-run) voor de gedoseerde terugval-route
  * op het GLN-restant (Story 18.2, AD-7 route (b), NFR-3). Elke batch draait als één
