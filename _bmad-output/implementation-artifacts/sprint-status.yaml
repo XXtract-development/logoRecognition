@@ -187,7 +187,7 @@ development_status:
   epic-18-retrospective: optional
 
   epic-19: in-progress  # 2026-07-04: toegevoegd via correct-course (sprint-change-proposal-2026-07-04) — gerichte brandstofselectie via declaraties; 4 stories (1 spike + 3 bouw); story-bestanden aangemaakt via prepare-sprint
-  19-1-spike-acc-verwerkingstoegang-en-keurmerk-dekkingsmeting: ready-for-dev  # SPIKE (start hier): routebesluit ACC-verwerkingstoegang (A env→prod vs B DB-replicatie index+tradeItems→Cherry; bestanden al gesynct) + keurmerk-dekkingsmeting tegen 951-code-universum. ACC-DB-schrijf/herstart met expliciete toestemming.
+  19-1-spike-acc-verwerkingstoegang-en-keurmerk-dekkingsmeting: done  # 2026-07-05: Route A geactiveerd op ACC (media.stage/catalog.stage via Coolify-redeploy, akkoord Friso); proof-of-access geslaagd; dekkingsrapport (spike-19-1-dekkingsrapport-2026-07-05.md): 40% artwork-producten dragen ≥1 keurmerk, sterk scheef. Deblokkeert 19.3/19.4. Spike = geen AC→test-codegate.
   19-2-declaratie-parser-naar-volledige-keurmerk-dekking-5-5-velden: done  # 2026-07-04: parseDeclaredMarks 5/5 velden (localPackagingMarked...Reference plat + enumerationValue gescopet binnen consumerUsageLabelCode); fieldType EU_consumerUsageLabelCodeList (canon, review-fix); adversarial PASS; api vitest 827/2skip; tsc 0; AC-trace 2/2
   19-3-keurmerk-etiket-index-uit-declaraties: ready-for-dev  # idempotent seed-script (droge-run, ARCH-4): index {keurmerkcode → [GTIN → etiket]} + tellingen via catalog-XML; NA 19.1+19.2 (taakdetail scherpt aan na spike)
   19-4-gebalanceerde-sampler-en-nominatie-aansluiting: ready-for-dev  # sampler N/keurmerk (FLYWHEEL_-env) door bestaande nominatie-/bootstrap-pad + kwaliteitspoort; class-cap/dedup gerespecteerd; NA 19.1+19.3

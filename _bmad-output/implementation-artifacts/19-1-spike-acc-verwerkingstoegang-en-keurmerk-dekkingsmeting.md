@@ -1,6 +1,6 @@
 # Story 19.1: Spike — ACC-verwerkingstoegang en keurmerk-dekkingsmeting
 
-Status: ready-for-dev
+Status: done
 
 <!-- Aangemaakt via prepare-sprint (bmad-sprint-planning + create-story-vorm), 2026-07-04. Bron: epics-vliegwiel.md Epic 19 / Story 19.1; sprint-change-proposal-2026-07-04.md. -->
 
@@ -81,8 +81,19 @@ Aandachtspunt: ACC→prod-leeskoppeling (read-only); tempering/NFR-7-cache bij b
 - Dekkingsmeting per keurmerkcode over de artwork-GTINs tegen het 951-universum (leunt op 19.2's 5/5-parser; catalog-XML-lezer).
 - Proof-of-access end-to-end op ACC met de Route A-env (vereist env-wijziging + toestemming).
 
+### Spike-bevindingen deel 2 — PROOF-OF-ACCESS + DEKKINGSMETING (2026-07-05)
+
+**Route A geactiveerd op ACC** (akkoord Friso): `MEDIASERVER_DOMAIN=https://media.stage.xxtract.com` + `CATALOG_API_BASE=https://catalog.stage.xxtract.com` in Coolify + **redeploy** (een *restart* past env niet toe; `deploy_by_tag_or_uuid` recreëert de compose-stack). `CATALOG_API_KEY` ongewijzigd (bestaande ACC-key werkt op catalog.stage).
+
+**Proof-of-access geslaagd (AC2):** GTIN 08712392291752 via de live app-config → media.stage geeft artwork én catalog.stage geeft de declaratie (HTTP 200) met `EU_ORGANIC_FARMING` (packagingMarked), `ORGANIC` (dietType) en `PREGNANCY_WARNING` (enumerationValue → nieuw 5/5-veld). Dubbele bevestiging end-to-end aangetoond.
+
+**Dekkingsmeting (AC3)** — steekproef 400 artwork-GTINs, zie `spike-19-1-dekkingsrapport-2026-07-05.md`:
+- 64% heeft een catalog-declaratie; **40% draagt ≥1 keurmerk** (dubbel-bevestigbare brandstof; ~5.000 producten geëxtrapoleerd op de corpus).
+- Sterk scheef (RECYCLABLE/TRIMAN/GREEN_DOT domineren, lange staart) → **bevestigt de noodzaak van de gebalanceerde sampler (19.4)**.
+- Nieuw veld `EU_consumerUsageLabelCodeList` = 27/400 producten → 5/5-parser (19.2) betaalt zich uit.
+
 ### Completion Notes
-_(dekkingsrapport + proof-of-access hier zodra deel 2 draait; status blijft ready-for-dev)_
+Spike afgerond: routebesluit (Route A, live), proof-of-access geslaagd, dekkingsrapport opgeleverd. Deblokkeert 19.3 (index) + 19.4 (sampler). NB: spike = onderzoek/besluit; geen AC→test-codegate van toepassing (deliverables zijn het routebesluit + het rapport). Meetscript: `scratchpad/coverage.js` (wegwerp).
 
 ## Change Log
 - 2026-07-04: aangemaakt via prepare-sprint (Epic 19, correct-course).
