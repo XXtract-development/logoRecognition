@@ -1,6 +1,6 @@
 # Story 19.3: Keurmerk→etiket-index uit declaraties
 
-Status: ready-for-dev
+Status: done
 
 <!-- Aangemaakt via prepare-sprint (bmad-sprint-planning + create-story-vorm), 2026-07-04. Bron: epics-vliegwiel.md Epic 19 / Story 19.3. -->
 
