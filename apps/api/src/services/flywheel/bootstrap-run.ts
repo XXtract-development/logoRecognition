@@ -12,8 +12,9 @@
  *   3. per klasse: zaad (gids-logo) resolven uit de referentiebibliotheek-opslag
  *      (ook inactief). Geen zaad → run `leeg`, reden `geen-zaad`, terug in wachtrij.
  *   4. kandidaat-GTINs: distinct GTINs uit de declared-not-found-events (16.1).
- *   5. HARDE declaratie-guard per GTIN (AC1): `resolveDeclarations` reason `ok` én
- *      code ∈ declaratie — niet-declarerende GTINs worden overgeslagen, geteld,
+ *   5. HARDE declaratie-guard per GTIN (AC1): `resolveDeclaredMarks` (5/5-velden,
+ *      Story 19.5) reason `ok` én code ∈ gedeclareerde marks — niet-declarerende
+ *      GTINs worden overgeslagen, geteld,
  *      gelogd (een GTIN-lijst uit events is een KANDIDATENlijst, geen vrijbrief).
  *   6. ml-service zaad-zoektocht (cosine tegen de zaad-embedding, matches ≥ drempel).
  *   7. vondsten nomineren via de 13.2-service (herkomst `bootstrap`, synchrone
@@ -33,7 +34,7 @@ import prisma from '../../core/db';
 import { createLogger } from '../../core/logger';
 import { mlClient } from '../ml-client';
 import { getRedisConnection, PIPELINE_JOB_OPTIONS } from '../pipeline/queue';
-import { resolveDeclarations } from '../t3777-declarations';
+import { resolveDeclaredMarks } from '../t3777-declarations';
 import { nominateCandidate } from './nomination';
 import { isNominationEnabled, type NominationOrigin } from './config';
 import { shouldSkipForPause } from './pause';
@@ -183,8 +184,8 @@ export interface ClassSearchResult {
  * Neemt een EXPLICIETE kandidaat-GTIN-lijst voor één keurmerkklasse en levert
  * ECHTE crops op:
  *   1. zaad (gids-logo) resolven → geen zaad = niets doen (`hadSeed:false`).
- *   2. per GTIN de HARDE declaratie-guard (`resolveDeclarations`, reason `ok` én
- *      code ∈ declaratie) + de artwork-pagina; niet-declarerende/artwork-loze GTINs
+ *   2. per GTIN de HARDE declaratie-guard (`resolveDeclaredMarks` 5/5-velden, reason
+ *      `ok` én code ∈ gedeclareerde marks) + de artwork-pagina; niet-declarerende/artwork-loze GTINs
  *      vallen af (geteld). Elke GTIN telt tegen het budget.
  *   3. `mlClient.bootstrapSearch({ seedPath, gtinPages, ... })` → de ECHTE crops
  *      (`crop_path`) in de artwork met `seed_cosine` per match (≥ drempel).
@@ -241,8 +242,16 @@ export async function searchAndNominateClass(
     }
     budgetSpent += 1;
 
-    const decl = await resolveDeclarations(gtin);
-    if (decl.reason !== 'ok' || !decl.codes.includes(t3777Code)) {
+    // 5/5-declaratie-guard (Story 19.5): de keurmerk→etiket-index (19.3) is gebouwd
+    // met `resolveDeclaredMarks` (alle 5 GDSN-keurmerkvelden). De guard MOET dezelfde
+    // woordenschat hanteren, anders vallen codes uit dietType/nutritionalScore/
+    // enumerationValue/localPackagingMarkedReference (VEGAN/HALAL/PREGNANCY_WARNING…)
+    // onterecht af. `resolveDeclaredMarks` is een superset van het oude T3777-only
+    // `resolveDeclarations` (packagingMarkedLabelAccreditationCode zit in MARK_FIELDS),
+    // dus accreditatie-declarerende GTINs (bootstrap 17.1) passeren ongewijzigd. De
+    // guard blijft hard: reason `ok` én de code moet in enig veld gedeclareerd zijn.
+    const decl = await resolveDeclaredMarks(gtin);
+    if (decl.reason !== 'ok' || !decl.marks.some((m) => m.code === t3777Code)) {
       // Niet-declarerende GTIN: overslaan, tellen, loggen (AC1-contract).
       skippedNonDeclaring += 1;
       logger.info('Klasse-zoektocht: GTIN declareert de code niet — overgeslagen', {

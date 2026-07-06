@@ -17,16 +17,26 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import prisma from '../../core/db';
 import { mlClient } from '../../services/ml-client';
 import { nominateCandidate } from '../../services/flywheel/nomination';
-import { resolveDeclarations } from '../../services/t3777-declarations';
+import { resolveDeclaredMarks } from '../../services/t3777-declarations';
 import { shouldSkipForPause } from '../../services/flywheel/pause';
 import { runBootstrap, resolveSeedPath, candidateGtinsForCode } from '../../services/flywheel/bootstrap-run';
 
 vi.mock('../../services/flywheel/nomination', () => ({
   nominateCandidate: vi.fn(),
 }));
+// Story 19.5: de guard leest nu de 5/5 declared-marks (resolveDeclaredMarks), niet
+// langer de T3777-only resolveDeclarations. De mock-factory levert de 5/5-lezer.
 vi.mock('../../services/t3777-declarations', () => ({
-  resolveDeclarations: vi.fn(),
+  resolveDeclaredMarks: vi.fn(),
 }));
+
+/** Bouw een declared-marks-resultaat waarin `codes` als accreditatie-marks gelden. */
+function marksOf(codes: string[], reason = 'ok') {
+  return {
+    marks: codes.map((code) => ({ code, fieldType: 'PackagingMarkedLabelAccreditationCode' })),
+    reason,
+  };
+}
 vi.mock('../../services/flywheel/pause', () => ({
   shouldSkipForPause: vi.fn(),
 }));
@@ -43,7 +53,7 @@ const mockPrisma = prisma as unknown as {
 
 const mockMl = mlClient as unknown as { bootstrapSearch: ReturnType<typeof vi.fn> };
 const mockNominate = nominateCandidate as unknown as ReturnType<typeof vi.fn>;
-const mockDecl = resolveDeclarations as unknown as ReturnType<typeof vi.fn>;
+const mockMarks = resolveDeclaredMarks as unknown as ReturnType<typeof vi.fn>;
 const mockPause = shouldSkipForPause as unknown as ReturnType<typeof vi.fn>;
 
 const CODE = 'BLUE_ANGEL';
@@ -73,8 +83,8 @@ beforeEach(() => {
   mockPrisma.artworkImport.findFirst.mockImplementation(({ where }: { where: { gtin: string } }) =>
     Promise.resolve({ storagePath: `artwork/${where.gtin}/converted-0.png` })
   );
-  // Beide GTINs declareren de code (default gelukkig pad).
-  mockDecl.mockResolvedValue({ codes: [CODE], reason: 'ok' });
+  // Beide GTINs declareren de code (default gelukkig pad, 5/5 declared-marks).
+  mockMarks.mockResolvedValue(marksOf([CODE]));
   // ml levert geen matches (per test overschreven).
   mockMl.bootstrapSearch.mockResolvedValue({
     seed_path: `reference-logos/${CODE}/default.png`,
@@ -132,10 +142,10 @@ describe('AC5 — pauze-scope (AD-11)', () => {
 describe('AC1 — gerichte zoektocht binnen declarerende GTINs', () => {
   it('slaat een niet-declarerende GTIN over (telt + logt) en doorzoekt alleen declarerende GTINs', async () => {
     // GTIN 111 declareert de code, GTIN 222 niet (reason ok maar code ontbreekt).
-    mockDecl.mockImplementation((gtin: string) =>
+    mockMarks.mockImplementation((gtin: string) =>
       gtin === '111'
-        ? Promise.resolve({ codes: [CODE], reason: 'ok' })
-        : Promise.resolve({ codes: ['OTHER'], reason: 'ok' })
+        ? Promise.resolve(marksOf([CODE]))
+        : Promise.resolve(marksOf(['OTHER']))
     );
 
     const res = await runBootstrap();
@@ -151,7 +161,7 @@ describe('AC1 — gerichte zoektocht binnen declarerende GTINs', () => {
   });
 
   it('slaat een GTIN met reason != ok over (declaratie niet bevestigd)', async () => {
-    mockDecl.mockResolvedValue({ codes: [], reason: 'gln-ontbreekt' });
+    mockMarks.mockResolvedValue({ marks: [], reason: 'gln-ontbreekt' });
     const res = await runBootstrap();
     expect(mockMl.bootstrapSearch).not.toHaveBeenCalled();
     expect(res.classesProcessed[0].skippedNonDeclaring).toBe(2);
@@ -367,7 +377,7 @@ describe('AC4 — run-budget en time-box', () => {
     ]);
     await runBootstrap();
     // De declaratie-guard (die het budget verbruikt) draait maar één keer.
-    expect(mockDecl).toHaveBeenCalledTimes(1);
+    expect(mockMarks).toHaveBeenCalledTimes(1);
     // De ml-zoektocht kreeg hooguit één GTIN mee.
     if (mockMl.bootstrapSearch.mock.calls.length > 0) {
       expect(mockMl.bootstrapSearch.mock.calls[0][0].gtinPages.length).toBeLessThanOrEqual(1);

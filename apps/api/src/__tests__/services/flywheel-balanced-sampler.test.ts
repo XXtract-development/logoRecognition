@@ -22,15 +22,18 @@
  *
  * `nominateCandidate` is gemockt zodat de sampler geen echte poort/DB raakt en er
  * GEEN live writes gebeuren. De vlag stuurt via process.env (geen module-mock).
- * `mlClient` + prisma zijn globaal gemockt (setup.ts); `resolveDeclarations` hier.
+ * `mlClient` + prisma zijn globaal gemockt (setup.ts); `resolveDeclaredMarks` hier.
  * AC→test-mapping: inline hieronder + de 19.4-story Change Log.
+ *
+ * Story 19.5: de guard leest de 5/5 declared-marks (resolveDeclaredMarks) i.p.v. de
+ * T3777-only resolveDeclarations — de mock is dienovereenkomstig omgezet.
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import prisma from '../../core/db';
 import { mlClient } from '../../services/ml-client';
 import { nominateCandidate } from '../../services/flywheel/nomination';
-import { resolveDeclarations } from '../../services/t3777-declarations';
+import { resolveDeclaredMarks } from '../../services/t3777-declarations';
 import {
   selectBalanced,
   buildSelectionPlan,
@@ -46,11 +49,16 @@ vi.mock('../../services/flywheel/nomination', () => ({
   nominateCandidate: vi.fn(),
 }));
 vi.mock('../../services/t3777-declarations', () => ({
-  resolveDeclarations: vi.fn(),
+  resolveDeclaredMarks: vi.fn(),
 }));
 
 const mockNominate = nominateCandidate as unknown as ReturnType<typeof vi.fn>;
-const mockDecl = resolveDeclarations as unknown as ReturnType<typeof vi.fn>;
+const mockMarks = resolveDeclaredMarks as unknown as ReturnType<typeof vi.fn>;
+
+/** Bouw een declared-marks-resultaat uit codes (fieldType = dietType voor VEGAN-tests). */
+function marksOf(codes: string[], fieldType = 'DietTypeCode', reason = 'ok') {
+  return { marks: codes.map((code) => ({ code, fieldType })), reason };
+}
 const mockMl = mlClient as unknown as { bootstrapSearch: ReturnType<typeof vi.fn> };
 const mockPrisma = prisma as unknown as {
   referenceLogo: { findFirst: ReturnType<typeof vi.fn> };
@@ -96,7 +104,7 @@ beforeEach(() => {
     ({ where }: { where: { gtin: string } }) =>
       Promise.resolve({ storagePath: `artwork/${where.gtin}/converted-0.png` })
   );
-  mockDecl.mockResolvedValue({ codes: ['VEGAN'], reason: 'ok' });
+  mockMarks.mockResolvedValue(marksOf(['VEGAN']));
   mockMl.bootstrapSearch.mockImplementation(
     ({ gtinPages }: { gtinPages: Array<{ gtin: string }> }) =>
       Promise.resolve({
@@ -276,10 +284,10 @@ describe('Story 19.4 — vlag AAN loopt door het crop-zoekpad (defect-fix, AC1)'
   it('respecteert de declaratie-guard: een niet-declarerende GTIN gaat niet de ml-search in', async () => {
     process.env.FLYWHEEL_NOMINATION_ENABLED = 'true';
     // GTIN A declareert VEGAN, GTIN B niet (reason ok maar code ontbreekt).
-    mockDecl.mockImplementation((gtin: string) =>
+    mockMarks.mockImplementation((gtin: string) =>
       gtin === 'A'
-        ? Promise.resolve({ codes: ['VEGAN'], reason: 'ok' })
-        : Promise.resolve({ codes: ['OTHER'], reason: 'ok' })
+        ? Promise.resolve(marksOf(['VEGAN']))
+        : Promise.resolve(marksOf(['OTHER']))
     );
 
     await runBalancedSampler(index, { n: 50 });
@@ -333,10 +341,10 @@ describe('Story 19.4 — cap + overschot in de run (AC2, NFR-5)', () => {
       storagePath: 'reference-logos/X/seed.png',
     });
     // Beide GTINs declareren de code van hun eigen klasse (A→VEGAN, B→BIO).
-    mockDecl.mockImplementation((gtin: string) =>
+    mockMarks.mockImplementation((gtin: string) =>
       gtin === 'A'
-        ? Promise.resolve({ codes: ['VEGAN'], reason: 'ok' })
-        : Promise.resolve({ codes: ['BIO'], reason: 'ok' })
+        ? Promise.resolve(marksOf(['VEGAN']))
+        : Promise.resolve(marksOf(['BIO'], 'PackagingMarkedLabelAccreditationCode'))
     );
     const res = await runBalancedSampler(index, { n: 1 });
     // Per klasse 1 label gekozen → 2 + 1 = 3 overschot.

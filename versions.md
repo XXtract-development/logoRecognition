@@ -1,5 +1,12 @@
 # Versiegeschiedenis
 
+## 2026-07-06 (Meer keurmerken tellen mee bij de gerichte brandstofselectie van het vliegwiel)
+
+### De declaratie-controle kijkt nu naar alle vijf keurmerk-velden, niet meer naar één
+- Bij het gericht ophalen van voorbeelden per keurmerk controleert het vliegwiel of een product dat keurmerk ook echt opgeeft. Die controle keek voorheen maar naar één soort keurmerk-veld, waardoor keurmerken die in een ander veld staan — zoals VEGAN, HALAL of het zwangerschapswaarschuwingslogo — ten onrechte werden overgeslagen en er geen voorbeelden voor werden opgehaald
+- De controle kijkt nu naar dezelfde vijf keurmerk-velden als waarmee de keurmerk-lijst is opgebouwd, zodat ook die keurmerken meedoen en er geen brandstof meer verloren gaat
+- De keurmerken die al goed werkten (de accreditatie-logo's) blijven ongewijzigd meelopen; er verandert niets aan de veiligheidscontroles, de kwaliteitspoort of de begrenzing per keurmerk
+
 ## 2026-07-04 (Restant zonder leverancier krijgt een tweede kans via de bestaande her-inleesroute)
 
 ### Beelden die na de eerste koppelronde nog geen leverancier hadden, worden alsnog aangevuld
