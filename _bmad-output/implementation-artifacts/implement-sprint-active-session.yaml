@@ -1,21 +1,21 @@
-started_at: 2026-07-04
+started_at: 2026-07-06
+protocol_version: 2026-07-06
 sprint_status: _bmad-output/implementation-artifacts/sprint-status.yaml
 story_files: _bmad-output/implementation-artifacts/19-*.md
 source_epics: _bmad-output/planning-artifacts/epics-vliegwiel.md
 worktree_root: /private/tmp/logoRecognition-implement-sprint
 base_branch: acc
-scope: epic-19
-current_phase: RUN-COMPLETE
+scope: [19-7, 19-6]
+current_phase: CANCELLED-USER-CHOSE-A
 active_epics: [epic-19]
-status: done
-result:
-  epic-19: done  # 4/4 stories, gemerged naar acc @ 2788617 (lokaal, niet gepusht)
-  19-1: done  # spike — Route A live + proof-of-access + dekkingsrapport
-  19-2: done  # parser 5/5 velden
-  19-3: done  # keurmerk→etiket-index seed-script (idempotent, dry-run, MinIO)
-  19-4: done  # gebalanceerde sampler achter nominatie-vlag (niet live gedraaid)
+status: cancelled — sequentieel via juiste route (19.7 meting → 19.6 dev met gevalideerde waarden)
+dry_run_triggers:
+  a_new_sprint_status: false   # zelfde sprint-status-pad als vorige sessie
+  b_large_selection: false     # 2 stories, 1 epic (<=8 stories, <=2 epics)
+  c_changed_protocol: true     # vorige sessie-state legde geen protocol_version vast
 notes: >
-  Epic 19 volledig af. Adversarial PASS per story; api vitest 851/2skip; tsc 0.
-  Route A is live op ACC (media.stage/catalog.stage). Live brandstof-inname vereist nog een
-  aparte go-live met toestemming: (1) index-run, (2) sampler + nominatie-vlaggen aan (gold-set = noodrem).
-  Niets gepusht → geen ACC-code-deploy.
+  Dry-run-gate actief (trigger c). Twee structurele zorgen richting go/no-go: (1) 19.7 is een
+  SPIKE (read-only meting → go/no-go-rapport, GEEN AC->testcode-gate) en past niet in de
+  standaard bmad-dev-auto build+test-cyclus; (2) 19.6's operatiepunten (0,60/0,2) zijn door de
+  adversarial voorwerk-review als VOORLOPIG gemarkeerd, te valideren dóór 19.7 (RECYCLABLE-flood-risico).
+  Aanbevolen volgorde: 19.7 (meting) eerst → cijfers → dan 19.6 met gevalideerde waarden.

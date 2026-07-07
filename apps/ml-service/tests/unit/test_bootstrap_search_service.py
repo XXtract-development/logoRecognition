@@ -302,3 +302,69 @@ async def test_onleesbaar_zaad_gooit_valueerror(patched, monkeypatch):
             gtin_pages=[{"gtin": "111", "page_key": "artwork/111/p.png"}],
             threshold=0.93,
         )
+
+
+# ---------------------------------------------------------------------------
+# Story 19.6 — bootstrap-gescoped keurmerk-gate (RODE FASE, ATDD).
+# De gedeelde GATE_THRESHOLD (0,5) wordt OOK door de live classificatie gebruikt
+# (classification.py) en MOET daar 0,5 blijven. De go-live-investigate bewees
+# (visueel) dat de gate echte keurmerken met kp 0,25-0,39 ten onrechte afwijst.
+# Fix = een APARTE bootstrap-gate-drempel op search_with_seed, zonder de live gate
+# te raken. Deze test faalt nu (search_with_seed kent geen gate_threshold-param).
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_bootstrap_gate_threshold_scoped_19_6(patched):
+    """Een echte keurmerk-regio met kp tussen 0,2 en de live-gate 0,5 passeert de
+    bootstrap-gate wanneer die op 0,2 staat. De MATCH-regio (cosine ~0,99) krijgt
+    kp 0,3: met de gedeelde 0,5 zou hij vallen; met de bootstrap-gate 0,2 komt hij
+    door en levert een match. Faalt nu: search_with_seed heeft nog geen
+    gate_threshold-parameter (het bootstrap-pad gebruikt de gedeelde 0,5)."""
+    sys.modules["app.services.keurmerk_gate"].keurmerk_probability = lambda emb: 0.3
+    result = await bs.search_with_seed(
+        seed_path="reference-logos/X/default.png",
+        gtin_pages=[{"gtin": "111", "page_key": "artwork/111/p.png"}],
+        threshold=0.60,
+        gate_threshold=0.2,
+    )
+    assert len(result["matches"]) == 1
+    assert result["matches"][0]["seed_cosine"] >= 0.60
+
+
+@pytest.mark.asyncio
+async def test_bootstrap_gate_default_onder_live_gate_19_6(patched):
+    """Zonder expliciete gate_threshold hanteert het bootstrap-pad een default die
+    LAGER is dan de live-gate 0,5, zodat een echt keurmerk met kp 0,3 ook standaard
+    door de bootstrap-gate komt. Faalt nu (default = gedeelde 0,5)."""
+    sys.modules["app.services.keurmerk_gate"].keurmerk_probability = lambda emb: 0.3
+    result = await bs.search_with_seed(
+        seed_path="reference-logos/X/default.png",
+        gtin_pages=[{"gtin": "111", "page_key": "artwork/111/p.png"}],
+        threshold=0.60,
+    )
+    assert len(result["matches"]) == 1
+
+
+def test_gedeelde_gate_default_blijft_05_19_6():
+    """Regressie (19.6): de GEDEELDE keurmerk-gate-default blijft 0,5. Die wordt OOK
+    door de live classificatie (classification.py:118-133) gebruikt en mag NIET
+    meebewegen met de bootstrap-gate. De 19.6-fix scopet de gate op search_with_seed,
+    niet globaal. Deze test moet groen zijn EN blijven na de fix."""
+    import importlib.util as _ilu
+
+    path = os.path.abspath(
+        os.path.join(_HERE, "..", "..", "app", "services", "keurmerk_gate.py")
+    )
+    prev = sys.modules.pop("app.services.keurmerk_gate", None)
+    old_env = os.environ.pop("KEURMERK_GATE_THRESHOLD", None)
+    try:
+        spec = _ilu.spec_from_file_location("real_keurmerk_gate_19_6", path)
+        mod = _ilu.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        assert mod.GATE_THRESHOLD == 0.5
+    finally:
+        if prev is not None:
+            sys.modules["app.services.keurmerk_gate"] = prev
+        if old_env is not None:
+            os.environ["KEURMERK_GATE_THRESHOLD"] = old_env

@@ -1,5 +1,12 @@
 # Versiegeschiedenis
 
+## 2026-07-06 (Vliegwiel vindt nu daadwerkelijk keurmerk-voorbeelden — zoeklat bijgesteld)
+
+### De gerichte brandstofselectie levert nu voorbeelden op i.p.v. nul
+- Het vliegwiel zocht keurmerk-logo's met een gelijkenis-lat die in de praktijk onhaalbaar hoog bleek, waardoor er geen enkel voorbeeld doorheen kwam. De lat is bijgesteld naar de gemeten werkelijkheid, zodat declarerende producten nu wél keurmerk-voorbeelden opleveren
+- Ook de interne voorfilter van het vliegwiel is versoepeld — uitsluitend voor het vliegwiel; de live keurmerk-herkenning verandert niet — omdat die eerder echte logo's ten onrechte wegfilterde
+- De veiligheidscontroles blijven ongewijzigd: voorbeelden gaan door de kwaliteitspoort en langs de gold-set-controle voordat ze in de bibliotheek komen. Verwacht voorlopig een bescheiden aantal voorbeelden; een vervolgverbetering brengt het rendement verder omhoog
+
 ## 2026-07-06 (Meer keurmerken tellen mee bij de gerichte brandstofselectie van het vliegwiel)
 
 ### De declaratie-controle kijkt nu naar alle vijf keurmerk-velden, niet meer naar één

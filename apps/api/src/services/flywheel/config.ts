@@ -357,16 +357,18 @@ export function getCohortGtinDelayMs(): number {
 // ============================================
 
 /**
- * Bootstrap-cosine-drempel tegen de zaad-embedding (AD-9, PRD-startwaarde). Een
- * regio matcht het gids-zaad pas als de cosine ≥ deze drempel; alleen zulke
- * vondsten worden genomineerd (herkomst `bootstrap`). Default 0,93 — bewust
- * strenger dan de promotiedrempel (0,90) omdat de bootstrap zonder actieve
- * referenties zoekt en dus conservatief moet zijn. Kalibreerbaar via
- * `FLYWHEEL_BOOTSTRAP_THRESHOLD` (PRD FR-12).
+ * Bootstrap-cosine-drempel tegen de zaad-embedding (AD-9). Een regio matcht het
+ * gids-zaad pas als de cosine ≥ deze drempel; alleen zulke vondsten worden
+ * genomineerd (herkomst `bootstrap`). Default **0,60** — herkalibreerd (Story 19.6)
+ * op de gemeten werkelijkheid: echte keurmerk-matches toppen op ~0,60–0,74 (de oude
+ * 0,93 leverde 0 vondsten; investigate flywheel-ml-search-0-matches). De guard (19.5,
+ * alleen declarerende producten), gold-set-regressie, dedup en class-cap blijven het
+ * precisie-vangnet. Kalibreerbaar via `FLYWHEEL_BOOTSTRAP_THRESHOLD` (omkeerbaar:
+ * `=0.93` herstelt het oude gedrag) — PRD FR-12.
  */
 export function getBootstrapThreshold(): number {
   const v = parseFloat(process.env.FLYWHEEL_BOOTSTRAP_THRESHOLD ?? '');
-  return Number.isFinite(v) && v > 0 && v <= 1 ? v : 0.93;
+  return Number.isFinite(v) && v > 0 && v <= 1 ? v : 0.6;
 }
 
 /**

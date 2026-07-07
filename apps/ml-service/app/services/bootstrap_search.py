@@ -29,6 +29,7 @@ niet. Time-box + per-code cap begrenzen de ~28s/beeld-lokalisatiekosten.
 from __future__ import annotations
 
 import hashlib
+import os
 import time
 from typing import Any, Dict, List, Optional
 
@@ -99,6 +100,7 @@ async def search_with_seed(
     threshold: float,
     per_code_cap: int = 25,
     max_seconds: float = 1000.0,
+    gate_threshold: Optional[float] = None,
 ) -> Dict[str, Any]:
     """Zoek met het gids-zaad naar echte keurmerk-crops binnen de opgegeven GTINs.
 
@@ -122,9 +124,21 @@ async def search_with_seed(
 
     from app.ml.model_manager import model_manager
     from app.services.classification import _to_pil
-    from app.services.keurmerk_gate import GATE_THRESHOLD, keurmerk_probability
+    from app.services.keurmerk_gate import keurmerk_probability
     from app.services.region_proposer import propose_regions
     from app.services.storage import storage_service
+
+    # Bootstrap-gescoped gate-drempel (Story 19.6). De GEDEELDE keurmerk-gate (0,5,
+    # `keurmerk_gate.GATE_THRESHOLD`) wordt óók door de live classificatie gebruikt en
+    # MOET daar 0,5 blijven; de bootstrap heeft een eigen, lagere drempel omdat de
+    # gate echte keurmerken met kp 0,25–0,39 ten onrechte afwees (investigate
+    # flywheel-ml-search-0-matches, visueel bevestigd). Param wint; anders env
+    # `FLYWHEEL_BOOTSTRAP_GATE_THRESHOLD` (default 0,2). Vangnet: guard + gold-set + review.
+    effective_gate = (
+        gate_threshold
+        if gate_threshold is not None
+        else float(os.environ.get("FLYWHEEL_BOOTSTRAP_GATE_THRESHOLD", "0.2"))
+    )
 
     if not model_manager.is_loaded:
         await model_manager.load_models()
@@ -199,7 +213,7 @@ async def search_with_seed(
 
             # Gate-v2 als voorfilter (ruisreductie): niet-keurmerk-achtige regio's weg.
             kp = keurmerk_probability(emb)
-            if kp is not None and kp < GATE_THRESHOLD:
+            if kp is not None and kp < effective_gate:
                 continue
 
             sim = cosine(emb, seed_emb)
