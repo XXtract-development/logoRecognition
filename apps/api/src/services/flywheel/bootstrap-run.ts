@@ -17,9 +17,16 @@
  *      GTINs worden overgeslagen, geteld,
  *      gelogd (een GTIN-lijst uit events is een KANDIDATENlijst, geen vrijbrief).
  *   6. ml-service zaad-zoektocht (cosine tegen de zaad-embedding, matches ≥ drempel).
- *   7. vondsten nomineren via de 13.2-service (herkomst `bootstrap`, synchrone
- *      `/ml/phash`) — nooit rechtstreeks in `reference_candidates` (AD-1/AD-2).
- *   8. status: `gedraaid` bij start; `gevuld` (≥1 nominatie) of `leeg` bij einde;
+ *   7. vondsten als OPEN `artworkReviewItem` in de bestaande review-wachtrij
+ *      plaatsen (Story 19.8, herzien): bootstrap-crops matchen het gids-zaad op
+ *      cosine 0,60–0,74 en halen de 0,90-auto-promotie-drempel nooit → auto-
+ *      nominatie levert 0. In plaats daarvan gaan ze naar `/artwork/review-queue`
+ *      waar een mens ze ECHT/VALS keurt; bij accept doet de bestaande handler
+ *      (`artwork-pipeline.ts`) de gold-set-ECHT-aanwas + origin-`review`-nominatie.
+ *      Guard vóór het voorleggen: hard-negative (inhouds-hash ∈ `hard_negatives`)
+ *      + dedup (crop al open/geaccepteerd review-item of actieve referentie).
+ *   8. status: `gedraaid` bij start; `gevuld` (≥1 bevestigde echte brandstof:
+ *      mens-ECHT-crop of actieve promotie-referentie) of `leeg` bij einde;
  *      `lastRunAt` gezet. Run-budget (GTINs) + time-box begrenzen de kosten;
  *      afgekapt restant blijft `wachtend`.
  *
@@ -30,13 +37,14 @@
  */
 
 import { Queue } from 'bullmq';
+import { Prisma } from '@prisma/client';
 import prisma from '../../core/db';
 import { createLogger } from '../../core/logger';
 import { mlClient } from '../ml-client';
 import { getRedisConnection, PIPELINE_JOB_OPTIONS } from '../pipeline/queue';
 import { resolveDeclaredMarks } from '../t3777-declarations';
-import { nominateCandidate } from './nomination';
-import { isNominationEnabled, type NominationOrigin } from './config';
+import { countActivePromotionReferences } from './guardrails';
+import { isNominationEnabled } from './config';
 import { shouldSkipForPause } from './pause';
 import {
   getBootstrapThreshold,
@@ -57,7 +65,13 @@ export type BootstrapClassStatus = 'gevuld' | 'leeg';
 export type BootstrapEmptyReason =
   | 'geen-zaad'
   | 'geen-kandidaat-gtins'
-  | 'geen-vondsten';
+  | 'geen-vondsten'
+  // Story 19.8 (herzien): er ZIJN crops gevonden en als review-item voorgelegd,
+  // maar (nog) geen bevestigde echte brandstof → klasse nog niet `gevuld`, blijft
+  // bootstrapbaar (voorkomt "leeg-maar-gevuld"-vastloper).
+  | 'wacht-op-review'
+  // De run werd door budget/time-box afgekapt vóór hij de kandidaten uitputte.
+  | 'afgekapt';
 
 /** Resultaat van één verwerkte klasse. */
 export interface BootstrapClassResult {
@@ -71,8 +85,8 @@ export interface BootstrapClassResult {
   skippedNonDeclaring: number;
   /** Aantal ml-matches (vondsten ≥ drempel). */
   matches: number;
-  /** Aantal daadwerkelijk genomineerde kandidaten (herkomst `bootstrap`). */
-  nominated: number;
+  /** Aantal crops dat als OPEN review-item is voorgelegd (Story 19.8, herzien). */
+  queuedForReview: number;
 }
 
 /** Resultaat van de hele job-run (kan meerdere klassen omvatten). */
@@ -154,6 +168,115 @@ async function resolveArtworkPage(gtin: string): Promise<string | null> {
   return row?.storagePath ?? null;
 }
 
+/** Reason-tag waarmee lege-klasse-bootstrap-crops in de review-wachtrij herkenbaar zijn. */
+const BOOTSTRAP_REVIEW_REASON = 'bootstrap-lege-klasse';
+/** Menselijke review-bronnen die een crop als ECHT bevestigen (Story 14.1). */
+const HUMAN_ECHT_SOURCES = ['review-accept', 'review-annotate'] as const;
+
+/** Eén ml-zaad-match (de ECHTE crop-regio in de artwork). */
+interface BootstrapMatch {
+  gtin: string;
+  bbox: { x: number; y: number; width: number; height: number };
+  seed_cosine: number;
+  crop_path: string;
+  source_file: string;
+}
+
+/**
+ * Story 19.8 (herzien) — leg één gevonden crop voor aan de MENSELIJKE review-
+ * wachtrij als OPEN `artworkReviewItem`, i.p.v. auto-nominatie. Bootstrap-crops
+ * matchen het gids-zaad op 0,60–0,74 en zouden nooit auto-promoten; een mens keurt
+ * ze ECHT/VALS in `/artwork/review-queue`, en de bestaande accept-handler doet dan
+ * de gold-set-aanwas + origin-`review`-nominatie. Kleppen vóór het voorleggen (AC2):
+ *   - hard-negative: een eerder door een mens afgekeurde crop (inhouds-hash ∈
+ *     `hard_negatives`) wordt NOOIT opnieuw voorgelegd.
+ *   - dedup: een crop die voor DEZE keurmerkcode al ooit is voorgelegd (welke status
+ *     dan ook, incl. rejected) of al een actieve referentie is, wordt overgeslagen.
+ * Fail-closed: kan de inhouds-hash niet berekend worden → niet voorleggen (`refused`).
+ */
+async function queueCropForReview(
+  t3777Code: string,
+  m: BootstrapMatch
+): Promise<'queued' | 'skipped' | 'refused'> {
+  // Inhouds-hash synchroon (AD-14) voor de hard-negative-check (fail-closed).
+  let contentHash: string;
+  try {
+    const res = await mlClient.computePhash(m.crop_path);
+    contentHash = res.content_hash;
+  } catch (err) {
+    logger.warn('Review-voorlegging: /ml/phash onbereikbaar — crop niet voorgelegd', {
+      t3777Code,
+      cropPath: m.crop_path,
+      error: err instanceof Error ? err.message : 'unknown',
+    });
+    return 'refused';
+  }
+
+  // Hard-negative-blokkade (AD-12/FR-9): mens-afgekeurde inhoud niet heropvoeren.
+  const hardNegative = await prisma.hardNegative.findUnique({ where: { contentHash } });
+  if (hardNegative) return 'skipped';
+
+  // Dedup PER (crop, keurmerkklasse): is deze crop voor DEZE code al ooit voorgelegd
+  // (in welke status dan ook — open/accepted/registered/rejected), leg 'm niet opnieuw
+  // voor. Bewust op `t3777Code` gefilterd zodat een ANDERE klasse dezelfde crop-regio
+  // wél voor háár code mag voorleggen (cross-class-onafhankelijk); en INCLUSIEF alle
+  // statussen zodat een al mens-beoordeelde crop (ook een reject zónder hard-negative,
+  // bv. reden "onjuiste-locatie") niet bij elke re-queue opnieuw terugkomt.
+  const existingItem = await prisma.artworkReviewItem.findFirst({
+    where: { cropPath: m.crop_path, t3777Code },
+    select: { id: true },
+  });
+  if (existingItem) return 'skipped';
+  // Of de crop is voor deze code al een actieve referentie → niet opnieuw voorleggen.
+  const existingRef = await prisma.referenceLogo.findFirst({
+    where: { t3777Code, storagePath: m.crop_path, active: true },
+    select: { id: true },
+  });
+  if (existingRef) return 'skipped';
+
+  // Voorleggen als OPEN review-item — dezelfde vorm als de crosscheck (12.x), met een
+  // eigen reason-tag zodat de review-UI de bootstrap-kandidaten kan filteren.
+  await prisma.artworkReviewItem.create({
+    data: {
+      gtin: m.gtin,
+      t3777Code,
+      bbox: (m.bbox ?? {}) as Prisma.InputJsonValue,
+      confidence: m.seed_cosine,
+      method: 'embedding',
+      reason: BOOTSTRAP_REVIEW_REASON,
+      cropPath: m.crop_path,
+      sourceFile: m.source_file,
+      status: 'open',
+    },
+  });
+  return 'queued';
+}
+
+/**
+ * Story 19.8 AC5 — heeft de klasse ≥1 bevestigde ECHTE brandstof? De klasse is pas
+ * écht `gevuld` (uit de bootstrap-wachtrij) als er bruikbare referentie-brandstof is,
+ * NIET zodra er (review-pending) crops zijn voorgelegd. Twee bronnen tellen:
+ *   (a) ≥1 door een mens als ECHT bevestigde crop — een gold-set-record `label:'ECHT'`
+ *       uit een review-bron (`review-accept`/`review-annotate`), `replacedById:null`;
+ *   (b) ≥1 actieve `flywheel-promotion`-referentie (`countActivePromotionReferences`)
+ *       — vangt een klasse die (theoretisch ≥0,90) auto-gepromoveerd is.
+ * Louter voorgelegde review-items tellen NIET (voorkomt de "leeg-maar-gevuld"-val:
+ * een klasse waar de review alles afwijst mag niet uit de wachtrij verdwijnen).
+ */
+async function classHasConfirmedRealFuel(t3777Code: string): Promise<boolean> {
+  const echt = await prisma.goldSetRecord.count({
+    where: {
+      t3777Code,
+      label: 'ECHT',
+      replacedById: null,
+      source: { in: [...HUMAN_ECHT_SOURCES] },
+    },
+  });
+  if (echt > 0) return true;
+  const promoted = await countActivePromotionReferences(t3777Code);
+  return promoted > 0;
+}
+
 /**
  * Uitkomst van het crop-producerende zoek-/nominatiekernpad voor één klasse. Bevat
  * ALLE informatie die zowel de bootstrap-run (queue-status-orkestratie) als de
@@ -168,10 +291,10 @@ export interface ClassSearchResult {
   skippedNonDeclaring: number;
   /** Aantal ml-matches (vondsten ≥ drempel). */
   matches: number;
-  /** Aantal daadwerkelijk genomineerde kandidaten (herkomst `bootstrap`). */
-  nominated: number;
-  /** Poort-uitkomsten per status (nominated/skipped/refused) — voor de sampler. */
-  outcomes: { nominated: number; skipped: number; refused: number };
+  /** Aantal crops dat als OPEN review-item is voorgelegd (Story 19.8, herzien). */
+  queuedForReview: number;
+  /** Voorleg-uitkomsten per status (queued/skipped/refused) — voor de sampler. */
+  outcomes: { queued: number; skipped: number; refused: number };
   /** Aantal GTINs dat tegen het budget verbruikt is (declaratie-checks). */
   budgetSpent: number;
   /** `true` als het budget/de time-box de kandidatenlijst afkapte, of ml time-boxte. */
@@ -179,36 +302,36 @@ export interface ClassSearchResult {
 }
 
 /**
- * DE gedeelde crop-producerende kern (Story 17.1 bootstrap + Story 19.4 sampler).
+ * DE gedeelde crop-producerende kern (Story 17.1 bootstrap + Story 19.4 sampler,
+ * Story 19.8 herzien: crops → review-wachtrij i.p.v. auto-nominatie).
  *
- * Neemt een EXPLICIETE kandidaat-GTIN-lijst voor één keurmerkklasse en levert
- * ECHTE crops op:
+ * Neemt een EXPLICIETE kandidaat-GTIN-lijst voor één keurmerkklasse en legt de
+ * ECHTE crops voor aan de menselijke review-wachtrij:
  *   1. zaad (gids-logo) resolven → geen zaad = niets doen (`hadSeed:false`).
  *   2. per GTIN de HARDE declaratie-guard (`resolveDeclaredMarks` 5/5-velden, reason
  *      `ok` én code ∈ gedeclareerde marks) + de artwork-pagina; niet-declarerende/artwork-loze GTINs
  *      vallen af (geteld). Elke GTIN telt tegen het budget.
  *   3. `mlClient.bootstrapSearch({ seedPath, gtinPages, ... })` → de ECHTE crops
  *      (`crop_path`) in de artwork met `seed_cosine` per match (≥ drempel).
- *   4. per match `nominateCandidate` met het ECHTE `crop_path` (herkomst `origin`,
- *      code als declared-bevestiging) — nooit het label/zaad zelf als crop.
+ *   4. per match `queueCropForReview` → OPEN `artworkReviewItem` in `/artwork/review-queue`
+ *      (na hard-negative + dedup-guard) — nooit het label/zaad zelf als crop (NFR-6).
  *
- * Deze functie doet GEEN queue-status-writes; de bootstrap-run wikkelt er de
- * `bootstrap_queue`-statusovergangen omheen, de sampler roept 'm kaal aan.
+ * Deze functie doet GEEN bootstrap_queue-status-writes; de bootstrap-run wikkelt er de
+ * statusovergangen omheen, de sampler roept 'm kaal aan.
  */
-export async function searchAndNominateClass(
+export async function searchAndQueueClassForReview(
   t3777Code: string,
   candidateGtins: string[],
-  opts: { remainingBudget: number; deadline: number; origin?: NominationOrigin }
+  opts: { remainingBudget: number; deadline: number }
 ): Promise<ClassSearchResult> {
   const { remainingBudget, deadline } = opts;
-  const origin: NominationOrigin = opts.origin ?? 'bootstrap';
   const empty: ClassSearchResult = {
     hadSeed: true,
     declaredGtins: 0,
     skippedNonDeclaring: 0,
     matches: 0,
-    nominated: 0,
-    outcomes: { nominated: 0, skipped: 0, refused: 0 },
+    queuedForReview: 0,
+    outcomes: { queued: 0, skipped: 0, refused: 0 },
     budgetSpent: 0,
     truncated: false,
   };
@@ -299,28 +422,14 @@ export async function searchAndNominateClass(
     };
   }
 
-  // 4. Vondsten nomineren via de 13.2-service. Elke vondst doorloopt EXACT dezelfde
-  //    nominatie-/kwaliteitspoort als reguliere kandidaten — enkel de herkomst
-  //    verschilt. Het ECHTE `crop_path` uit de ml-search gaat mee, nooit het
-  //    label/zaad zelf. Per vondst onafhankelijk.
-  const outcomes = { nominated: 0, skipped: 0, refused: 0 };
+  // 4. Vondsten voorleggen aan de menselijke review-wachtrij (Story 19.8, herzien).
+  //    Elke vondst passeert eerst de hard-negative- + dedup-guard; het ECHTE
+  //    `crop_path` uit de ml-search gaat mee, nooit het label/zaad zelf (NFR-6).
+  //    Per vondst onafhankelijk.
+  const outcomes = { queued: 0, skipped: 0, refused: 0 };
   for (const m of search.matches) {
-    // De declaratie is per GTIN al hard geverifieerd; geef ze mee zodat de
-    // nominatie-service haar eigen declaratie-bevestiging bevestigd ziet.
-    const outcome = await nominateCandidate({
-      detection: {
-        t3777Code,
-        confidence: m.seed_cosine,
-        method: 'embedding',
-        cropPath: m.crop_path,
-        sourceFile: m.source_file,
-        bbox: m.bbox,
-      },
-      origin,
-      gtin: m.gtin,
-      declared: [t3777Code],
-    });
-    outcomes[outcome.status] += 1;
+    const outcome = await queueCropForReview(t3777Code, m as BootstrapMatch);
+    outcomes[outcome] += 1;
   }
 
   return {
@@ -328,7 +437,7 @@ export async function searchAndNominateClass(
     declaredGtins: gtinPages.length,
     skippedNonDeclaring,
     matches: search.matches.length,
-    nominated: outcomes.nominated,
+    queuedForReview: outcomes.queued,
     outcomes,
     budgetSpent,
     truncated: truncated || search.timed_out,
@@ -359,7 +468,7 @@ async function processClass(
     declaredGtins: 0,
     skippedNonDeclaring: 0,
     matches: 0,
-    nominated: 0,
+    queuedForReview: 0,
   };
 
   // Kandidaat-GTINs (begrensd op het resterende budget) — vóór de gedeelde kern,
@@ -386,11 +495,10 @@ async function processClass(
   }
 
   // De gedeelde crop-producerende kern (zaad + declaratie-guard + ml-search +
-  // nominatie met ECHTE crop_path). Herkomst `bootstrap`.
-  const res = await searchAndNominateClass(t3777Code, candidateGtins, {
+  // crops als OPEN review-item voorleggen, Story 19.8 herzien).
+  const res = await searchAndQueueClassForReview(t3777Code, candidateGtins, {
     remainingBudget,
     deadline,
-    origin: 'bootstrap',
   });
 
   const remainingAfter = remainingBudget - res.budgetSpent;
@@ -406,27 +514,46 @@ async function processClass(
     };
   }
 
-  const status: BootstrapClassStatus = res.nominated > 0 ? 'gevuld' : 'leeg';
+  // Story 19.8 AC5: `gevuld` betekent "≥1 bevestigde echte brandstof", NIET "≥1
+  // voorgelegde review-crop". De voorgelegde crops zijn review-pending; ze worden
+  // pas brandstof als een mens ze bevestigt. Zou `queuedForReview > 0 ? 'gevuld'`
+  // een klasse met louter pending crops uit de wachtrij halen (leeg-maar-`gevuld`-
+  // vastloper). De klasse blijft bootstrapbaar tot de brandstof bevestigd is (of
+  // wordt her-gequeued door de 16.2-aggregatie als de review alles afwijst).
+  const status: BootstrapClassStatus = (await classHasConfirmedRealFuel(t3777Code))
+    ? 'gevuld'
+    : 'leeg';
   await finalizeClass(t3777Code, status);
+
+  // Reden bij `leeg`: onderscheid afgekapt / "crops in review" / "niets gevonden".
+  const emptyReason: BootstrapEmptyReason | undefined =
+    status === 'gevuld'
+      ? undefined
+      : res.queuedForReview > 0
+        ? 'wacht-op-review'
+        : res.truncated
+          ? 'afgekapt'
+          : 'geen-vondsten';
 
   logger.info('Bootstrap-run voor klasse voltooid', {
     t3777Code,
     declaredGtins: res.declaredGtins,
     skippedNonDeclaring: res.skippedNonDeclaring,
     matches: res.matches,
-    nominated: res.nominated,
+    queuedForReview: res.queuedForReview,
     status,
+    emptyReason,
   });
 
   return {
     result: {
       t3777Code,
       status,
-      emptyReason: status === 'leeg' ? 'geen-vondsten' : undefined,
+      emptyReason,
       declaredGtins: res.declaredGtins,
       skippedNonDeclaring: res.skippedNonDeclaring,
       matches: res.matches,
-      nominated: res.nominated,
+      queuedForReview: res.queuedForReview,
     },
     remainingBudget: remainingAfter,
     truncated: res.truncated,

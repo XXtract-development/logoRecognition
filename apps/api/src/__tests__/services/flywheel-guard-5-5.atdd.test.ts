@@ -1,7 +1,7 @@
 /**
- * Story 19.5 — Declaratie-guard in searchAndNominateClass op 5/5 keurmerkvelden (ATDD).
+ * Story 19.5 — Declaratie-guard in searchAndQueueClassForReview op 5/5 keurmerkvelden (ATDD).
  *
- * RODE FASE (vóór de fix). De guard in `searchAndNominateClass` (bootstrap-run.ts)
+ * RODE FASE (vóór de fix). De guard in `searchAndQueueClassForReview` (bootstrap-run.ts)
  * checkt de declaratie momenteel via `resolveDeclarations` — de T3777-only lezer die
  * ALLEEN `packagingMarkedLabelAccreditationCode` kent. De 19.3-keurmerk→etiket-index
  * is echter gebouwd met `resolveDeclaredMarks` — de 5/5-lezer die óók dietTypeCode,
@@ -32,25 +32,25 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import prisma from '../../core/db';
 import { mlClient } from '../../services/ml-client';
-import { nominateCandidate } from '../../services/flywheel/nomination';
 import { resolveDeclarations, resolveDeclaredMarks } from '../../services/t3777-declarations';
-import { searchAndNominateClass } from '../../services/flywheel/bootstrap-run';
+import { searchAndQueueClassForReview } from '../../services/flywheel/bootstrap-run';
 
-vi.mock('../../services/flywheel/nomination', () => ({
-  nominateCandidate: vi.fn(),
-}));
 vi.mock('../../services/t3777-declarations', () => ({
   resolveDeclarations: vi.fn(),
   resolveDeclaredMarks: vi.fn(),
 }));
 
-const mockNominate = nominateCandidate as unknown as ReturnType<typeof vi.fn>;
 const mockDecl = resolveDeclarations as unknown as ReturnType<typeof vi.fn>;
 const mockMarks = resolveDeclaredMarks as unknown as ReturnType<typeof vi.fn>;
-const mockMl = mlClient as unknown as { bootstrapSearch: ReturnType<typeof vi.fn> };
+const mockMl = mlClient as unknown as {
+  bootstrapSearch: ReturnType<typeof vi.fn>;
+  computePhash: ReturnType<typeof vi.fn>;
+};
 const mockPrisma = prisma as unknown as {
   referenceLogo: { findFirst: ReturnType<typeof vi.fn> };
   artworkImport: { findFirst: ReturnType<typeof vi.fn> };
+  artworkReviewItem: { findFirst: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn> };
+  hardNegative: { findUnique: ReturnType<typeof vi.fn> };
 };
 
 /** Opts met ruim budget + verre deadline zodat alleen de guard bepalend is. */
@@ -74,9 +74,11 @@ beforeEach(() => {
   delete process.env.FLYWHEEL_BOOTSTRAP_THRESHOLD;
 
   // Elke klasse heeft een gids-zaad; elke GTIN heeft een artwork-pagina.
-  mockPrisma.referenceLogo.findFirst.mockResolvedValue({
-    storagePath: 'reference-logos/SEED/seed.png',
-  });
+  // referenceLogo.findFirst dient het zaad (geen active-filter) én de crop-dedup
+  // (active:true) — zaad aanwezig, geen bestaande crop-referentie.
+  mockPrisma.referenceLogo.findFirst.mockImplementation(({ where }: { where: { active?: boolean } }) =>
+    Promise.resolve(where.active ? null : { storagePath: 'reference-logos/SEED/seed.png' })
+  );
   mockPrisma.artworkImport.findFirst.mockImplementation(
     ({ where }: { where: { gtin: string } }) =>
       Promise.resolve({ storagePath: `artwork/${where.gtin}/converted-0.png` })
@@ -86,7 +88,7 @@ beforeEach(() => {
     ({ gtinPages }: { gtinPages: Array<{ gtin: string }> }) =>
       Promise.resolve({
         seed_path: 'reference-logos/SEED/seed.png',
-        threshold: 0.93,
+        threshold: 0.6,
         matches: gtinPages.map((p) => match(p.gtin, `artwork-crops/${p.gtin}/crop.png`)),
         gtins_processed: gtinPages.length,
         gtins_total: gtinPages.length,
@@ -94,7 +96,11 @@ beforeEach(() => {
         seed_leaks_skipped: 0,
       })
   );
-  mockNominate.mockResolvedValue({ status: 'nominated', candidateId: 'c1', reused: false });
+  // Story 19.8 (herzien): crops worden als OPEN review-item voorgelegd.
+  mockMl.computePhash.mockResolvedValue({ content_hash: 'ch-1' });
+  mockPrisma.hardNegative.findUnique.mockResolvedValue(null);
+  mockPrisma.artworkReviewItem.findFirst.mockResolvedValue(null);
+  mockPrisma.artworkReviewItem.create.mockResolvedValue({ id: 'ri-1' });
 });
 
 // ---------------------------------------------------------------------------
@@ -113,15 +119,15 @@ describe('Story 19.5 — guard gebruikt de 5/5 declared-marks (AC1)', () => {
     // raadpleegt gegarandeerd de verkeerde kant op valt.
     mockDecl.mockResolvedValue({ codes: [], reason: 'lege-declaratie' });
 
-    const res = await searchAndNominateClass('PREGNANCY_WARNING', ['999'], opts());
+    const res = await searchAndQueueClassForReview('PREGNANCY_WARNING', ['999'], opts());
 
     // Guard passeert → artwork wordt doorzocht → crop genomineerd.
     expect(mockMl.bootstrapSearch).toHaveBeenCalledTimes(1);
     expect(res.declaredGtins).toBe(1);
     expect(res.skippedNonDeclaring).toBe(0);
-    expect(res.nominated).toBe(1);
-    expect(mockNominate).toHaveBeenCalledTimes(1);
-    expect(mockNominate.mock.calls[0][0].detection.cropPath).toBe('artwork-crops/999/crop.png');
+    expect(res.queuedForReview).toBe(1);
+    expect(mockPrisma.artworkReviewItem.create).toHaveBeenCalledTimes(1);
+    expect(mockPrisma.artworkReviewItem.create.mock.calls[0][0].data.cropPath).toBe('artwork-crops/999/crop.png');
 
     // Fix-richting HARD afdwingen: de guard raadpleegt UITSLUITEND de 5/5-lezer —
     // resolveDeclaredMarks WORDT geraadpleegd, én de oude T3777-only resolveDeclarations
@@ -138,7 +144,7 @@ describe('Story 19.5 — guard gebruikt de 5/5 declared-marks (AC1)', () => {
     });
     mockDecl.mockResolvedValue({ codes: [], reason: 'lege-declaratie' });
 
-    const res = await searchAndNominateClass('VEGAN', ['888'], opts());
+    const res = await searchAndQueueClassForReview('VEGAN', ['888'], opts());
 
     expect(mockMl.bootstrapSearch).toHaveBeenCalledTimes(1);
     expect(res.declaredGtins).toBe(1);
@@ -161,7 +167,7 @@ describe('Story 19.5 — accreditatie-codes blijven passeren (AC3, regressie)', 
     });
     mockDecl.mockResolvedValue({ codes: ['BLUE_ANGEL'], reason: 'ok' });
 
-    const res = await searchAndNominateClass('BLUE_ANGEL', ['111'], opts());
+    const res = await searchAndQueueClassForReview('BLUE_ANGEL', ['111'], opts());
 
     expect(mockMl.bootstrapSearch).toHaveBeenCalledTimes(1);
     expect(res.declaredGtins).toBe(1);
@@ -182,19 +188,19 @@ describe('Story 19.5 — harde guard blijft intact (AC2)', () => {
     });
     mockDecl.mockResolvedValue({ codes: ['OTHER'], reason: 'ok' });
 
-    const res = await searchAndNominateClass('VEGAN', ['222'], opts());
+    const res = await searchAndQueueClassForReview('VEGAN', ['222'], opts());
 
     expect(mockMl.bootstrapSearch).not.toHaveBeenCalled();
     expect(res.declaredGtins).toBe(0);
     expect(res.skippedNonDeclaring).toBe(1);
-    expect(res.nominated).toBe(0);
+    expect(res.queuedForReview).toBe(0);
   });
 
   it('blijft fail-closed bij een declaratie-lookup met reason != ok (bv. gln-ontbreekt)', async () => {
     mockMarks.mockResolvedValue({ marks: [], reason: 'gln-ontbreekt' });
     mockDecl.mockResolvedValue({ codes: [], reason: 'gln-ontbreekt' });
 
-    const res = await searchAndNominateClass('VEGAN', ['333'], opts());
+    const res = await searchAndQueueClassForReview('VEGAN', ['333'], opts());
 
     expect(mockMl.bootstrapSearch).not.toHaveBeenCalled();
     expect(res.skippedNonDeclaring).toBe(1);

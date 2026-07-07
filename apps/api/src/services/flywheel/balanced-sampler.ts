@@ -4,7 +4,7 @@
  * Leest de keurmerk→etiket-index (Story 19.3) en selecteert per keurmerkklasse tot
  * N etiketten, GEBALANCEERD gespreid over verschillende GTINs/producten. De
  * geselecteerde GTINs lopen per klasse door het CROP-PRODUCERENDE bootstrap-pad
- * (`searchAndNominateClass`): het gids-zaad zoekt in de ARTWORK van elke GTIN de
+ * (`searchAndQueueClassForReview`): het gids-zaad zoekt in de ARTWORK van elke GTIN de
  * ECHTE keurmerk-crops, en enkel die uitgesneden crops gaan door het BESTAANDE
  * nominatie-/kwaliteitspad (13.2-poort) — nooit rechtstreeks in `reference_logos`/
  * `reference_candidates`.
@@ -14,16 +14,17 @@
  * (previewUrl van de verpakking) als "crop" aan de poort aan — dat is semantisch
  * fout (vervuilt de kandidaten) of een no-op (een PDF-previewUrl is geen
  * hash-/embedbaar beeld). De localisatie (zaad → artwork-search → crop) gebeurt in
- * `searchAndNominateClass`; de sampler levert alleen de gebalanceerde GTIN-set aan.
+ * `searchAndQueueClassForReview`; de sampler levert alleen de gebalanceerde GTIN-set aan.
  *
  * Bindende randvoorwaarden:
  *   AD-8   Alles achter `isNominationEnabled()` (`FLYWHEEL_NOMINATION_ENABLED`, default
  *          uit). Vlag UIT = de sampler doet GEEN writes/nominaties; hoogstens een
  *          dry-run-plan (selectie + tellingen).
- *   AD-1/2 De sampler voegt enkel een BRON van kandidaten toe. Gate, tweetraps-dedup
- *          en promotie-class-cap (10) blijven DOWNSTREAM door de bestaande poort
- *          gehandhaafd (`nominateCandidate`); deze module bouwt GEEN nieuwe
- *          promotieroute en schrijft nooit direct in de referentietabellen.
+ *   AD-1/2 De sampler voegt enkel een BRON van kandidaten toe. Story 19.8 (herzien):
+ *          de gevonden crops worden als OPEN `artworkReviewItem` aan de bestaande
+ *          menselijke review-wachtrij voorgelegd (hard-negative + dedup-guard). Deze
+ *          module bouwt GEEN nieuwe promotieroute en schrijft nooit direct in de
+ *          referentietabellen; bij accept doet de bestaande review-handler de rest.
  *   NFR-5  Selectie-cap per klasse bij N: overschot wordt geregistreerd als
  *          overgeslagen mét reden (`class-cap-bereikt`) — geen stille brandstofverliezen.
  *
@@ -37,7 +38,7 @@
  */
 
 import { createLogger } from '../../core/logger';
-import { searchAndNominateClass } from './bootstrap-run';
+import { searchAndQueueClassForReview } from './bootstrap-run';
 import {
   isNominationEnabled,
   getSamplePerClass,
@@ -64,7 +65,7 @@ export interface KeurmerkIndexInput {
  * Eén geselecteerd etiket-label. Het `label` (previewUrl/opslagpad van de
  * verpakking) identificeert het etiket in de 19.3-index; het is NIET de crop die
  * genomineerd wordt — de crop wordt uit de ARTWORK van de GTIN gesneden door
- * `searchAndNominateClass`. De GTIN is de eenheid die het crop-pad in gaat.
+ * `searchAndQueueClassForReview`. De GTIN is de eenheid die het crop-pad in gaat.
  */
 export interface SelectedLabel {
   gtin: string;
@@ -189,8 +190,8 @@ export interface SamplerRunResult {
    * wordt uit de artwork van de GTIN gesneden.
    */
   offered: number;
-  /** Aantal poort-uitkomsten per status over de ECHTE crops (nominated/skipped/refused). */
-  outcomes: { nominated: number; skipped: number; refused: number };
+  /** Voorleg-uitkomsten per status over de ECHTE crops (queued/skipped/refused). */
+  outcomes: { queued: number; skipped: number; refused: number };
   /** Totaal overschot over alle klassen (NFR-5). */
   totalSkippedOverCap: number;
   /** Aantal klassen dat overgeslagen is omdat er geen gids-zaad was (net als bootstrap). */
@@ -222,7 +223,7 @@ export function distinctGtins(cls: ClassSelection): string[] {
  *   - Vlag UIT (`isNominationEnabled()` false) → STOP: retourneer het plan als
  *     dry-run, geen enkele nominatie/write (AD-8).
  *   - Vlag AAN → voer per klasse de gebalanceerd geselecteerde GTINs door het
- *     CROP-PRODUCERENDE bootstrap-pad (`searchAndNominateClass`, herkomst
+ *     CROP-PRODUCERENDE bootstrap-pad (`searchAndQueueClassForReview` — crops naar de
  *     `bootstrap`): dat resolveert het gids-zaad, verifieert de declaratie per GTIN
  *     hard, laat de ml-service de ECHTE keurmerk-crops in de artwork vinden en biedt
  *     ALLEEN die uitgesneden crops aan de bestaande 13.2-poort aan (gate, tweetraps-
@@ -241,7 +242,7 @@ export async function runBalancedSampler(
   const plan = buildSelectionPlan(index, n);
   const totalSkippedOverCap = plan.reduce((sum, c) => sum + c.skippedOverCap, 0);
 
-  const emptyOutcomes = { nominated: 0, skipped: 0, refused: 0 };
+  const emptyOutcomes = { queued: 0, skipped: 0, refused: 0 };
 
   // AD-8: hoofdvlag uit → geen writes/nominaties, alleen het plan (dry-run-vorm).
   if (!isNominationEnabled()) {
@@ -277,24 +278,25 @@ export async function runBalancedSampler(
   }
 
   // Vlag aan → per klasse de gebalanceerde GTIN-set door het crop-producerende
-  // bootstrap-pad. De poort beslist per ECHTE crop (gate/dedup/cap). We schrijven
-  // NOOIT zelf in de referentietabellen en bieden nooit het label zelf als crop aan.
-  // Budget/time-box worden per klasse opnieuw uit de bootstrap-config gelezen (elke
-  // klasse mag tot het volledige run-budget aan GTINs verwerken; de sampler-cap N
-  // begrenst de selectie al bovenstrooms).
+  // bootstrap-pad. Story 19.8 (herzien): de gevonden crops worden als OPEN
+  // `artworkReviewItem` aan de menselijke review-wachtrij voorgelegd (met hard-
+  // negative + dedup-guard). We schrijven NOOIT zelf in de referentietabellen en
+  // bieden nooit het label zelf als crop aan. Budget/time-box worden per klasse
+  // opnieuw uit de bootstrap-config gelezen (elke klasse mag tot het volledige
+  // run-budget aan GTINs verwerken; de sampler-cap N begrenst de selectie al
+  // bovenstrooms).
   let offered = 0;
   let classesSkippedNoSeed = 0;
-  const outcomes = { nominated: 0, skipped: 0, refused: 0 };
+  const outcomes = { queued: 0, skipped: 0, refused: 0 };
   for (const cls of plan) {
     const gtins = distinctGtins(cls);
     if (gtins.length === 0) continue;
 
     const budget = getBootstrapRunBudget();
     const deadline = Date.now() + getBootstrapMaxSeconds() * 1000;
-    const res = await searchAndNominateClass(cls.code, gtins, {
+    const res = await searchAndQueueClassForReview(cls.code, gtins, {
       remainingBudget: budget,
       deadline,
-      origin: 'bootstrap',
     });
 
     if (!res.hadSeed) {
@@ -305,7 +307,7 @@ export async function runBalancedSampler(
     }
 
     offered += res.budgetSpent;
-    outcomes.nominated += res.outcomes.nominated;
+    outcomes.queued += res.outcomes.queued;
     outcomes.skipped += res.outcomes.skipped;
     outcomes.refused += res.outcomes.refused;
   }

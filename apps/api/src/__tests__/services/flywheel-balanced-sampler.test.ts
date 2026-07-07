@@ -1,29 +1,26 @@
 /**
  * Story 19.4 — gebalanceerde sampler + nominatie-aansluiting (defect-fix).
  *
- * AC1 (per keurmerk N gebalanceerd, door het BESTAANDE nominatie-/poortpad, nooit
+ * AC1 (per keurmerk N gebalanceerd, door het BESTAANDE crop-/review-pad, nooit
  *      direct in reference_logos): balans-spreiding over GTINs; de geselecteerde
  *      GTINs lopen per klasse door het CROP-PRODUCERENDE bootstrap-pad
- *      (`searchAndNominateClass`): gids-zaad → ml-artwork-search → ECHTE crops →
- *      `nominateCandidate` met het ECHTE crop_path (herkomst bootstrap).
+ *      (`searchAndQueueClassForReview`): gids-zaad → ml-artwork-search → ECHTE crops →
+ *      als OPEN `artworkReviewItem` voorgelegd (Story 19.8 herzien) met het ECHTE
+ *      crop_path — nooit het rauwe label/zaad.
  * AC2 (cap bij N + overschot-telling mét reden, geen stille verliezen): selectBalanced
  *      capt bij N en telt het overschot; buildSelectionPlan aggregeert per klasse.
  * AC3 (achter de bestaande nominatie-vlag, default uit): vlag UIT = geen writes/
- *      nominaties (plan-only); vlag AAN = roept het crop-pad + de poort aan.
+ *      voorleggingen (plan-only); vlag AAN = roept het crop-pad + de review-voorlegging aan.
  *
- * DEFECT-GAT (waarom de vorige mock het miste): de oude test mockte
- * `nominateCandidate` en verifieerde `cropPath: sel.label` — precies het rauwe
- * etiketbestand dat het defect als "crop" doorgaf. Die assert bevroor het foute
- * gedrag. Deze suite mockt `nominateCandidate` NIET om het label te billijken, maar
- * laat `searchAndNominateClass` echt draaien (met gemockte ml-search + declaraties +
- * prisma) en bewijst dat `nominateCandidate` UITSLUITEND met een ECHT crop_path uit
- * de ml-search wordt aangeroepen — NOOIT met het rauwe label. Zo faalt de suite op
- * het oude gedrag (dat de ml-search nooit aanriep en het label als crop meegaf).
+ * DEFECT-GAT (waarom de vorige mock het miste): de oude test verifieerde
+ * `cropPath: sel.label` — precies het rauwe etiketbestand dat het defect als "crop"
+ * doorgaf. Deze suite laat `searchAndQueueClassForReview` echt draaien (met gemockte
+ * ml-search + declaraties + prisma) en bewijst dat het review-item UITSLUITEND met een
+ * ECHT crop_path uit de ml-search wordt aangemaakt — NOOIT met het rauwe label.
  *
- * `nominateCandidate` is gemockt zodat de sampler geen echte poort/DB raakt en er
- * GEEN live writes gebeuren. De vlag stuurt via process.env (geen module-mock).
- * `mlClient` + prisma zijn globaal gemockt (setup.ts); `resolveDeclaredMarks` hier.
- * AC→test-mapping: inline hieronder + de 19.4-story Change Log.
+ * `mlClient` + prisma zijn globaal gemockt (setup.ts) zodat de sampler geen echte DB
+ * raakt en er GEEN live writes gebeuren. De vlag stuurt via process.env.
+ * `resolveDeclaredMarks` wordt hier gemockt. AC→test-mapping: inline hieronder.
  *
  * Story 19.5: de guard leest de 5/5 declared-marks (resolveDeclaredMarks) i.p.v. de
  * T3777-only resolveDeclarations — de mock is dienovereenkomstig omgezet.
@@ -32,7 +29,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import prisma from '../../core/db';
 import { mlClient } from '../../services/ml-client';
-import { nominateCandidate } from '../../services/flywheel/nomination';
 import { resolveDeclaredMarks } from '../../services/t3777-declarations';
 import {
   selectBalanced,
@@ -45,24 +41,25 @@ import {
   type ClassSelection,
 } from '../../services/flywheel/balanced-sampler';
 
-vi.mock('../../services/flywheel/nomination', () => ({
-  nominateCandidate: vi.fn(),
-}));
 vi.mock('../../services/t3777-declarations', () => ({
   resolveDeclaredMarks: vi.fn(),
 }));
 
-const mockNominate = nominateCandidate as unknown as ReturnType<typeof vi.fn>;
 const mockMarks = resolveDeclaredMarks as unknown as ReturnType<typeof vi.fn>;
 
 /** Bouw een declared-marks-resultaat uit codes (fieldType = dietType voor VEGAN-tests). */
 function marksOf(codes: string[], fieldType = 'DietTypeCode', reason = 'ok') {
   return { marks: codes.map((code) => ({ code, fieldType })), reason };
 }
-const mockMl = mlClient as unknown as { bootstrapSearch: ReturnType<typeof vi.fn> };
+const mockMl = mlClient as unknown as {
+  bootstrapSearch: ReturnType<typeof vi.fn>;
+  computePhash: ReturnType<typeof vi.fn>;
+};
 const mockPrisma = prisma as unknown as {
   referenceLogo: { findFirst: ReturnType<typeof vi.fn> };
   artworkImport: { findFirst: ReturnType<typeof vi.fn> };
+  artworkReviewItem: { findFirst: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn> };
+  hardNegative: { findUnique: ReturnType<typeof vi.fn> };
 };
 
 function entry(gtin: string, labels: string[], gln = '111'): IndexLabelEntry {
@@ -97,9 +94,11 @@ beforeEach(() => {
   // - elke GTIN heeft een artwork-pagina,
   // - elke GTIN declareert de code,
   // - de ml-search levert één ECHTE crop per doorzochte GTIN.
-  mockPrisma.referenceLogo.findFirst.mockResolvedValue({
-    storagePath: 'reference-logos/VEGAN/seed.png',
-  });
+  // referenceLogo.findFirst dient het ZAAD (geen active-filter) én de dedup op een
+  // bestaande crop-referentie (active:true). Zaad → aanwezig; dedup → geen bestaande.
+  mockPrisma.referenceLogo.findFirst.mockImplementation(({ where }: { where: { active?: boolean } }) =>
+    Promise.resolve(where.active ? null : { storagePath: 'reference-logos/VEGAN/seed.png' })
+  );
   mockPrisma.artworkImport.findFirst.mockImplementation(
     ({ where }: { where: { gtin: string } }) =>
       Promise.resolve({ storagePath: `artwork/${where.gtin}/converted-0.png` })
@@ -109,7 +108,7 @@ beforeEach(() => {
     ({ gtinPages }: { gtinPages: Array<{ gtin: string }> }) =>
       Promise.resolve({
         seed_path: 'reference-logos/VEGAN/seed.png',
-        threshold: 0.93,
+        threshold: 0.6,
         matches: gtinPages.map((p) => match(p.gtin, `artwork-crops/${p.gtin}/crop.png`)),
         gtins_processed: gtinPages.length,
         gtins_total: gtinPages.length,
@@ -117,7 +116,11 @@ beforeEach(() => {
         seed_leaks_skipped: 0,
       })
   );
-  mockNominate.mockResolvedValue({ status: 'nominated', candidateId: 'c1', reused: false });
+  // Story 19.8 (herzien): het lege-klasse-pad legt crops als OPEN review-item voor.
+  mockMl.computePhash.mockResolvedValue({ content_hash: 'ch-1' });
+  mockPrisma.hardNegative.findUnique.mockResolvedValue(null);
+  mockPrisma.artworkReviewItem.findFirst.mockResolvedValue(null);
+  mockPrisma.artworkReviewItem.create.mockResolvedValue({ id: 'ri-1' });
 });
 
 // ---------------------------------------------------------------------------
@@ -213,7 +216,7 @@ describe('Story 19.4 — runBalancedSampler (AC3: vlag-scoping)', () => {
     expect(res.skipReason).toBe('vlag-uit');
     expect(res.offered).toBe(0);
     expect(mockMl.bootstrapSearch).not.toHaveBeenCalled();
-    expect(mockNominate).not.toHaveBeenCalled();
+    expect(mockPrisma.artworkReviewItem.create).not.toHaveBeenCalled();
     // Het plan is wél berekend (dry-run-inzicht).
     expect(res.plan).toHaveLength(1);
     expect(res.plan[0].selected).toHaveLength(3);
@@ -225,7 +228,7 @@ describe('Story 19.4 — runBalancedSampler (AC3: vlag-scoping)', () => {
     expect(res.skipped).toBe(false);
     expect(res.offered).toBe(0);
     expect(mockMl.bootstrapSearch).not.toHaveBeenCalled();
-    expect(mockNominate).not.toHaveBeenCalled();
+    expect(mockPrisma.artworkReviewItem.create).not.toHaveBeenCalled();
     expect(res.plan[0].selected).toHaveLength(3);
   });
 });
@@ -251,19 +254,16 @@ describe('Story 19.4 — vlag AAN loopt door het crop-zoekpad (defect-fix, AC1)'
     expect(searchArg.seedPath).toBe('reference-logos/VEGAN/seed.png');
   });
 
-  it('nomineert UITSLUITEND ECHTE crop_paths uit de ml-search — NOOIT het rauwe label', async () => {
+  it('legt UITSLUITEND ECHTE crop_paths voor als OPEN review-item — NOOIT het rauwe label', async () => {
     process.env.FLYWHEEL_NOMINATION_ENABLED = 'true';
     await runBalancedSampler(index, { n: 50 });
 
-    // Twee doorzochte GTINs → twee ECHTE crops → twee nominaties.
-    expect(mockNominate).toHaveBeenCalledTimes(2);
+    // Twee doorzochte GTINs → twee ECHTE crops → twee review-items.
+    expect(mockPrisma.artworkReviewItem.create).toHaveBeenCalledTimes(2);
 
-    const cropPaths = mockNominate.mock.calls.map((c) => c[0].detection.cropPath);
-    // Elke nominatie draagt een ECHT, uitgesneden crop_path (artwork-crops/...).
-    expect(cropPaths).toEqual([
-      'artwork-crops/A/crop.png',
-      'artwork-crops/B/crop.png',
-    ]);
+    const cropPaths = mockPrisma.artworkReviewItem.create.mock.calls.map((c) => c[0].data.cropPath);
+    // Elk review-item draagt een ECHT, uitgesneden crop_path (artwork-crops/...).
+    expect(cropPaths).toEqual(['artwork-crops/A/crop.png', 'artwork-crops/B/crop.png']);
     // KRITIEK (het defect): NOOIT het rauwe etiketbestand (label) als crop.
     for (const cp of cropPaths) {
       expect(cp.startsWith('artwork-crops/')).toBe(true);
@@ -271,13 +271,15 @@ describe('Story 19.4 — vlag AAN loopt door het crop-zoekpad (defect-fix, AC1)'
       expect(cp).not.toBe('reference-logos/VEGAN/seed.png'); // ook nooit het zaad
     }
 
-    // Herkomst bootstrap, code als declared-bevestiging, de ECHTE cosine als confidence.
-    const first = mockNominate.mock.calls[0][0];
+    // Story 19.8 (herzien): OPEN review-item, code + reason-tag, de ECHTE cosine als confidence.
+    const first = mockPrisma.artworkReviewItem.create.mock.calls[0][0].data;
     expect(first).toMatchObject({
-      origin: 'bootstrap',
+      status: 'open',
       gtin: 'A',
-      declared: ['VEGAN'],
-      detection: { t3777Code: 'VEGAN', method: 'embedding', confidence: 0.97 },
+      t3777Code: 'VEGAN',
+      method: 'embedding',
+      confidence: 0.97,
+      reason: 'bootstrap-lege-klasse',
     });
   });
 
@@ -295,9 +297,9 @@ describe('Story 19.4 — vlag AAN loopt door het crop-zoekpad (defect-fix, AC1)'
     // Alleen de declarerende GTIN A komt in de ml-zoek-set.
     const searchArg = mockMl.bootstrapSearch.mock.calls[0][0];
     expect(searchArg.gtinPages.map((p: { gtin: string }) => p.gtin)).toEqual(['A']);
-    // En dus alleen A's crop wordt genomineerd.
-    expect(mockNominate).toHaveBeenCalledTimes(1);
-    expect(mockNominate.mock.calls[0][0].gtin).toBe('A');
+    // En dus alleen A's crop wordt voorgelegd.
+    expect(mockPrisma.artworkReviewItem.create).toHaveBeenCalledTimes(1);
+    expect(mockPrisma.artworkReviewItem.create.mock.calls[0][0].data.gtin).toBe('A');
   });
 });
 
@@ -314,10 +316,10 @@ describe('Story 19.4 — klasse zonder zaad overgeslagen (AC1)', () => {
     const res = await runBalancedSampler(index, { n: 50 });
 
     expect(mockMl.bootstrapSearch).not.toHaveBeenCalled();
-    expect(mockNominate).not.toHaveBeenCalled();
+    expect(mockPrisma.artworkReviewItem.create).not.toHaveBeenCalled();
     expect(res.classesSkippedNoSeed).toBe(1);
     expect(res.offered).toBe(0);
-    expect(res.outcomes).toEqual({ nominated: 0, skipped: 0, refused: 0 });
+    expect(res.outcomes).toEqual({ queued: 0, skipped: 0, refused: 0 });
     // Het plan blijft berekend (transparantie), enkel de nominatie is overgeslagen.
     expect(res.plan[0].selected).toHaveLength(1);
   });
@@ -356,19 +358,25 @@ describe('Story 19.4 — cap + overschot in de run (AC2, NFR-5)', () => {
     expect(mockMl.bootstrapSearch).toHaveBeenCalledTimes(2);
   });
 
-  it('poort-uitkomsten (skipped/refused) worden geteld, niet als nominatie', async () => {
+  it('voorleg-uitkomsten (skipped/refused) worden geteld, niet als queued', async () => {
     process.env.FLYWHEEL_NOMINATION_ENABLED = 'true';
-    // Drie GTINs → drie crops; de poort geeft per crop een andere uitkomst.
-    mockNominate
-      .mockResolvedValueOnce({ status: 'nominated', candidateId: 'c1', reused: false })
-      .mockResolvedValueOnce({ status: 'skipped', reason: 'reeds-genomineerd' })
-      .mockResolvedValueOnce({ status: 'refused', reason: 'phash-onbereikbaar' });
+    // Drie GTINs → drie crops; per crop een andere uitkomst van de review-voorlegging.
+    // A → queued; B → al in de wachtrij (skipped); C → phash onbereikbaar (refused).
+    mockPrisma.artworkReviewItem.findFirst.mockImplementation(
+      ({ where }: { where: { cropPath: string } }) =>
+        Promise.resolve(where.cropPath === 'artwork-crops/B/crop.png' ? { id: 'bestaand' } : null)
+    );
+    mockMl.computePhash.mockImplementation((cropPath: string) =>
+      cropPath === 'artwork-crops/C/crop.png'
+        ? Promise.reject(new Error('ml down'))
+        : Promise.resolve({ content_hash: `ch-${cropPath}` })
+    );
     const index = indexOf('DietTypeCode/VEGAN', [
       entry('A', ['a1']),
       entry('B', ['b1']),
       entry('C', ['c1']),
     ]);
     const res = await runBalancedSampler(index, { n: 50 });
-    expect(res.outcomes).toEqual({ nominated: 1, skipped: 1, refused: 1 });
+    expect(res.outcomes).toEqual({ queued: 1, skipped: 1, refused: 1 });
   });
 });

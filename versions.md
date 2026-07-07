@@ -1,5 +1,12 @@
 # Versiegeschiedenis
 
+## 2026-07-07 (Gevonden keurmerk-voorbeelden gaan nu naar de beoordelingslijst i.p.v. verloren te gaan)
+
+### De voorbeelden die het vliegwiel vindt, belanden nu bij een mens ter controle
+- Het vliegwiel vond wél keurmerk-voorbeelden in lege keurmerk-vakken, maar die haalden de automatische-goedkeurlat net niet en werden weggegooid — netto kwam er nog steeds niets binnen. Nu worden die voorbeelden op de bestaande beoordelingslijst gezet, zodat een medewerker ze met één blik als echt of onterecht kan markeren. Een goedgekeurd voorbeeld wordt meteen bruikbaar bewijsmateriaal voor dat keurmerk
+- Een keurmerk-vak geldt pas als "gevuld" zodra er minstens één door een mens bevestigd voorbeeld is (of een al eerder goedgekeurde referentie). Zo blijft een vak netjes in behandeling zolang er nog niets bevestigd is, in plaats van vast te lopen als "leeg maar afgehandeld"
+- De veiligheidscontroles blijven gelden: een voorbeeld dat eerder is afgekeurd of al op de lijst staat, wordt niet opnieuw voorgelegd — per keurmerk apart, zodat verschillende keurmerken hetzelfde plekje op een verpakking wél elk voor zichzelf kunnen laten beoordelen. Aan de live keurmerk-herkenning verandert niets
+
 ## 2026-07-06 (Vliegwiel vindt nu daadwerkelijk keurmerk-voorbeelden — zoeklat bijgesteld)
 
 ### De gerichte brandstofselectie levert nu voorbeelden op i.p.v. nul

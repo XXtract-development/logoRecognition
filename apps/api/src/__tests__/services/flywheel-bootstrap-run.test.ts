@@ -1,29 +1,26 @@
 /**
- * Story 17.1 — Bootstrap-run per lege klasse (API-deel).
+ * Story 17.1 — Bootstrap-run per lege klasse (API-deel). Story 19.8 (herzien):
+ * de gevonden crops worden als OPEN `artworkReviewItem` aan de menselijke review-
+ * wachtrij voorgelegd i.p.v. auto-genomineerd.
  *
  * Dekt de job-orkestratie: hoofdvlag- en pauze-guard bij job-start (AC5/AC6),
- * de HARDE declaratie-guard per GTIN (AC1), drempel/nominatie via de 13.2-service
- * met herkomst `bootstrap` (AC1), het zaad-nooit-referentie-contract (AC2, NFR-6),
- * statusovergangen wachtend→gedraaid→gevuld|leeg + lastRunAt (AC3) en run-budget/
- * time-box (AC4).
+ * de HARDE declaratie-guard per GTIN (AC1), de review-voorlegging + hard-negative/
+ * dedup-guard (19.8 AC1/AC2), het zaad-nooit-crop-contract (AC2, NFR-6),
+ * statusovergangen wachtend→gedraaid→gevuld|leeg + lastRunAt (AC3, 19.8 AC5) en
+ * run-budget/time-box (AC4).
  *
  * Prisma (`core/db`) en `mlClient` zijn globaal gemockt in src/__tests__/setup.ts.
- * De collaborators `nomination`, `t3777-declarations` en `pause` worden hier
- * gemockt zodat elke guard geïsoleerd getest kan worden.
- * AC→test-mapping: _bmad-output/implementation-artifacts/ac-trace-17-1.md.
+ * De collaborators `t3777-declarations` en `pause` worden hier gemockt zodat elke
+ * guard geïsoleerd getest kan worden.
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import prisma from '../../core/db';
 import { mlClient } from '../../services/ml-client';
-import { nominateCandidate } from '../../services/flywheel/nomination';
 import { resolveDeclaredMarks } from '../../services/t3777-declarations';
 import { shouldSkipForPause } from '../../services/flywheel/pause';
 import { runBootstrap, resolveSeedPath, candidateGtinsForCode } from '../../services/flywheel/bootstrap-run';
 
-vi.mock('../../services/flywheel/nomination', () => ({
-  nominateCandidate: vi.fn(),
-}));
 // Story 19.5: de guard leest nu de 5/5 declared-marks (resolveDeclaredMarks), niet
 // langer de T3777-only resolveDeclarations. De mock-factory levert de 5/5-lezer.
 vi.mock('../../services/t3777-declarations', () => ({
@@ -46,17 +43,47 @@ const mockPrisma = prisma as unknown as {
     findMany: ReturnType<typeof vi.fn>;
     update: ReturnType<typeof vi.fn>;
   };
-  referenceLogo: { findFirst: ReturnType<typeof vi.fn> };
+  referenceLogo: { findFirst: ReturnType<typeof vi.fn>; count: ReturnType<typeof vi.fn> };
   mismatchEvent: { findMany: ReturnType<typeof vi.fn> };
   artworkImport: { findFirst: ReturnType<typeof vi.fn> };
+  artworkReviewItem: { findFirst: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn> };
+  hardNegative: { findUnique: ReturnType<typeof vi.fn> };
+  goldSetRecord: { count: ReturnType<typeof vi.fn> };
 };
 
-const mockMl = mlClient as unknown as { bootstrapSearch: ReturnType<typeof vi.fn> };
-const mockNominate = nominateCandidate as unknown as ReturnType<typeof vi.fn>;
+const mockMl = mlClient as unknown as {
+  bootstrapSearch: ReturnType<typeof vi.fn>;
+  computePhash: ReturnType<typeof vi.fn>;
+};
 const mockMarks = resolveDeclaredMarks as unknown as ReturnType<typeof vi.fn>;
 const mockPause = shouldSkipForPause as unknown as ReturnType<typeof vi.fn>;
+/** De review-voorlegging (vervangt de vroegere nominatie in het lege-klasse-pad). */
+const mockReviewCreate = () => mockPrisma.artworkReviewItem.create;
 
+const SEED = 'reference-logos/BLUE_ANGEL/default.png';
 const CODE = 'BLUE_ANGEL';
+
+/** Eén ml-match met een sub-0,90 cosine (het reële bootstrap-scenario). */
+function matchFixture(overrides: Record<string, unknown> = {}) {
+  return {
+    seed_path: SEED,
+    threshold: 0.6,
+    matches: [
+      {
+        gtin: '111',
+        bbox: { x: 1, y: 2, width: 3, height: 4 },
+        seed_cosine: 0.7,
+        crop_path: 'artwork-crops/111/17_1_bootstrap_1_2_3_4.png',
+        source_file: 'artwork/111/converted-0.png',
+      },
+    ],
+    gtins_processed: 2,
+    gtins_total: 2,
+    timed_out: false,
+    seed_leaks_skipped: 0,
+    ...overrides,
+  };
+}
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -70,15 +97,16 @@ beforeEach(() => {
   // Eén wachtende klasse.
   mockPrisma.bootstrapQueue.findMany.mockResolvedValue([{ t3777Code: CODE }]);
   mockPrisma.bootstrapQueue.update.mockResolvedValue({});
-  // Zaad bestaat (ook inactief mogelijk).
-  mockPrisma.referenceLogo.findFirst.mockResolvedValue({
-    storagePath: `reference-logos/${CODE}/default.png`,
-  });
+  // referenceLogo.findFirst dient twee queries: het ZAAD (geen `active`-filter →
+  // storagePath {not:''}) én de dedup op een bestaande crop-referentie (active:true).
+  // Zaad → aanwezig; dedup → geen bestaande referentie.
+  mockPrisma.referenceLogo.findFirst.mockImplementation(({ where }: { where: { active?: boolean } }) =>
+    Promise.resolve(where.active ? null : { storagePath: SEED })
+  );
+  // Geen actieve promotie-referenties (AC5-signaal, guardrails.countActivePromotionReferences).
+  mockPrisma.referenceLogo.count.mockResolvedValue(0);
   // Twee kandidaat-GTINs uit declared-not-found-events.
-  mockPrisma.mismatchEvent.findMany.mockResolvedValue([
-    { gtin: '111' },
-    { gtin: '222' },
-  ]);
+  mockPrisma.mismatchEvent.findMany.mockResolvedValue([{ gtin: '111' }, { gtin: '222' }]);
   // Beide GTINs hebben een artwork-pagina.
   mockPrisma.artworkImport.findFirst.mockImplementation(({ where }: { where: { gtin: string } }) =>
     Promise.resolve({ storagePath: `artwork/${where.gtin}/converted-0.png` })
@@ -86,16 +114,14 @@ beforeEach(() => {
   // Beide GTINs declareren de code (default gelukkig pad, 5/5 declared-marks).
   mockMarks.mockResolvedValue(marksOf([CODE]));
   // ml levert geen matches (per test overschreven).
-  mockMl.bootstrapSearch.mockResolvedValue({
-    seed_path: `reference-logos/${CODE}/default.png`,
-    threshold: 0.93,
-    matches: [],
-    gtins_processed: 2,
-    gtins_total: 2,
-    timed_out: false,
-    seed_leaks_skipped: 0,
-  });
-  mockNominate.mockResolvedValue({ status: 'nominated', candidateId: 'rc-1', reused: false });
+  mockMl.bootstrapSearch.mockResolvedValue(matchFixture({ matches: [] }));
+  // Inhouds-hash beschikbaar; geen hard-negative; geen bestaand review-item.
+  mockMl.computePhash.mockResolvedValue({ content_hash: 'ch-1' });
+  mockPrisma.hardNegative.findUnique.mockResolvedValue(null);
+  mockPrisma.artworkReviewItem.findFirst.mockResolvedValue(null);
+  mockPrisma.artworkReviewItem.create.mockResolvedValue({ id: 'ri-1' });
+  // Standaard geen mens-bevestigde ECHT-crop → klasse blijft `leeg` (AC5).
+  mockPrisma.goldSetRecord.count.mockResolvedValue(0);
 });
 
 // ---------------------------------------------------------------------------
@@ -103,14 +129,14 @@ beforeEach(() => {
 // ---------------------------------------------------------------------------
 
 describe('AC6 — hoofdvlag-scope (AD-8)', () => {
-  it('met FLYWHEEL_NOMINATION_ENABLED=false draait de job niet en nomineert niets', async () => {
+  it('met FLYWHEEL_NOMINATION_ENABLED=false draait de job niet en legt niets voor', async () => {
     process.env.FLYWHEEL_NOMINATION_ENABLED = 'false';
     const res = await runBootstrap();
     expect(res.skipped).toBe(true);
     expect(res.skipReason).toBe('vlag-uit');
     expect(mockPrisma.bootstrapQueue.findMany).not.toHaveBeenCalled();
     expect(mockMl.bootstrapSearch).not.toHaveBeenCalled();
-    expect(mockNominate).not.toHaveBeenCalled();
+    expect(mockReviewCreate()).not.toHaveBeenCalled();
   });
 });
 
@@ -126,7 +152,7 @@ describe('AC5 — pauze-scope (AD-11)', () => {
     expect(res.skipReason).toBe('pauze');
     expect(mockPrisma.bootstrapQueue.findMany).not.toHaveBeenCalled();
     expect(mockMl.bootstrapSearch).not.toHaveBeenCalled();
-    expect(mockNominate).not.toHaveBeenCalled();
+    expect(mockReviewCreate()).not.toHaveBeenCalled();
   });
 
   it('vraagt de pauze-check op met de bootstrap-jobnaam', async () => {
@@ -136,7 +162,7 @@ describe('AC5 — pauze-scope (AD-11)', () => {
 });
 
 // ---------------------------------------------------------------------------
-// AC1 — declaratie-guard + drempel + nominatie via 13.2 (herkomst bootstrap)
+// AC1 — declaratie-guard + review-voorlegging (Story 19.8, herzien)
 // ---------------------------------------------------------------------------
 
 describe('AC1 — gerichte zoektocht binnen declarerende GTINs', () => {
@@ -168,110 +194,94 @@ describe('AC1 — gerichte zoektocht binnen declarerende GTINs', () => {
     expect(res.classesProcessed[0].status).toBe('leeg');
   });
 
-  it('nomineert een vondst ≥ drempel via de 13.2-service met herkomst bootstrap', async () => {
-    mockMl.bootstrapSearch.mockResolvedValue({
-      seed_path: `reference-logos/${CODE}/default.png`,
-      threshold: 0.93,
-      matches: [
-        {
-          gtin: '111',
-          bbox: { x: 1, y: 2, width: 3, height: 4 },
-          seed_cosine: 0.95,
-          crop_path: 'artwork-crops/111/17_1_bootstrap_1_2_3_4.png',
-          source_file: 'artwork/111/converted-0.png',
-        },
-      ],
-      gtins_processed: 2,
-      gtins_total: 2,
-      timed_out: false,
-      seed_leaks_skipped: 0,
-    });
+  it('legt een sub-0,90 vondst voor als OPEN review-item (niet auto-genomineerd)', async () => {
+    mockMl.bootstrapSearch.mockResolvedValue(matchFixture());
 
     const res = await runBootstrap();
 
-    expect(mockNominate).toHaveBeenCalledTimes(1);
-    const arg = mockNominate.mock.calls[0][0];
-    expect(arg.origin).toBe('bootstrap');
-    expect(arg.gtin).toBe('111');
-    expect(arg.declared).toEqual([CODE]);
-    expect(arg.detection.cropPath).toBe('artwork-crops/111/17_1_bootstrap_1_2_3_4.png');
-    expect(arg.detection.t3777Code).toBe(CODE);
-    expect(res.classesProcessed[0].nominated).toBe(1);
-    expect(res.classesProcessed[0].status).toBe('gevuld');
+    expect(mockPrisma.artworkReviewItem.create).toHaveBeenCalledTimes(1);
+    const { data } = mockPrisma.artworkReviewItem.create.mock.calls[0][0];
+    expect(data.status).toBe('open');
+    expect(data.gtin).toBe('111');
+    expect(data.t3777Code).toBe(CODE);
+    expect(data.cropPath).toBe('artwork-crops/111/17_1_bootstrap_1_2_3_4.png');
+    expect(data.reason).toBe('bootstrap-lege-klasse');
+    expect(data.confidence).toBe(0.7);
+    expect(res.classesProcessed[0].queuedForReview).toBe(1);
+    // AC5: een review-pending crop maakt de klasse NIET `gevuld`.
+    expect(res.classesProcessed[0].status).toBe('leeg');
+    expect(res.classesProcessed[0].emptyReason).toBe('wacht-op-review');
   });
 
-  it('geeft de bootstrap-drempel door aan de ml-zoektocht (default 0,93, env-override)', async () => {
+  it('geeft de bootstrap-drempel door aan de ml-zoektocht (default 0,60, env-override)', async () => {
     process.env.FLYWHEEL_BOOTSTRAP_THRESHOLD = '0.88';
     await runBootstrap();
     expect(mockMl.bootstrapSearch.mock.calls[0][0].threshold).toBe(0.88);
   });
 
-  it('nomineert NOOIT rechtstreeks in reference_candidates — uitsluitend via de 13.2-service', async () => {
-    // Guard: er bestaat geen directe candidate-create in de bootstrap-flow.
+  it('schrijft NOOIT rechtstreeks in reference_candidates — uitsluitend via de review-wachtrij', async () => {
     const mockRc = (prisma as unknown as { referenceCandidate?: { create?: ReturnType<typeof vi.fn> } })
       .referenceCandidate;
-    mockMl.bootstrapSearch.mockResolvedValue({
-      seed_path: `reference-logos/${CODE}/default.png`,
-      threshold: 0.93,
-      matches: [
-        {
-          gtin: '111',
-          bbox: { x: 1, y: 2, width: 3, height: 4 },
-          seed_cosine: 0.95,
-          crop_path: 'artwork-crops/111/c.png',
-          source_file: 'artwork/111/p.png',
-        },
-      ],
-      gtins_processed: 1,
-      gtins_total: 1,
-      timed_out: false,
-      seed_leaks_skipped: 0,
-    });
+    mockMl.bootstrapSearch.mockResolvedValue(matchFixture());
     await runBootstrap();
-    expect(mockNominate).toHaveBeenCalled();
+    expect(mockPrisma.artworkReviewItem.create).toHaveBeenCalled();
     if (mockRc?.create) expect(mockRc.create).not.toHaveBeenCalled();
   });
 });
 
 // ---------------------------------------------------------------------------
-// AC2 — zaad wordt nooit referentie (NFR-6)
+// AC2 — kleppen (hard-negative + dedup) + zaad wordt nooit crop (NFR-6)
 // ---------------------------------------------------------------------------
 
-describe('AC2 — zaad wordt nooit referentie (NFR-6)', () => {
-  it('het zaad wordt uitsluitend als zoekinstrument (seedPath) meegegeven, nooit genomineerd', async () => {
-    mockMl.bootstrapSearch.mockResolvedValue({
-      seed_path: `reference-logos/${CODE}/default.png`,
-      threshold: 0.93,
-      matches: [
-        {
-          gtin: '111',
-          bbox: { x: 1, y: 2, width: 3, height: 4 },
-          seed_cosine: 0.95,
-          crop_path: 'artwork-crops/111/c.png',
-          source_file: 'artwork/111/p.png',
-        },
-      ],
-      gtins_processed: 1,
-      gtins_total: 1,
-      timed_out: false,
-      seed_leaks_skipped: 0,
-    });
+describe('AC2 — kleppen + zaad wordt nooit crop (NFR-6)', () => {
+  it('legt een reeds mens-afgekeurde crop (hard-negative) NIET opnieuw voor', async () => {
+    mockMl.bootstrapSearch.mockResolvedValue(matchFixture());
+    mockPrisma.hardNegative.findUnique.mockResolvedValue({ contentHash: 'ch-1' });
+    const res = await runBootstrap();
+    expect(mockPrisma.artworkReviewItem.create).not.toHaveBeenCalled();
+    expect(res.classesProcessed[0].queuedForReview).toBe(0);
+  });
 
-    await runBootstrap();
+  it('legt een crop die voor deze code al ooit is voorgelegd NIET nogmaals voor (dedup per crop+code, elke status)', async () => {
+    mockMl.bootstrapSearch.mockResolvedValue(matchFixture());
+    // Ook een reeds AFGEWEZEN item (status rejected, zonder hard-negative) dedupt:
+    // de mock retourneert een bestaand item ongeacht status → geen re-creatie.
+    mockPrisma.artworkReviewItem.findFirst.mockResolvedValue({ id: 'bestaand', status: 'rejected' });
+    const res = await runBootstrap();
+    expect(mockPrisma.artworkReviewItem.create).not.toHaveBeenCalled();
+    expect(res.classesProcessed[0].queuedForReview).toBe(0);
+    // De dedup filtert per (cropPath, t3777Code) — NIET op status (elke status dedupt),
+    // en per code zodat een andere klasse dezelfde regio wél voor háár code mag voorleggen.
+    const where = mockPrisma.artworkReviewItem.findFirst.mock.calls[0][0].where;
+    expect(where.cropPath).toBe('artwork-crops/111/17_1_bootstrap_1_2_3_4.png');
+    expect(where.t3777Code).toBe(CODE);
+    expect(where).not.toHaveProperty('status');
+  });
 
-    // Het zaadpad gaat als zoekinstrument mee.
-    expect(mockMl.bootstrapSearch.mock.calls[0][0].seedPath).toBe(
-      `reference-logos/${CODE}/default.png`
+  it('legt een crop die al een actieve referentie is NIET voor (referentie-dedup)', async () => {
+    mockMl.bootstrapSearch.mockResolvedValue(matchFixture());
+    // Geen review-item, maar wél een actieve referentie op dit crop_path + deze code.
+    mockPrisma.artworkReviewItem.findFirst.mockResolvedValue(null);
+    mockPrisma.referenceLogo.findFirst.mockImplementation(({ where }: { where: { active?: boolean } }) =>
+      Promise.resolve(where.active ? { id: 'ref-1' } : { storagePath: SEED })
     );
-    // GEEN enkele nominatie mag het zaadpad als crop dragen (het zaad is nooit een crop).
-    for (const call of mockNominate.mock.calls) {
-      expect(call[0].detection.cropPath).not.toBe(`reference-logos/${CODE}/default.png`);
-      expect(call[0].detection.cropPath.startsWith('artwork-crops/')).toBe(true);
+    const res = await runBootstrap();
+    expect(mockPrisma.artworkReviewItem.create).not.toHaveBeenCalled();
+    expect(res.classesProcessed[0].queuedForReview).toBe(0);
+  });
+
+  it('het zaad gaat uitsluitend als zoekinstrument (seedPath) mee, nooit als voorgelegde crop', async () => {
+    mockMl.bootstrapSearch.mockResolvedValue(matchFixture());
+    await runBootstrap();
+    expect(mockMl.bootstrapSearch.mock.calls[0][0].seedPath).toBe(SEED);
+    // GEEN enkel review-item mag het zaadpad als crop dragen.
+    for (const call of mockPrisma.artworkReviewItem.create.mock.calls) {
+      expect(call[0].data.cropPath).not.toBe(SEED);
+      expect(String(call[0].data.cropPath).startsWith('artwork-crops/')).toBe(true);
     }
   });
 
   it('resolveSeedPath leest het zaad ook uit een INACTIEVE referentie-rij (12.3-pivot)', async () => {
-    // De query filtert niet op active — bewijs dat een inactief zaad ook telt.
     mockPrisma.referenceLogo.findFirst.mockResolvedValue({
       storagePath: `reference-logos/${CODE}/guide.png`,
     });
@@ -287,7 +297,6 @@ describe('AC2 — zaad wordt nooit referentie (NFR-6)', () => {
     expect(mockMl.bootstrapSearch).not.toHaveBeenCalled();
     expect(res.classesProcessed[0].status).toBe('leeg');
     expect(res.classesProcessed[0].emptyReason).toBe('geen-zaad');
-    // status → leeg + lastRunAt gezet (opneembaar in een volgende run).
     const finalize = mockPrisma.bootstrapQueue.update.mock.calls.find(
       (c) => c[0].data.status === 'leeg'
     );
@@ -296,25 +305,17 @@ describe('AC2 — zaad wordt nooit referentie (NFR-6)', () => {
 });
 
 // ---------------------------------------------------------------------------
-// AC3 — lege run → terug in wachtrij; statusovergangen
+// AC3 / 19.8 AC5 — statusovergangen + gevuld-semantiek
 // ---------------------------------------------------------------------------
 
 describe('AC3 — lege run → terug in wachtrij + statusovergangen', () => {
-  it('een run zonder vondsten wordt leeg met lastRunAt; de klasse blijft opneembaar', async () => {
-    mockMl.bootstrapSearch.mockResolvedValue({
-      seed_path: `reference-logos/${CODE}/default.png`,
-      threshold: 0.93,
-      matches: [],
-      gtins_processed: 2,
-      gtins_total: 2,
-      timed_out: false,
-      seed_leaks_skipped: 0,
-    });
+  it('een run zonder vondsten wordt leeg (geen-vondsten) met lastRunAt; de klasse blijft opneembaar', async () => {
+    mockMl.bootstrapSearch.mockResolvedValue(matchFixture({ matches: [] }));
     const res = await runBootstrap();
     expect(res.classesProcessed[0].status).toBe('leeg');
+    expect(res.classesProcessed[0].emptyReason).toBe('geen-vondsten');
 
     const statuses = mockPrisma.bootstrapQueue.update.mock.calls.map((c) => c[0].data.status);
-    // Overgang wachtend→gedraaid→leeg.
     expect(statuses).toContain('gedraaid');
     expect(statuses).toContain('leeg');
     const leeg = mockPrisma.bootstrapQueue.update.mock.calls.find((c) => c[0].data.status === 'leeg');
@@ -328,30 +329,43 @@ describe('AC3 — lege run → terug in wachtrij + statusovergangen', () => {
     expect(first[0].data.status).toBe('gedraaid');
   });
 
-  it('een vondst → gevuld met lastRunAt', async () => {
-    mockMl.bootstrapSearch.mockResolvedValue({
-      seed_path: `reference-logos/${CODE}/default.png`,
-      threshold: 0.93,
-      matches: [
-        {
-          gtin: '111',
-          bbox: { x: 0, y: 0, width: 5, height: 5 },
-          seed_cosine: 0.99,
-          crop_path: 'artwork-crops/111/c.png',
-          source_file: 'artwork/111/p.png',
-        },
-      ],
-      gtins_processed: 1,
-      gtins_total: 1,
-      timed_out: false,
-      seed_leaks_skipped: 0,
-    });
+  it('19.8 AC5: een review-pending vondst → NIET gevuld (blijft bootstrapbaar)', async () => {
+    mockMl.bootstrapSearch.mockResolvedValue(matchFixture());
     await runBootstrap();
+    const gevuld = mockPrisma.bootstrapQueue.update.mock.calls.find(
+      (c) => c[0].data.status === 'gevuld'
+    );
+    expect(gevuld).toBeUndefined();
+    const leeg = mockPrisma.bootstrapQueue.update.mock.calls.find((c) => c[0].data.status === 'leeg');
+    expect(leeg?.[0].data.lastRunAt).toBeInstanceOf(Date);
+  });
+
+  it('19.8 AC5: met ≥1 mens-bevestigde ECHT-crop → gevuld met lastRunAt', async () => {
+    mockPrisma.goldSetRecord.count.mockResolvedValue(1);
+    mockMl.bootstrapSearch.mockResolvedValue(matchFixture());
+    await runBootstrap();
+    // AC5-signaal: alleen mens-bevestigde ECHT-crops uit een review-bron tellen.
+    const countArg = mockPrisma.goldSetRecord.count.mock.calls[0][0];
+    expect(countArg.where.t3777Code).toBe(CODE);
+    expect(countArg.where.label).toBe('ECHT');
+    expect(countArg.where.source.in).toEqual(['review-accept', 'review-annotate']);
+    // Alleen ACTIEVE (niet-ingetrokken) gold-set-records tellen (tombstone-filter).
+    expect(countArg.where.replacedById).toBeNull();
     const gevuld = mockPrisma.bootstrapQueue.update.mock.calls.find(
       (c) => c[0].data.status === 'gevuld'
     );
     expect(gevuld).toBeTruthy();
     expect(gevuld?.[0].data.lastRunAt).toBeInstanceOf(Date);
+  });
+
+  it('19.8 AC5: met ≥1 actieve flywheel-promotion-referentie → gevuld (ook zonder ECHT-record)', async () => {
+    mockPrisma.referenceLogo.count.mockResolvedValue(1); // countActivePromotionReferences > 0
+    mockMl.bootstrapSearch.mockResolvedValue(matchFixture());
+    await runBootstrap();
+    const gevuld = mockPrisma.bootstrapQueue.update.mock.calls.find(
+      (c) => c[0].data.status === 'gevuld'
+    );
+    expect(gevuld).toBeTruthy();
   });
 
   it('verwerkt nooit een uitgesloten klasse (excluded=false in de wachtrij-query)', async () => {
@@ -369,16 +383,13 @@ describe('AC3 — lege run → terug in wachtrij + statusovergangen', () => {
 describe('AC4 — run-budget en time-box', () => {
   it('verwerkt maximaal FLYWHEEL_BOOTSTRAP_RUN_BUDGET GTINs; het restant blijft in de wachtrij', async () => {
     process.env.FLYWHEEL_BOOTSTRAP_RUN_BUDGET = '1';
-    // Drie kandidaat-GTINs beschikbaar, maar het budget is 1.
     mockPrisma.mismatchEvent.findMany.mockResolvedValue([
       { gtin: '111' },
       { gtin: '222' },
       { gtin: '333' },
     ]);
     await runBootstrap();
-    // De declaratie-guard (die het budget verbruikt) draait maar één keer.
     expect(mockMarks).toHaveBeenCalledTimes(1);
-    // De ml-zoektocht kreeg hooguit één GTIN mee.
     if (mockMl.bootstrapSearch.mock.calls.length > 0) {
       expect(mockMl.bootstrapSearch.mock.calls[0][0].gtinPages.length).toBeLessThanOrEqual(1);
     }
@@ -396,15 +407,9 @@ describe('AC4 — run-budget en time-box', () => {
   });
 
   it('markeert budgetTruncated wanneer ml aangeeft dat de time-box bereikt is', async () => {
-    mockMl.bootstrapSearch.mockResolvedValue({
-      seed_path: `reference-logos/${CODE}/default.png`,
-      threshold: 0.93,
-      matches: [],
-      gtins_processed: 1,
-      gtins_total: 2,
-      timed_out: true,
-      seed_leaks_skipped: 0,
-    });
+    mockMl.bootstrapSearch.mockResolvedValue(
+      matchFixture({ matches: [], gtins_processed: 1, gtins_total: 2, timed_out: true })
+    );
     const res = await runBootstrap();
     expect(res.budgetTruncated).toBe(true);
   });
