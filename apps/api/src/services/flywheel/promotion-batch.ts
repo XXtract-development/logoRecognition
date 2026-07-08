@@ -234,7 +234,7 @@ export async function processBatch(batchId: string): Promise<void> {
 export async function loadBatchCandidates(batchId: string): Promise<GuardrailCandidate[]> {
   const rows = await prisma.referenceCandidate.findMany({
     where: { promotionBatchId: batchId, status: 'in_batch' },
-    select: { id: true, t3777Code: true, cropPath: true, evidence: true },
+    select: { id: true, t3777Code: true, cropPath: true, evidence: true, origin: true },
   });
 
   return rows.map((r) => {
@@ -249,6 +249,7 @@ export async function loadBatchCandidates(batchId: string): Promise<GuardrailCan
       cropPath: r.cropPath,
       confidence,
       method,
+      origin: r.origin ?? null,
     };
   });
 }

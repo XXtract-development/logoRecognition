@@ -44,6 +44,7 @@ function cand(overrides: Partial<GuardrailCandidate> = {}): GuardrailCandidate {
     cropPath: 'crops/c1.png',
     confidence: 0.95,
     method: 'template',
+    origin: 'bootstrap',
     ...overrides,
   };
 }
@@ -245,5 +246,18 @@ describe('drempel-fase', () => {
       where: { id: 'c1', status: 'in_batch' },
       data: { status: 'candidate', promotionBatchId: null },
     });
+  });
+
+  it('Story 19.11: een mens-bevestigde kandidaat (herkomst review) omzeilt de drempel — blijft in de batch', async () => {
+    process.env.FLYWHEEL_PROMOTION_THRESHOLD_TEMPLATE = '0.99';
+    // Confidence 0,65 ligt ver onder de 0,99-drempel; zonder review-herkomst zou de
+    // kandidaat worden vrijgegeven. Met herkomst `review` (mens bevestigde) NIET.
+    const { survivors, record } = await runThresholdPhase([
+      cand({ confidence: 0.65, origin: 'review' }),
+    ]);
+    expect(survivors).toHaveLength(1);
+    expect(survivors[0].id).toBe('c1');
+    expect(record.details.releasedCandidateIds).toEqual([]);
+    expect(mockPrisma.referenceCandidate.updateMany).not.toHaveBeenCalled();
   });
 });

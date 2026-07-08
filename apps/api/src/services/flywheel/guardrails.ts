@@ -57,6 +57,8 @@ export interface GuardrailCandidate {
   confidence: number | null;
   /** Detectiemethode uit de evidence (drempel-per-methode). */
   method: string | null;
+  /** Herkomst van de kandidaat (Story 19.11: `review` omzeilt de promotie-drempel). */
+  origin: string | null;
 }
 
 // ============================================
@@ -169,6 +171,16 @@ export async function runThresholdPhase(
   const released: string[] = [];
 
   for (const c of candidates) {
+    // Story 19.11: een MENS-bevestigde kandidaat (herkomst `review`, uit een
+    // reviewstation-accept) omzeilt de promotie-drempel — precies zoals `review` de
+    // nominatie-drempel omzeilt (nomination.ts): de menselijke bevestiging IS de
+    // dubbele check. Zo wordt een bevestigde keurmerk-crop (cosine 0,60–0,74) een
+    // ACTIEVE referentie i.p.v. eeuwig vrijgegeven onder de 0,90-lat. De overige
+    // fasen (cap/dedup/outlier/regressie) blijven wél gelden.
+    if (c.origin === 'review') {
+      survivors.push(c);
+      continue;
+    }
     // Effectieve drempel via de gedeelde resolver (override ?? env ?? default).
     const threshold = await resolvePromotionThreshold(c.method ?? undefined);
     if (c.confidence === null || c.confidence < threshold) {

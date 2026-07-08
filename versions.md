@@ -1,5 +1,11 @@
 # Versiegeschiedenis
 
+## 2026-07-07 (Keurmerken die eerder onzichtbaar werden gemist, komen nu bij een mens terecht — en bevestigde voorbeelden gaan écht meetellen)
+
+### Een filter keurde echte keurmerken ten onrechte af — dat is hersteld
+- De herkenning gebruikte een filter dat bepaalde échte keurmerken (zoals Rainforest Alliance en TRIMAN) op de verpakking ten onrechte wegkeurde, waardoor ze volledig gemist werden. Dat filter is voor de herkenning versoepeld: zulke keurmerken worden nu opgepikt en ter controle op de beoordelingslijst gezet in plaats van onzichtbaar te verdwijnen. De strengere instelling blijft elders gewoon gelden
+- Een door een medewerker goedgekeurd keurmerk-voorbeeld wordt nu betrouwbaar een actief referentievoorbeeld dat de herkenning gebruikt — voorheen bleef zo'n voorbeeld soms steken omdat het de automatische-goedkeurlat niet haalde, terwijl een mens het al had bevestigd
+
 ## 2026-07-07 (Gevonden keurmerk-voorbeelden gaan nu naar de beoordelingslijst i.p.v. verloren te gaan)
 
 ### De voorbeelden die het vliegwiel vindt, belanden nu bij een mens ter controle

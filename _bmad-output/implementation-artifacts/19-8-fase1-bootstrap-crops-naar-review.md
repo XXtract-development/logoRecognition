@@ -52,7 +52,7 @@ zodat **een lege klasse zijn eerste echte referentie-crops krijgt — de brandst
 - [x] 3. **Statusorkestratie (AC: 5)** — `classHasConfirmedRealFuel` = ≥1 mens-bevestigde ECHT-crop (`review-accept`/`review-annotate`) **OF** ≥1 actieve `flywheel-promotion`-referentie (`countActivePromotionReferences`). `wacht-op-review`- én `afgekapt`-emptyReason toegevoegd.
 - [x] 4. **Tests (AC: 4)** — ATDD + bootstrap-run + sampler + 19.5-guard-suites gemigreerd: crop → OPEN review-item (niet `nominateCandidate`); hard-negative/dup → overgeslagen; caller-pad (`processClass` + sampler) maakt review-items; statusorkestratie (geen ECHT/geen promotie-ref → `wacht-op-review`; ECHT-record óf promotie-ref → `gevuld`).
 - [x] 5. **Gates** — `tsc --noEmit` 0; volledige api vitest groen: 883 passed, 0 failed (78 files). Geen regressies t.o.v. `ecf7fad`.
-- [ ] 6. **Live-verificatie (AC: 1)** — met toestemming: de sampler opnieuw draaien; bevestig ≥1 OPEN `artworkReviewItem` in `/artwork/review-queue` voor een lege klasse (waar het vóór 0 was). Gold-set/human-review als vangnet.
+- [x] 6. **Live-verificatie (AC: 1) — GESLAAGD** (2026-07-07, akkoord Friso). Deploy `b2b291f` live op ACC (app+ml image-tag bevestigd, containers healthy). Nulmeting: **0** open `bootstrap-lege-klasse`-review-items + 0 wachtende bootstrap-queue-klassen. Sampler-run (ad-hoc runner in de app-container, budget=2/klasse, time-box 40s): `32 klassen, 17 zonder zaad, 22 GTINs, outcomes {queued:4, skipped:0, refused:0}`. Nameting: **4** OPEN `artworkReviewItem` in `/artwork/review-queue` (van 0 → 4). Straaltje end-to-end ontstopt.
 
 ## Dev Notes — Developer Context
 

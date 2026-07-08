@@ -63,6 +63,18 @@ CLASSIFY_THRESHOLD_CLASSIFIER: float = float(
 )
 CLASSIFY_UNKNOWN_CODE: str = os.environ.get("CLASSIFY_UNKNOWN_CODE", "UNKNOWN")
 
+# Story 19.11 (classify-gate): het herkenningspad gebruikt een EIGEN, lagere
+# keurmerk-gate dan de gedeelde `keurmerk_gate.GATE_THRESHOLD` (0,5). Die gedeelde
+# gate wees echte keurmerken (kp 0,25–0,39, gemeten: RAINFOREST 0,39 / TRIMAN 0,34)
+# ten onrechte af vóór de referentie-zoektocht → UNKNOWN. Dit is hetzelfde gate-v2-
+# defect als in 19.6, waar het bootstrap-ONTDEKpad al een lagere gate (0,2) kreeg;
+# het CLASSIFY-herkenningspad bleef op 0,5. Default 0,2 (patroon
+# `FLYWHEEL_BOOTSTRAP_GATE_THRESHOLD`); raakt de gedeelde 0,5-gate elders NIET.
+# Meet-gedreven tegen de gold-set kalibreerbaar via `CLASSIFY_GATE_THRESHOLD`.
+CLASSIFY_GATE_THRESHOLD: float = float(
+    os.environ.get("CLASSIFY_GATE_THRESHOLD", "0.2")
+)
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -120,10 +132,15 @@ async def _classify_via_embedding(
     # moderate confidence and flood the review queue. Score the SAME embedding; if
     # it is confidently non-keurmerk, return UNKNOWN before the reference search.
     # Fail-open: a disabled/missing gate returns None and never blocks.
-    from app.services.keurmerk_gate import GATE_THRESHOLD, keurmerk_probability
+    #
+    # Story 19.11: gebruik de CLASSIFY-gescopede gate (default 0,2), NIET de gedeelde
+    # `keurmerk_gate.GATE_THRESHOLD` (0,5). Die gedeelde gate wees echte keurmerken
+    # (kp 0,25–0,39) ten onrechte af vóór de match (investigate classify-gate-blocks-
+    # recognition). De 0,5-gate blijft elders ongewijzigd gelden.
+    from app.services.keurmerk_gate import keurmerk_probability
 
     kp = keurmerk_probability(embedding)
-    if kp is not None and kp < GATE_THRESHOLD:
+    if kp is not None and kp < CLASSIFY_GATE_THRESHOLD:
         return {
             "t3777_code": CLASSIFY_UNKNOWN_CODE,
             "confidence": 0.0,
