@@ -197,10 +197,12 @@ async def run_batch() -> dict:
     refs_by_code = {r["t3777_code"]: r["n"] for r in rows}
 
     volume = _load_volume_index(storage_service)
+    # Secondary sort key (code, ascending) makes the top-N cutoff deterministic
+    # when two codes tie on volume — otherwise the winner would depend on
+    # unordered DB row order (implementation-review finding, Story 19.10).
     ranked = sorted(
         (c for c in refs_by_code if c in volume),
-        key=lambda c: volume[c],
-        reverse=True,
+        key=lambda c: (-volume[c], c),
     )
     top_by_volume = set(ranked[:TOP_N])
     sub_k = {c for c, n in refs_by_code.items() if n < MIN_REFS_SUB_K}
