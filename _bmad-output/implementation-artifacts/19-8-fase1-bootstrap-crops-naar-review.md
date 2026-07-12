@@ -4,7 +4,7 @@ baseline_commit: ecf7fad8c8a286ef82c08a8544a58adef67e1a19
 
 # Story 19.8: Fase 1 — bootstrap-crops uit lege klassen naar de review-wachtrij
 
-Status: review
+Status: done
 
 <!-- Twee-traps-fase-1, uit correct-course (sprint-change-proposal-2026-07-07.md). Ontstopt de flywheel-brandstof end-to-end: de crops die 19.6 nu vindt (0->6) belanden in de review-wachtrij i.p.v. te worden gedropt op de 0,90-promotie-drempel. -->
 

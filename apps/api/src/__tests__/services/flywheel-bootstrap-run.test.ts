@@ -312,6 +312,148 @@ describe('AC2 — kleppen + zaad wordt nooit crop (NFR-6)', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Story 19.15 — resolveSeedPath prefereert expliciet het gids-zaad
+// (AC1/AC2/AC4): het gids-drempel-pad (search_with_seed fallback) hoort tegen
+// het GIDS-logo te vergelijken, niet tegen de nieuwste referentie ongeacht
+// source. REAL_CROP_SOURCES = ['review-confirmed','realref-live-poc',
+// 'flywheel-promotion']; het gids-zaad is het complement daarvan.
+// ---------------------------------------------------------------------------
+
+describe('Story 19.15 — resolveSeedPath prefereert het gids-zaad (source-preferentie)', () => {
+  const GUIDE_PATH = `reference-logos/${CODE}/guide.png`;
+  const NEWER_REAL_CROP_PATH = 'artwork-crops/999/newer-real-crop.png';
+
+  type SeedWhere = {
+    OR?: Array<{ source?: null | { notIn?: readonly string[] } }>;
+    source?: unknown;
+  };
+
+  /** Onderscheidt de GIDS-query (OR source:null / source.notIn) van de fallback-query (geen source-filter). */
+  function isGuideQuery(where: SeedWhere): boolean {
+    return Array.isArray(where.OR);
+  }
+
+  /** Haalt het notIn-lijstje uit de gids-query's OR-clausule. */
+  function notInFromGuideQuery(where: SeedWhere): readonly string[] | undefined {
+    const clause = where.OR?.find((c) => c.source && typeof c.source === 'object' && 'notIn' in c.source);
+    return (clause?.source as { notIn?: readonly string[] } | undefined)?.notIn;
+  }
+
+  it('AC1: kiest het GIDS-zaad boven een NIEUWERE door mensen bevestigde ECHTE crop (faalt op het oude newest-ongeacht-source-gedrag)', async () => {
+    mockPrisma.referenceLogo.findFirst.mockImplementation(({ where }: { where: SeedWhere }) => {
+      if (isGuideQuery(where)) {
+        return Promise.resolve({ storagePath: GUIDE_PATH });
+      }
+      // Fallback-query (newest-any) zou — als de guide-query hem niet had
+      // kortgesloten — de NIEUWERE echte crop hebben teruggegeven. Deze mag
+      // in dit scenario nooit aangeroepen worden.
+      return Promise.resolve({ storagePath: NEWER_REAL_CROP_PATH });
+    });
+
+    const seed = await resolveSeedPath(CODE);
+
+    expect(seed).toBe(GUIDE_PATH);
+    expect(seed).not.toBe(NEWER_REAL_CROP_PATH);
+    // Precies één query: de gids-query kortsluit de fallback (AC1-contract).
+    expect(mockPrisma.referenceLogo.findFirst).toHaveBeenCalledTimes(1);
+    const call = mockPrisma.referenceLogo.findFirst.mock.calls[0][0];
+    expect(call.where.t3777Code).toBe(CODE);
+    expect(notInFromGuideQuery(call.where)).toEqual([
+      'review-confirmed',
+      'realref-live-poc',
+      'flywheel-promotion',
+    ]);
+    expect(call.orderBy).toEqual({ createdAt: 'desc' });
+  });
+
+  it('AC2: valt terug op newest-any wanneer de klasse GEEN gids-referentie heeft (bewuste, gedocumenteerde fallback — geen null)', async () => {
+    mockPrisma.referenceLogo.findFirst.mockImplementation(({ where }: { where: SeedWhere }) => {
+      if (isGuideQuery(where)) {
+        return Promise.resolve(null); // geen gids-referentie voor deze klasse
+      }
+      return Promise.resolve({ storagePath: NEWER_REAL_CROP_PATH });
+    });
+
+    const seed = await resolveSeedPath(CODE);
+
+    expect(seed).toBe(NEWER_REAL_CROP_PATH);
+    // Twee queries: gids-query (levert niets) → expliciete fallback-query.
+    expect(mockPrisma.referenceLogo.findFirst).toHaveBeenCalledTimes(2);
+    const fallbackCall = mockPrisma.referenceLogo.findFirst.mock.calls[1][0];
+    expect(fallbackCall.where).not.toHaveProperty('OR');
+    expect(fallbackCall.where).not.toHaveProperty('source');
+    expect(fallbackCall.where.t3777Code).toBe(CODE);
+    expect(fallbackCall.orderBy).toEqual({ createdAt: 'desc' });
+  });
+
+  it('AC2: retourneert null (geen zaad) wanneer de klasse HELEMAAL geen referentie heeft (lege-klasse-flow 19.8 blijft intact)', async () => {
+    mockPrisma.referenceLogo.findFirst.mockResolvedValue(null);
+    const seed = await resolveSeedPath(CODE);
+    expect(seed).toBeNull();
+    expect(mockPrisma.referenceLogo.findFirst).toHaveBeenCalledTimes(2);
+  });
+
+  it('NFR-6: de gids-query sluit exact REAL_CROP_SOURCES uit — het zaad kan nooit een echte-crop-output zijn', async () => {
+    mockPrisma.referenceLogo.findFirst.mockResolvedValue({ storagePath: GUIDE_PATH });
+    await resolveSeedPath(CODE);
+    const call = mockPrisma.referenceLogo.findFirst.mock.calls[0][0];
+    expect(notInFromGuideQuery(call.where)).toEqual([
+      'review-confirmed',
+      'realref-live-poc',
+      'flywheel-promotion',
+    ]);
+  });
+
+  it('code-review-fix (HIGH): een gids-referentie met source:null wordt WEL gevonden — Prisma/SQL notIn sluit NULL-rijen anders stilzwijgend uit (drie-waardige logica), reproduceert anders de oude bug voor null-source-rijen (bv. curatie-upload zonder ingevuld source-veld)', async () => {
+    mockPrisma.referenceLogo.findFirst.mockImplementation(({ where }: { where: SeedWhere }) => {
+      if (isGuideQuery(where)) {
+        // De gids-query MOET een OR-clausule met expliciet source:null bevatten,
+        // anders zou een echte Postgres NOT IN de null-rij nooit teruggeven.
+        const hasNullClause = where.OR?.some((c) => c.source === null);
+        expect(hasNullClause).toBe(true);
+        return Promise.resolve({ storagePath: GUIDE_PATH }); // simuleert de null-source-rij
+      }
+      return Promise.resolve({ storagePath: NEWER_REAL_CROP_PATH });
+    });
+
+    const seed = await resolveSeedPath(CODE);
+
+    expect(seed).toBe(GUIDE_PATH);
+    expect(seed).not.toBe(NEWER_REAL_CROP_PATH);
+    expect(mockPrisma.referenceLogo.findFirst).toHaveBeenCalledTimes(1);
+  });
+
+  it('AC3-regressieborging: de zaadwijziging raakt searchAndQueueClassForReview/realRefPaths niet — de echte crops komen nog steeds via realRefPaths mee (conditie C, 19.9, ongewijzigd)', async () => {
+    const REAL_REFS = [
+      { storagePath: 'artwork-crops/111/real1.png' },
+      { storagePath: 'artwork-crops/222/real2.png' },
+      { storagePath: 'artwork-crops/333/real3.png' },
+    ];
+    // Zaad = het GIDS-logo (19.15-fix); GEEN van de REAL_REFS.
+    mockPrisma.referenceLogo.findFirst.mockImplementation(
+      ({ where }: { where: { active?: boolean } & SeedWhere }) => {
+        if (where.active) return Promise.resolve(null); // dedup-check binnen queueCropForReview
+        return Promise.resolve({ storagePath: GUIDE_PATH }); // gids-query (kortsluit fallback)
+      }
+    );
+    mockPrisma.referenceLogo.findMany.mockResolvedValue(REAL_REFS);
+    mockMl.bootstrapSearch.mockResolvedValue(matchFixture());
+
+    await runBootstrap();
+
+    const call = mockMl.bootstrapSearch.mock.calls[0][0];
+    // Het zaad is het gids-logo — geen van de echte-crop-paden.
+    expect(call.seedPath).toBe(GUIDE_PATH);
+    expect(REAL_REFS.map((r) => r.storagePath)).not.toContain(call.seedPath);
+    // realRefPaths/minRefs/rankingThreshold blijven exact zoals 19.9 ze samenstelt —
+    // ongewijzigd door de zaadkeuze.
+    expect(call.realRefPaths).toEqual(REAL_REFS.map((r) => r.storagePath));
+    expect(call.minRefs).toBe(3);
+    expect(typeof call.rankingThreshold).toBe('number');
+  });
+});
+
+// ---------------------------------------------------------------------------
 // AC3 / 19.8 AC5 — statusovergangen + gevuld-semantiek
 // ---------------------------------------------------------------------------
 

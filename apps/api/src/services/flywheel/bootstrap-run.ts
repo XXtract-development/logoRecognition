@@ -111,16 +111,57 @@ export interface BootstrapJobData {
  * Resolveer het gids-zaad (storage-path) van een klasse uit de
  * referentiebibliotheek-opslag — ook als de rij inactief is (12.3-real-ref-pivot:
  * guide-referenties kunnen inactief zijn). Het zaad is UITSLUITEND zoekinstrument
- * (NFR-6); deze lookup registreert of promoveert nooit iets. Kiest de nieuwste
- * `reference_logos`-rij met een storage-path, ongeacht `active`.
+ * (NFR-6); deze lookup registreert of promoveert nooit iets.
+ *
+ * Story 19.15 — source-preferentie: prefereert EERST een referentie met een
+ * GIDS-/wikimedia-source (het complement van `REAL_CROP_SOURCES` — elke
+ * niet-ECHTE-crop-bron telt als gids), nieuwste eerst. Zonder source-filter zou
+ * de nieuwste rij van de klasse gekozen worden ONGEACHT source — voor klassen
+ * die inmiddels door mensen bevestigde ECHTE crops hebben (o.a. GREEN_DOT) werd
+ * het "zaad" daardoor stilzwijgend een echte crop i.p.v. het gids-logo, terwijl
+ * het gids-drempel-pad (`search_with_seed` fallback) semantisch tegen het GIDS-
+ * logo hoort te vergelijken (NFR-6, docstring hierboven). Dit raakt conditie C
+ * (Story 19.9) niet — die hangt uitsluitend aan `realRefPaths`/`min_refs`; de
+ * echte crops blijven via dat pad meedoen, alléén het zaad zelf verandert.
+ *
+ * Fallback (AC2, bewuste keuze — niet-brekend): heeft de klasse GEEN gids-
+ * referentie (bv. een nog vroege bootstrap-klasse met alleen echte crops), dan
+ * valt deze functie terug op de nieuwste referentie ONGEACHT source (= het
+ * gedrag van vóór deze story, nu expliciet als fallback in plaats van default).
+ * Bewust GEEN `null`: een `null`-zaad zou de bestaande lege-/schaarse-klasse-
+ * flow (19.8, `hadSeed:false` → klasse overgeslagen) breken voor klassen die wél
+ * bruikbaar zoekmateriaal hebben — alleen niet getagd als gids.
+ *
+ * NULL-safe (code-review-fix): `reference_logos.source` is nullable (bv. de
+ * curatie-upload `POST /reference-logos` laat `source` leeg → `null`). SQL/
+ * Prisma's `notIn` sluit `NULL`-rijen stilzwijgend UIT (drie-waardige logica:
+ * `NULL NOT IN (...)` = `UNKNOWN`, niet `true`) — zonder de expliciete
+ * `OR: [{ source: null }, ...]` zou een gids-referentie met `source:null` NOOIT
+ * door de gids-query gevonden worden en zou de functie ten onrechte doorvallen
+ * naar de fallback (die dan alsnog een nieuwere ECHTE crop kan kiezen — precies
+ * de bug die deze story oplost, nu voor een subset van klassen). Een `null`
+ * source is per definitie GEEN `REAL_CROP_SOURCES`-waarde, dus telt terecht als
+ * gids.
  */
 export async function resolveSeedPath(t3777Code: string): Promise<string | null> {
-  const row = await prisma.referenceLogo.findFirst({
+  const guideRow = await prisma.referenceLogo.findFirst({
+    where: {
+      t3777Code,
+      storagePath: { not: '' },
+      OR: [{ source: null }, { source: { notIn: [...REAL_CROP_SOURCES] } }],
+    },
+    orderBy: { createdAt: 'desc' },
+    select: { storagePath: true },
+  });
+  if (guideRow?.storagePath) return guideRow.storagePath;
+
+  // Fallback (AC2): geen gids-referentie — newest-any (huidig gedrag, expliciet).
+  const anyRow = await prisma.referenceLogo.findFirst({
     where: { t3777Code, storagePath: { not: '' } },
     orderBy: { createdAt: 'desc' },
     select: { storagePath: true },
   });
-  return row?.storagePath ?? null;
+  return anyRow?.storagePath ?? null;
 }
 
 /**

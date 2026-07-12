@@ -1,5 +1,12 @@
 # Versiegeschiedenis
 
+## 2026-07-12 (Het zoek-voorbeeld van een keurmerk blijft het gids-logo, ook als er al bevestigde foto's zijn)
+
+### Het interne zoek-voorbeeld week soms af van het bedoelde gids-logo
+- Bij het zoeken naar nieuwe voorbeelden van een keurmerk gebruikte het systeem één beeld als vergelijkingsbasis. Dat hoorde altijd het originele gids-logo te zijn, maar zodra een keurmerk inmiddels een nieuwer, door een medewerker bevestigd voorbeeld had, werd per ongeluk dát voorbeeld als vergelijkingsbasis gebruikt in plaats van het gids-logo. Dat is nu gecorrigeerd: het gids-logo blijft de vergelijkingsbasis, ook als er al bevestigde voorbeelden bijgekomen zijn
+- Heeft een keurmerk (nog) geen apart gids-logo, dan blijft het bestaande gedrag gelden zodat er niets vastloopt
+- Dit raakt alleen de interne zoekbasis — de aparte, betrouwbaardere vergelijking met bevestigde voorbeelden (zie hierboven) blijft ongewijzigd werken
+
 ## 2026-07-12 (Herkenning gaat vergelijken met eerder bevestigde voorbeelden zodra een keurmerk er genoeg heeft)
 
 ### Een keurmerk met genoeg bevestigde voorbeelden wordt straks nog beter herkend
