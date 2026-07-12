@@ -1,6 +1,6 @@
 # Adversarial review — Story 19.15 (resolveSeedPath prefereert het gids-zaad)
 
-reviewed_commit: (pre-commit, worktree epic-19-19.15, branch epic-19-story-19.15)
+reviewed_commit: f9706fb (branch epic-19-story-19.15) — reviewlagen draaiden op de working-tree-diff vóór commit; het bestand-op-disk was byte-identiek tussen review en dit commit (geen wijziging tussen review en commit)
 verdict: PASS
 
 ## Scope
