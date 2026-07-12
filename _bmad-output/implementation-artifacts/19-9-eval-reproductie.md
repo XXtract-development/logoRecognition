@@ -68,3 +68,44 @@ De 5 kleppen (declaratie-guard 19.5, gold-set-regressie, dedup, class-cap, hard-
 **Enige nuance (geen blokker):** PREGNANCY_WARNING (n=1, geen gids-ref) mist in C. Dit is een steekproef-van-één zonder statistische waarde en geen precisie-regressie; het onttrekt niets aan het AC5-patroon.
 
 Alles read-only gemeten; geen writes, geen container-mutatie, geen deploy.
+
+---
+
+## Task 8 — live-verificatie gedeployde conditie C (ACC 1d6733f)
+
+Datum: 2026-07-12 · nieuwe ml-container `ml-service-...124642696409`, image `ghcr.io/xxtract-development/logo-recognition-ml:1d6733f...` (= de 19.9-code, ná mijn AC5-meting gedeployd). Doel: bewijzen dat de **daadwerkelijk gedeployde** `app.services.bootstrap_search.search_with_seed` conditie C live activeert. Hier is de ranking NIET herbouwd — de gedeployde functie is direct geïmporteerd en aangeroepen met haar echte handtekening.
+
+**Verdict Task 8: GEHAALD.** `ranking_active = true`, 16 echte refs geëmbed, **12/12 matches zijn conditie-C-winst** (gids-cosine < 0,60 maar ranking-cosine ≥ 0,60), en de contrast-run zonder refs levert **0** matches — de winst komt aantoonbaar van conditie C.
+
+### Opzet (klasse GREEN_DOT)
+- **seed_path** = `reference-logos/GREEN_DOT/default.png` (het GS1/wikimedia-gids-zaad — bewust het gids-logo om de conditie-C-winst zichtbaar te maken).
+- **real_ref_paths** = 16 actieve ECHTE-crop-refs van GREEN_DOT (`reference_logos` active, source ∈ `review-confirmed`/`realref-live-poc`/`flywheel-promotion`), read-only uit de DB.
+- **gtin_pages** = 2 declarerende GREEN_DOT-GTINs (`04001724023784`, `04001724023814`) met hun volledige artwork-pagina. **Leave-one-GTIN-out geborgd:** geen van deze GTINs zit in de 16 referentie-crops — elke match generaliseert dus over PRODUCTgrenzen, net als AC5.
+- **params:** `threshold=0.60` (getBootstrapThreshold), `ranking_threshold=0.60` (getRankingThreshold, default == bootstrap), `min_refs=3` (getRankingMinRefs). Config-waarden geverifieerd in de gedeployde API-build `1d6733f`.
+
+### Resultaat — run C (mét echte refs) vs run A (gids-only contrast)
+
+| | ranking_active | real_refs_used | #matches |
+|---|:---:|:---:|:---:|
+| **Run C** (mét real_ref_paths) | **true** | 16 | **12** |
+| **Run A** (zonder real_ref_paths) | false | 0 | **0** |
+
+Alle 12 C-matches hebben **seed_cosine < 0,60** (bereik 0,389–0,540) én **ranking_cosine ≥ 0,60** (bereik 0,602–0,703) — dit zijn precies de "óók-matches" die het oude gids-only-pad zou hebben gemist. `seed_leaks_skipped=0` (NFR-6 intact). Representatieve matches:
+
+| GTIN | seed_cosine (gids) | ranking_cosine (nearest-ref) | conditie-C-winst |
+|------|-------------------:|-----------------------------:|:---:|
+| 04001724023784 | 0,389 | 0,643 | ✓ |
+| 04001724023784 | 0,416 | 0,626 | ✓ |
+| 04001724023784 | 0,427 | 0,669 | ✓ |
+| 04001724023784 | 0,465 | 0,653 | ✓ |
+| 04001724023784 | 0,540 | 0,703 | ✓ |
+| 04001724023814 | 0,424 | 0,602 | ✓ |
+| 04001724023814 | 0,524 | 0,619 | ✓ |
+
+**Interpretatie:** de gedeployde `search_with_seed` schakelt bij ≥ k=3 echte refs daadwerkelijk naar nearest-reference-ranking; regio's met een gids-cosine ver onder de drempel (tot 0,39) matchen nu via hun hoge cosine tegen echte crops van ANDERE producten. Zonder die refs (run A) valt elke match weg — sluitend bewijs dat de winst uit conditie C komt en niet uit de gate/region-proposer/zaad.
+
+### NB — deployed `resolveSeedPath`
+De gedeployde `resolveSeedPath` kiest de NIEUWSTE `reference_logo` (ongeacht source); voor GREEN_DOT is dat inmiddels een echte crop (`review-confirmed`). In deze verificatie is bewust het GIDS-zaad gebruikt om de conditie-C-winst-marge te tonen (bij een echte-crop-zaad zou de seed_cosine al hoog zijn). Dit raakt de conditie-C-schakel niet — die hangt aan `real_ref_paths` + `min_refs`, niet aan de zaadkeuze — maar is het vermelden waard voor de dev-story.
+
+### Writes
+Uitsluitend crop-staging naar MinIO `artwork-crops/{gtin}/17_1_bootstrap_*.png` (de bedoelde output van `search_with_seed`, 2×12 crops over de twee runs). **Geen** DB-write, **geen** bootstrap-queue-mutatie, **geen** flag-wijziging, **geen** container-restart/deploy.
