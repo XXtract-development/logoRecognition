@@ -43,7 +43,11 @@ const mockPrisma = prisma as unknown as {
     findMany: ReturnType<typeof vi.fn>;
     update: ReturnType<typeof vi.fn>;
   };
-  referenceLogo: { findFirst: ReturnType<typeof vi.fn>; count: ReturnType<typeof vi.fn> };
+  referenceLogo: {
+    findFirst: ReturnType<typeof vi.fn>;
+    findMany: ReturnType<typeof vi.fn>;
+    count: ReturnType<typeof vi.fn>;
+  };
   mismatchEvent: { findMany: ReturnType<typeof vi.fn> };
   artworkImport: { findFirst: ReturnType<typeof vi.fn> };
   artworkReviewItem: { findFirst: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn> };
@@ -105,6 +109,9 @@ beforeEach(() => {
   );
   // Geen actieve promotie-referenties (AC5-signaal, guardrails.countActivePromotionReferences).
   mockPrisma.referenceLogo.count.mockResolvedValue(0);
+  // Story 19.9: standaard 0 actieve ECHTE-crop-referenties (< k) — het gids-pad
+  // blijft het default gedrag in deze test-suite; AC1/AC2 hebben een eigen describe-blok.
+  mockPrisma.referenceLogo.findMany.mockResolvedValue([]);
   // Twee kandidaat-GTINs uit declared-not-found-events.
   mockPrisma.mismatchEvent.findMany.mockResolvedValue([{ gtin: '111' }, { gtin: '222' }]);
   // Beide GTINs hebben een artwork-pagina.
@@ -412,5 +419,54 @@ describe('AC4 — run-budget en time-box', () => {
     );
     const res = await runBootstrap();
     expect(res.budgetTruncated).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Story 19.9 — schakelmoment naar nearest-reference-ranking (contract-tests AC4)
+// ---------------------------------------------------------------------------
+
+describe('Story 19.9 — realRefPaths-contract naar mlClient.bootstrapSearch', () => {
+  const REAL_REFS = [
+    { storagePath: 'artwork-crops/111/real1.png' },
+    { storagePath: 'artwork-crops/222/real2.png' },
+    { storagePath: 'artwork-crops/333/real3.png' },
+  ];
+
+  it('geeft realRefPaths + rankingThreshold + minRefs mee zodra de klasse >= k (default 3) actieve ECHTE-crop-refs heeft', async () => {
+    mockPrisma.referenceLogo.findMany.mockResolvedValue(REAL_REFS);
+    await runBootstrap();
+
+    const call = mockMl.bootstrapSearch.mock.calls[0][0];
+    expect(call.realRefPaths).toEqual(REAL_REFS.map((r) => r.storagePath));
+    expect(call.minRefs).toBe(3);
+    expect(typeof call.rankingThreshold).toBe('number');
+
+    // De query filtert op actieve, ECHTE (niet-gids) referenties van de klasse.
+    const where = mockPrisma.referenceLogo.findMany.mock.calls[0][0].where;
+    expect(where.t3777Code).toBe(CODE);
+    expect(where.active).toBe(true);
+    expect(where.source.in).toEqual(['review-confirmed', 'realref-live-poc', 'flywheel-promotion']);
+  });
+
+  it('roept de ml-zoektocht KAAL aan (geen realRefPaths) zodra de klasse < k actieve ECHTE-crop-refs heeft — faalt op het oude gedrag', async () => {
+    mockPrisma.referenceLogo.findMany.mockResolvedValue(REAL_REFS.slice(0, 2)); // 2 < default k=3
+    await runBootstrap();
+
+    const call = mockMl.bootstrapSearch.mock.calls[0][0];
+    expect(call.realRefPaths).toBeUndefined();
+    expect(call.rankingThreshold).toBeUndefined();
+    expect(call.minRefs).toBeUndefined();
+  });
+
+  it('respecteert een env-override van FLYWHEEL_RANKING_MIN_REFS', async () => {
+    process.env.FLYWHEEL_RANKING_MIN_REFS = '2';
+    mockPrisma.referenceLogo.findMany.mockResolvedValue(REAL_REFS.slice(0, 2)); // == k=2
+    await runBootstrap();
+
+    const call = mockMl.bootstrapSearch.mock.calls[0][0];
+    expect(call.realRefPaths).toEqual(REAL_REFS.slice(0, 2).map((r) => r.storagePath));
+    expect(call.minRefs).toBe(2);
+    delete process.env.FLYWHEEL_RANKING_MIN_REFS;
   });
 });

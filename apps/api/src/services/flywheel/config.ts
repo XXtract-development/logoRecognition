@@ -415,6 +415,41 @@ export function getSamplePerClass(): number {
   return Number.isFinite(v) && v > 0 ? v : 50;
 }
 
+// ============================================
+// Story 19.9 — fase 2: nearest-reference-ranking-config (schakelmoment k + drempel)
+// ============================================
+
+/**
+ * Schakelmoment-drempel k (Story 19.9, AC1/AC2): minimaal aantal actieve, door
+ * mensen bevestigde ECHTE referentie-crops dat een keurmerkklasse moet hebben
+ * vóórdat de bootstrap-zoektocht van de absolute gids-drempel naar nearest-
+ * reference-ranking (conditie C) tegen die echte crops schakelt (als aanvulling
+ * op het gids-pad, niet als vervanging). Onder k blijft het bestaande gids-
+ * drempel-pad (19.6+19.8) exact gelden — geen gedragswijziging. Startwaarde uit
+ * de 19.7-spike (k=3, leave-one-GTIN-out 44%->100%). Kalibreerbaar via
+ * `FLYWHEEL_RANKING_MIN_REFS`.
+ */
+export function getRankingMinRefs(): number {
+  const v = parseInt(process.env.FLYWHEEL_RANKING_MIN_REFS ?? '', 10);
+  return Number.isFinite(v) && v > 0 ? v : 3;
+}
+
+/**
+ * Nearest-reference-cosine-drempel (Story 19.9, conditie C): een regio matcht
+ * via ranking zodra de HOOGSTE cosine over de actieve echte referentie-crops ≥
+ * deze drempel is (het gids-zaad-pad blijft daarnaast beschikbaar als fallback).
+ * Startwaarde bewust GELIJK aan `getBootstrapThreshold()` (0,60, Story 19.6):
+ * zonder de eval-reproductie (Task 6, permission-gated, AC5) is er geen gemeten
+ * optimum voor de ranking-drempel — echte crops clusteren naar verwachting
+ * strakker dan het gids-zaad (19.7-spike: 44%->100%), dus deze startwaarde is
+ * een conservatieve ondergrens, geen eindwaarde. Kalibreerbaar via
+ * `FLYWHEEL_RANKING_THRESHOLD`.
+ */
+export function getRankingThreshold(): number {
+  const v = parseFloat(process.env.FLYWHEEL_RANKING_THRESHOLD ?? '');
+  return Number.isFinite(v) && v > 0 && v <= 1 ? v : getBootstrapThreshold();
+}
+
 /**
  * Batch-grootte (aantal GTINs per re-import-run) voor de gedoseerde terugval-route
  * op het GLN-restant (Story 18.2, AD-7 route (b), NFR-3). Elke batch draait als één

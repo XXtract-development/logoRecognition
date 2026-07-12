@@ -456,12 +456,20 @@ class BootstrapSearchRequest(BaseModel):
     threshold: float
     per_code_cap: int = 25
     max_seconds: float = 1000.0
+    # Story 19.9 (fase 2, conditie C): actieve, door mensen bevestigde ECHTE
+    # referentie-crops van de klasse (MinIO-object-keys). De API bepaalt of de
+    # klasse >= k refs heeft en levert ze dan mee; leeg = onveranderd het
+    # gids-drempel-pad (default gedrag, byte-gelijk aan vóór 19.9).
+    real_ref_paths: List[str] = Field(default_factory=list)
+    ranking_threshold: Optional[float] = None
+    min_refs: Optional[int] = None
 
 
 class BootstrapMatch(BaseModel):
     gtin: str
     bbox: Dict[str, int]
     seed_cosine: float
+    ranking_cosine: Optional[float] = None
     crop_path: str
     source_file: str
 
@@ -474,6 +482,8 @@ class BootstrapSearchResponse(BaseModel):
     gtins_total: int
     timed_out: bool
     seed_leaks_skipped: int
+    ranking_active: bool
+    real_refs_used: int
 
 
 @router.post("/bootstrap-search", response_model=BootstrapSearchResponse)
@@ -496,6 +506,9 @@ async def bootstrap_search(request: BootstrapSearchRequest) -> BootstrapSearchRe
             threshold=request.threshold,
             per_code_cap=request.per_code_cap,
             max_seconds=request.max_seconds,
+            real_ref_paths=request.real_ref_paths or None,
+            ranking_threshold=request.ranking_threshold,
+            **({"min_refs": request.min_refs} if request.min_refs is not None else {}),
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
@@ -516,4 +529,6 @@ async def bootstrap_search(request: BootstrapSearchRequest) -> BootstrapSearchRe
         gtins_total=int(result["gtins_total"]),
         timed_out=bool(result["timed_out"]),
         seed_leaks_skipped=int(result["seed_leaks_skipped"]),
+        ranking_active=bool(result["ranking_active"]),
+        real_refs_used=int(result["real_refs_used"]),
     )

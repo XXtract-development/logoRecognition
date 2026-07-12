@@ -15,6 +15,13 @@ Recept (hergebruik van het 12.4-oogstpatroon in ``queue_harvest.py``):
      ->  keurmerk-gate (gate-v2, ruisreductie)  ->  cosine tegen de zaad-embedding
      ->  matches >= drempel  ->  crop uploaden naar ``artwork-crops/{gtin}/...``
 
+Story 19.9 (fase 2, conditie C): heeft de klasse >= k (default 3) actieve, door
+mensen bevestigde ECHTE referentie-crops, dan schakelt/verrijkt het matchsignaal:
+naast de gids-cosine (fallback, ONGEWIJZIGD) matcht een regio ook als de HOOGSTE
+cosine over die echte crops (nearest-reference) de ranking-drempel haalt. Bewezen
+44%->100% top-1 in de 19.7-spike (leave-one-GTIN-out). Onder k: ongewijzigd het
+gids-drempel-pad.
+
 NFR-6 (KRITIEK): het gids-zaadbeeld is UITSLUITEND zoekinstrument. Het wordt hier
 NOOIT geüpload en verschijnt NOOIT in de output-crops. Structureel geborgd: het
 zaad wordt enkel geëmbed (nooit ``put_training_image``), en een defensieve
@@ -101,6 +108,9 @@ async def search_with_seed(
     per_code_cap: int = 25,
     max_seconds: float = 1000.0,
     gate_threshold: Optional[float] = None,
+    real_ref_paths: Optional[List[str]] = None,
+    ranking_threshold: Optional[float] = None,
+    min_refs: int = 3,
 ) -> Dict[str, Any]:
     """Zoek met het gids-zaad naar echte keurmerk-crops binnen de opgegeven GTINs.
 
@@ -113,11 +123,26 @@ async def search_with_seed(
         per_code_cap: max aantal matches (crops) dat de run oplevert (budget-guard).
         max_seconds: wall-clock time-box; bij overschrijding stopt de run netjes en
             rapporteert hij hoeveel GTINs verwerkt zijn (het restant blijft aan de API).
+        gate_threshold: bootstrap-gescoped keurmerk-gate-drempel (Story 19.6).
+        real_ref_paths: Story 19.9 (fase 2) — MinIO-object-keys van de actieve, door
+            mensen bevestigde ECHTE referentie-crops van de klasse. De API bepaalt of
+            een klasse ≥ k refs heeft en geeft ze dan mee; deze functie embedt ze zelf
+            (zelfde patroon als het zaad). Onleesbare refs falen ZACHT (NFR-3): ze
+            worden overgeslagen en tellen niet mee voor de k-drempel.
+        ranking_threshold: cosine-drempel voor conditie C (nearest-reference-ranking).
+            ``None`` valt terug op ``threshold`` (conservatief — nooit soepeler dan het
+            gids-pad zonder expliciete kalibratie).
+        min_refs: schakelmoment k (default 3, Story 19.9 AC1/AC2) — pas bij ≥ deze
+            hoeveelheid SUCCESVOL geëmbede echte refs schakelt de match naar conditie C
+            (``ref_sim ≥ ranking_threshold``, ALS AANVULLING op het bestaande gids-pad,
+            niet als vervanging — zie conditie C hieronder). Onder k: ONGEWIJZIGD het
+            gids-drempel-pad.
 
     Returns:
-        ``{"seed_path", "threshold", "matches": [{gtin, bbox, seed_cosine, crop_path,
-        source_file}], "gtins_processed", "gtins_total", "timed_out", "seed_leaks_skipped"}``.
-        Elke match is een ECHTE artwork-crop (geen zaad), al geüpload naar
+        ``{"seed_path", "threshold", "matches": [{gtin, bbox, seed_cosine, ranking_cosine,
+        crop_path, source_file}], "gtins_processed", "gtins_total", "timed_out",
+        "seed_leaks_skipped", "ranking_active", "real_refs_used"}``. Elke match is een
+        ECHTE artwork-crop (geen zaad/geen referentie), al geüpload naar
         ``artwork-crops/{gtin}/...`` zodat de API-nominatie (13.2) enkel de key nodig heeft.
     """
     import cv2
@@ -153,6 +178,39 @@ async def search_with_seed(
         await model_manager.generate_embedding(_to_pil(seed_img)), np.float32
     )
     seed_digest = _content_digest(seed_img)
+
+    # 1b. Echte-crop-referentie-embeddings (Story 19.9, fase 2). Zacht falen per
+    # ref (NFR-3-patroon, zoals de GTIN-pagina's hieronder): een onleesbare/
+    # ontbrekende ref telt niet mee voor de k-drempel maar stopt de zoektocht niet.
+    real_ref_embs: List[np.ndarray] = []
+    for ref_path in real_ref_paths or []:
+        try:
+            ref_data = storage_service.get_training_image(ref_path)
+            ref_img = cv2.imdecode(np.frombuffer(ref_data, np.uint8), cv2.IMREAD_COLOR)
+            if ref_img is None:
+                logger.warning(
+                    "Bootstrap: echte-crop-referentie onleesbaar — overgeslagen",
+                    extra={"real_ref_path": ref_path},
+                )
+                continue
+            ref_emb = np.asarray(
+                await model_manager.generate_embedding(_to_pil(ref_img)), np.float32
+            )
+            real_ref_embs.append(ref_emb)
+        except Exception as exc:
+            logger.warning(
+                "Bootstrap: kon echte-crop-referentie niet laden — overgeslagen",
+                extra={"real_ref_path": ref_path, "error": str(exc)},
+            )
+            continue
+
+    # Schakelmoment (AC1/AC2): pas bij ≥ k SUCCESVOL geëmbede refs schakelt het
+    # matchsignaal naar conditie C (nearest-reference-ranking). Onder k: ongewijzigd
+    # het gids-drempel-pad hieronder (`sim = cosine(emb, seed_emb) >= threshold`).
+    ranking_active = len(real_ref_embs) >= min_refs
+    effective_ranking_threshold = (
+        ranking_threshold if ranking_threshold is not None else threshold
+    )
 
     matches: List[Dict[str, Any]] = []
     gtins_total = len(gtin_pages)
@@ -216,8 +274,19 @@ async def search_with_seed(
             if kp is not None and kp < effective_gate:
                 continue
 
+            # Conditie C (Story 19.9, AC1/AC3): bij ≥ k echte refs matcht een regio
+            # ALS AANVULLING op het gids-pad óók via de hoogste cosine over de echte
+            # crops (nearest-reference) — het gids-zaad blijft beschikbaar als
+            # fallback (AC1: "matcht óók wanneer de gids-cosine onder de drempel
+            # valt"). Onder k: ongewijzigd enkel het gids-pad.
             sim = cosine(emb, seed_emb)
-            if sim < threshold:
+            ref_sim: Optional[float] = None
+            if ranking_active:
+                ref_sim = max(cosine(emb, r) for r in real_ref_embs)
+                matched = sim >= threshold or ref_sim >= effective_ranking_threshold
+            else:
+                matched = sim >= threshold
+            if not matched:
                 continue
 
             # NFR-6-guard: een regio die inhoudelijk het zaadbeeld ís (een per
@@ -249,6 +318,7 @@ async def search_with_seed(
                         "height": int(b[3]),
                     },
                     "seed_cosine": round(float(sim), 4),
+                    "ranking_cosine": round(float(ref_sim), 4) if ref_sim is not None else None,
                     "crop_path": crop_key,
                     "source_file": page_key,
                 }
@@ -262,6 +332,8 @@ async def search_with_seed(
         "gtins_total": gtins_total,
         "timed_out": timed_out,
         "seed_leaks_skipped": seed_leaks_skipped,
+        "ranking_active": ranking_active,
+        "real_refs_used": len(real_ref_embs),
     }
     logger.info(
         "Bootstrap zaad-zoektocht voltooid",
@@ -271,6 +343,8 @@ async def search_with_seed(
             "gtins_processed": gtins_processed,
             "gtins_total": gtins_total,
             "timed_out": timed_out,
+            "ranking_active": ranking_active,
+            "real_refs_used": len(real_ref_embs),
             "seconds": round(time.perf_counter() - t0, 1),
         },
     )

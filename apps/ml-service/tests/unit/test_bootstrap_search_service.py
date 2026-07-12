@@ -368,3 +368,200 @@ def test_gedeelde_gate_default_blijft_05_19_6():
             sys.modules["app.services.keurmerk_gate"] = prev
         if old_env is not None:
             os.environ["KEURMERK_GATE_THRESHOLD"] = old_env
+
+
+# ---------------------------------------------------------------------------
+# Story 19.9 — conditie C (nearest-reference-ranking bij ≥ k echte crop-refs).
+#
+# Eigen fixture (los van `patched`): de fake `cv2.imdecode` levert voor élk
+# gedecodeerd beeld dezelfde lege array, dus we kunnen embeddings niet op
+# beeld-inhoud onderscheiden. In plaats daarvan onthoudt de fake storage de
+# laatst-opgevraagde object-key (`get_training_image` wordt synchroon vóór
+# `generate_embedding` aangeroepen, altijd sequentieel binnen één async-taak)
+# en levert de fake model-manager de bijbehorende embedding op basis van die
+# key. Regio-crops zijn STRINGS (geen ints) zodat ze nooit met een storage-key
+# verward worden.
+# ---------------------------------------------------------------------------
+
+SEED_KEY_C = "reference-logos/X/seed.png"
+REF1_KEY_C = "reference-logos/X/real1.png"
+REF2_KEY_C = "reference-logos/X/real2.png"
+REF3_KEY_C = "reference-logos/X/real3.png"
+BAD_REF_KEY_C = "reference-logos/X/onleesbaar.png"
+
+NEAR_REF_TAG = "near-ref"  # regio dicht bij de echte refs, ver van het zaad
+FAR_TAG = "far"  # regio ver van alles
+
+_EMB_BY_KEY_C = {
+    SEED_KEY_C: [0.0, 0.0, 1.0],  # zaad — orthogonaal aan de refs (cosine 0)
+    REF1_KEY_C: [1.0, 0.0, 0.0],
+    REF2_KEY_C: [1.0, 0.05, 0.0],
+    REF3_KEY_C: [1.0, -0.05, 0.0],
+}
+_REGION_EMB_C = {
+    NEAR_REF_TAG: [1.0, 0.0, 0.0],  # cosine ~1.0 met de refs, 0.0 met het zaad
+    FAR_TAG: [0.0, 1.0, 0.0],  # cosine 0 met alles
+}
+
+
+@pytest.fixture()
+def patched_c(monkeypatch):
+    """Patch cv2/model/storage voor de conditie-C-tests (key-bewuste fake decode)."""
+    state = {"last_key": None, "gate_kp": None}
+
+    class _FakeStorageC:
+        def connect(self):
+            pass
+
+        def get_training_image(self, key):
+            if key == BAD_REF_KEY_C:
+                raise FileNotFoundError(key)
+            state["last_key"] = key
+            return key.encode()
+
+        def put_training_image(self, key, data, content_type="image/png"):
+            pass
+
+    class _FakeModelManagerC:
+        is_loaded = True
+
+        async def load_models(self):  # pragma: no cover - nooit nodig (is_loaded)
+            pass
+
+        async def generate_embedding(self, pil_img):
+            if isinstance(pil_img, str):
+                return np.asarray(_REGION_EMB_C[pil_img], np.float32)
+            return np.asarray(_EMB_BY_KEY_C[state["last_key"]], np.float32)
+
+    fake_storage = _FakeStorageC()
+    fake_mm = _FakeModelManagerC()
+
+    mm_mod = types.ModuleType("app.ml.model_manager")
+    mm_mod.model_manager = fake_mm
+    sys.modules["app.ml"] = types.ModuleType("app.ml")
+    sys.modules["app.ml"].__path__ = []
+    sys.modules["app.ml.model_manager"] = mm_mod
+
+    cls_mod = types.ModuleType("app.services.classification")
+    cls_mod._to_pil = lambda crop: crop  # identity
+    sys.modules["app.services.classification"] = cls_mod
+
+    gate_mod = types.ModuleType("app.services.keurmerk_gate")
+    gate_mod.GATE_THRESHOLD = 0.5
+    gate_mod.keurmerk_probability = lambda emb: state["gate_kp"]
+    sys.modules["app.services.keurmerk_gate"] = gate_mod
+
+    rp_mod = types.ModuleType("app.services.region_proposer")
+    rp_mod.propose_regions = lambda img: ([(10, 20, 30, 40)], {})  # één regio/pagina
+    sys.modules["app.services.region_proposer"] = rp_mod
+
+    st_mod = types.ModuleType("app.services.storage")
+    st_mod.storage_service = fake_storage
+    sys.modules["app.services.storage"] = st_mod
+
+    fake_cv2 = types.ModuleType("cv2")
+    fake_cv2.IMREAD_COLOR = 1
+    fake_cv2.COLOR_BGR2RGB = 4
+    fake_cv2.INTER_AREA = 3
+    fake_cv2.imdecode = lambda buf, flag: np.zeros((8, 8, 3), dtype=np.uint8)
+    fake_cv2.cvtColor = lambda a, code: a
+    fake_cv2.resize = lambda a, size, interpolation=None: np.zeros((64, 64, 3), np.uint8)
+    fake_cv2.imencode = lambda ext, crop: (True, np.frombuffer(b"png", np.uint8))
+    sys.modules["cv2"] = fake_cv2
+
+    # _content_digest: het zaad (ndarray) -> "seed"; regio-crops (strings) -> uniek
+    # per tag, zodat NFR-6 alleen slaat als een test dat expliciet forceert.
+    monkeypatch.setattr(
+        bs, "_content_digest", lambda crop: "seed" if isinstance(crop, np.ndarray) else f"crop-{crop}"
+    )
+    # Eén regio per pagina; de tag wordt per test ingesteld via _crop_bgr.
+    monkeypatch.setattr(bs, "_crop_bgr", lambda img, b: NEAR_REF_TAG)
+
+    return {"state": state}
+
+
+@pytest.mark.asyncio
+async def test_c_ge_k_refs_matcht_ondanks_lage_gids_cosine(patched_c):
+    """(a) AC1/AC4a: >= k (3) echte refs -> een regio met een gids-cosine ONDER de
+    drempel (0,0 < 0,6) matcht via nearest-reference-ranking (ref_sim ~1,0 >= 0,6).
+    Faalt op het oude gids-only-gedrag (dat zou deze regio afwijzen)."""
+    result = await bs.search_with_seed(
+        seed_path=SEED_KEY_C,
+        gtin_pages=[{"gtin": "111", "page_key": "artwork/111/p.png"}],
+        threshold=0.6,
+        real_ref_paths=[REF1_KEY_C, REF2_KEY_C, REF3_KEY_C],
+        ranking_threshold=0.6,
+        min_refs=3,
+    )
+    assert result["ranking_active"] is True
+    assert result["real_refs_used"] == 3
+    assert len(result["matches"]) == 1
+    m = result["matches"][0]
+    assert m["seed_cosine"] < 0.6  # de gids-cosine zelf haalt de drempel niet
+    assert m["ranking_cosine"] is not None
+    assert m["ranking_cosine"] >= 0.6
+
+
+@pytest.mark.asyncio
+async def test_c_onder_k_refs_ongewijzigd_gids_pad(patched_c):
+    """(b) AC2/AC4b: < k (hier 2, default k=3) echte refs -> conditie C schakelt NIET
+    in; dezelfde regio (lage gids-cosine) matcht dan ook niet — ongewijzigd gedrag."""
+    result = await bs.search_with_seed(
+        seed_path=SEED_KEY_C,
+        gtin_pages=[{"gtin": "111", "page_key": "artwork/111/p.png"}],
+        threshold=0.6,
+        real_ref_paths=[REF1_KEY_C, REF2_KEY_C],
+    )
+    assert result["ranking_active"] is False
+    assert result["real_refs_used"] == 2
+    assert result["matches"] == []
+
+
+@pytest.mark.asyncio
+async def test_c_onleesbare_ref_telt_niet_mee_voor_k(patched_c):
+    """Zacht falen per ref (NFR-3-patroon): een onleesbare/ontbrekende echte-crop-
+    referentie wordt overgeslagen en telt niet mee voor de k-drempel — 2 leesbare
+    refs + 1 kapotte blijft dus < k=3, conditie C schakelt niet in."""
+    result = await bs.search_with_seed(
+        seed_path=SEED_KEY_C,
+        gtin_pages=[{"gtin": "111", "page_key": "artwork/111/p.png"}],
+        threshold=0.6,
+        real_ref_paths=[REF1_KEY_C, BAD_REF_KEY_C, REF2_KEY_C],
+    )
+    assert result["ranking_active"] is False
+    assert result["real_refs_used"] == 2
+    assert result["matches"] == []
+
+
+@pytest.mark.asyncio
+async def test_c_gate_blijft_gelden_ondanks_conditie_c(patched_c):
+    """(c) AC3/AC4c: de keurmerk-gate-voorfilter blijft vóór conditie C gelden — een
+    regio die de gate niet haalt wordt geweerd, ook al zou de ranking-cosine matchen."""
+    patched_c["state"]["gate_kp"] = 0.05  # ruim onder de bootstrap-gate (default 0,2)
+    result = await bs.search_with_seed(
+        seed_path=SEED_KEY_C,
+        gtin_pages=[{"gtin": "111", "page_key": "artwork/111/p.png"}],
+        threshold=0.6,
+        real_ref_paths=[REF1_KEY_C, REF2_KEY_C, REF3_KEY_C],
+        ranking_threshold=0.6,
+        min_refs=3,
+    )
+    assert result["matches"] == []
+
+
+@pytest.mark.asyncio
+async def test_c_nfr6_zaadlek_guard_blijft_gelden_ondanks_conditie_c(patched_c, monkeypatch):
+    """(c) AC3/AC4c/NFR-6: een regio die inhoudelijk het zaadbeeld is, wordt ook onder
+    conditie C nooit als output-crop teruggegeven — de guard staat NA de match-check,
+    ongeacht of de match via het gids-pad of de ranking tot stand kwam."""
+    monkeypatch.setattr(bs, "_content_digest", lambda crop: "seed")  # alles == zaad-digest
+    result = await bs.search_with_seed(
+        seed_path=SEED_KEY_C,
+        gtin_pages=[{"gtin": "111", "page_key": "artwork/111/p.png"}],
+        threshold=0.6,
+        real_ref_paths=[REF1_KEY_C, REF2_KEY_C, REF3_KEY_C],
+        ranking_threshold=0.6,
+        min_refs=3,
+    )
+    assert result["matches"] == []
+    assert result["seed_leaks_skipped"] >= 1

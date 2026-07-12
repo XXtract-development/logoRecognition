@@ -56,7 +56,7 @@ const mockMl = mlClient as unknown as {
   computePhash: ReturnType<typeof vi.fn>;
 };
 const mockPrisma = prisma as unknown as {
-  referenceLogo: { findFirst: ReturnType<typeof vi.fn> };
+  referenceLogo: { findFirst: ReturnType<typeof vi.fn>; findMany: ReturnType<typeof vi.fn> };
   artworkImport: { findFirst: ReturnType<typeof vi.fn> };
   artworkReviewItem: { findFirst: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn> };
   hardNegative: { findUnique: ReturnType<typeof vi.fn> };
@@ -99,6 +99,9 @@ beforeEach(() => {
   mockPrisma.referenceLogo.findFirst.mockImplementation(({ where }: { where: { active?: boolean } }) =>
     Promise.resolve(where.active ? null : { storagePath: 'reference-logos/VEGAN/seed.png' })
   );
+  // Story 19.9: standaard 0 actieve ECHTE-crop-referenties (< k) — de sampler blijft
+  // op het gids-pad in deze suite (geen 19.9-scenario's hier).
+  mockPrisma.referenceLogo.findMany.mockResolvedValue([]);
   mockPrisma.artworkImport.findFirst.mockImplementation(
     ({ where }: { where: { gtin: string } }) =>
       Promise.resolve({ storagePath: `artwork/${where.gtin}/converted-0.png` })

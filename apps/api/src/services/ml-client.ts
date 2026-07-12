@@ -644,6 +644,13 @@ export class MLClient {
    * @param request.threshold  bootstrap-cosine-drempel tegen het zaad (default 0,93).
    * @param request.perCodeCap max aantal crops per run (budget-guard).
    * @param request.maxSeconds wall-clock time-box (ml-side, defence-in-depth).
+   * @param request.realRefPaths      Story 19.9 (fase 2, conditie C) — MinIO-object-keys
+   *   van de actieve, door mensen bevestigde ECHTE referentie-crops van de klasse. De
+   *   caller (`bootstrap-run.ts`) geeft ze ALLEEN mee bij ≥ k refs; leeg/ontbrekend =
+   *   ongewijzigd het gids-drempel-pad.
+   * @param request.rankingThreshold  nearest-reference-cosine-drempel voor conditie C.
+   * @param request.minRefs           schakelmoment k, expliciet meegegeven zodat de
+   *   ml-service dezelfde k hanteert als de API-guard (geen config-drift).
    */
   async bootstrapSearch(request: {
     seedPath: string;
@@ -651,6 +658,9 @@ export class MLClient {
     threshold: number;
     perCodeCap?: number;
     maxSeconds?: number;
+    realRefPaths?: string[];
+    rankingThreshold?: number;
+    minRefs?: number;
   }): Promise<{
     seed_path: string;
     threshold: number;
@@ -658,6 +668,7 @@ export class MLClient {
       gtin: string;
       bbox: { x: number; y: number; width: number; height: number };
       seed_cosine: number;
+      ranking_cosine: number | null;
       crop_path: string;
       source_file: string;
     }>;
@@ -665,6 +676,8 @@ export class MLClient {
     gtins_total: number;
     timed_out: boolean;
     seed_leaks_skipped: number;
+    ranking_active: boolean;
+    real_refs_used: number;
   }> {
     try {
       const res = await this.client.post('/ml/bootstrap-search', {
@@ -673,6 +686,13 @@ export class MLClient {
         threshold: request.threshold,
         per_code_cap: request.perCodeCap ?? 25,
         max_seconds: request.maxSeconds ?? 1000,
+        ...(request.realRefPaths && request.realRefPaths.length > 0
+          ? { real_ref_paths: request.realRefPaths }
+          : {}),
+        ...(request.rankingThreshold !== undefined
+          ? { ranking_threshold: request.rankingThreshold }
+          : {}),
+        ...(request.minRefs !== undefined ? { min_refs: request.minRefs } : {}),
       });
       return res.data;
     } catch (error) {

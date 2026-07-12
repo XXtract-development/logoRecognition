@@ -50,6 +50,8 @@ import {
   getBootstrapThreshold,
   getBootstrapRunBudget,
   getBootstrapMaxSeconds,
+  getRankingMinRefs,
+  getRankingThreshold,
 } from './config';
 
 const logger = createLogger('flywheel-bootstrap-run');
@@ -172,6 +174,15 @@ async function resolveArtworkPage(gtin: string): Promise<string | null> {
 const BOOTSTRAP_REVIEW_REASON = 'bootstrap-lege-klasse';
 /** Menselijke review-bronnen die een crop als ECHT bevestigen (Story 14.1). */
 const HUMAN_ECHT_SOURCES = ['review-accept', 'review-annotate'] as const;
+/**
+ * Story 19.9 — `reference_logos.source`-waarden die een ECHTE (niet-gids)
+ * referentie-crop markeren: menselijk bevestigd via review (`review-confirmed`,
+ * 12.3-pivot), de RECYCLABLE-POC-herstelset (`realref-live-poc`, 19.13) en de
+ * flywheel-auto-promotie (`flywheel-promotion`). Gids-seeds dragen een ANDER
+ * source-patroon (`seed:...`) en vallen hier bewust buiten — conditie C rankt
+ * uitsluitend tegen ECHTE crops, nooit tegen het gids-logo zelf.
+ */
+const REAL_CROP_SOURCES = ['review-confirmed', 'realref-live-poc', 'flywheel-promotion'] as const;
 
 /** Eén ml-zaad-match (de ECHTE crop-regio in de artwork). */
 interface BootstrapMatch {
@@ -303,7 +314,8 @@ export interface ClassSearchResult {
 
 /**
  * DE gedeelde crop-producerende kern (Story 17.1 bootstrap + Story 19.4 sampler,
- * Story 19.8 herzien: crops → review-wachtrij i.p.v. auto-nominatie).
+ * Story 19.8 herzien: crops → review-wachtrij i.p.v. auto-nominatie; Story 19.9:
+ * schakelmoment naar nearest-reference-ranking bij ≥ k echte crop-referenties).
  *
  * Neemt een EXPLICIETE kandidaat-GTIN-lijst voor één keurmerkklasse en legt de
  * ECHTE crops voor aan de menselijke review-wachtrij:
@@ -312,7 +324,12 @@ export interface ClassSearchResult {
  *      `ok` én code ∈ gedeclareerde marks) + de artwork-pagina; niet-declarerende/artwork-loze GTINs
  *      vallen af (geteld). Elke GTIN telt tegen het budget.
  *   3. `mlClient.bootstrapSearch({ seedPath, gtinPages, ... })` → de ECHTE crops
- *      (`crop_path`) in de artwork met `seed_cosine` per match (≥ drempel).
+ *      (`crop_path`) in de artwork met `seed_cosine` per match (≥ drempel). Heeft
+ *      de klasse ≥ k (`getRankingMinRefs`) actieve ECHTE referentie-crops
+ *      (`REAL_CROP_SOURCES`), dan gaan die crop-paden mee als `realRefPaths` —
+ *      de ml-service schakelt dan (ALS AANVULLING op het gids-pad) naar
+ *      nearest-reference-ranking (conditie C, Story 19.9). Onder k: kaal
+ *      aanroepen, ongewijzigd gids-drempel-pad.
  *   4. per match `queueCropForReview` → OPEN `artworkReviewItem` in `/artwork/review-queue`
  *      (na hard-negative + dedup-guard) — nooit het label/zaad zelf als crop (NFR-6).
  *
@@ -398,6 +415,19 @@ export async function searchAndQueueClassForReview(
   // 3. ml-service zaad-zoektocht (cosine tegen zaad-embedding, matches ≥ drempel).
   const threshold = getBootstrapThreshold();
   const maxSeconds = Math.max(1, Math.round((deadline - Date.now()) / 1000));
+
+  // Story 19.9 — schakelmoment: ≥ k actieve ECHTE-crop-referenties van de klasse
+  // schakelen het matchsignaal naar nearest-reference-ranking (conditie C,
+  // ml-side). Onder k: kaal aanroepen (geen realRefPaths) — ml-service blijft
+  // ongewijzigd op het gids-drempel-pad (AC2).
+  const minRefs = getRankingMinRefs();
+  const realRefRows = await prisma.referenceLogo.findMany({
+    where: { t3777Code, active: true, source: { in: [...REAL_CROP_SOURCES] } },
+    orderBy: { createdAt: 'desc' },
+    select: { storagePath: true },
+  });
+  const realRefPaths = realRefRows.map((r) => r.storagePath);
+
   let search;
   try {
     search = await mlClient.bootstrapSearch({
@@ -405,6 +435,9 @@ export async function searchAndQueueClassForReview(
       gtinPages,
       threshold,
       maxSeconds,
+      ...(realRefPaths.length >= minRefs
+        ? { realRefPaths, rankingThreshold: getRankingThreshold(), minRefs }
+        : {}),
     });
   } catch (err) {
     // ml-zoektocht mislukt (zaad onleesbaar/ml onbereikbaar). Fail-closed: geen
