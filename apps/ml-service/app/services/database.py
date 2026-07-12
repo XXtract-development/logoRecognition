@@ -613,22 +613,39 @@ class DatabaseService:
         """
         async with self.get_connection() as conn:
             embedding_list = embedding.tolist()
-            rows = await conn.fetch(
-                """
-                SELECT
-                    rl.id AS reference_logo_id,
-                    rl.t3777_code,
-                    rl.variant_label,
-                    1 - (re.embedding <=> $1::vector) AS similarity
-                FROM reference_embeddings re
-                JOIN reference_logos rl ON re.reference_logo_id = rl.id
-                WHERE rl.active = true
-                ORDER BY re.embedding <=> $1::vector
-                LIMIT $2
-                """,
-                str(embedding_list),
-                limit,
-            )
+            # Story 19.14: raise ivfflat.probes so the nearest-neighbour search
+            # scans every cluster and returns the true nearest neighbours. The
+            # ivfflat index (lists=100 on a few-hundred rows) with the default
+            # probes=1 scans a single near-empty cluster and yields the wrong
+            # top-1 (the flywheel callers use limit=1 — a correctness bug, not a
+            # count shortfall). set_config(..., is_local=true) is
+            # transaction-scoped and must run inside an explicit transaction to
+            # apply to the following query (find_similar_references otherwise
+            # runs in autocommit); it reverts on commit, so it never affects
+            # other pooled queries. The value is a bind parameter, so it is
+            # injection-safe by construction. Harmless if the index is absent
+            # (a seqscan ignores the setting).
+            probes = int(settings.REFERENCE_SEARCH_PROBES)
+            async with conn.transaction():
+                await conn.execute(
+                    "SELECT set_config('ivfflat.probes', $1, true)", str(probes)
+                )
+                rows = await conn.fetch(
+                    """
+                    SELECT
+                        rl.id AS reference_logo_id,
+                        rl.t3777_code,
+                        rl.variant_label,
+                        1 - (re.embedding <=> $1::vector) AS similarity
+                    FROM reference_embeddings re
+                    JOIN reference_logos rl ON re.reference_logo_id = rl.id
+                    WHERE rl.active = true
+                    ORDER BY re.embedding <=> $1::vector
+                    LIMIT $2
+                    """,
+                    str(embedding_list),
+                    limit,
+                )
             out: List[Dict[str, Any]] = []
             for row in rows:
                 sim = float(row.get("similarity", 0.0) or 0.0)

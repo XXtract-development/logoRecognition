@@ -885,3 +885,93 @@ So that elke keurmerkklasse sterk vertegenwoordigd de referentiebibliotheek in g
 **Then** gebeurt dat achter de bestaande nominatie-vlag en met expliciete toestemming voor elke ACC-schrijf/herstart (Constraint 1).
 
 *Bronnen: FR-22; AD-1/AD-2/AD-6; FR-2/6/7; NFR-5; afhankelijk van 19.1 + 19.3.*
+
+---
+
+## Uitbreiding 2026-07-11 — herkenningsherstel uit ACC-diagnose
+
+*Drie begrensde fix-stories uit de read-only ACC-diagnose van 2026-07-11 (geheugen `project_recyclable_dead_refs`), verscherpt na een adversariële review + gerichte ACC-verificatie op 2026-07-11.*
+
+***Uitvoervolgorde: 19.14 → 19.12 → 19.13*** *(nummers blijven ongewijzigd; de index-fix draait eerst omdat hij losstaat, laag risico is en de top-1-metingen van 19.13 pas betrouwbaar maakt).*
+
+*Geverifieerde uitgangspunten: `FLYWHEEL_NOMINATION_ENABLED=true` op ACC; er bestaan **0** `flywheel-promotion`-referenties (van welk keurmerk dan ook) → onder de live-vlag wordt geen enkele menselijke goedkeuring een actieve referentie. De 125 `review-confirmed` refs zijn historisch (vlag-uit-tijdperk). ivfflat-index `idx_reference_embeddings_embedding` heeft `lists=100` op 215 rijen (staat NIET in de repo-migraties). `logo_embeddings` heeft géén ivfflat-index. Embeddingmodel NIET stale (cosine 1,0 vers vs opgeslagen); bibliotheek verder gezond (215 actieve refs volledig gevuld).*
+
+### Story 19.12: Menselijke accept = grondwaarheid → directe actieve referentie
+
+As a kwaliteitsbeheerder,
+I want dat een expliciete menselijke goedkeuring (accept) van een review-crop áltijd direct een actieve referentie oplevert — ongeacht de nominatie-vlag,
+So that menselijke grondwaarheid niet stil verloren gaat aan automatische drempels die voor onbevestigde nominaties bedoeld zijn, en de bibliotheek voor élk keurmerk betrouwbaar groeit.
+
+**Geverifieerde oorzaak (niet de eerder vermoede "class-exists skip"):** onder `FLYWHEEL_NOMINATION_ENABLED=true` enqueue't de accept-handler een *nominatie* (herkomst `review`) i.p.v. direct te registreren (`artwork-pipeline.ts` accept-tak, ~regel 1106-1120). Die nominatie moet vervolgens de automatische promotie-guardrails (crosscheck-drempel 0,80, promotiedrempel) passeren, wat echte crops (~0,70 cosine) niet halen. Gevolg: **0 `flywheel-promotion`-referenties bestaan** — menselijke goedkeuringen worden voor geen enkel keurmerk een referentie. De vlag-uit-tak (`~1121-1147`) registreert wél direct (`register_crop_as_reference`, `source='review-confirmed'`).
+
+**Acceptance Criteria:**
+
+**Given** `FLYWHEEL_NOMINATION_ENABLED=true` (de live-toestand)
+**When** een reviewer een crop expliciet bevestigt (accept in de review-queue)
+**Then** ontstaat direct een actieve referentie (`active=true`, `source='review-confirmed'`) MET embedding, zónder dat de crosscheck-/promotiedrempels de mens-bevestigde crop kunnen droppen — de menselijke accept is grondwaarheid.
+
+**Given** een keurmerkklasse waarvan alle bestaande `reference_logos`-rijen inactief zijn (of geen embedding hebben)
+**When** een crop voor die klasse wordt geaccepteerd
+**Then** blokkeert de aanwezigheid van die dode rijen de nieuwe actieve referentie niet; idempotentie geldt per `storage_path` (geen dubbele actieve referentie voor dezelfde crop).
+
+**Given** de reopen/relabel-symmetrie
+**When** een geaccepteerd item wordt heropend
+**Then** deactiveert de bijbehorende zojuist-aangemaakte actieve referentie mee (de deactivatie-conditie dekt de bron die 19.12 aanmaakt — huidige reopen raakt alleen `source='review-confirmed'`; bevestig dat de nieuwe referenties díe bron gebruiken zodat de symmetrie klopt).
+
+**Given** een falende regressietest die het huidige gat aantoont (accept onder vlag-aan → geen actieve referentie)
+**When** de fix is toegepast
+**Then** bewijst de test (rood→groen) dat accept een actieve referentie + embedding produceert, ook voor een klasse met bestaande inactieve refs.
+
+*Bronnen: diagnose + ACC-verificatie 2026-07-11; code `apps/api/src/api/v1/artwork-pipeline.ts` (accept-review-item, ~1106-1147), `apps/api/src/services/flywheel/promotion.ts` (`PROMOTION_SOURCE`, guardrails), `apps/ml-service/app/services/similarity.py:316` (`register_crop_as_reference`). Raakt álle keurmerken, niet alleen RECYCLABLE. Overlapt bewust met de crosscheck-vloer-vraag (resume Task 2) maar is onderscheiden: dit gaat over mens-bevestigde accepts, niet auto-confirm van onbeoordeelde matches.*
+
+### Story 19.13: RECYCLABLE-referenties herstellen
+
+As a datamanager,
+I want RECYCLABLE_GENERAL_CLAIM weer herkend krijgen door z'n echte-crop-referenties te herstellen,
+So that echte recycle-logo's correct worden geclassificeerd in plaats van als FAIRTRADE_COCOA/EU_ORGANIC.
+
+**Geverifieerde nuance:** de 26 dode refs (`source='realref-live-poc'`) zijn een ándere populatie dan de review-crops uit 19.8 — ze zijn door het POC-script ingeschoten, hebben geen review-items, en kunnen dus NIET via het 19.12-accept-pad worden hersteld. `realref_live.py` kent bovendien geen "reactiveren + embedding-herbouwen"-pad (alleen `_revert`=DELETE → re-INSERT met `active=true`). Hoe de 26 rijen aan `active=false` + 0 embeddings kwamen is onverklaard. 19.13 vereist daarom een NIEUW, idempotent herstelscript.
+
+**Acceptance Criteria:**
+
+**Given** de 26 dode RECYCLABLE-referenties (`source='realref-live-poc'`, `active=false`, 0 embeddings; enige code met dit patroon — de 2 losse Beter Leven dode rijen vallen expliciet BUITEN scope)
+**When** het herstelscript draait (read-only verificatie eerst, dan mutatie met toestemming)
+**Then** krijgt elke valide crop (herlaadbaar via `storage_path` uit MinIO) weer een embedding + `active=true`, idempotent (herdraaien verandert niets); crops die niet meer laadbaar zijn worden overgeslagen mét telling.
+
+**Given** de ~26 crops collapsen naar bijna-identieke embeddings (line-art, ~86% transparant) en de legacy near-dup-guard blokkeert `>=0,97`
+**When** het script de refs herstelt
+**Then** kiest de story expliciet één beleid — herstel alle 26 (over-representatie geaccepteerd) OF dedup tot een representatieve subset — en legt het verwachte eindaantal vast zodat "zonder duplicaten" meetbaar is.
+
+**Given** herstelde RECYCLABLE-referenties
+**When** een echte RECYCLABLE-crop wordt geclassificeerd (`/ml/artwork/classify` op ACC, poort 8011)
+**Then** is de top-1 `RECYCLABLE_GENERAL_CLAIM`, gemeten met een benoemd, herbruikbaar meetscript tegen een gecommit gold-set/crop-lijst (POC bewees 0%→100%); draait ná 19.14 zodat de index-top1 betrouwbaar is.
+
+**Given** de precisie van andere keurmerken
+**When** RECYCLABLE hersteld is
+**Then** neemt het aantal valse RECYCLABLE-matches niet toe — dezelfde vóór/na-meting toont behoud van precisie.
+
+*Bronnen: diagnose + ACC-verificatie 2026-07-11; `apps/ml-service/scripts/realref_live.py` (referentie, niet herbruikbaar as-is). Onafhankelijk van 19.12 voor deze 26 (eigen scriptpad); 19.12 dekt wél toekomstige review-goedkeuringen. Constraint: ACC-schrijf alleen met expliciete toestemming, read-only verificatie vooraf.*
+
+### Story 19.14: ivfflat-index onder-fetch corrigeren
+
+As a systeembeheerder,
+I want dat de nearest-neighbor-zoek de werkelijke dichtstbijzijnde referenties teruggeeft,
+So that herkenning niet stilletjes buren mist door een verkeerd geconfigureerde vector-index.
+
+**Geverifieerde oorzaak:** `idx_reference_embeddings_embedding` is `ivfflat (embedding vector_cosine_ops) WITH (lists='100')` op maar 215 rijen → ~2 rijen per cluster, met `probes=1` scant de query 1 cluster → ~1 buur. De index staat NIET in de repo-migraties (ad-hoc op ACC aangemaakt); `logo_embeddings` (detector-pad) heeft géén ivfflat-index en is dus niet geraakt — scope beperkt tot `reference_embeddings`.
+
+**Acceptance Criteria:**
+
+**Given** de degenererende ivfflat-index (lists=100 op 215 rijen, probes=1)
+**When** `find_similar_references` met `limit=N` draait
+**Then** geeft die tot N werkelijke naaste buren terug (niet stelselmatig ~1) — geverifieerd met een vóór/na-meting: index-top1 vs exact(seqscan)-top1 agreement over een steekproef.
+
+**Given** dat de fix committeerbaar moet zijn terwijl de index niet in de repo staat
+**When** de oplossing wordt gekozen
+**Then** wordt die verankerd in code/migratie — óf een migratie die de index met passende `lists` (≈√N) (her)definieert of dropt (seqscan is prima bij deze N), óf `SET LOCAL ivfflat.probes` binnen een expliciete transactie in `find_similar_references` (nooit kale `SET` op de pooled connectie — dat lekt naar hergebruikte queries).
+
+**Given** een regressietest die de under-fetch reproduceert
+**When** de test draait
+**Then** bouwt hij eerst een gevulde ivfflat-index in de degenererende toestand op (anders doet Postgres seqscan en reproduceert de bug niet), en bewijst rood→groen dat de fix tot N buren teruggeeft.
+
+*Bronnen: diagnose + ACC-verificatie 2026-07-11; `apps/ml-service/app/services/database.py:601` (`find_similar_references`), migratie `0005_add_reference_embeddings`. Onafhankelijk, laag risico; raakt herkenning van álle codes via de referentie-match. Constraint: index-herbouw/REINDEX op ACC alleen met expliciete toestemming.*

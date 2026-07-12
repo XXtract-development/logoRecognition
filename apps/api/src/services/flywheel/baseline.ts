@@ -34,7 +34,11 @@ export type BaselineInvalidationReason =
   | 'rollback'
   | 'reference-curatie'
   | 'outlier-deactivatie'
-  | 'legacy-12.3-registratie';
+  | 'legacy-12.3-registratie'
+  // Story 19.12: een menselijke accept registreert de crop áltijd direct als
+  // review-confirmed referentie (ongeacht de nominatie-vlag) → de actieve set
+  // muteert, dus baseline verouderd markeren.
+  | 'review-accept-registratie';
 
 /**
  * Is de vergelijkings-baseline verouderd (AC 3, AD-5)? Bron = de

@@ -1102,48 +1102,42 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
               error: err instanceof Error ? err.message : 'unknown',
             });
           }
+        }
 
-          await enqueueNominations(
-            accepted.gtin,
-            [
-              {
-                t3777Code: accepted.t3777Code,
-                confidence: accepted.confidence ?? 1,
-                method: accepted.method ?? undefined,
-                cropPath: accepted.cropPath,
-                sourceFile: accepted.sourceFile ?? undefined,
-                bbox: (accepted.bbox as { x: number; y: number; width: number; height: number }) ?? undefined,
-              },
-            ],
-            [accepted.t3777Code],
-            'review'
-          );
-        } else {
-          try {
-            const ref = await mlClient.registerReference(accepted.cropPath, accepted.t3777Code);
-            referenceAdded = ref.added;
-            logger.info('Review crop reference registration', {
-              reviewItemId: id,
-              t3777Code: accepted.t3777Code,
-              added: ref.added,
-              reason: ref.reason,
-            });
-            // Baseline-invalidatie (Story 13.6, AC 3 / AD-5): legacy-12.3-
-            // registratie muteert de actieve set zolang de hoofdvlag uit staat →
-            // markeer de baseline verouderd wanneer er daadwerkelijk een
-            // referentie is toegevoegd. Best-effort.
-            if (ref.added) {
-              void markBaselineStale(
-                'legacy-12.3-registratie',
-                (request as { user?: { userId?: string } }).user?.userId ?? null
-              );
-            }
-          } catch (err) {
-            logger.warn('Review crop reference registration failed (non-fatal)', {
-              reviewItemId: id,
-              error: err instanceof Error ? err.message : 'unknown',
-            });
+        // Story 19.12: een expliciete menselijke accept is grondwaarheid → de
+        // bevestigde crop wordt ALTIJD direct een actieve review-confirmed
+        // referentie, ongeacht FLYWHEEL_NOMINATION_ENABLED. De vroegere
+        // nominatie-omweg (Story 13.2) is voor accepts VERVALLEN: review-
+        // nominaties slaan de promotiedrempel over (nomination.ts, 19.11) en
+        // promoteOne kent geen storage_path-guard → dat zou een TWEEDE, dubbele
+        // actieve referentie naast deze directe registratie maken. Direct
+        // registreren is de bron van waarheid; idempotent per storage_path
+        // (register_crop_as_reference guard't dubbele actieve refs). De gold-set-
+        // aanwas hierboven (14.1) blijft. Best-effort: een ML-fout mag de accept
+        // nooit terugdraaien.
+        try {
+          const ref = await mlClient.registerReference(accepted.cropPath, accepted.t3777Code);
+          referenceAdded = ref.added;
+          logger.info('Review crop reference registration', {
+            reviewItemId: id,
+            t3777Code: accepted.t3777Code,
+            added: ref.added,
+            reason: ref.reason,
+          });
+          // Baseline-invalidatie (Story 13.6, AC 3 / AD-5): de registratie muteert
+          // de actieve set → markeer de baseline verouderd wanneer er daadwerkelijk
+          // een referentie is toegevoegd. Best-effort.
+          if (ref.added) {
+            void markBaselineStale(
+              'review-accept-registratie',
+              (request as { user?: { userId?: string } }).user?.userId ?? null
+            );
           }
+        } catch (err) {
+          logger.warn('Review crop reference registration failed (non-fatal)', {
+            reviewItemId: id,
+            error: err instanceof Error ? err.message : 'unknown',
+          });
         }
       }
 
@@ -1263,41 +1257,31 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
             error: err instanceof Error ? err.message : 'unknown',
           });
         }
+      }
 
-        await enqueueNominations(
-          updated.gtin,
-          [
-            {
-              t3777Code: code,
-              confidence: updated.confidence ?? 1,
-              method: updated.method ?? undefined,
-              cropPath: cropKey,
-              sourceFile: updated.sourceFile ?? undefined,
-              bbox: { x, y, width: w, height: h },
-            },
-          ],
-          [code],
-          'review'
-        );
-      } else {
-        try {
-          const ref = await mlClient.registerReference(cropKey, code);
-          referenceAdded = ref.added;
-          // Baseline-invalidatie (Story 13.6, AC 3 / AD-5): legacy-12.3-
-          // registratie muteert de actieve set → baseline verouderd markeren
-          // wanneer er daadwerkelijk een referentie is toegevoegd. Best-effort.
-          if (ref.added) {
-            void markBaselineStale(
-              'legacy-12.3-registratie',
-              (request as { user?: { userId?: string } }).user?.userId ?? null
-            );
-          }
-        } catch (err) {
-          logger.warn('Annotation reference registration failed (non-fatal)', {
-            reviewItemId: id,
-            error: err instanceof Error ? err.message : 'unknown',
-          });
+      // Story 19.12: identiek aan het accept-pad — een annotatie is een
+      // expliciete menselijke accept (de reviewer wees de crop zelf aan) →
+      // ALTIJD direct een actieve review-confirmed referentie, ongeacht de vlag.
+      // De nominatie-omweg is ook hier VERVALLEN (zie accept-pad: 19.11-bypass +
+      // promoteOne-zonder-guard = duplicaat). De gold-set-aanwas hierboven (14.1)
+      // blijft. Registratie idempotent per storage_path. Best-effort.
+      try {
+        const ref = await mlClient.registerReference(cropKey, code);
+        referenceAdded = ref.added;
+        // Baseline-invalidatie (Story 13.6, AC 3 / AD-5): de registratie muteert
+        // de actieve set → baseline verouderd markeren wanneer er daadwerkelijk
+        // een referentie is toegevoegd. Best-effort.
+        if (ref.added) {
+          void markBaselineStale(
+            'review-accept-registratie',
+            (request as { user?: { userId?: string } }).user?.userId ?? null
+          );
         }
+      } catch (err) {
+        logger.warn('Annotation reference registration failed (non-fatal)', {
+          reviewItemId: id,
+          error: err instanceof Error ? err.message : 'unknown',
+        });
       }
 
       logger.info('Review item annotated', { reviewItemId: id, t3777Code: code, registered: result.registered });

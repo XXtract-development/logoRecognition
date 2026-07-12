@@ -5,6 +5,7 @@ Uses pydantic-settings for environment variable management.
 
 from typing import List
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -52,6 +53,20 @@ class Settings(BaseSettings):
     # Embedding settings
     EMBEDDING_DIM: int = 512
     EMBEDDING_MODEL: str = "efficientnet_b0"
+
+    # Reference nearest-neighbour search (Story 19.14): the ivfflat index on
+    # reference_embeddings was created WITH (lists=100) on a few-hundred-row
+    # table. With the default ivfflat.probes=1 the search scans a single
+    # near-empty cluster and returns the nearest row *within that one cluster* —
+    # the wrong top-1, not the true nearest neighbour (the flywheel callers use
+    # limit=1, so this is a correctness bug, not merely a count shortfall).
+    # Setting probes >= the index's ``lists`` makes the scan cover every cluster
+    # and restores exact top-1. Keep this >= the index lists (currently 100): if
+    # lists is ever raised on a REINDEX, raise this too or the under-recall
+    # returns. Applied via set_config(..., is_local=true) inside a transaction in
+    # find_similar_references. Must be >= 1 (Postgres rejects probes < 1), hence
+    # the ge=1 guard — a 0/negative override would otherwise abort every search.
+    REFERENCE_SEARCH_PROBES: int = Field(default=100, ge=1)
 
     # Training settings
     TRAINING_BATCH_SIZE: int = 16

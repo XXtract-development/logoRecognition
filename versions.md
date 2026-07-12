@@ -1,5 +1,13 @@
 # Versiegeschiedenis
 
+## 2026-07-12 (Herkenning vergelijkt weer met álle voorbeelden, en goedgekeurde keurmerken tellen gegarandeerd mee)
+
+### Herkenning miste soms het best passende voorbeeld
+- Bij het herkennen van een keurmerk vergelijkt het systeem het gevonden logo met bekende voorbeelden. Door een instelling keek het daarbij maar naar een klein deel van die voorbeelden, waardoor soms een minder goed passend keurmerk werd gekozen. Het vergelijkt nu weer met álle voorbeelden, zodat het juiste keurmerk betrouwbaarder bovenaan komt
+
+### Een goedgekeurd keurmerk wordt nu gegarandeerd meteen een actief voorbeeld
+- Als een medewerker een keurmerk-voorbeeld goedkeurt (via de beoordelingslijst of door zelf een kader te tekenen), wordt dat nu altijd direct een actief referentievoorbeeld dat de herkenning gebruikt. Voorheen liep een goedkeuring onder de huidige instelling via een omweg waar hij alsnog kon blijven steken — die omweg is verwijderd, zodat menselijke goedkeuringen niet meer verloren gaan
+
 ## 2026-07-07 (Keurmerken die eerder onzichtbaar werden gemist, komen nu bij een mens terecht — en bevestigde voorbeelden gaan écht meetellen)
 
 ### Een filter keurde echte keurmerken ten onrechte af — dat is hersteld

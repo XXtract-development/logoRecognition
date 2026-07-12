@@ -1,18 +1,23 @@
 /**
- * Story 13.2 — 12.3-pad-ombuiging (AC6) route-tests.
+ * Story 19.12 — mens-accept = grondwaarheid → directe referentie (vervangt de
+ * 13.2-AC6-ombuiging).
  *
- * Met FLYWHEEL_NOMINATION_ENABLED=true buigt het reviewstation-accept-pad om
- * naar nominatie (herkomst review, geënqueue-d) en roept het GEEN
- * mlClient.registerReference meer aan (ml-service schrijft geen referentie-
- * tabellen). Met de vlag uit blijft het legacy-12.3-gedrag ongewijzigd — dat is
- * de regressietest.
+ * Een expliciete menselijke accept registreert de bevestigde crop ALTIJD direct
+ * als review-confirmed referentie (mlClient.registerReference), ongeacht de
+ * FLYWHEEL_NOMINATION_ENABLED-vlag, en enqueue't GEEN nominatie meer. De
+ * nominatie-omweg (13.2) is vervallen: review-nominaties slaan de promotiedrempel
+ * over (nomination.ts, 19.11) en promoteOne kent geen storage_path-guard → dat
+ * maakte een tweede, dubbele actieve referentie naast de directe registratie.
+ * De gold-set-aanwas (14.1, recordAcceptDecision) blijft achter de vlag.
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import Fastify, { FastifyInstance } from 'fastify';
 import cookie from '@fastify/cookie';
+import sharp from 'sharp';
 import { PrismaClient } from '@prisma/client';
 import { mlClient } from '../../services/ml-client';
+import { downloadTrainingObject } from '../../services/storage';
 
 const mockPrisma = new PrismaClient() as unknown as Record<string, any>;
 
@@ -41,7 +46,7 @@ async function buildApp(): Promise<FastifyInstance> {
   return app;
 }
 
-describe('Story 13.2 — reviewstation-accept ombuiging (AC6)', () => {
+describe('Story 19.12 — reviewstation-accept → directe referentie', () => {
   let app: FastifyInstance;
   let addSpy: ReturnType<typeof vi.fn>;
 
@@ -72,8 +77,9 @@ describe('Story 13.2 — reviewstation-accept ombuiging (AC6)', () => {
     delete process.env.FLYWHEEL_NOMINATION_ENABLED;
   });
 
-  it('met vlag AAN: geen registerReference, wél nominatie-enqueue (AC6)', async () => {
+  it('Story 19.12: met vlag AAN registreert accept direct (review-confirmed) en enqueue-t GEEN nominatie', async () => {
     process.env.FLYWHEEL_NOMINATION_ENABLED = 'true';
+    (mlClient.registerReference as any).mockResolvedValueOnce({ added: true, reason: 'added' });
 
     const res = await app.inject({
       method: 'PATCH',
@@ -81,17 +87,19 @@ describe('Story 13.2 — reviewstation-accept ombuiging (AC6)', () => {
     });
 
     expect(res.statusCode).toBe(200);
-    // 12.3-registratie is uitgeschakeld (ml-service schrijft geen ref-tabellen).
-    expect(mlClient.registerReference).not.toHaveBeenCalled();
-    // In plaats daarvan een nominatie-job met herkomst review.
-    expect(addSpy).toHaveBeenCalledOnce();
-    const [jobName, jobData] = addSpy.mock.calls[0];
-    expect(jobName).toBe('nominate-crosscheck');
-    expect(jobData.origin).toBe('review');
-    expect(jobData.detections[0].t3777Code).toBe('EU_ORGANIC_FARMING');
+    // 19.12: mens-accept = grondwaarheid → directe review-confirmed referentie,
+    // ongeacht de vlag (dit faalt op het oude 13.2-ombuiggedrag dat onder de vlag
+    // JUIST niet registreerde → rood→groen-regressietest).
+    expect(mlClient.registerReference).toHaveBeenCalledWith(
+      'artwork-crops/08718989912451/crop-1.png',
+      'EU_ORGANIC_FARMING'
+    );
+    // GEEN nominatie meer: de omweg is vervallen om een dubbele actieve ref
+    // (directe registratie + gepromoveerde review-nominatie) te voorkomen.
+    expect(addSpy).not.toHaveBeenCalled();
   });
 
-  it('met vlag UIT: legacy-12.3-registratie ongewijzigd (regressietest, AC6)', async () => {
+  it('met vlag UIT: directe registratie ongewijzigd, geen nominatie', async () => {
     process.env.FLYWHEEL_NOMINATION_ENABLED = 'false';
     (mlClient.registerReference as any).mockResolvedValueOnce({ added: true, reason: 'added' });
 
@@ -103,6 +111,34 @@ describe('Story 13.2 — reviewstation-accept ombuiging (AC6)', () => {
     expect(res.statusCode).toBe(200);
     expect(mlClient.registerReference).toHaveBeenCalledWith(
       'artwork-crops/08718989912451/crop-1.png',
+      'EU_ORGANIC_FARMING'
+    );
+    expect(addSpy).not.toHaveBeenCalled();
+  });
+
+  // Story 19.12 — handler 2 (human-annotation) krijgt dezelfde behandeling: ook
+  // hier áltijd direct registreren, geen nominatie (dekt de tweede accept-handler).
+  it('Story 19.12: annotate registreert de getekende crop direct (review-confirmed), geen nominatie', async () => {
+    process.env.FLYWHEEL_NOMINATION_ENABLED = 'true';
+    (mlClient.registerReference as any).mockResolvedValueOnce({ added: true, reason: 'added' });
+    // downloadTrainingObject → een echt (klein) PNG-buffer zodat sharp de crop kan uitsnijden.
+    const png = await sharp({
+      create: { width: 40, height: 40, channels: 3, background: { r: 120, g: 160, b: 90 } },
+    })
+      .png()
+      .toBuffer();
+    (downloadTrainingObject as any).mockResolvedValue(png);
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/v1/artwork/review-items/ri-0001/annotate',
+      payload: { rel: { x: 0.1, y: 0.1, width: 0.5, height: 0.5 } },
+    });
+
+    expect(res.statusCode).toBe(200);
+    // Deterministische annotatie-cropkey (annot_{id}.png) → direct geregistreerd.
+    expect(mlClient.registerReference).toHaveBeenCalledWith(
+      'artwork-crops/08718989912451/annot_ri-0001.png',
       'EU_ORGANIC_FARMING'
     );
     expect(addSpy).not.toHaveBeenCalled();
