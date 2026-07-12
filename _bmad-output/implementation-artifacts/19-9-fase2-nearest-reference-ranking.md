@@ -1,6 +1,6 @@
 # Story 19.9: Fase 2 — nearest-reference-ranking zodra een klasse ≥ k echte crops heeft
 
-Status: ready-for-dev
+Status: in-progress
 
 <!-- Twee-traps-fase-2, uit correct-course (sprint-change-proposal-2026-07-07.md). Bouwt op 19.8: zodra een keurmerkklasse ≥ k door mensen bevestigde ECHTE crops heeft, schakelt de match van de absolute cosine-drempel tegen het GIDS-zaad naar nearest-reference-ranking tegen de ECHTE crops (conditie C). Bewezen 44%->100% in de 19.7-spike, zonder nieuwe training. -->
 
