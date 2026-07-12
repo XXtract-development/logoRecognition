@@ -1,6 +1,6 @@
 # Story 19.15: Zaadkeuze-semantiek — `resolveSeedPath` prefereert expliciet het gids-zaad
 
-Status: review
+Status: done
 
 <!-- Follow-up uit Story 19.9 Task 8 (2026-07-12, live-verificatie conditie C op ACC). Geen gedragswijziging aan conditie C zelf; scope = de zaadkeuze in het gids-fallback-pad van de bootstrap-zoektocht. -->
 
@@ -50,7 +50,7 @@ zodat **het gids-drempel-pad (de fallback in `search_with_seed`) semantisch tege
 - [x] 4. **Tests (AC: 4)** — `flywheel-bootstrap-run.test.ts`, nieuw blok "Story 19.15": (a) gids > nieuwere echte crop (rood bevestigd tegen oude implementatie); (b)+(c) fallback-gedrag (met gids-ontbreken resp. helemaal geen referentie); NFR-6-borgingstest; code-review-fix-regressietest (NULL-source). 5 nieuwe tests, 34/34 groen in het bestand.
 - [x] 5. **Regressie-borging conditie C (AC: 3)** — dedicated test bevestigt dat `realRefPaths`/`minRefs`/`rankingThreshold` exact hetzelfde blijven terwijl het zaad nu het gids-logo is; `searchAndQueueClassForReview`'s `realRefPaths`-opbouw (regels ongewijzigd in de diff) blijft onaangeraakt. Zie `19-15-ac-trace.md`.
 - [x] 6. **Gates** — `tsc --noEmit`: 0. Volledige api-vitest: 883/883 groen (2 skip, 37 todo; was 877 vóór deze story). ml-pytest: NIET gedraaid — git-hard bevestigd geen wijziging aan `apps/ml-service` (`git diff --stat` + `git status` leeg voor dat pad), dus geen ml-regressie mogelijk.
-- [ ] 7. **Eval/live-verificatie (AC: 5)** — BUITEN SCOPE van deze autonome deliverable: vereist expliciete per-geval toestemming van Friso (ACC-eval/deploy). NIET uitgevoerd. AC5 blijft open/pending-permission; story staat op `review`, niet `done`.
+- [x] 7. **Eval/live-verificatie (AC: 5)** — GEDAAN (2026-07-12, expliciete toestemming Friso). **Deel 1 (conditie C ongewijzigd):** git-hard — geen `apps/ml-service`-wijziging, `realRefPaths`/`minRefs`/`rankingThreshold`-opbouw identiek, AC3-regressietest groen. **Deel 2 (gids-zaad, read-only op ACC-DB):** de nieuwe gids-voorkeur-query bewezen tegen de live ACC-`reference_logos`: GREEN_DOT OUD (newest-any) → `artwork-crops/08000146031236/…` source `review-confirmed` (ECHTE crop) → NIEUW → `reference-logos/GREEN_DOT/default.png` source `wikimedia` (GIDS). **21/21** gemengde klassen (gids + echte crop) wisselen correct van echte-crop-zaad → gids-zaad; **7** gids-loze klassen vallen niet-brekend terug op newest-any (AC2 bevestigd, o.a. PREGNANCY_WARNING/HALAL/LACTOSE_FREE). NULL-source: 0 rijen op ACC (defensieve fix, niet geactiveerd door huidige data). Zie `19-15-eval-zaadkeuze.md`. Alles read-only; 19.15-code daarna gedeployd naar acc.
 
 ## Dev Notes — Developer Context
 
@@ -89,7 +89,7 @@ Claude Sonnet 5 (implement-sprint epic-subagent, epic-19, story 19.15).
 - Kernfix: `resolveSeedPath` prefereert nu het gids-zaad (source ∉ `REAL_CROP_SOURCES`, inclusief `source:null`), nieuwste eerst; fallback = newest-any (bewust, AC2).
 - Onafhankelijke adversarial review (Blind Hunter + Edge Case Hunter, parallel, geen gedeelde context) vond hetzelfde HIGH-defect (NULL-source-uitsluiting door SQL drie-waardige logica bij `notIn`) — gefixt vóór commit. Acceptance Auditor tegen het storybestand: AC1-4 + Afbakening-constraints compliant.
 - AC3 (geen regressie conditie C/19.9) expliciet getest + beargumenteerd: `searchAndQueueClassForReview`'s `realRefPaths`-opbouw is een onafhankelijke query, ongewijzigd in de diff.
-- AC5/Task 7 (ACC-eval-reproductie) bewust NIET uitgevoerd — vereist per-geval-toestemming die deze uitvoering niet had. Story blijft op `review`.
+- AC5/Task 7 GEDAAN (2026-07-12, expliciete toestemming Friso, read-only op ACC): deel 1 conditie C ongewijzigd (git-hard); deel 2 gids-zaad bewezen tegen live ACC-DB — GREEN_DOT echte crop → gids-logo, 21/21 gemengde klassen wisselen, 7 gids-loze klassen niet-brekend fallback. Zie `19-15-eval-zaadkeuze.md`. Story → `done`; 19.15-code daarna gedeployd naar acc.
 - Volledige api-vitest-suite: 883/883 groen (was 877 vóór deze story; +6 door de nieuwe/uitgebreide tests). `tsc --noEmit`: 0. ml-pytest: git-hard beargumenteerd overgeslagen (geen wijziging in `apps/ml-service`).
 
 ### File List
@@ -98,9 +98,12 @@ Claude Sonnet 5 (implement-sprint epic-subagent, epic-19, story 19.15).
 - `_bmad-output/implementation-artifacts/19-15-ac-trace.md` (NEW — AC→test-traceability)
 - `_bmad-output/implementation-artifacts/review-19-15-adversarial.md` (NEW — adversarial review, verdict PASS)
 - `_bmad-output/implementation-artifacts/19-15-zaadkeuze-semantiek-resolveseedpath.md` (UPDATE — dit bestand)
-- `_bmad-output/implementation-artifacts/sprint-status.yaml` (UPDATE — status → review)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (UPDATE — status → done)
+- `_bmad-output/implementation-artifacts/19-15-eval-zaadkeuze.md` (NEW — AC5 read-only ACC-eval)
+- `_bmad-output/implementation-artifacts/19-8-fase1-bootstrap-crops-naar-review.md` (UPDATE — lock-step statusfix review → done, meegelift)
 - `versions.md` (UPDATE — nieuwe entry)
 
 ## Change Log
 - 2026-07-12: aangemaakt via bmad-create-story als follow-up uit Story 19.9 Task 8 (live-verificatie conditie C op ACC). Scope: `resolveSeedPath` prefereert expliciet het gids-zaad (source-filter) zodat de gids-fallback semantisch het gids-logo blijft; echte crops doen uitsluitend via `realRefPaths`/conditie C mee. Geen wijziging aan conditie C, gate, guard of review-routering.
 - 2026-07-12: implement-sprint (Tasks 1-6, AC1-4) — `resolveSeedPath` source-preferentie geïmplementeerd + NULL-safe (code-review-fix HIGH: `OR: [{source:null},{source:{notIn:REAL_CROP_SOURCES}}]`, anders sluit SQL's `NOT IN` NULL-source-gidsrijen stilzwijgend uit). 5 nieuwe/uitgebreide tests (34/34 groen in het bestand); volledige api-vitest 883/883 groen; tsc 0; ml-pytest git-hard overgeslagen (geen ml-service-wijziging). Adversarial review (Blind Hunter + Edge Case Hunter + Acceptance Auditor, parallel) → verdict PASS na de HIGH-fix. AC-trace 4/4. Status → `review`; AC5/Task 7 (ACC-eval, permission-gated) NIET uitgevoerd — blijft open.
+- 2026-07-12: AC5/Task 7 uitgevoerd na expliciete toestemming Friso (read-only op ACC). Deel 1 conditie C ongewijzigd (git-hard). Deel 2: gids-voorkeur-query bewezen tegen live ACC-`reference_logos` — GREEN_DOT echte crop (`review-confirmed`) → gids-logo (`wikimedia`), 21/21 gemengde klassen wisselen van seed, 7 gids-loze klassen niet-brekend fallback (newest-any), 0 NULL-source-rijen. Zie `19-15-eval-zaadkeuze.md`. Alle AC's (1-5) bewezen → **status → `done`**. 19.15-code gedeployd naar acc (auto-deploy).
