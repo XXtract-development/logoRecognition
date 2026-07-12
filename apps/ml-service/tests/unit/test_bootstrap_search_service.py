@@ -390,7 +390,8 @@ REF3_KEY_C = "reference-logos/X/real3.png"
 BAD_REF_KEY_C = "reference-logos/X/onleesbaar.png"
 
 NEAR_REF_TAG = "near-ref"  # regio dicht bij de echte refs, ver van het zaad
-FAR_TAG = "far"  # regio ver van alles
+NEAR_SEED_TAG = "near-seed"  # regio dicht bij het zaad, ver van de refs
+FAR_TAG = "far"  # regio ver van alles (zaad én refs)
 
 _EMB_BY_KEY_C = {
     SEED_KEY_C: [0.0, 0.0, 1.0],  # zaad — orthogonaal aan de refs (cosine 0)
@@ -400,6 +401,7 @@ _EMB_BY_KEY_C = {
 }
 _REGION_EMB_C = {
     NEAR_REF_TAG: [1.0, 0.0, 0.0],  # cosine ~1.0 met de refs, 0.0 met het zaad
+    NEAR_SEED_TAG: [0.0, 0.0, 1.0],  # cosine ~1.0 met het zaad, 0.0 met de refs
     FAR_TAG: [0.0, 1.0, 0.0],  # cosine 0 met alles
 }
 
@@ -585,4 +587,48 @@ async def test_c_min_refs_kleiner_of_gelijk_aan_nul_activeert_conditie_c_niet(pa
     )
     assert result["ranking_active"] is False
     assert result["real_refs_used"] == 0
+    assert result["matches"] == []
+
+
+@pytest.mark.asyncio
+async def test_c_gids_pad_blijft_fallback_ook_met_conditie_c_actief(patched_c, monkeypatch):
+    """TR-aanvulling (dekkingslacune): AC1 zegt expliciet dat het gids-zaad-pad
+    'als aanvulling/fallback' blijft gelden zodra conditie C actief is — dit is een
+    OR, geen vervanging. Een regio die dicht bij het ZAAD ligt (en ver van de echte
+    refs) moet dus nog steeds matchen via de klassieke gids-cosine, ook al zijn er
+    >= k echte refs meegegeven. Zonder deze test zou een implementatie die conditie
+    C per ongeluk als AND (i.p.v. OR) codeert, of het gids-pad volledig vervangt,
+    onopgemerkt blijven."""
+    monkeypatch.setattr(bs, "_crop_bgr", lambda img, b: NEAR_SEED_TAG)
+    result = await bs.search_with_seed(
+        seed_path=SEED_KEY_C,
+        gtin_pages=[{"gtin": "111", "page_key": "artwork/111/p.png"}],
+        threshold=0.6,
+        real_ref_paths=[REF1_KEY_C, REF2_KEY_C, REF3_KEY_C],
+        ranking_threshold=0.6,
+        min_refs=3,
+    )
+    assert result["ranking_active"] is True
+    assert len(result["matches"]) == 1
+    m = result["matches"][0]
+    assert m["seed_cosine"] >= 0.6  # matcht via het klassieke gids-pad
+    assert m["ranking_cosine"] is not None
+    assert m["ranking_cosine"] < 0.6  # de ranking zelf zou dit NIET gematcht hebben
+
+
+@pytest.mark.asyncio
+async def test_c_regio_matcht_niet_als_beide_signalen_onder_de_drempel_blijven(patched_c, monkeypatch):
+    """TR-aanvulling: een regio die ZOWEL ver van het zaad ALS ver van elke echte
+    ref ligt, matcht niet — conditie C breidt de match-kans uit, maar matcht niet
+    zomaar alles zodra >= k refs aanwezig zijn."""
+    monkeypatch.setattr(bs, "_crop_bgr", lambda img, b: FAR_TAG)
+    result = await bs.search_with_seed(
+        seed_path=SEED_KEY_C,
+        gtin_pages=[{"gtin": "111", "page_key": "artwork/111/p.png"}],
+        threshold=0.6,
+        real_ref_paths=[REF1_KEY_C, REF2_KEY_C, REF3_KEY_C],
+        ranking_threshold=0.6,
+        min_refs=3,
+    )
+    assert result["ranking_active"] is True
     assert result["matches"] == []
