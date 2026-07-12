@@ -565,3 +565,24 @@ async def test_c_nfr6_zaadlek_guard_blijft_gelden_ondanks_conditie_c(patched_c, 
     )
     assert result["matches"] == []
     assert result["seed_leaks_skipped"] >= 1
+
+
+@pytest.mark.asyncio
+async def test_c_min_refs_kleiner_of_gelijk_aan_nul_activeert_conditie_c_niet(patched_c):
+    """Code-review-fix: een misconfigureerde `min_refs<=0` mag conditie C NOOIT
+    activeren met nul geëmbede refs (dat zou `max()` op een lege lijst laten
+    crashen zodra een regio de gate haalt). De defense-in-depth-guard
+    (`min_refs > 0 and ...`) valt terug op het gids-pad — geen crash, geen match
+    via ranking. Reproduceert de "min_refs<=0 + lege real_ref_paths"-combinatie
+    uit de code-review (Blind Hunter/Edge Case Hunter)."""
+    result = await bs.search_with_seed(
+        seed_path=SEED_KEY_C,
+        gtin_pages=[{"gtin": "111", "page_key": "artwork/111/p.png"}],
+        threshold=0.6,
+        real_ref_paths=[],
+        ranking_threshold=0.6,
+        min_refs=0,
+    )
+    assert result["ranking_active"] is False
+    assert result["real_refs_used"] == 0
+    assert result["matches"] == []

@@ -461,8 +461,11 @@ class BootstrapSearchRequest(BaseModel):
     # klasse >= k refs heeft en levert ze dan mee; leeg = onveranderd het
     # gids-drempel-pad (default gedrag, byte-gelijk aan vóór 19.9).
     real_ref_paths: List[str] = Field(default_factory=list)
-    ranking_threshold: Optional[float] = None
-    min_refs: Optional[int] = None
+    # Bounds (code-review-fix, Story 19.9): fail-closed op 422 i.p.v. een
+    # onbedoelde `ranking_active` met een misconfigureerde k<=0 of een
+    # buiten-bereik-drempel (zie de defense-in-depth-guard in search_with_seed).
+    ranking_threshold: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    min_refs: Optional[int] = Field(default=None, ge=1)
 
 
 class BootstrapMatch(BaseModel):

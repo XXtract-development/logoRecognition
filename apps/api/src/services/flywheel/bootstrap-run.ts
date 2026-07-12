@@ -52,6 +52,7 @@ import {
   getBootstrapMaxSeconds,
   getRankingMinRefs,
   getRankingThreshold,
+  getRankingMaxRefs,
 } from './config';
 
 const logger = createLogger('flywheel-bootstrap-run');
@@ -189,6 +190,8 @@ interface BootstrapMatch {
   gtin: string;
   bbox: { x: number; y: number; width: number; height: number };
   seed_cosine: number;
+  /** Story 19.9 — hoogste cosine over de echte crop-refs; `null` als conditie C niet actief was. */
+  ranking_cosine: number | null;
   crop_path: string;
   source_file: string;
 }
@@ -247,12 +250,21 @@ async function queueCropForReview(
 
   // Voorleggen als OPEN review-item — dezelfde vorm als de crosscheck (12.x), met een
   // eigen reason-tag zodat de review-UI de bootstrap-kandidaten kan filteren.
+  //
+  // Story 19.9 code-review-fix: `confidence` bepaalt de sorteervolgorde van de
+  // review-wachtrij (hoogste eerst, `/artwork/review-queue`). Een conditie-C-match
+  // kan een LAGE `seed_cosine` hebben (dat is precies het punt van AC1 — hij matcht
+  // via de echte-crop-ranking, niet via het gids-zaad) terwijl `ranking_cosine` hoog
+  // is. Zonder deze fix zou zo'n vondst — hoewel een sterke match — onderaan de
+  // wachtrij zakken. `confidence` wordt daarom het HOOGSTE van de twee signalen.
+  const confidence = Math.max(m.seed_cosine, m.ranking_cosine ?? 0);
+
   await prisma.artworkReviewItem.create({
     data: {
       gtin: m.gtin,
       t3777Code,
       bbox: (m.bbox ?? {}) as Prisma.InputJsonValue,
-      confidence: m.seed_cosine,
+      confidence,
       method: 'embedding',
       reason: BOOTSTRAP_REVIEW_REASON,
       cropPath: m.crop_path,
@@ -419,14 +431,21 @@ export async function searchAndQueueClassForReview(
   // Story 19.9 — schakelmoment: ≥ k actieve ECHTE-crop-referenties van de klasse
   // schakelen het matchsignaal naar nearest-reference-ranking (conditie C,
   // ml-side). Onder k: kaal aanroepen (geen realRefPaths) — ml-service blijft
-  // ongewijzigd op het gids-drempel-pad (AC2).
+  // ongewijzigd op het gids-drempel-pad (AC2). `take: getRankingMaxRefs()`
+  // (code-review-fix): een lange-staart-klasse met tientallen refs (bv.
+  // RECYCLABLE) mag de ml-embed-kosten niet onbegrensd optrekken — de nieuwste
+  // refs wegen het zwaarst (`orderBy: createdAt desc`).
   const minRefs = getRankingMinRefs();
   const realRefRows = await prisma.referenceLogo.findMany({
     where: { t3777Code, active: true, source: { in: [...REAL_CROP_SOURCES] } },
     orderBy: { createdAt: 'desc' },
     select: { storagePath: true },
+    take: getRankingMaxRefs(),
   });
-  const realRefPaths = realRefRows.map((r) => r.storagePath);
+  // Defensieve seed/ref-scheiding (code-review-fix): mocht het zaad ooit per
+  // ongeluk met een ECHTE-crop-source getagd zijn, dan mag het nooit als
+  // "echte referentie" tegen zichzelf ranken.
+  const realRefPaths = realRefRows.map((r) => r.storagePath).filter((p) => p !== seedPath);
 
   let search;
   try {
@@ -439,6 +458,13 @@ export async function searchAndQueueClassForReview(
         ? { realRefPaths, rankingThreshold: getRankingThreshold(), minRefs }
         : {}),
     });
+    if (search.ranking_active) {
+      logger.info('Klasse-zoektocht: conditie C actief (nearest-reference-ranking)', {
+        t3777Code,
+        realRefsUsed: search.real_refs_used,
+        matches: search.matches.length,
+      });
+    }
   } catch (err) {
     // ml-zoektocht mislukt (zaad onleesbaar/ml onbereikbaar). Fail-closed: geen
     // nominaties. De caller mag de klasse in een volgende run opnieuw oppakken.

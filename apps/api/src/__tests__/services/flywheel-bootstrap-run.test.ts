@@ -469,4 +469,35 @@ describe('Story 19.9 — realRefPaths-contract naar mlClient.bootstrapSearch', (
     expect(call.minRefs).toBe(2);
     delete process.env.FLYWHEEL_RANKING_MIN_REFS;
   });
+
+  it('begrenst de refs-query met getRankingMaxRefs (default 25) — een lange-staart-klasse stuurt niet onbegrensd veel refs mee', async () => {
+    mockPrisma.referenceLogo.findMany.mockResolvedValue(REAL_REFS);
+    await runBootstrap();
+    const query = mockPrisma.referenceLogo.findMany.mock.calls[0][0];
+    expect(query.take).toBe(25);
+    expect(query.orderBy).toEqual({ createdAt: 'desc' });
+  });
+
+  it('code-review-fix: confidence op het review-item is het HOOGSTE van seed_cosine en ranking_cosine (anders zakt een sterke conditie-C-match onderaan de wachtrij)', async () => {
+    mockPrisma.referenceLogo.findMany.mockResolvedValue(REAL_REFS);
+    mockMl.bootstrapSearch.mockResolvedValue(
+      matchFixture({
+        ranking_active: true,
+        real_refs_used: 3,
+        matches: [
+          {
+            gtin: '111',
+            bbox: { x: 1, y: 2, width: 3, height: 4 },
+            seed_cosine: 0.1, // laag — de gids-cosine ALLEEN zou nooit gematcht hebben
+            ranking_cosine: 0.92, // hoog — dit is waarom de regio matchte (conditie C)
+            crop_path: 'artwork-crops/111/17_1_bootstrap_1_2_3_4.png',
+            source_file: 'artwork/111/converted-0.png',
+          },
+        ],
+      })
+    );
+    await runBootstrap();
+    const { data } = mockPrisma.artworkReviewItem.create.mock.calls[0][0];
+    expect(data.confidence).toBe(0.92);
+  });
 });

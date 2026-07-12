@@ -451,6 +451,22 @@ export function getRankingThreshold(): number {
 }
 
 /**
+ * Maximaal aantal actieve ECHTE-crop-referenties dat één klasse aan de
+ * ranking meegeeft (code-review-fix, Story 19.9): zonder cap kan een lange-
+ * staart-klasse (bv. RECYCLABLE met 26 `realref-live-poc`-refs, zie de
+ * story-dev-notes) ONBEGRENSD veel refs naar de ml-service sturen — elke ref
+ * wordt daar apart geëmbed, wat de time-box onnodig zwaar belast. De nieuwste
+ * refs (query `orderBy: createdAt desc`) wegen het zwaarst. Ruim boven het
+ * default-k (3) zodat een normale klasse nooit geraakt wordt. Default 25
+ * (spiegelt `per_code_cap` elders in dit domein). Overschrijfbaar via
+ * `FLYWHEEL_RANKING_MAX_REFS`.
+ */
+export function getRankingMaxRefs(): number {
+  const v = parseInt(process.env.FLYWHEEL_RANKING_MAX_REFS ?? '', 10);
+  return Number.isFinite(v) && v > 0 ? v : 25;
+}
+
+/**
  * Batch-grootte (aantal GTINs per re-import-run) voor de gedoseerde terugval-route
  * op het GLN-restant (Story 18.2, AD-7 route (b), NFR-3). Elke batch draait als één
  * import-run (het bestaande 8-3O-mechanisme) en het script wacht op afronding vóór

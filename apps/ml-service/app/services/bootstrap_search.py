@@ -169,6 +169,12 @@ async def search_with_seed(
         await model_manager.load_models()
     storage_service.connect()
 
+    # Time-box start VÓÓR het zaad/refs-embedden (code-review-fix, Story 19.9):
+    # de echte-crop-referenties (potentieel tientallen bij een lange-staart-klasse,
+    # zie de `take`-cap op de API-kant) tellen anders NIET mee tegen `max_seconds`,
+    # wat de tijdbox kon laten uitlopen vóórdat de GTIN-lus überhaupt start.
+    t0 = time.perf_counter()
+
     # 1. Zaad-embedding (ENKEL embedden; het zaad wordt NOOIT geüpload — NFR-6).
     seed_data = storage_service.get_training_image(seed_path)
     seed_img = cv2.imdecode(np.frombuffer(seed_data, np.uint8), cv2.IMREAD_COLOR)
@@ -207,7 +213,12 @@ async def search_with_seed(
     # Schakelmoment (AC1/AC2): pas bij ≥ k SUCCESVOL geëmbede refs schakelt het
     # matchsignaal naar conditie C (nearest-reference-ranking). Onder k: ongewijzigd
     # het gids-drempel-pad hieronder (`sim = cosine(emb, seed_emb) >= threshold`).
-    ranking_active = len(real_ref_embs) >= min_refs
+    # `min_refs > 0`-guard (code-review-fix): zonder deze guard zou een misconfigured
+    # `min_refs <= 0` conditie C activeren met NUL geëmbede refs, en `max()` op een
+    # lege lijst gooit dan een ValueError zodra een regio de gate haalt. De API-kant
+    # valideert `min_refs` al met `ge=1` (fail-closed op 422), maar deze functie is
+    # ook direct aanroepbaar (tests/toekomstige callers) — defense-in-depth.
+    ranking_active = min_refs > 0 and len(real_ref_embs) >= min_refs
     effective_ranking_threshold = (
         ranking_threshold if ranking_threshold is not None else threshold
     )
@@ -217,7 +228,6 @@ async def search_with_seed(
     gtins_processed = 0
     seed_leaks_skipped = 0
     timed_out = False
-    t0 = time.perf_counter()
 
     for entry in gtin_pages:
         if len(matches) >= per_code_cap:
