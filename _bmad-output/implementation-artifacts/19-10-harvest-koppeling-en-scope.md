@@ -1,6 +1,6 @@
 # Story 19.10: Harvest-koppeling + scope-begrenzing — `queue_harvest` als doorlopende echte-crop-bron
 
-Status: review
+Status: done
 
 <!-- Correct-course 2026-07-07 (sprint-change-proposal-2026-07-07.md): de derde en laatste story van de twee-traps-uitbreiding. 19.8 ontstopt het straaltje (bootstrap-crops → review), 19.9 maakt de volle kraan (nearest-reference bij ≥k), 19.10 VOEDT en BEGRENST: koppelt de nachtelijke harvester als doorlopende echte-crop-bron die klassen over de k-drempel tilt, met scope-begrenzing (top-N volume-keurmerken; RECYCLABLE/TRIMAN apart). Laatste open story van epic-19. -->
 
@@ -55,8 +55,8 @@ zodat **klassen doorlopend en zelfstandig over de k=3-drempel getild worden en 1
 - [x] 4. **Vangnet-borging (AC: 4)** — bevestig (test + redenering) dat gate-v2, FLOOR 0,85, dedup, class-cap, hard-negative, declaratie-guard en NFR-6 ongemoeid blijven onder de nieuwe scoping. **Gedaan**: gate/FLOOR/cap-mechaniek volledig ongewijzigd (alleen de `topn`-membership-check verandert); geborgd door `test_ac4a/b/c_..._GREEN`.
 - [x] 5. **Tests (AC: 5)** — ml-pytest: (a) top-N/sub-k-selectie (faalt op oud "alle actieve codes"); (b) RECYCLABLE/TRIMAN-flood-guard; (c) review-insert + kleppen ongemoeid; (d) `HARVEST_DRY_RUN` muteert niets. Zoek bestaande harvest-tests op en breid uit i.p.v. dupliceren. **Gedaan**: bestaande ATDD-suite (`test_queue_harvest_19_10.py`, al aanwezig vóór dev-fase) — 9/9 groen ná implementatie (container-bewijs, zie Completion Notes).
 - [x] 6. **Gates** — ml-pytest volledig groen; `tsc --noEmit` 0 + api-vitest groen indien de api-kant/config geraakt wordt (anders git-hard beargumenteren dat die onaangeraakt zijn). **Gedaan**: alleen `apps/ml-service/app/services/queue_harvest.py` gewijzigd — geen `apps/api`-raakvlak, tsc/api-vitest git-hard niet vereist.
-- [ ] 7. **Live-verificatie (AC: 6)** — met toestemming: `HARVEST_DRY_RUN=1` op ACC draaien, de per-code-verdeling + scoping vastleggen (geen flood, budget naar top-N/sub-k), read-only. Daarna (aparte toestemming) een echte run om de flywheel-voeding te bevestigen. Gold-set/human-review als vangnet. **NIET uitgevoerd** — vereist expliciete per-geval toestemming van Friso (permission-gate); niet gegeven binnen deze run. Blijft open, gemarkeerd als pending-permission.
-- [ ] 8. **Epic-afronding** — dit is de laatste open story van epic-19; na `done` een verse epic-19-retrospective (de bestaande `epic-19-retrospective: done` is stale van 2026-07-05, epic sindsdien fors uitgebreid). **NIET uitgevoerd in deze run** — story blijft op `review` (niet `done`, wegens Task 7 pending-permission), dus de epic-afronding/retrospective is nog niet gepast; wel wordt hieronder een tussentijdse story-retrospective vastgelegd.
+- [x] 7. **Live-verificatie (AC: 6)** — GEDAAN (2026-07-12, expliciete toestemming Friso; read-only `HARVEST_DRY_RUN=1` op ACC, gedeployde container ongemoeid). Bevestigd: `topn = (top-N-volume ∪ sub-k) − exclude` = **30 codes** (niet alle 43 actieve; 17 puur-sub-k-codes bewijzen dat sub-k óók zonder volume-ranking meetelt). **RECYCLABLE (volume 32) en TRIMAN (volume 13) staan hóóg in de ranking maar zijn uitgesloten** — exclude wint van top-N én sub-k. Volume-index `flywheel-index/keurmerk-etiket-index.json` gelezen (32 codes); no-fallback-gedrag bevestigd (onleesbare index → sub-k-only, niet "alle actieve"). Geen flood (4 kandidaten in 1 topn-klasse, RECYCLABLE/TRIMAN=0). `dry_run:true`, `inserted:0`, state.json ongewijzigd. Kanttekening: empirische steekproef klein (40/1857 GTINs) maar no-flood is structureel gegarandeerd (topn-lidmaatschap + cap). Zie `19-10-dryrun-acc.md`. De echte harvest-run (flywheel-voeding) is een aparte latere toestemming.
+- [ ] 8. **Epic-afronding** — dit is de laatste open story van epic-19; na deze `done` is een verse epic-19-retrospective aan de orde (de bestaande `epic-19-retrospective: done` is stale van 2026-07-05, epic sindsdien fors uitgebreid). Epic-close + retrospective is een aparte epic-level-actie ná deze story-`done`.
 
 ## Dev Notes — Developer Context
 
@@ -110,6 +110,8 @@ Claude Opus 4.8 (epic-agent, implement-sprint), via bmad-dev-auto-geleide implem
 ### File List
 - `apps/ml-service/app/services/queue_harvest.py` — `topn`-bepaling vervangen + `_load_volume_index()` toegevoegd + module-docstring/env-blok bijgewerkt.
 - `apps/ml-service/tests/unit/test_queue_harvest_19_10.py` — ongewijzigd (bestond al, RED→GREEN via de implementatie).
+- `_bmad-output/implementation-artifacts/19-10-dryrun-acc.md` (NEW) — AC6 read-only DRY_RUN-meetrapport op ACC.
+- `_bmad-output/implementation-artifacts/{review-19-10-atdd-adversarial, review-19-10-implementation-adversarial, 19-10-retrospective, atdd-checklist-19-10}.md` — review-/retro-/ATDD-artefacten.
 
 ## Traceability (C-trace, implement-sprint-protocol §3)
 
@@ -120,10 +122,11 @@ Claude Opus 4.8 (epic-agent, implement-sprint), via bmad-dev-auto-geleide implem
 | AC3 | `test_ac3_expliciete_exclude_weert_top_volume_en_sub_k_RED`, `test_ac3_default_exclude_weert_recyclable_RED` | GREEN |
 | AC4 | `test_ac4a_gate_weert_crop_onder_gate_threshold_GREEN`, `test_ac4b_floor_weert_crop_onder_085_GREEN`, `test_ac4c_per_code_cap_gehandhaafd_GREEN` | GREEN |
 | AC5 | (= alle bovenstaande, dit IS de ml-pytest-dekking die AC5 vraagt) + `test_ac5d_dry_run_muteert_niets_GREEN` | GREEN — 9/9 in container |
-| AC6 | live `HARVEST_DRY_RUN` op ACC | **pending-permission** — niet geautomatiseerd, expliciete per-geval toestemming vereist en niet ontvangen in deze run |
+| AC6 | live `HARVEST_DRY_RUN` op ACC (`19-10-dryrun-acc.md`) | **GEHAALD** — read-only DRY_RUN met expliciete toestemming: topn=30 (top-N ∪ sub-k − exclude), RECYCLABLE/TRIMAN uitgesloten ondanks hoge volume, geen flood, `inserted:0`, no-fallback bevestigd |
 
 9/9 tests GREEN in de ghcr-container-run (zie Debug Log References). Volledige AC→test-mapping (met redenering/edge-cases) staat ook in `_bmad-output/test-artifacts/atdd-checklist-19-10.md` en `_bmad-output/implementation-artifacts/review-19-10-atdd-adversarial.md`.
 
 ## Change Log
 - 2026-07-12: aangemaakt via bmad-create-story (correct-course 2026-07-07). Laatste open story van epic-19. Scope: `queue_harvest` klasse-selectie → top-N volume-scoping + sub-k-prioritering, met expliciete RECYCLABLE/TRIMAN-flood-guard; review-origin-koppeling (19.8) bevestigd; vangnet + gate-v2/FLOOR 0,85 ongewijzigd. Voedt 19.9's conditie C doorlopend. Na `done`: verse epic-19-retrospective.
 - 2026-07-12: implement-sprint (epic-agent) — Tasks 1-6 af (AC1-5). `queue_harvest.py` topn-bepaling geïmplementeerd; alle 4 RED-tests GREEN, alle 5 preservatie-tests blijven GREEN (container-bewijs 9/9 passed). Task 7/AC6 (live ACC DRY_RUN) NIET uitgevoerd (permission-gate) — status blijft `review`.
+- 2026-07-12: AC6/Task 7 uitgevoerd na expliciete toestemming Friso (read-only `HARVEST_DRY_RUN` op ACC, gedeployde container ongemoeid). topn=30 = (top-N-volume ∪ sub-k) − exclude; RECYCLABLE/TRIMAN uitgesloten ondanks hoge volume-ranking; volume-index gelezen + no-fallback bevestigd; geen flood; `inserted:0`. Alle AC's (1-6) bewezen → **status → `done`**. 19.10-code gedeployd naar acc (auto-deploy). Epic-close + verse epic-19-retrospective is de aparte vervolgstap.
