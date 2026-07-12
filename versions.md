@@ -8,6 +8,9 @@
 ### Een goedgekeurd keurmerk wordt nu gegarandeerd meteen een actief voorbeeld
 - Als een medewerker een keurmerk-voorbeeld goedkeurt (via de beoordelingslijst of door zelf een kader te tekenen), wordt dat nu altijd direct een actief referentievoorbeeld dat de herkenning gebruikt. Voorheen liep een goedkeuring onder de huidige instelling via een omweg waar hij alsnog kon blijven steken — die omweg is verwijderd, zodat menselijke goedkeuringen niet meer verloren gaan
 
+### Het recycling-keurmerk wordt weer herkend
+- De voorbeelden voor het algemene recycling-keurmerk waren uitgevallen, waardoor recycle-logo's ten onrechte als een ander keurmerk (zoals Fairtrade) werden aangezien. Die voorbeelden zijn hersteld, zodat het recycling-keurmerk weer correct wordt herkend
+
 ## 2026-07-07 (Keurmerken die eerder onzichtbaar werden gemist, komen nu bij een mens terecht — en bevestigde voorbeelden gaan écht meetellen)
 
 ### Een filter keurde echte keurmerken ten onrechte af — dat is hersteld

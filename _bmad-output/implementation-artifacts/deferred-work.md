@@ -19,3 +19,11 @@
 - **`t3777Code`-override niet gevalideerd** vóór registratie (`artwork-pipeline.ts:1061/1177`): een typefout/onbekende code wordt direct een actieve referentieklasse. Pre-existing (override werd altijd toegepast), maar de altijd-aan registratie omzeilt nu de vroegere nominatie-crosscheck. Overweeg codelijst-validatie.
 - **Accept-pad mist een idempotentie-guard equivalent aan het reject-pad** (M1): een crop-met-maar-zonder-sourceFile blijft `accepted` (niet `registered`) → retry/dubbelklik dubbel-telt de gold-set-aanwas (14.2-bewaking). ml-registratie zelf is idempotent.
 - **AC-dekking source='review-confirmed' + embedding**: geverifieerd op codeniveau in de ml-service (`similarity.py` register_crop_as_reference default source + embedding-insert), maar niet in een test (Node-routetests mocken de ml-grens; ml-service heeft geen register-test). Wordt post-deploy read-only bevestigd (Task 4).
+
+## Deferred from: code review of 19-13-recyclable-referenties-herstellen (2026-07-12)
+
+- **Near-dup dedup RECYCLABLE-refs**: 22 van de 26 herstelde refs komen uit één GTIN (near-duplicaten). Bewuste keuze om alle 26 te herstellen (POC-staat, precisie spot-gecheckt). Overweeg dedup tot een representatieve subset als de outlier-audit (14.3) de cluster flagt of als vals-positieven toenemen.
+- **Herbruikbaar gold-set-meetscript** (top-1 + valse-match-telling voor RECYCLABLE): 19.13 mat AC3/AC4 via ad-hoc classify-probes; een gecommit, herbruikbaar meetscript + gold-set-crop-lijst ontbreekt (nuttig voor toekomstige regressiemeting).
+- **`run()`-orchestratie unittest**: de dry-run/apply/counts/REINDEX-orkestratie van `restore_recyclable_refs.run()` is live op ACC gevalideerd maar niet in een unittest (vergt db_service-mock). `_load_and_embed`/`_write_ref` zijn wél gedekt.
+- **Model-identiteitscheck**: het script valideert de embedding-shape maar niet dat het huidige model dezelfde ruimte is als waarmee de actieve refs zijn gemaakt (model bleek NIET-stale in de diagnose, cosine 1,0). Overweeg een expliciete guard bij toekomstige model-wissels.
+- **`print` → `logger`** en een **dry-run crop-laadbaarheid-preflight** in `restore_recyclable_refs.py` (operationele netheid; laag).

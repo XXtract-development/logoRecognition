@@ -93,16 +93,18 @@ async def test_find_similar_references_sets_probes_within_transaction():
     # Kern van 19.14: de probes-GUC MOET binnen een transactie gezet worden
     # (set_config/SET LOCAL is transactie-gescoped) én de fetch moet in
     # diezelfde transactie vallen — anders is de GUC bij de fetch al teruggedraaid.
-    assert conn.probes_set_inside_txn, (
-        "ivfflat.probes moet binnen een transactie gezet worden (Story 19.14)"
-    )
-    assert conn.fetch_inside_txn, (
-        "de fetch moet binnen dezelfde transactie draaien als de probes-setting"
-    )
+    assert (
+        conn.probes_set_inside_txn
+    ), "ivfflat.probes moet binnen een transactie gezet worden (Story 19.14)"
+    assert (
+        conn.fetch_inside_txn
+    ), "de fetch moet binnen dezelfde transactie draaien als de probes-setting"
 
     # ...en de probes-setting moet vóór de fetch komen.
     set_idx = next(
-        i for i, (_op, sql, _a) in enumerate(conn.calls) if "ivfflat.probes" in sql.lower()
+        i
+        for i, (_op, sql, _a) in enumerate(conn.calls)
+        if "ivfflat.probes" in sql.lower()
     )
     fetch_idx = next(i for i, (op, _sql, _a) in enumerate(conn.calls) if op == "fetch")
     assert set_idx < fetch_idx, "probes moet vóór de zoekquery gezet worden"
@@ -125,11 +127,13 @@ async def test_probes_value_comes_from_config(monkeypatch):
     # De waarde wordt als bind-parameter meegegeven (injectie-veilig), niet in de
     # SQL-tekst — assert exact op de parameter, niet op een substring.
     probes_call = next(
-        (sql, args) for (_op, sql, args) in conn.calls if "ivfflat.probes" in sql.lower()
+        (sql, args)
+        for (_op, sql, args) in conn.calls
+        if "ivfflat.probes" in sql.lower()
     )
-    assert "42" in [str(a) for a in probes_call[1]], (
-        "probes-waarde moet als bind-arg uit settings.REFERENCE_SEARCH_PROBES komen"
-    )
+    assert "42" in [
+        str(a) for a in probes_call[1]
+    ], "probes-waarde moet als bind-arg uit settings.REFERENCE_SEARCH_PROBES komen"
 
 
 # --------------------------------------------------------------------------- #
@@ -189,9 +193,9 @@ async def test_degenerate_ivfflat_underfetches_and_probes_fix_restores_recall():
         # Harde gate: de fix levert de volledige N. Reproductie: probes=1 geeft
         # er strikt minder (robuuster dan een absolute drempel).
         assert len(fixed) == 10, f"verwacht volledige N na fix, kreeg {len(fixed)}"
-        assert len(under) < len(fixed), (
-            f"verwacht under-fetch met probes=1, kreeg {len(under)} (>= {len(fixed)})"
-        )
+        assert len(under) < len(
+            fixed
+        ), f"verwacht under-fetch met probes=1, kreeg {len(under)} (>= {len(fixed)})"
     finally:
         await conn.execute("DROP TABLE IF EXISTS _s1914_probe")
         await conn.close()

@@ -1,21 +1,24 @@
-started_at: 2026-07-06
+started_at: 2026-07-12
 protocol_version: 2026-07-06
 sprint_status: _bmad-output/implementation-artifacts/sprint-status.yaml
-story_files: _bmad-output/implementation-artifacts/19-*.md
+story_files: _bmad-output/implementation-artifacts/19-13-recyclable-referenties-herstellen.md
 source_epics: _bmad-output/planning-artifacts/epics-vliegwiel.md
 worktree_root: /private/tmp/logoRecognition-implement-sprint
 base_branch: acc
-scope: [19-7, 19-6]
-current_phase: CANCELLED-USER-CHOSE-A
+scope: [19-13]
 active_epics: [epic-19]
-status: cancelled — sequentieel via juiste route (19.7 meting → 19.6 dev met gevalideerde waarden)
+current_phase: DONE
+status: >
+  done — 19.13 geïmplementeerd (herstelscript + 6 unit-tests + 2-laags adversariële
+  review, 6 patches). ACC-run met expliciete toestemming Friso: 26 RECYCLABLE-refs
+  hersteld; AC3 (held-out crop FAIRTRADE 0,40 → RECYCLABLE 0,70) + AC4 (precisie
+  spot-check, 0 valse RECYCLABLE) bewezen. 19.14 post-deploy read-only geverifieerd
+  (find_similar_references geeft 10 buren, was ~1).
 dry_run_triggers:
-  a_new_sprint_status: false   # zelfde sprint-status-pad als vorige sessie
-  b_large_selection: false     # 2 stories, 1 epic (<=8 stories, <=2 epics)
-  c_changed_protocol: true     # vorige sessie-state legde geen protocol_version vast
+  a_new_sprint_status: false
+  b_large_selection: false
+  c_changed_protocol: false
 notes: >
-  Dry-run-gate actief (trigger c). Twee structurele zorgen richting go/no-go: (1) 19.7 is een
-  SPIKE (read-only meting → go/no-go-rapport, GEEN AC->testcode-gate) en past niet in de
-  standaard bmad-dev-auto build+test-cyclus; (2) 19.6's operatiepunten (0,60/0,2) zijn door de
-  adversarial voorwerk-review als VOORLOPIG gemarkeerd, te valideren dóór 19.7 (RECYCLABLE-flood-risico).
-  Aanbevolen volgorde: 19.7 (meting) eerst → cijfers → dan 19.6 met gevalideerde waarden.
+  Geen formele trigger; bewuste pauze bij de ACC-schrijf-gate (Task 3), door Friso
+  goedgekeurd. Direct in de hoofdworktree (branch acc) gewerkt, niet in een aparte
+  worktree — proportioneel voor één ACC-data-story die al op ACC is gevalideerd.

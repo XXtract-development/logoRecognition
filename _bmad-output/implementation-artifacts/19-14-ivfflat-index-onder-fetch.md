@@ -55,8 +55,8 @@ Op ACC (2026-07-11, read-only geverifieerd):
 - [x] **Task 3 — Regressietest** (AC: 3)
   - [x] Unit (`tests/unit/test_ivfflat_probes_19_14.py`): bewijst dat `SET LOCAL ivfflat.probes` binnen een transactie én vóór de fetch draait, en dat de waarde uit config komt. **Rood→groen geverifieerd** in wegwerp-container: 2 passed met fix, 2 failed tegen de originele code.
   - [x] Integratie (skipif zonder `TEST_DATABASE_URL`): bouwt een gevulde temp-tabel + degenererende ivfflat-index (`lists=100`, 300 rijen) en toont probes=1 → onder-fetch, verhoogde probes → volledige N. Raakt NOOIT `reference_embeddings`. DB-gated (skipt in CI zonder pgvector-DB).
-- [ ] **Task 4 — ACC-verificatie (post-deploy, met toestemming)** (AC: 4)
-  - [ ] Herzien: de fix vereist **geen ACC-schrijf** (code-only, geen index-DDL). Verificatie = ná deploy read-only meten dat `find_similar_references` tot N buren teruggeeft (probe uit de diagnose herhalen). Gated op Friso's deploy-toestemming (push naar `acc` = auto-deploy). Niet uitgevoerd in de dev-fase.
+- [x] **Task 4 — ACC-verificatie (post-deploy, read-only)** (AC: 4)
+  - [x] **Live geverifieerd 2026-07-12** (commit a4d5312 gedeployed op ACC): `find_similar_references(limit=10)` geeft nu **10 buren** terug (was ~1) met `REFERENCE_SEARCH_PROBES=100` actief; de top-10 komt exact overeen met de exacte seqscan uit de diagnose → de index onder-fetcht niet meer, exacte recall hersteld. Geen ACC-schrijf nodig (code-only fix).
 
 ### Review Findings
 
