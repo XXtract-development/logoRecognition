@@ -3,6 +3,11 @@
 reviewed_commit: a807cca (cycle 2 verified against HEAD after cycle-1 fixes)
 verdict: PASS
 
+**Freshness-note:** geen enkel productie-codebestand is gewijzigd ná commit `a807cca` —
+alle latere commits op deze branch (test-review-aanvullingen, traceability-matrix,
+NFR-assessment, status/versions.md) zijn test- en documentatie-only. Het PASS-verdict
+blijft daarom geldig tegen de uiteindelijke branch-HEAD.
+
 ## Cyclus 1 — parallelle adversariële review (Blind Hunter + Edge Case Hunter + Acceptance Auditor)
 
 Gereviewd: `git diff 7b9e2a7..bea45ae` (initiële implementatie, commit `bea45ae`).

@@ -1,5 +1,12 @@
 # Versiegeschiedenis
 
+## 2026-07-12 (Herkenning gaat vergelijken met eerder bevestigde voorbeelden zodra een keurmerk er genoeg heeft)
+
+### Een keurmerk met genoeg bevestigde voorbeelden wordt straks nog beter herkend
+- Tot nu toe vergeleek de herkenning een gevonden keurmerk altijd met het ene "gids-logo" van dat keurmerk. Zodra een keurmerk minstens drie door een medewerker bevestigde, echte voorbeelden heeft, gaat de herkenning voortaan óók vergelijken met díe bevestigde voorbeelden — bovenop het gids-logo, niet in plaats daarvan. Dat is een veel betrouwbaardere vergelijking, omdat echte foto's van een keurmerk beter op elkaar lijken dan op een schoongepoetst gids-plaatje
+- Deze verbetering staat nu klaar in de code; ze gaat pas daadwerkelijk meetellen nadat er eerst gemeten is hoeveel de vergelijkingslat precies moet zijn (een aparte, bewust losse stap met expliciete goedkeuring)
+- Alle bestaande veiligheidscontroles blijven onveranderd gelden: een keurmerk moet nog steeds echt op het product staan, dubbele of eerder afgekeurde voorbeelden worden nog steeds geweerd, en er blijft een maximum aan het aantal voorbeelden per keurmerk
+
 ## 2026-07-12 (Herkenning vergelijkt weer met álle voorbeelden, en goedgekeurde keurmerken tellen gegarandeerd mee)
 
 ### Herkenning miste soms het best passende voorbeeld

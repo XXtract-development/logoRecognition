@@ -1,6 +1,6 @@
 # Story 19.9: Fase 2 — nearest-reference-ranking zodra een klasse ≥ k echte crops heeft
 
-Status: in-progress
+Status: review
 
 <!-- Twee-traps-fase-2, uit correct-course (sprint-change-proposal-2026-07-07.md). Bouwt op 19.8: zodra een keurmerkklasse ≥ k door mensen bevestigde ECHTE crops heeft, schakelt de match van de absolute cosine-drempel tegen het GIDS-zaad naar nearest-reference-ranking tegen de ECHTE crops (conditie C). Bewezen 44%->100% in de 19.7-spike, zonder nieuwe training. -->
 
@@ -50,9 +50,9 @@ zodat **de herkenning van die klasse van ~44% naar ~100% top-1 springt (bewezen 
 - [x] 2. **Schakelmoment + nearest-reference-rank in `search_with_seed` (AC: 1, 3)** — conditie C geïmplementeerd: `ref_sim = max(cosine(emb, r) for r in real_ref_embs)`; match als `sim >= threshold OR ref_sim >= ranking_threshold` (gids-pad blijft als fallback/aanvulling). Onder k (SUCCESVOL geëmbede refs): ongewijzigd enkel het gids-pad. NFR-6-guard en de gate-voorfilter blijven vóór de rank-conditie. `apps/ml-service/app/services/bootstrap_search.py`.
 - [x] 3. **Config (AC: 1)** — `getRankingMinRefs()` (`FLYWHEEL_RANKING_MIN_REFS`, default 3) + `getRankingThreshold()` (`FLYWHEEL_RANKING_THRESHOLD`, default = `getBootstrapThreshold()` = 0,60 — conservatieve startwaarde, kalibratie is Task 6, permission-gated). `apps/api/src/services/flywheel/config.ts`.
 - [x] 4. **API-aansluiting (AC: 1, 2)** — `searchAndQueueClassForReview` geeft `realRefPaths` + `rankingThreshold` + `minRefs` mee aan `mlClient.bootstrapSearch` ALLEEN wanneer het aantal actieve echte-crop-refs ≥ k; anders kaal (gids-only). 19.8-review-routering en de kleppen ongewijzigd.
-- [x] 5. **Tests (AC: 4)** — ml-pytest (`test_bootstrap_search_service.py`, 5 nieuwe tests): (a) `test_c_ge_k_refs_matcht_ondanks_lage_gids_cosine`; (b) `test_c_onder_k_refs_ongewijzigd_gids_pad` + `test_c_onleesbare_ref_telt_niet_mee_voor_k`; (c) `test_c_gate_blijft_gelden_ondanks_conditie_c` + `test_c_nfr6_zaadlek_guard_blijft_gelden_ondanks_conditie_c`. api-vitest (`flywheel-bootstrap-run.test.ts`, 3 nieuwe tests): realRefPaths-contract bij ≥k/< k/env-override. Alle groen.
+- [x] 5. **Tests (AC: 4)** — ml-pytest (`test_bootstrap_search_service.py`, 8 nieuwe tests, incl. 2 test-review-aanvullingen + 1 code-review-regressietest): (a) `test_c_ge_k_refs_matcht_ondanks_lage_gids_cosine`; (b) `test_c_onder_k_refs_ongewijzigd_gids_pad` + `test_c_onleesbare_ref_telt_niet_mee_voor_k`; (c) `test_c_gate_blijft_gelden_ondanks_conditie_c` + `test_c_nfr6_zaadlek_guard_blijft_gelden_ondanks_conditie_c` + `test_c_regio_matcht_niet_als_beide_signalen_onder_de_drempel_blijven`; plus `test_c_gids_pad_blijft_fallback_ook_met_conditie_c_actief` (OR-fallback, AC1) en `test_c_min_refs_kleiner_of_gelijk_aan_nul_activeert_conditie_c_niet` (code-review-regressie). api-vitest (`flywheel-bootstrap-run.test.ts`, 5 nieuwe tests): realRefPaths-contract bij ≥k/< k/env-override + take-cap + confidence-fix. Alle groen.
 - [ ] 6. **Eval-reproductie (AC: 5)** — **PENDING-PERMISSION.** Vereist een live/ACC-eval-run (leave-one-GTIN-out reproductie); buiten de autonome scope van deze implement-sprint-run (permission-gate, expliciete toestemming Friso per geval). AC5 blijft daardoor formeel open.
-- [x] 7. **Gates** — `tsc --noEmit` 0; ml-pytest volledige suite groen (63/63, zie Change Log); api-vitest volledige suite groen (zie Change Log). Geen regressies.
+- [x] 7. **Gates** — `tsc --noEmit` 0; api-vitest volledige suite groen (877/916, 2 skip, 37 todo — 0 gefaald). ml-pytest volledige suite: 83 passed/14 skipped/1 gefaald (98 totaal) — de ENIGE faling (`test_no_node_content_hash.py::test_13_1_ac4_...`) is PRE-EXISTING en NIET door deze story veroorzaakt: het gevlagde bestand (`artwork-pipeline.ts`) is door 19.9 niet aangeraakt en byte-identiek aan base `7b9e2a7` (geverifieerd via `git diff`/`diff`). 0 regressies toe te schrijven aan Story 19.9.
 - [ ] 8. **Live-verificatie (AC: 5)** — **PENDING-PERMISSION.** Vereist een ACC-schrijf/deploy-actie; buiten de autonome scope van deze implement-sprint-run (permission-gate, expliciete toestemming Friso per geval).
 
 ## Dev Notes — Developer Context
@@ -86,12 +86,31 @@ Lege klasse → 19.8 (bootstrap vindt crops → review → mens bevestigt → ee
 ## Dev Agent Record
 
 ### Agent Model Used
+Claude Sonnet 5 (epic-agent, implement-sprint) — 2026-07-12.
 
 ### Debug Log References
+- `review-19-9-code-review.md` — 2 cycli adversariële review (Blind Hunter + Edge Case Hunter + Acceptance Auditor, parallel), verdict PASS.
+- `review-19-9-test-review.md` — test-kwaliteitsreview, 2 dekkingslacunes gedicht, verdict PASS.
+- `trace-19-9.md` — AC1-4 traceability-matrix, ac_trace 4/4.
+- `nfr-19-9.md` — NFR-assessment (performance/betrouwbaarheid/security/observability), verdict PASS.
 
 ### Completion Notes List
+- Tasks 1-5, 7 volledig geïmplementeerd en getest (AC1-4). Task 6 (eval-reproductie, AC5) en Task 8 (live-ACC-verificatie, AC5) zijn PENDING-PERMISSION — vereisen expliciete per-geval toestemming van Friso (ACC-schrijf/deploy/eval-run), buiten de autonome scope van deze implement-sprint-run. Story landt op `review`, niet `done`.
+- Code-review (cyclus 1) vond 6 bevindingen (3× HIGH, 1× MEDIUM, 2× LOW) — allemaal gefixt in commit `a807cca`: confidence-sortering van de review-wachtrij, een `take`-cap op de refs-query, een time-box-fix, een min_refs≤0-crash-guard, en een defensieve seed/ref-scheiding. Cyclus 2 bevestigde de fixes zonder nieuwe bevindingen.
+- Test-review vond 1 echte dekkingslacune (AC1's OR-fallback-semantiek was niet expliciet getest) — gedicht met 2 nieuwe tests.
+- Alle betrokken suites groen: ml-pytest `test_bootstrap_search_service.py` 20/20; api-vitest (4 bestanden) 51/51; `tsc --noEmit` 0.
 
 ### File List
+- `apps/ml-service/app/services/bootstrap_search.py` — conditie C (nearest-reference-ranking), min_refs-guard, time-box-fix.
+- `apps/ml-service/app/api/flywheel.py` — `/ml/bootstrap-search`-contract uitgebreid (`real_ref_paths`/`ranking_threshold`/`min_refs`/`ranking_cosine`/`ranking_active`/`real_refs_used`), Pydantic-bounds.
+- `apps/api/src/services/ml-client.ts` — `bootstrapSearch`-request/response uitgebreid.
+- `apps/api/src/services/flywheel/bootstrap-run.ts` — `searchAndQueueClassForReview` haalt actieve ECHTE-crop-refs op en geeft ze mee bij ≥k; `confidence`-fix; `take`-cap; logging.
+- `apps/api/src/services/flywheel/config.ts` — `getRankingMinRefs`, `getRankingThreshold`, `getRankingMaxRefs`.
+- `apps/ml-service/tests/unit/test_bootstrap_search_service.py` — 8 nieuwe tests (conditie C).
+- `apps/api/src/__tests__/services/flywheel-bootstrap-run.test.ts` — 5 nieuwe tests (realRefPaths-contract).
+- `apps/api/src/__tests__/services/flywheel-balanced-sampler.test.ts`, `flywheel-guard-5-5.atdd.test.ts`, `flywheel-review-routing-19-8.atdd.test.ts` — default `referenceLogo.findMany`-mock (geen nieuwe cases).
+- `_bmad-output/implementation-artifacts/review-19-9-code-review.md`, `review-19-9-test-review.md`, `trace-19-9.md`, `nfr-19-9.md` — review-artefacten.
 
 ## Change Log
 - 2026-07-07: aangemaakt via bmad-create-story (na correct-course). Fase-2-story: schakelmoment per klasse — bij ≥ k=3 bevestigde echte crops → nearest-reference-ranking (conditie C) i.p.v. de absolute gids-drempel. Bewezen 44%→100% in de 19.7-spike, zonder training. Bouwt op 19.8 (live op ACC).
+- 2026-07-12: implement-sprint epic-agent — Tasks 1-5,7 geïmplementeerd (4 raakpunten: bootstrap_search.py, flywheel.py, ml-client.ts, bootstrap-run.ts, config.ts), 2 code-review-cycli (6 bevindingen gefixt) + test-review (2 dekkingslacunes gedicht) + traceability (ac_trace 4/4) + NFR (PASS). Gate G: `tsc --noEmit` 0; api-vitest volledige suite 877/916 groen (2 skip, 37 todo, 0 fail); ml-pytest volledige suite (12 bestanden, tegen `ghcr.io/xxtract-development/logo-recognition-ml:acc`) 83 passed/14 skipped/1 gefaald — de faling is PRE-EXISTING en niet door 19.9 veroorzaakt (`test_no_node_content_hash.py`, vlagt `artwork-pipeline.ts` dat door 19.9 niet is aangeraakt en byte-identiek is aan base `7b9e2a7`). Task 6 (eval AC5) + Task 8 (live) blijven PENDING-PERMISSION — status → `review`, niet `done`.
