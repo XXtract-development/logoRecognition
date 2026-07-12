@@ -1,5 +1,13 @@
 # Versiegeschiedenis
 
+## 2026-07-12 (De nachtelijke keurmerk-zoektocht richt zich voortaan op de belangrijkste keurmerken)
+
+### De nachtelijke aanvulling van keurmerk-voorbeelden had geen focus
+- Het systeem dat 's nachts automatisch op zoek gaat naar nieuwe voorbeelden van keurmerken deed dat tot nu toe voor ieder keurmerk dat al minstens één voorbeeld had — zonder onderscheid tussen een veelvoorkomend en een zeldzaam keurmerk. Dat verspreidde het beschikbare zoekbudget te breed
+- De zoektocht richt zich nu gericht op de keurmerken die het vaakst voorkomen, plus expliciet op de keurmerken die nog te weinig bevestigde voorbeelden hebben om al optimaal herkend te worden — precies de klassen die het meest baat hebben bij extra aanvulling
+- Twee bekend gevoelige keurmerken (het kringloop-symbool en het Franse sorteerlogo Triman) worden standaard buiten deze zoektocht gehouden, omdat ze eerder tot een overvloed aan (soms onterechte) voorstellen leidden
+- Alles wat een gevonden voorbeeld al moest doorstaan blijft ongewijzigd: het gaat nog steeds eerst naar een medewerker ter beoordeling, en alle bestaande veiligheidscontroles (waaronder de kwaliteitsdrempel en de limiet per keurmerk) blijven onverkort gelden
+
 ## 2026-07-12 (Het zoek-voorbeeld van een keurmerk blijft het gids-logo, ook als er al bevestigde foto's zijn)
 
 ### Het interne zoek-voorbeeld week soms af van het bedoelde gids-logo

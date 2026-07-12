@@ -1,6 +1,6 @@
 # Story 19.10: Harvest-koppeling + scope-begrenzing — `queue_harvest` als doorlopende echte-crop-bron
 
-Status: in-progress
+Status: review
 
 <!-- Correct-course 2026-07-07 (sprint-change-proposal-2026-07-07.md): de derde en laatste story van de twee-traps-uitbreiding. 19.8 ontstopt het straaltje (bootstrap-crops → review), 19.9 maakt de volle kraan (nearest-reference bij ≥k), 19.10 VOEDT en BEGRENST: koppelt de nachtelijke harvester als doorlopende echte-crop-bron die klassen over de k-drempel tilt, met scope-begrenzing (top-N volume-keurmerken; RECYCLABLE/TRIMAN apart). Laatste open story van epic-19. -->
 
