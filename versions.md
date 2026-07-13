@@ -1,5 +1,13 @@
 # Versiegeschiedenis
 
+## 2026-07-13 (Een nieuwe, aparte zoekmodus kan Nutri-Score-vakjes vinden op hun vorm, ongeacht de letter)
+
+### Nutri-Score-letters C en D hadden vrijwel geen echte voorbeelden om op te herkennen
+- Het Nutri-Score-vakje (de bekende groen-tot-rood-balk met een letter A t/m E) heeft voor alle vijf letters dezelfde vorm — alleen de kleur en de letter verschillen. Een eerdere proef liet zien dat automatisch gokken van de letter niet werkt; alleen een mens kan de letter betrouwbaar aflezen
+- Er staat nu een aparte, los aan te roepen zoekmodus klaar die in het bestaande verpakkingsarchief speurt naar vakjes die op de Nutri-Score-VORM lijken — ongeacht welke letter erop staat. Elke treffer krijgt een voorlopige kleur-gok (groen/geel/oranje/rood) mee en komt in de bestaande beoordelingswachtrij terecht
+- Een mens bevestigt daar de echte letter via de al bestaande keuzelijst (die alle vijf Nutri-Score-letters al aanbiedt); een bevestigd voorbeeld wordt dan meteen een volwaardig herkenningsvoorbeeld voor die letter — precies het pad waarmee de andere letters (A, B en E) al goed herkend worden
+- Deze zoekmodus draait niet automatisch mee met de bestaande nachtelijke aanvulling en verandert daar niets aan; hij wordt pas op de praktijkomgeving gestart na expliciete goedkeuring
+
 ## 2026-07-13 (De juiste GS1-categorie wordt voortaan automatisch op een keurmerk-voorbeeld gezet)
 
 ### Keurmerk-voorbeelden droegen vaak de verkeerde categorie-labeling

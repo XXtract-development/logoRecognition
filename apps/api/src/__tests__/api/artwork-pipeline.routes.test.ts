@@ -689,6 +689,81 @@ describe('Artwork Pipeline Routes (ATDD — Epic 8)', () => {
       expect(JSON.parse(response.body).referenceAdded).toBe(true);
     });
 
+    // Story 12.12 — Nutri-Score vorm-oogst: een vorm-geharveste kandidaat draagt
+    // een provisionele code (kleur-gok/placeholder); de mens kiest de exacte
+    // letter via de bestaande relabel-picker (12.7) en stuurt die mee als
+    // accept-override. Dit bewijst dat het GENERIEKE accept→referentie-pad
+    // (19.8/19.12, hierboven al gedekt voor EU_ORGANIC_FARMING) ook voor een
+    // Nutri-Score-letter een actieve review-confirmed referentie registreert —
+    // geen nieuwe code nodig, alleen de bestaande override-flow.
+    it('koppelt een Nutri-Score-vorm-oogst-kandidaat aan de door de mens gekozen letter (12.12 AC2/AC3)', async () => {
+      const nutriscoreCandidate = {
+        ...reviewItemWithCrop,
+        id: 'ri-nutriscore-1',
+        t3777Code: 'NUTRISCORE', // provisionele placeholder (onduidelijke kleur-gok)
+        method: 'embedding-shape',
+        reason: '12.12 nutriscore-vorm-oogst (letter-onafhankelijk)',
+      };
+      (mockPrisma.artworkReviewItem.findUnique as vi.Mock).mockResolvedValue(nutriscoreCandidate);
+      (mockPrisma.artworkReviewItem.update as vi.Mock).mockResolvedValue({
+        ...nutriscoreCandidate,
+        t3777Code: 'NUTRISCORE_C',
+        status: 'registered',
+      });
+      (mlClient.registerReference as vi.Mock).mockResolvedValueOnce({ added: true, reason: 'added' });
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: '/api/v1/artwork/review-items/ri-nutriscore-1/accept',
+        payload: { t3777Code: 'NUTRISCORE_C' },
+      });
+
+      expect(response.statusCode).toBe(200);
+      // De correctie (placeholder -> gekozen letter) wordt toegepast vóórdat
+      // de crop wordt geregistreerd.
+      expect(mockPrisma.artworkReviewItem.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'ri-nutriscore-1' },
+          data: expect.objectContaining({ status: 'accepted', t3777Code: 'NUTRISCORE_C' }),
+        }),
+      );
+      // De bevestigde crop wordt een actieve review-confirmed referentie ONDER
+      // de door de mens gekozen letter (niet de provisionele placeholder).
+      expect(mlClient.registerReference).toHaveBeenCalledWith(
+        'artwork-crops/08718989912451/crop-1.png',
+        'NUTRISCORE_C',
+      );
+      expect(JSON.parse(response.body).referenceAdded).toBe(true);
+    });
+
+    // Elke letter moet werken — de accept-override is code-agnostisch, geen
+    // Nutri-Score-specifieke aanname in artwork-pipeline.ts.
+    it.each(['NUTRISCORE_A', 'NUTRISCORE_B', 'NUTRISCORE_D', 'NUTRISCORE_E'])(
+      'koppelt ook aan %s',
+      async (letter) => {
+        const candidate = { ...reviewItemWithCrop, id: 'ri-nutriscore-2', t3777Code: 'NUTRISCORE' };
+        (mockPrisma.artworkReviewItem.findUnique as vi.Mock).mockResolvedValue(candidate);
+        (mockPrisma.artworkReviewItem.update as vi.Mock).mockResolvedValue({
+          ...candidate,
+          t3777Code: letter,
+          status: 'registered',
+        });
+        (mlClient.registerReference as vi.Mock).mockResolvedValueOnce({ added: true, reason: 'added' });
+
+        const response = await app.inject({
+          method: 'PATCH',
+          url: '/api/v1/artwork/review-items/ri-nutriscore-2/accept',
+          payload: { t3777Code: letter },
+        });
+
+        expect(response.statusCode).toBe(200);
+        expect(mlClient.registerReference).toHaveBeenCalledWith(
+          'artwork-crops/08718989912451/crop-1.png',
+          letter,
+        );
+      },
+    );
+
     it('accept still succeeds when reference registration fails (best-effort)', async () => {
       (mockPrisma.artworkReviewItem.findUnique as vi.Mock).mockResolvedValue(reviewItemWithCrop);
       (mockPrisma.artworkReviewItem.update as vi.Mock).mockResolvedValue({
