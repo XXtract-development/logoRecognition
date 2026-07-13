@@ -40,7 +40,7 @@
 # - Volgorde-advies: Epic 9 strikt sequentieel 9.1→9.6 (Redis-infra in 9.1 is BLOCKER; migratienummers 0007/0008 vereisen volgorde 9.2 vóór 9.5); Epic 10 bouwt op 9; Epic 11 optioneel
 
 generated: 2026-06-03
-last_updated: 2026-07-12  # 19.10 done (harvest-koppeling + scope-begrenzing, AC6 DRY_RUN geverifieerd); epic-19 klaar voor close+retro
+last_updated: 2026-07-12  # EPIC-19 AF: 15/15 stories done+live + verse retrospective (epic-19-retro-2026-07-12.md) -> epic-19: done
 project: logoRecognition
 project_key: NOKEY
 tracking_system: file-system
@@ -130,6 +130,7 @@ development_status:
   12-6-top-n-acceptatie-dataset: in-progress                # CONCREET 2026-06-09: top-N=20 codes (top-n-codes.json), v0-seed=75 ECHT/4 klassen (dataset-v0.json), assembler-tool (assemble_acceptance_candidates.py), label-mechanisme = bestaande review-UI. KERN-BEVINDING: bijna geen echte gelabelde data (75 ECHT/4 klassen + ~9 proof-slice) -> data-CREATIE-taak, DE epic-bottleneck. Resteert: top-N seeden + PO labelt. Voorwaarde voor 12.5 + 12.3-iter2
   12-8-kruischeck-endpoint-n8n: done                        # 2026-07-03: verify-flow geimplementeerd. POST /api/v1/artwork/:gtin/verify-declared (202+runId, x-api-key/JWT) + GET .../runs/:runId (poll, n8n-recept in docblock). Nieuw: services/t3777-aliases.ts (MSC<->_LABEL, RAINFOREST oud/nieuw, unknown->UNSUPPORTED), services/pipeline/verify-flow.ts (import-check->declaraties(8-3D)->alias->gerichte localize(codes-filter 4b)->classify->verdict via getThresholdForMethod->shadow-log recognition_logs/_results), api/v1/verify-declared.ts. Optie 4b: LocalizeRequest.codes ML-side filter (+filter_templates_by_codes, pytest). Run-state in Redis (geen migratie, AC7). Job op artwork-detection-queue via VERIFY_JOB_NAME-route (AC8, geen review-items/trainingsdata). Vliegwiel: CONFIRMED->nominateFromKruischeck(13.2)+registerKruischeckMismatchEvents(16.1) achter FLYWHEEL_KRUISCHECK_NOMINATION_ENABLED (default uit=byte-gelijk); canonieke declared-codes doorgegeven. api vitest 714 pass/2 skip/31 todo; ml pytest 5 (skopt zonder deps). AC10 (ACC-bewijs)=post-deploy vervolgtaak. Story: 12-8-kruischeck-endpoint-n8n.md
   # Fase 2 (lange staart ~850 codes als accept-UNKNOWN/review) = apart vervolgspoor na go/no-go.
+  12-9-nutriscore-labelcorrectie: in-progress             # 2026-07-12: DATA-FIX (geen feature) uit Friso's visuele labelcontrole van de 42 NUTRISCORE_A-E crops (labelcheck-galerij). 18 fout-gelabelde reference_logos deactiveren + A13 herlabelen NUTRISCORE_A->E; ok-crops + synthetische zaden ongemoeid. Idempotent script (patroon 19.13, dry-run default), gold-set-consistentie, read-only voor/na-verificatie, ACC-write met toestemming per geval. Na correctie: A/B/E herkenning-klaar (8/3/6 genuine), C leeg (0), D op 1. Structurele oorzaak + C/D-onvulbaarheid (letterloze GENERAL_FOODS) = aparte follow-ups (nutriscore-...-investigation.md). Story: 12-9-nutriscore-labelcorrectie.md.
   epic-12-retrospective: optional
 
   # ============================================
@@ -186,7 +187,7 @@ development_status:
   18-2-restant-route-via-mediaserver-re-import: done  # 2026-07-04: gedoseerd handmatig driver-script gln-reimport-restant.ts — het 18.1-restant (gln IS NULL + gezette reden) alsnog via het bestaande 8-3O-re-importmechanisme (runImportLoop/markStaleRuns geëxporteerd, geen fork, force:false/delta-strategie) van een GLN voorzien. CPU-getemperd: FLYWHEEL_GLN_REIMPORT_BATCH_SIZE 25 + FLYWHEEL_GLN_REIMPORT_PAUSE_MS 30000, sequentiële batches, pauze tussen. Reden-bijwerking geen stille uitval: gevuld→NULL; anders mediaserver-geen-gln/-geen-media. AC2-hermeting via bestaand on-read glnCoverage-paneel (18.1), geen dupliceerlogica. Migratie-vrij (bestaande gln_backfill_reason-kolom). review-18-2 PASS; ac-trace 2/2. api vitest 825 pass/2 skip/37 todo; web niet geraakt
   epic-18-retrospective: optional
 
-  epic-19: in-progress  # 2026-07-06: heropend voor 19.6 (bootstrap-drempel-herkalibratie, uit go-live-investigate). 19.5 guard-fix done. 2026-07-05: 4/4 stories done (19.1 spike: Route A live + dekkingsrapport; 19.2 parser 5/5; 19.3 index-script; 19.4 gebalanceerde sampler achter vlag — dev-story-FIX 2026-07-05: crop-producerend pad i.p.v. label-als-crop). Adversarial PASS per story; api vitest 855/2skip; tsc 0. Live-inname vereist nog: index-run + vlaggen aan (aparte go-live met toestemming).
+  epic-19: done  # 2026-07-12: EPIC AF — alle 15 stories done + live op ACC; verse epic-retrospective gedraaid (epic-19-retro-2026-07-12.md). Vliegwiel-doel aantoonbaar bereikt: lege klasse -> 19.8 review -> bevestigd -> over k -> 19.9 conditie C (~100%) -> 19.15 gids-zaad-fallback -> 19.10 doorlopende scope-begrensde harvest. Meet-bewezen (19.7 44->100, 19.11 recall 27->100, 19.9 eval 61->99 + live 12/12, 19.10 DRY_RUN flood-guard). 0 incidenten (permission-gate + gold-set/human-review vangnet). Residueel: crosscheck-vloer-beslissing + echte harvest-run (aparte toestemming). [historie 2026-07-06: heropend voor 19.6 uit go-live-investigate; 2026-07-05: 19.1-19.5 done.]
   19-1-spike-acc-verwerkingstoegang-en-keurmerk-dekkingsmeting: done  # 2026-07-05: Route A geactiveerd op ACC (media.stage/catalog.stage via Coolify-redeploy, akkoord Friso); proof-of-access geslaagd; dekkingsrapport (spike-19-1-dekkingsrapport-2026-07-05.md): 40% artwork-producten dragen ≥1 keurmerk, sterk scheef. Deblokkeert 19.3/19.4. Spike = geen AC→test-codegate.
   19-2-declaratie-parser-naar-volledige-keurmerk-dekking-5-5-velden: done  # 2026-07-04: parseDeclaredMarks 5/5 velden (localPackagingMarked...Reference plat + enumerationValue gescopet binnen consumerUsageLabelCode); fieldType EU_consumerUsageLabelCodeList (canon, review-fix); adversarial PASS; api vitest 827/2skip; tsc 0; AC-trace 2/2
   19-3-keurmerk-etiket-index-uit-declaraties: done  # 2026-07-05: idempotent seed-script build-keurmerk-index.ts (droge-run, require.main-guard, ARCH-4); pure buildIndex {fieldType/code → [{gtin,gln,labels}]} + tellingen per sleutel via resolveDeclaredMarks(5/5) + discoverArtwork; codesPresent getoetst aan 951-universum (Result_4.xlsx referentie); index-JSON deterministisch naar MinIO flywheel-index/keurmerk-etiket-index.json (idempotent op vaste sleutel); GTIN-bron artwork_imports (gln gevuld, KEURMERK_INDEX_LIMIT default 500; volledige-corpus = latere uitbreiding). review-19-3 PASS; ac-trace 2/2; api vitest 840/2skip; tsc 0
@@ -202,4 +203,23 @@ development_status:
   19-13-recyclable-referenties-herstellen: done  # 2026-07-11 (herzien): UITVOERVOLGORDE 3e. RECYCLABLE_GENERAL_CLAIM niet herkend: 26 real-crop-refs (realref-live-poc) active=false EN 0 embeddings (enige code; Beter Leven 2 losse rijen = BUITEN scope). GECORRIGEERD: 26 zijn andere populatie dan de 2 review-crops (geen review-items) -> NIEUW idempotent herstelscript nodig (realref_live.py kan niet reactiveren/embedding-herbouwen). Beleid near-dup/eindaantal expliciteren; meet top-1 tegen gold-set NA 19.14. Spec: epics-vliegwiel.md (Story 19.13). ACC-schrijf met toestemming + read-only verificatie vooraf.
   19-14-ivfflat-index-onder-fetch: done  # 2026-07-11 (herzien): UITVOERVOLGORDE 1e (eerst, onafhankelijk/laag risico, maakt 19.13-metingen betrouwbaar). GEVERIFIEERD: idx_reference_embeddings_embedding = ivfflat lists=100 op 215 rijen + probes=1 -> ~1 buur. Index staat NIET in repo-migraties; logo_embeddings heeft GEEN ivfflat (detector niet geraakt). Fix committeerbaar maken: migratie (lists ~sqrt(N) of drop->seqscan) OF SET LOCAL ivfflat.probes in txn (nooit kale SET op pooled conn). Regressietest bouwt eerst degenererende index. Code: database.py:601. Spec: epics-vliegwiel.md (Story 19.14).
   19-15-zaadkeuze-semantiek-resolveseedpath: done  # 2026-07-12: implement-sprint Tasks 1-7 af (AC1-5). resolveSeedPath prefereert nu het gids-zaad (source NOT IN REAL_CROP_SOURCES, inclusief source:null via NULL-safe OR-clausule -- code-review-fix HIGH). realRefPaths/conditie C (19.9) ongewijzigd (regressietest + git-bewijs). tsc 0; api-vitest 883/883 (orchestrator zelf gedraaid, 0 fail); ml-pytest git-hard overgeslagen (geen ml-service-wijziging). Adversarial review (3 lagen parallel) verdict PASS. AC5/Task 7 met expliciete toestemming Friso (read-only op ACC): deel 1 conditie C ongewijzigd (git-hard); deel 2 gids-zaad bewezen tegen live ACC-DB -- GREEN_DOT echte crop -> gids-logo, 21/21 gemengde klassen wisselen, 7 gids-loze klassen niet-brekend fallback. Zie 19-15-eval-zaadkeuze.md. Gedeployd naar acc.
-  epic-19-retrospective: done  # 2026-07-05: zie retrospective-epic-19.md (let op: epic heropend/uitgebreid na go-live-bevindingen)
+  epic-19-retrospective: done  # 2026-07-12: verse volledige retro (19.1-19.15) -> epic-19-retro-2026-07-12.md. Vervangt de stale 2026-07-05-versie (retrospective-epic-19.md, dekte alleen 19.1-19.5). 4 actiepunten (zie action_items).
+
+# Actiepunten uit de epic-19-retrospective (2026-07-12) — zie epic-19-retro-2026-07-12.md
+action_items:
+  - epic: 19
+    action: "Doc-only-deploy-wrijving verminderen: path-filter op de build-workflow (skip build+redeploy als alleen _bmad-output/**/docs wijzigen) OF doc-flips meeliften met de eerstvolgende code-commit"
+    owner: "DevOps/Friso"
+    status: open
+  - epic: 19
+    action: "Status-lock-step-hygiene borgen: lichte check die story-.md Status: tegen de sprint-status-entry verifieert voor een epic-close (n.a.v. 19-8-drift)"
+    owner: "orchestrator/proces"
+    status: open
+  - epic: 19
+    action: "ml-pytest-harness opschonen: fix de 6 pre-existing collection-errors zodat pytest tests/ schoon collect zonder --continue-on-collection-errors"
+    owner: "ml-service-dev"
+    status: open
+  - epic: 19
+    action: "Crosscheck-vloer-beslissing onderbouwen: meet read-only de VALS-match-verdeling in 0,70-0,80 voordat de 0,80-auto-bevestig-vloer eventueel verlaagd wordt"
+    owner: "Friso + data"
+    status: open
