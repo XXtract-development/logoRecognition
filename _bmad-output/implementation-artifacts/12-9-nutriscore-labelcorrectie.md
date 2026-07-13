@@ -1,6 +1,6 @@
 # Story 12.9: NutriScore labelcorrectie — fout-gelabelde referentie-crops deactiveren + A13 → E
 
-Status: in-progress
+Status: review
 
 <!-- Data-fix (GEEN feature) op de ACC reference_logos-records, volgend uit Friso's visuele labelcontrole (2026-07-12) van de 42 NUTRISCORE_A-E crops. Bron van waarheid: het menselijk verdict, want Nutri-Score is een vaste 5-kleurenschaal. -->
 
@@ -50,13 +50,13 @@ zodat **de NutriScore-referentiebibliotheek de werkelijkheid weerspiegelt (A/B/E
 
 ## Tasks / Subtasks
 
-- [ ] 1. **Read-only voor-verificatie (AC: 1, 2)** — bevestig op ACC dat de 18 ids nu `active=true` zijn en A13 nu `t3777_code=NUTRISCORE_A` is (startsituatie klopt met het verdict). Controleer per id of er een `gold_set_records`-rij bestaat (t3777_code + crop_path-match) → lijst de te-corrigeren gold-records.
-- [ ] 2. **Idempotent correctiescript (AC: 1, 2, 5)** — nieuw script `apps/ml-service/scripts/correct_nutriscore_labels.py` (óf een gelijkwaardige plek), gemodelleerd op `restore_recyclable_refs.py`: `argparse` met `--apply` (default dry-run/preview, geen writes); per-ref korte transactie met `FOR UPDATE`-lock; de 19 ids hard in het script (uit het verdict-bestand). Actie: 18× `UPDATE reference_logos SET active=false WHERE id=$1`; 1× `UPDATE reference_logos SET t3777_code='NUTRISCORE_E', field_type=…, gs1_field=… WHERE id=cf18877a-…`. Idempotent: check de huidige waarde vóór write (al gecorrigeerd → skip). Dry-run print het plan.
-- [ ] 3. **Gold-set-consistentie (AC: waar nodig)** — voor afgekeurde crops met een gold_set-rij: maak die consistent (deactiveren/markeren of `replaced_by_id` zetten volgens het bestaande gold-set-mechanisme). Documenteer wat en waarom; geen gold-set-mutatie zonder dat een id het echt vereist.
-- [ ] 4. **Tests (AC: 6)** — test de selectie-/actielogica: de actieset bevat exact de 18 deactiveer-ids + A13-herlabel; de ok/zaad-ids NIET; DRY_RUN doet geen writes. Volg het ml-service-testpatroon (importlib-stub + gemockte DB), zoals `test_restore_recyclable_refs_19_13.py`.
-- [ ] 5. **Read-only na-verificatie (AC: 4)** — na `--apply`: bevestig de 18 `active=false`, A13 = NUTRISCORE_E, en de per-letter genuine-tellingen A8/B3/C0/D1/E6. Leg vast in een kort meetrapport.
-- [ ] 6. **Gates** — de relevante testsuite groen; geen productie-code-pad geraakt (git-hard beargumenteren dat model/gate/harvest/vliegwiel ongewijzigd zijn).
-- [ ] 7. **ACC-toepassing (permission-gated)** — met EXPLICIETE toestemming Friso: eerst dry-run (read-only preview tonen), dan `--apply`. Container ongemoeid (script draait als wegwerp/exec, geen deploy nodig — het muteert alleen data).
+- [x] 1. **Read-only voor-verificatie (AC: 1, 2)** — code-pad geleverd: `--verify` toont de live per-letter genuine-tellingen; de 18-ids/A13-startstaat-check zelf vergt een live ACC-connectie en verloopt dus SAMEN MET Task 7 (permission-gated, niet in deze commit uitgevoerd).
+- [x] 2. **Idempotent correctiescript (AC: 1, 2, 5)** — `apps/ml-service/scripts/correct_nutriscore_labels.py`, gemodelleerd op `restore_recyclable_refs.py`: `argparse --apply` (default dry-run, geen writes, GEEN DB-call); per-ref korte transactie met `FOR UPDATE`-lock; de 19 ids hard in het script. Idempotent + guards tegen onverwachte staat/conflict (code review, zie `review-12-9-implementation-adversarial.md`).
+- [x] 3. **Gold-set-consistentie** — `_reconcile_gold_set`: self-tombstone (`replaced_by_id = id`) op ECHT-gold-records die de crop nog onder de foute code bevestigen (patroon `withdrawGoldSetRecord`, `gold-set.ts`). Gedocumenteerd in de scriptdocstring; live toepassing volgt met Task 7.
+- [x] 4. **Tests (AC: 6)** — `apps/ml-service/tests/unit/test_correct_nutriscore_labels.py`, 21 tests: exacte 18-ids + A13-herlabel-actieset, ok/zaad-ids NIET in de actieset, DRY_RUN geen writes/geen DB-call, idempotentie, plus code-review-gedreven edge-cases (onverwachte code, variant_label-conflict, NULL-active, lege storage_path, alle-ids-missing). Patroon `test_restore_recyclable_refs_19_13.py`.
+- [ ] 5. **Read-only na-verificatie (AC: 4)** — `verify()`-functie geleverd en getest (query-logica); de daadwerkelijke ná-meting vergt de toegepaste correctie op ACC → PENDING Task 7.
+- [x] 6. **Gates** — ml-pytest 21/21 nieuw groen; volledige suite 84 passed/13 skipped/6 pre-existing (ongerelateerde) collection-errors (`git diff 6bf5fad..HEAD` bevestigt: die 6 testbestanden zijn byte-identiek aan de epic-basis). Geen `apps/ml-service/app/**` productie-pad aangeraakt — enige wijzigingen zijn `scripts/correct_nutriscore_labels.py` + zijn test.
+- [ ] 7. **ACC-toepassing (permission-gated)** — NIET uitgevoerd. Vergt EXPLICIETE per-geval toestemming van Friso (niet verkregen in deze run). Story blijft op `review` tot Task 7 is afgerond; zie `blocked_stories`/pending-permission in de epic-rapportage.
 
 ## Dev Notes — Developer Context
 
@@ -91,12 +91,26 @@ Staan volledig in `_bmad-output/implementation-artifacts/nutriscore-labelverdict
 ## Dev Agent Record
 
 ### Agent Model Used
+Claude Opus 4.8 (1M context) — bmad-epic-subagent (epic-12, scope story 12.9 only).
 
 ### Debug Log References
+- ml-pytest (nieuwe suite): `docker run ... ghcr.io/xxtract-development/logo-recognition-ml:acc ... pytest tests/unit/test_correct_nutriscore_labels.py -q` → 21 passed.
+- ml-pytest (volledige suite, `--continue-on-collection-errors`): 84 passed, 13 skipped, 6 errors — de 6 errors (`test_flywheel_phash_endpoint.py`, `test_ivfflat_probes_19_14.py`, `test_localize_codes_filter.py`, `test_no_node_content_hash.py`, `test_phash_service.py`, `test_restore_recyclable_refs_19_13.py`) zijn pre-existing `ModuleNotFoundError`/`IndexError` in de container-mount, git-hard bevestigd byte-identiek aan `6bf5fad` (`git diff 6bf5fad..HEAD -- <die 6 bestanden>` = leeg) — niet 12.9-gerelateerd.
+- Adversarial review: 3 parallelle lagen (Blind Hunter/Edge Case Hunter/Acceptance Auditor) op `6bf5fad..14f4af2`, 2 MEDIUM + 6 LOW bevindingen, allemaal gefixt in `03370ce`. Rapport: `review-12-9-implementation-adversarial.md` (verdict PASS op `03370ce`).
 
 ### Completion Notes List
+- Script + tests geleverd en getest; `--apply` (Task 7, echte ACC-writes) NIET uitgevoerd — permission-gated, buiten scope van deze autonome run (expliciete per-geval toestemming Friso ontbreekt).
+- AC1/AC2/AC4 zijn data-toestand-ACs die pas bewijsbaar zijn ná de gated Task-7-run; de scriptlogica die ze moet laten kloppen is wél volledig gebouwd en getest.
+- Code review vond en fixte: (1) `_relabel_ref` schreef blind zonder de huidige code te valideren tegen `old_code` — kon een gedreven/onverwachte staat overschrijven; (2) gold-set-reconciliatie gebruikte de hardcoded old-code-constante i.p.v. de gefetchte rij-waarde. Zie `review-12-9-implementation-adversarial.md` voor het volledige fix-log (F1-F8).
+- AC4-cijfer-verduidelijking: het verdict-bestand noemt "E genuine over: 6" in de per-letter-brontabel, maar dat is de E-telling VÓÓR de A13-instroom. Ná de relabel is het werkelijke actieve E-aantal 7 (9 vóór − 3 gedeactiveerd + 1 A13-instroom), zoals AC4's eigen parenthetische toelichting ook zegt. `verify()`'s docstring documenteert dit; de story-tekst zelf is niet gewijzigd (geen bevoegdheid om Friso's AC's te herschrijven).
 
 ### File List
+- `apps/ml-service/scripts/correct_nutriscore_labels.py` (nieuw)
+- `apps/ml-service/tests/unit/test_correct_nutriscore_labels.py` (nieuw)
+- `_bmad-output/implementation-artifacts/review-12-9-implementation-adversarial.md` (nieuw)
+- `_bmad-output/implementation-artifacts/12-9-nutriscore-labelcorrectie.md` (status + tasks + Dev Agent Record)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (12-9 → review)
+- `versions.md`
 
 ## Change Log
 - 2026-07-12: aangemaakt via bmad-create-story. Data-fix uit Friso's visuele labelcontrole van de 42 NUTRISCORE_A-E crops (labelcheck-galerij). Scope: 18 fout-gelabelde reference_logos deactiveren + A13 herlabelen NUTRISCORE_A→E; ok-crops + synthetische zaden ongemoeid. Idempotent script (patroon 19.13, dry-run default), gold-set-consistentie, read-only voor-/na-verificatie, ACC-write met toestemming. Structurele oorzaak + C/D-onvulbaarheid = aparte follow-ups (investigation).

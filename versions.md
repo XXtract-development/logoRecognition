@@ -1,5 +1,12 @@
 # Versiegeschiedenis
 
+## 2026-07-13 (Correctie voor foutief gelabelde Nutri-Score-voorbeelden staat klaar)
+
+### Achttien Nutri-Score-voorbeelden bleken verkeerd gelabeld, één stond onder de verkeerde letter
+- Bij een handmatige controle van alle Nutri-Score-voorbeelden (de bekende A-E-schaal) bleken 18 voorbeelden onder de verkeerde letter geregistreerd te staan, en één voorbeeld stond onder letter A terwijl het eigenlijk een E is
+- Er staat nu een geteste correctie klaar die deze 18 voorbeelden buiten gebruik zet en het ene voorbeeld naar de juiste letter (E) verplaatst, zonder de correct gelabelde voorbeelden of de bestaande testvoorbeelden aan te raken
+- Deze correctie wordt pas daadwerkelijk op de praktijkomgeving uitgevoerd na expliciete goedkeuring — er is dus nog geen zichtbaar verschil in de herkenning totdat die goedkeuring gegeven is
+
 ## 2026-07-12 (De nachtelijke keurmerk-zoektocht richt zich voortaan op de belangrijkste keurmerken)
 
 ### De nachtelijke aanvulling van keurmerk-voorbeelden had geen focus
