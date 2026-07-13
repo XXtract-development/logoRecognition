@@ -1,6 +1,6 @@
 # Story 12.12 — Adversarial Review (Nutri-Score vorm-oogst)
 
-reviewed_commit: PENDING_COMMIT_HASH
+reviewed_commit: 8cd5ee7518fd225a5569698fa83da89b575e69a8
 verdict: PASS
 diff_scope: apps/ml-service (2 new files: `queue_harvest_nutriscore.py`, `test_queue_harvest_nutriscore_12_12.py`; 1 modified: `database.py` — new method only) + apps/api (1 test file extended, geen productiecode) + apps/web (1 new test file, geen productiecode) + 3 `_bmad-output`-docs (story/diagnose/spike) + sprint-status.yaml + versions.md
 
