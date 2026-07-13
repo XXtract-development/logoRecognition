@@ -1,6 +1,6 @@
 # Story 12.13: Rate-limit-afwijzing → 429 i.p.v. 500 + thumbnail-flood ontlasten
 
-Status: review
+Status: done
 
 <!-- BUGFIX-story. Ontdekt 2026-07-13 tijdens het 12.12-labelwerk: Friso's `PATCH /artwork/review-items/:id/accept` gaf HTTP 500. Read-only byte-identiek gereproduceerd: GEEN accept/registratie-bug, maar de globale rate-limiter die bij overschrijding een generieke 500 INTERNAL_ERROR teruggeeft i.p.v. 429, aangewakkerd door de review-UI die tientallen thumbnails tegelijk laadt. Scope-keuze Friso 2026-07-13: "429 + flood verlichten" (niet enkel 429; niet ook de UI-lazy-load). -->
 
