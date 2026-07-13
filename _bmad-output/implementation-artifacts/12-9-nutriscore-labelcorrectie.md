@@ -1,6 +1,6 @@
 # Story 12.9: NutriScore labelcorrectie — fout-gelabelde referentie-crops deactiveren + A13 → E
 
-Status: review
+Status: done
 
 <!-- Data-fix (GEEN feature) op de ACC reference_logos-records, volgend uit Friso's visuele labelcontrole (2026-07-12) van de 42 NUTRISCORE_A-E crops. Bron van waarheid: het menselijk verdict, want Nutri-Score is een vaste 5-kleurenschaal. -->
 
@@ -56,7 +56,7 @@ zodat **de NutriScore-referentiebibliotheek de werkelijkheid weerspiegelt (A/B/E
 - [x] 4. **Tests (AC: 6)** — `apps/ml-service/tests/unit/test_correct_nutriscore_labels.py`, 21 tests: exacte 18-ids + A13-herlabel-actieset, ok/zaad-ids NIET in de actieset, DRY_RUN geen writes/geen DB-call, idempotentie, plus code-review-gedreven edge-cases (onverwachte code, variant_label-conflict, NULL-active, lege storage_path, alle-ids-missing). Patroon `test_restore_recyclable_refs_19_13.py`.
 - [ ] 5. **Read-only na-verificatie (AC: 4)** — `verify()`-functie geleverd en getest (query-logica); de daadwerkelijke ná-meting vergt de toegepaste correctie op ACC → PENDING Task 7.
 - [x] 6. **Gates** — ml-pytest 21/21 nieuw groen; volledige suite 84 passed/13 skipped/6 pre-existing (ongerelateerde) collection-errors (`git diff 6bf5fad..HEAD` bevestigt: die 6 testbestanden zijn byte-identiek aan de epic-basis). Geen `apps/ml-service/app/**` productie-pad aangeraakt — enige wijzigingen zijn `scripts/correct_nutriscore_labels.py` + zijn test.
-- [ ] 7. **ACC-toepassing (permission-gated)** — NIET uitgevoerd. Vergt EXPLICIETE per-geval toestemming van Friso (niet verkregen in deze run). Story blijft op `review` tot Task 7 is afgerond; zie `blocked_stories`/pending-permission in de epic-rapportage.
+- [x] 7. **ACC-toepassing (permission-gated)** — GEDAAN (2026-07-12, expliciete toestemming Friso). Eerst read-only dry-run (`12-9-dryrun-acc.md`): begintoestand = verdict (18× active, A13=NUTRISCORE_A), 0 gold-set betrokken, 0 writes. Daarna `--apply`: `gedeactiveerd:18, herlabeld:1, fouten:0, gold-set:0` — exact 19 `reference_logos`-mutaties. Onafhankelijke na-verificatie (`12-9-apply-acc.md`): 18 ids nu `active=false`; A13 nu `t3777_code=NUTRISCORE_E`/active/field_type+gs1_field consistent; ok-crops (A4-A7,B3,B4,D1,E2) + zaden ongemoeid; per-letter genuine **A8/B3/C0/D1/E7**. Idempotentie herbevestigd (2e `--apply` = 0 mutaties). Geen deploy/container-mutatie.
 
 ## Dev Notes — Developer Context
 
@@ -109,8 +109,10 @@ Claude Opus 4.8 (1M context) — bmad-epic-subagent (epic-12, scope story 12.9 o
 - `apps/ml-service/tests/unit/test_correct_nutriscore_labels.py` (nieuw)
 - `_bmad-output/implementation-artifacts/review-12-9-implementation-adversarial.md` (nieuw)
 - `_bmad-output/implementation-artifacts/12-9-nutriscore-labelcorrectie.md` (status + tasks + Dev Agent Record)
-- `_bmad-output/implementation-artifacts/sprint-status.yaml` (12-9 → review)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (12-9 → done)
+- `_bmad-output/implementation-artifacts/12-9-dryrun-acc.md` + `12-9-apply-acc.md` (nieuw — read-only dry-run + de goedgekeurde --apply + na-verificatie)
 - `versions.md`
 
 ## Change Log
 - 2026-07-12: aangemaakt via bmad-create-story. Data-fix uit Friso's visuele labelcontrole van de 42 NUTRISCORE_A-E crops (labelcheck-galerij). Scope: 18 fout-gelabelde reference_logos deactiveren + A13 herlabelen NUTRISCORE_A→E; ok-crops + synthetische zaden ongemoeid. Idempotent script (patroon 19.13, dry-run default), gold-set-consistentie, read-only voor-/na-verificatie, ACC-write met toestemming. Structurele oorzaak + C/D-onvulbaarheid = aparte follow-ups (investigation).
+- 2026-07-12: script + tests + adversariële review PASS (script-action-set 19/19 identiek aan verdict, 21 tests groen) → `review`. Daarna Task 7 met expliciete toestemming Friso: dry-run (0 writes, begintoestand=verdict, 0 gold-set) → `--apply` (18 deactiveren + A13→E, 0 fouten) → onafhankelijke na-verificatie **A8/B3/C0/D1/E7**, idempotentie herbevestigd. Alle AC's (1-6) live geverifieerd → **status → `done`**. NB: schoonmaakslag, geen dekkingsuitbreiding (C→0, D→1 onder k; correct-gelabelde crops resteren). C/D vullen = de dedicated-spike (aparte follow-up).
