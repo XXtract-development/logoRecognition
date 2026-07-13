@@ -223,8 +223,12 @@ const HUMAN_ECHT_SOURCES = ['review-accept', 'review-annotate'] as const;
  * flywheel-auto-promotie (`flywheel-promotion`). Gids-seeds dragen een ANDER
  * source-patroon (`seed:...`) en vallen hier bewust buiten — conditie C rankt
  * uitsluitend tegen ECHTE crops, nooit tegen het gids-logo zelf.
+ *
+ * `export` (Story 12.10): de per-categorie-dekkingsteller
+ * (`overview/coverage.ts`) hergebruikt exact dezelfde bronwaarden i.p.v. de
+ * literal-array te dupliceren.
  */
-const REAL_CROP_SOURCES = ['review-confirmed', 'realref-live-poc', 'flywheel-promotion'] as const;
+export const REAL_CROP_SOURCES = ['review-confirmed', 'realref-live-poc', 'flywheel-promotion'] as const;
 
 /** Eén ml-zaad-match (de ECHTE crop-regio in de artwork). */
 interface BootstrapMatch {

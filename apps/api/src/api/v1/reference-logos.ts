@@ -21,6 +21,7 @@ import prisma from '../../core/db';
 import { KEURMERK_CATEGORY } from '../../services/provenance';
 import { mlClient } from '../../services/ml-client';
 import { markBaselineStale } from '../../services/flywheel/baseline';
+import { resolveFieldType } from '../../services/field-type-mapping';
 
 /** Allowed reference-logo file extensions. */
 const ALLOWED_EXTENSIONS = ['png', 'svg'] as const;
@@ -151,8 +152,30 @@ export async function referenceLogosRoutes(fastify: FastifyInstance) {
     }
 
     try {
+      // Story 12.10 (AC3): field_type/gs1_field expliciet afleiden uit de code i.p.v.
+      // de schema-default te laten staan — voorkomt dat curatie-uploads opnieuw
+      // in de PackagingMarkedLabelAccreditationCode-default-bak belanden. Bij een
+      // (zeldzame) onopgeloste ambiguïteit blijft de schema-default het vangnet
+      // (fieldType/gs1Field weggelaten uit `data` → Prisma past de kolom-default toe).
+      const resolvedFieldType = resolveFieldType(t3777Code);
+      if (resolvedFieldType.resolution === 'unresolved') {
+        logger.warn('Ambigue code bij curatie-upload — schema-default field_type toegepast', {
+          t3777Code,
+          note: resolvedFieldType.note,
+        });
+      }
+
       const record = await prisma.referenceLogo.create({
-        data: { t3777Code, variantLabel, source, storagePath, active: true, logoId },
+        data: {
+          t3777Code,
+          variantLabel,
+          source,
+          storagePath,
+          active: true,
+          logoId,
+          ...(resolvedFieldType.fieldType ? { fieldType: resolvedFieldType.fieldType } : {}),
+          ...(resolvedFieldType.gs1Field ? { gs1Field: resolvedFieldType.gs1Field } : {}),
+        },
       });
 
       logger.info('Reference logo created', { id: record.id, t3777Code, variantLabel });

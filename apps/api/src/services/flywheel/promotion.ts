@@ -23,6 +23,7 @@ import { Prisma } from '@prisma/client';
 import prisma from '../../core/db';
 import { createLogger } from '../../core/logger';
 import { assertClassCapWithinTx } from './guardrails';
+import { resolveFieldType } from '../field-type-mapping';
 
 const logger = createLogger('flywheel-promotion');
 
@@ -170,6 +171,17 @@ export async function promoteOne(
     }
 
     // 2. INSERT ReferenceLogo (active=true, source=flywheel-promotion).
+    // Story 12.10 (AC3): field_type/gs1_field expliciet afleiden uit de code
+    // (zelfde resolutie als de curatie-upload) i.p.v. de schema-default te laten
+    // staan. Onopgeloste ambiguïteit → schema-default blijft het vangnet.
+    const resolvedFieldType = resolveFieldType(candidate.t3777Code);
+    if (resolvedFieldType.resolution === 'unresolved') {
+      logger.warn('Ambigue code bij promotie — schema-default field_type toegepast', {
+        t3777Code: candidate.t3777Code,
+        note: resolvedFieldType.note,
+      });
+    }
+
     const referenceLogo = await tx.referenceLogo.create({
       data: {
         t3777Code: candidate.t3777Code,
@@ -177,6 +189,8 @@ export async function promoteOne(
         source: PROMOTION_SOURCE,
         storagePath: candidate.cropPath ?? '',
         active: true,
+        ...(resolvedFieldType.fieldType ? { fieldType: resolvedFieldType.fieldType } : {}),
+        ...(resolvedFieldType.gs1Field ? { gs1Field: resolvedFieldType.gs1Field } : {}),
       },
       select: { id: true },
     });

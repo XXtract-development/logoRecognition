@@ -42,6 +42,8 @@ describe('composeOverview (AC1) — sectie-lokale fouttolerantie', () => {
     // gln-dekkingsgraad is per Story 18.1 een echte on-read sub-service
     // (available: true; percentage/uitval-verdeling) — geen lege-staat-stub meer.
     expect(overview.glnCoverage).toMatchObject({ available: true });
+    // per-categorie-dekkingsteller (Story 12.10) — best-effort available: true.
+    expect(overview.coverage).toMatchObject({ available: true });
     // Server-tijdstempel voor de "verouderde data"-melding (AC8).
     expect(typeof overview.generatedAt).toBe('string');
   });

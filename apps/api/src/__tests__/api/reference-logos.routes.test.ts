@@ -130,6 +130,39 @@ describe('Reference Logos Routes (ATDD RED — Story 7.3)', () => {
       expect(body.storagePath).toMatch(/^reference-logos\//);
     });
 
+    // Story 12.10 (AC3) — de curatie-upload zet field_type/gs1_field expliciet
+    // uit de code-mapping, niet de schema-default.
+    it('should set field_type/gs1_field from the code mapping on create (AC3)', async () => {
+      (mockPrisma.referenceLogo.create as vi.Mock).mockResolvedValue({
+        ...mockReferenceLogo,
+        t3777Code: 'VEGAN',
+      });
+
+      const { payload, headers } = multipartPayload({
+        t3777Code: 'VEGAN',
+        variantLabel: 'kleur-nl',
+        source: 'https://example.com/vegan-logo',
+      });
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/v1/reference-logos',
+        payload,
+        headers,
+      });
+
+      expect(response.statusCode).toBe(201);
+      expect(mockPrisma.referenceLogo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            t3777Code: 'VEGAN',
+            fieldType: 'DietTypeCode',
+            gs1Field: 'dietTypeCode',
+          }),
+        }),
+      );
+    });
+
     it('should reject non-PNG/SVG uploads with 400', async () => {
       const { payload, headers } = multipartPayload(
         { t3777Code: 'EU_ORGANIC_FARMING', variantLabel: 'kleur-nl', source: 'x' },

@@ -73,6 +73,22 @@ describe('promoteOne (AC5 — atomiciteit)', () => {
     });
   });
 
+  // Story 12.10 (AC3) — promotie zet field_type/gs1_field expliciet uit de
+  // code-mapping, niet de schema-default.
+  it('zet field_type/gs1_field uit de code-mapping op de promotie-INSERT (AC3)', async () => {
+    const nutriCandidate = { ...candidate, t3777Code: 'NUTRISCORE_A' };
+    await promoteOne(nutriCandidate, 'auto-x-1');
+    expect(mockPrisma.referenceLogo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          t3777Code: 'NUTRISCORE_A',
+          fieldType: 'NutritionalScore',
+          gs1Field: 'nutritionalScore',
+        }),
+      })
+    );
+  });
+
   it('geen kopieerbare embedding (0 rows) → gooit → geen promotie (rollback)', async () => {
     mockPrisma.$executeRaw.mockResolvedValue(0);
     await expect(promoteOne(candidate, 'auto-x-1')).rejects.toThrow(/geen kopieerbare embedding/i);

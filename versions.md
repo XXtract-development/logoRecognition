@@ -1,5 +1,13 @@
 # Versiegeschiedenis
 
+## 2026-07-13 (De juiste GS1-categorie wordt voortaan automatisch op een keurmerk-voorbeeld gezet)
+
+### Keurmerk-voorbeelden droegen vaak de verkeerde categorie-labeling
+- Elk keurmerk-voorbeeld in de bibliotheek hoort een categorie te dragen (bijvoorbeeld "keurmerk", "dieet/vrij-van", "Nutri-Score" of "consumentenpictogram"). Tot nu toe kreeg bijna elk nieuw voorbeeld automatisch dezelfde standaardcategorie, ook als het eigenlijk een dieet-claim of een Nutri-Score-letter was
+- Er staat nu een geteste, herbruikbare regel klaar die per keurmerkcode de juiste categorie aflevert, met een expliciete markering voor de enkele gevallen waar een code in meerdere categorieën zou kunnen vallen — die worden gerapporteerd in plaats van geraden
+- Nieuwe voorbeelden (via handmatige toevoeging én via de automatische vliegwiel-aanvulling) krijgen voortaan meteen de juiste categorie. Een opschoonactie voor de bestaande voorbeelden staat klaar maar wordt pas op de praktijkomgeving uitgevoerd na expliciete goedkeuring
+- Er komt een nieuw overzicht bij het bestaande vliegwiel-dashboard dat per categorie laat zien hoeveel keurmerken al gevuld zijn, hoeveel er herkenning-klaar zijn en hoeveel er nog op beoordeling wachten — automatisch bijgewerkt, zonder handmatig telwerk
+
 ## 2026-07-13 (Correctie voor foutief gelabelde Nutri-Score-voorbeelden staat klaar)
 
 ### Achttien Nutri-Score-voorbeelden bleken verkeerd gelabeld, één stond onder de verkeerde letter

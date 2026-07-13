@@ -29,6 +29,7 @@ import { getMismatchTrends } from './mismatch-trends';
 import { getCohortTrend } from './cohort-trend';
 import { getBootstrapQueueOverview } from './overview-bootstrap-queue';
 import { getGlnCoveragePanel } from './gln-coverage';
+import { getCoveragePanel } from './coverage';
 
 const logger = createLogger('flywheel-overview-compose');
 
@@ -82,6 +83,7 @@ export async function composeOverview() {
     cohortTrend,
     bootstrapQueue,
     glnCoverage,
+    coverage,
   ] = await Promise.all([
     panel('missedNominations', getMissedNominationCounts),
     panel('lastSuccessfulPromotionRun', getLastSuccessfulPromotionRun),
@@ -99,6 +101,7 @@ export async function composeOverview() {
     panel('cohortTrend', getCohortTrend),
     panel('bootstrapQueue', getBootstrapQueueOverview),
     panel('glnCoverage', getGlnCoveragePanel),
+    panel('coverage', getCoveragePanel),
   ]);
 
   const missedNominationsTotal = isPanelError(missedNominations)
@@ -146,5 +149,8 @@ export async function composeOverview() {
     // Story 18.1: GLN-dekkingsgraad van het artwork-archief (percentage
     // records-met-GLN, doel ≥90%) + uitval-verdeling per reden (FR-21, UX-DR3).
     glnCoverage,
+    // Story 12.10: per-categorie (`field_type`) dekkingsteller — vakken gevuld,
+    // ≥3-echt (herkenning-klaar), gids-only-wachtend + gedeclareerd universe.
+    coverage,
   };
 }
