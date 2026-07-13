@@ -1,5 +1,12 @@
 # Versiegeschiedenis
 
+## 2026-07-13 (Een foutmelding bij te snel klikken toont voortaan de juiste, duidelijke tekst)
+
+### Het reviewscherm gaf soms een verwarrende serverfout in plaats van "even rustig aan"
+- Bij het openen van het keurmerk-kiesscherm laadt de app tientallen kleine voorbeeldplaatjes tegelijk. Bij normaal gebruik kon dat er per ongeluk voor zorgen dat de server daarna een goedkeuring afwees met een onduidelijke, generieke foutmelding in plaats van de bedoelde "te veel verzoeken, even rustig aan"-melding
+- Die foutmelding komt nu altijd correct binnen, zodat duidelijk is wat er aan de hand is
+- De voorbeeldplaatjes van het kiesscherm hebben nu bovendien meer ruimte gekregen voordat de server ze afremt, zodat een normale reviewsessie (scherm openen, keurmerk kiezen, item goedkeuren) niet meer tegen die grens aanloopt — misbruik blijft wel afgeremd
+
 ## 2026-07-13 (De juiste GS1-categorie wordt voortaan automatisch op een keurmerk-voorbeeld gezet)
 
 ### Keurmerk-voorbeelden droegen vaak de verkeerde categorie-labeling

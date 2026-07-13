@@ -285,9 +285,28 @@ export async function referenceLogosRoutes(fastify: FastifyInstance) {
    * (downscaled), so the review station can show "this is what {code} looks
    * like" next to the artwork. Cookie-auth same-origin — presigned previews
    * carry the internal MinIO endpoint the browser cannot reach.
+   *
+   * Story 12.13: the review-UI's code-picker (`MobileReviewDeck`'s `RefThumb`,
+   * capped at 80 rendered rows per open) renders one `<img>` per filtered
+   * keurmerk code, so opening the picker fires up to ~80 of these GETs at
+   * once. That legitimate bulk fanout was eating the global per-IP
+   * rate-limit budget (100/60s) and causing the NEXT normal action (e.g. the
+   * accept-PATCH) to be rejected.
+   *
+   * Fix: a generous but still-BOUNDED per-route override (3x the global
+   * budget), not a full `rateLimit: false` bypass — this route has no auth
+   * gate (`optionalAuth` never rejects unauthenticated callers) and each hit
+   * does a DB lookup + MinIO download + a synchronous `sharp` resize, so
+   * leaving it completely unmetered would turn a read-only thumbnail route
+   * into an unbounded, unauthenticated resource-exhaustion vector. The
+   * bounded override still comfortably covers a full picker open (~80
+   * requests) several times per minute while keeping a hard ceiling on
+   * sustained abuse — consistent with AC3 ("geen versoepeling van de
+   * beveiliging").
    */
   fastify.get<{ Params: { code: string } }>(
     '/reference-logos/code/:code/image',
+    { config: { rateLimit: { max: 300, timeWindow: 60000 } } },
     async (request: FastifyRequest<{ Params: { code: string } }>, reply: FastifyReply) => {
       const { code } = request.params;
       const ref = await prisma.referenceLogo.findFirst({

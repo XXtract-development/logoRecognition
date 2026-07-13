@@ -77,12 +77,24 @@ async function startServer() {
     await app.register(rateLimit, {
       max: parseInt(process.env.RATE_LIMIT_MAX || '100', 10),
       timeWindow: parseInt(process.env.RATE_LIMIT_WINDOW || '60000', 10),
-      errorResponseBuilder: () => ({
-        error: {
-          code: 'RATE_LIMIT_EXCEEDED',
-          message: 'Too many requests, please slow down',
-        },
-      }),
+      // Story 12.13: `@fastify/rate-limit` does `throw errorResponseBuilder(req, context)`
+      // (see its index.js) and expects the thrown value to carry `statusCode` — its own
+      // default builder does exactly that (`err.statusCode = context.statusCode`). Our
+      // previous builder returned a plain object literal WITHOUT `statusCode`, so the
+      // global errorHandler's `error.statusCode || 500` fell through to 500 INTERNAL_ERROR
+      // instead of the existing 429 branch, masking real rate-limit rejections as server
+      // errors. Fix: throw a real `Error` (mirroring the plugin's own default builder) with
+      // `statusCode` set — this also restores `error.message`/`error.stack` fidelity in the
+      // errorHandler's log line, which a plain object literal did not carry. `ban` is never
+      // configured on this plugin registration (no `ban` option below), so the 403-ban path
+      // is not reachable here — statusCode is unconditionally 429.
+      errorResponseBuilder: () => {
+        const err = new Error('Too many requests, please slow down') as Error & {
+          statusCode: number;
+        };
+        err.statusCode = 429;
+        return err;
+      },
     });
 
     // ==========================================
