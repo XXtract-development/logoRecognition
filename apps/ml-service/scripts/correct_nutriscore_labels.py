@@ -44,12 +44,26 @@ overschrijven of te verwijderen. Dit script fabriceert GEEN nieuwe
 "menselijke beslissing"-gold-record (dat vergt een echte reviewbron,
 ``HUMAN_GOLD_SET_SOURCES``) — het trekt uitsluitend de nu-foute bevestiging in.
 
+Dry-run vs ``--verify`` (bewuste tweedeling — code review 2026-07-13): DRY-RUN
+(zonder ``--apply``) is een **statische plan-preview** — puur uit de hardcoded
+constanten hierboven, ZONDER enige DB-call (geen connectiepool nodig, kan nooit
+falen op connectiviteit, structureel niets te muteren). ``--verify`` is de
+**live read-only meting** (Task 1 vóór-check + Task 5 ná-check uit de story) en
+bevraagt wél de DB. Dit wijkt bewust af van ``restore_recyclable_refs.py``
+(waar dry-run zelf de levende dode-refs opzoekt) omdat dat script maar één
+homogene query nodig had; hier zijn dat 19 losse id-lookups + een aparte
+per-letter-telling, en de scheiding houdt de dry-run-preview 100% DB-vrij en
+dus 100% veilig als eerste stap.
+
 Gebruik::
 
-    python -m scripts.correct_nutriscore_labels             # DRY-RUN (geen writes)
-    python -m scripts.correct_nutriscore_labels --apply      # voer de writes uit
-    python -m scripts.correct_nutriscore_labels --verify      # read-only: genuine
-                                                                # tellingen per letter
+    python -m scripts.correct_nutriscore_labels              # DRY-RUN (geen writes, geen DB)
+    python -m scripts.correct_nutriscore_labels --apply       # voer de writes uit
+    python -m scripts.correct_nutriscore_labels --verify       # read-only: genuine
+                                                                 # tellingen per letter
+                                                                 # (vóór EN ná --apply
+                                                                 # bruikbaar; sluit elkaar
+                                                                 # uit met --apply)
 
 ACC-schrijf alleen met expliciete toestemming Friso, per geval (permission-gate,
 zie de story). Raakt uitsluitend deze 19 ids; nooit een andere code/categorie.
@@ -86,7 +100,10 @@ DEACTIVATE_IDS = {
     "E4": "05ad5bfc-b1c5-4780-bfea-992db3b8b426",
     "E10": "ce29c06f-50de-44e5-809f-ef8d4f1e885f",
 }
-assert len(DEACTIVATE_IDS) == 18, "scope moet exact 18 deactiveer-ids bevatten"
+if len(DEACTIVATE_IDS) != 18:  # geen `assert`: die wordt onder `-O` stilzwijgend gestript
+    raise ValueError(
+        f"scope moet exact 18 deactiveer-ids bevatten, kreeg {len(DEACTIVATE_IDS)}"
+    )
 
 #: A13 — mis-gefiled als NUTRISCORE_A, is een E-crop -> herlabelen (blijft active=true).
 RELABEL_ID = "cf18877a-5c8d-4331-b98d-49a464243347"
@@ -140,7 +157,10 @@ async def _deactivate_ref(conn, ref_id: str):
     Retourneert ``(outcome, row)`` met outcome in
     ``{"deactivated", "skip-already", "skip-missing"}``. ``row`` is de
     (vóór-write) rij — nodig voor de gold-set-reconciliatie van de caller — of
-    ``None`` bij ``skip-missing``.
+    ``None`` bij ``skip-missing``. ``active IS NULL`` (kolom is ``NOT NULL
+    DEFAULT true`` in het schema, dus onverwacht) wordt EXPLICIET als
+    ``skip-already`` behandeld i.p.v. impliciet via een falsy-check — zodat een
+    toekomstige schema-wijziging deze aanname niet stilzwijgend verkeerd maakt.
     """
     row = await conn.fetchrow(
         "SELECT active, t3777_code, storage_path FROM reference_logos "
@@ -149,27 +169,57 @@ async def _deactivate_ref(conn, ref_id: str):
     )
     if row is None:
         return "skip-missing", None
-    if not row["active"]:
+    if row["active"] is not True:  # False of (onverwacht) None -> al niet actief
         return "skip-already", row
     await conn.execute("UPDATE reference_logos SET active = false WHERE id = $1", ref_id)
     return "deactivated", row
 
 
-async def _relabel_ref(conn, ref_id: str, new_code: str, field_type: str, gs1_field: str):
-    """Herlabel één ref naar ``new_code``, idempotent (AC2/AC5).
+async def _relabel_ref(
+    conn, ref_id: str, old_code: str, new_code: str, field_type: str, gs1_field: str
+):
+    """Herlabel één ref van ``old_code`` naar ``new_code``, idempotent (AC2/AC5).
 
     Retourneert ``(outcome, row)`` met outcome in
-    ``{"relabeled", "skip-already", "skip-missing"}``. ``row`` is de
-    vóór-write rij (voor de gold-set-reconciliatie tegen de OUDE code).
+    ``{"relabeled", "skip-already", "skip-missing", "skip-unexpected-code",
+    "skip-conflict"}``. ``row`` is de vóór-write rij (voor de gold-set-
+    reconciliatie tegen de OUDE code).
+
+    Validatie (code-review 2026-07-13 — was ontbrekend): schrijft ALLEEN als de
+    huidige code exact ``old_code`` is. Is de code noch ``old_code`` noch
+    ``new_code`` (gedreven, handmatig gewijzigd, of een eerdere onvolledige
+    run), dan is blind overschrijven onveilig — de ref wordt dan overgeslagen
+    als ``skip-unexpected-code`` i.p.v. gegokt.
+
+    Conflict-guard: ``reference_logos`` heeft ``@@unique([t3777Code,
+    variantLabel])`` (``schema.prisma``). Bestaat er al een ANDERE rij met
+    ``(new_code, variant_label)`` gelijk aan die van deze ref, dan zou de
+    UPDATE op een unique-violation stuklopen — dat wordt hier vooraf
+    gedetecteerd en als ``skip-conflict`` teruggegeven (geen halve state, geen
+    onafgehandelde DB-exceptie).
     """
     row = await conn.fetchrow(
-        "SELECT t3777_code, storage_path FROM reference_logos WHERE id = $1 FOR UPDATE",
+        "SELECT t3777_code, variant_label, storage_path FROM reference_logos "
+        "WHERE id = $1 FOR UPDATE",
         ref_id,
     )
     if row is None:
         return "skip-missing", None
     if row["t3777_code"] == new_code:
         return "skip-already", row
+    if row["t3777_code"] != old_code:
+        return "skip-unexpected-code", row
+
+    conflict = await conn.fetchval(
+        "SELECT 1 FROM reference_logos WHERE t3777_code = $1 AND variant_label = $2 "
+        "AND id != $3",
+        new_code,
+        row["variant_label"],
+        ref_id,
+    )
+    if conflict:
+        return "skip-conflict", row
+
     await conn.execute(
         "UPDATE reference_logos SET t3777_code = $2, field_type = $3, gs1_field = $4 "
         "WHERE id = $1",
@@ -190,9 +240,10 @@ async def _reconcile_gold_set(conn, t3777_code, storage_path) -> int:
     ``crop_path``-match op deze ref's ``storage_path`` worden ingetrokken — een
     VALS-record confirmeert al dat de crop niet genuine is (blijft ongemoeid),
     en een andere crop_path hoort niet bij deze ref. Retourneert het aantal
-    ingetrokken records (0 als er geen match is, incl. ``storage_path is None``).
+    ingetrokken records (0 als er geen match is, incl. lege/``None``
+    ``storage_path``/``t3777_code``).
     """
-    if storage_path is None or t3777_code is None:
+    if not storage_path or not t3777_code:
         return 0
     rows = await conn.fetch(
         "SELECT id FROM gold_set_records "
@@ -235,42 +286,83 @@ async def run(apply: bool) -> int:
 
     from app.services.database import db_service
 
-    counts = {"deactivated": 0, "skip-already": 0, "skip-missing": 0, "relabeled": 0}
+    counts: dict = {}
     gold_retracted = 0
+    errors = []  # (label, ref_id, exception) — één kapotte ref breekt de run niet af
 
     async with db_service.get_connection() as conn:
         for label, ref_id in plan["deactivate"].items():
+            try:
+                async with conn.transaction():
+                    outcome, row = await _deactivate_ref(conn, ref_id)
+                    counts[outcome] = counts.get(outcome, 0) + 1
+                    if outcome == "deactivated" and row is not None:
+                        gold_retracted += await _reconcile_gold_set(
+                            conn, row["t3777_code"], row["storage_path"]
+                        )
+            except Exception as exc:  # noqa: BLE001 — één kapotte ref mag de rest niet blokkeren
+                counts["skip-error"] = counts.get("skip-error", 0) + 1
+                errors.append((label, ref_id, str(exc)[:120]))
+                print(f"  FOUT bij {label} ({ref_id}): {str(exc)[:120]}", file=sys.stderr)
+
+        r = plan["relabel"]
+        try:
             async with conn.transaction():
-                outcome, row = await _deactivate_ref(conn, ref_id)
+                outcome, row = await _relabel_ref(
+                    conn, r["id"], r["old_code"], r["new_code"], r["field_type"], r["gs1_field"]
+                )
                 counts[outcome] = counts.get(outcome, 0) + 1
-                if outcome == "deactivated" and row is not None:
+                if outcome == "relabeled" and row is not None:
                     gold_retracted += await _reconcile_gold_set(
                         conn, row["t3777_code"], row["storage_path"]
                     )
+        except Exception as exc:  # noqa: BLE001
+            counts["skip-error"] = counts.get("skip-error", 0) + 1
+            errors.append(("A13-relabel", r["id"], str(exc)[:120]))
+            print(f"  FOUT bij A13-relabel ({r['id']}): {str(exc)[:120]}", file=sys.stderr)
 
-        r = plan["relabel"]
-        async with conn.transaction():
-            outcome, row = await _relabel_ref(
-                conn, r["id"], r["new_code"], r["field_type"], r["gs1_field"]
-            )
-            counts[outcome] = counts.get(outcome, 0) + 1
-            if outcome == "relabeled" and row is not None:
-                gold_retracted += await _reconcile_gold_set(
-                    conn, r["old_code"], row["storage_path"]
-                )
-
+    total_refs = len(plan["deactivate"]) + 1
     print(
-        f"Klaar — gedeactiveerd: {counts['deactivated']}, "
-        f"al-inactief: {counts['skip-already']}, niet-gevonden: {counts['skip-missing']}, "
-        f"herlabeld: {counts['relabeled']}, gold-set ingetrokken: {gold_retracted}."
+        f"Klaar — gedeactiveerd: {counts.get('deactivated', 0)}, "
+        f"al-inactief: {counts.get('skip-already', 0)}, "
+        f"niet-gevonden: {counts.get('skip-missing', 0)}, "
+        f"onverwachte-code: {counts.get('skip-unexpected-code', 0)}, "
+        f"conflict: {counts.get('skip-conflict', 0)}, "
+        f"herlabeld: {counts.get('relabeled', 0)}, "
+        f"fouten: {counts.get('skip-error', 0)}, "
+        f"gold-set ingetrokken: {gold_retracted}."
     )
+    # Structureel niets gelukt (bv. verkeerde DB/omgeving: alle 19 ids
+    # niet-gevonden) mag NOOIT als succes gemeld worden aan een geautomatiseerde
+    # aanroeper — onderscheid dat van een legitieme volledige no-op (waar
+    # skip-already domineert, want dan is de correctie al eerder toegepast).
+    if counts.get("skip-missing", 0) == total_refs:
+        print("Alle ids niet gevonden — verkeerde omgeving/DB? Geen writes uitgevoerd.", file=sys.stderr)
+        return 1
+    if errors:
+        return 1
     return 0
 
 
 async def verify() -> int:
-    """Read-only na-verificatie (AC4): genuine actieve tellingen per letter,
-    exclusief de synthetische zaden (de 5 bekende ``SEED_IDS``). Doet GEEN writes.
-    Verwacht na correctie: A=8, B=3, C=0, D=1, E=6 (verdict-bestand)."""
+    """Read-only vóór-/na-verificatie (AC4, Task 1 + Task 5): genuine actieve
+    tellingen per letter, exclusief de synthetische zaden (de 5 bekende
+    ``SEED_IDS``). Doet GEEN writes.
+
+    Verwacht VÓÓR correctie: A=12, B=9, C=5, D=2, E=9 (alle 18 nog active=true,
+    A13 nog onder NUTRISCORE_A).
+
+    Verwacht NÁ correctie: A=8, B=3, C=0, D=1, **E=7**. Let op: het
+    verdict-bestand (nutriscore-labelverdict-friso-2026-07-12.md) noemt in de
+    per-letter-tabel "E genuine over: 6" — dat cijfer is de E-telling VÓÓR de
+    A13-instroom (A13 stond in die tabelrij nog onder A). Ná de relabel komt
+    A13 er non-seed bij, dus de daadwerkelijke actieve E-telling is 9 (vóór)
+    - 3 (E1,E4,E10 gedeactiveerd) + 1 (A13 relabeled naar E) = **7**, exact
+    zoals AC4's eigen parenthetische toelichting zegt ("na A13→E is E 7
+    echt-actief incl. de herlabel"). Dit script rapporteert dus 7 als het
+    correcte eindgetal — niet de brontabel-6, die alleen A13-vóór-de-relabel
+    weergeeft.
+    """
     from app.services.database import db_service
 
     seed_ids = list(SEED_IDS.values())
@@ -303,6 +395,8 @@ def main() -> int:
         help="Read-only: toon genuine actieve tellingen per letter i.p.v. corrigeren.",
     )
     args = parser.parse_args()
+    if args.verify and args.apply:
+        parser.error("--apply en --verify sluiten elkaar uit — draai ze na elkaar.")
     if args.verify:
         return asyncio.run(verify())
     return asyncio.run(run(args.apply))

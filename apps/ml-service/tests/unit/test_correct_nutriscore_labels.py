@@ -71,12 +71,14 @@ EXPECTED_UNTOUCHED_IDS = {
 
 
 class _FakeConn:
-    """Fake asyncpg-connectie: `fetchrow`/`fetch` geven vaste data terug, `execute`
-    registreert elke aanroep zodat tests op UPDATE-afwezigheid kunnen assert'en."""
+    """Fake asyncpg-connectie: `fetchrow`/`fetch`/`fetchval` geven vaste data
+    terug, `execute` registreert elke aanroep zodat tests op UPDATE-afwezigheid
+    kunnen assert'en."""
 
-    def __init__(self, row=None, fetch_rows=None):
+    def __init__(self, row=None, fetch_rows=None, fetchval_result=None):
         self._row = row
         self._fetch_rows = fetch_rows if fetch_rows is not None else []
+        self._fetchval_result = fetchval_result
         self.executed = []  # (sql, args)
 
     async def fetchrow(self, sql, *args):
@@ -84,6 +86,9 @@ class _FakeConn:
 
     async def fetch(self, sql, *args):
         return self._fetch_rows
+
+    async def fetchval(self, sql, *args):
+        return self._fetchval_result
 
     async def execute(self, sql, *args):
         self.executed.append((sql, args))
@@ -145,6 +150,19 @@ async def test_deactivate_ref_is_idempotent_when_already_inactive():
 
 
 @pytest.mark.asyncio
+async def test_deactivate_ref_treats_null_active_as_already_inactive():
+    """`active` is NOT NULL in het schema (default true), maar mocht die
+    aanname ooit breken dan moet NULL EXPLICIET als 'al niet actief' behandeld
+    worden i.p.v. via een impliciete falsy-check (code review 2026-07-13)."""
+    conn = _FakeConn(
+        row={"active": None, "t3777_code": "NUTRISCORE_A", "storage_path": "crops/a1.png"}
+    )
+    outcome, row = await _deactivate_ref(conn, "some-id")
+    assert outcome == "skip-already"
+    assert conn.executed == []
+
+
+@pytest.mark.asyncio
 async def test_deactivate_ref_skips_missing_row():
     conn = _FakeConn(row=None)
     outcome, row = await _deactivate_ref(conn, "unknown-id")
@@ -156,9 +174,12 @@ async def test_deactivate_ref_skips_missing_row():
 # --- _relabel_ref ------------------------------------------------------------ #
 @pytest.mark.asyncio
 async def test_relabel_ref_relabels_from_a_to_e():
-    conn = _FakeConn(row={"t3777_code": "NUTRISCORE_A", "storage_path": "crops/a13.png"})
+    conn = _FakeConn(
+        row={"t3777_code": "NUTRISCORE_A", "variant_label": "real-crop:a13", "storage_path": "crops/a13.png"},
+        fetchval_result=None,  # geen variant_label-conflict onder NUTRISCORE_E
+    )
     outcome, row = await _relabel_ref(
-        conn, RELABEL_ID, "NUTRISCORE_E", "NutritionalScore", "nutritionalScore"
+        conn, RELABEL_ID, "NUTRISCORE_A", "NUTRISCORE_E", "NutritionalScore", "nutritionalScore"
     )
     assert outcome == "relabeled"
     assert row["t3777_code"] == "NUTRISCORE_A"  # vóór-write staat
@@ -172,9 +193,9 @@ async def test_relabel_ref_relabels_from_a_to_e():
 
 @pytest.mark.asyncio
 async def test_relabel_ref_is_idempotent_when_already_relabeled():
-    conn = _FakeConn(row={"t3777_code": "NUTRISCORE_E", "storage_path": "crops/a13.png"})
+    conn = _FakeConn(row={"t3777_code": "NUTRISCORE_E", "variant_label": "real-crop:a13", "storage_path": "crops/a13.png"})
     outcome, row = await _relabel_ref(
-        conn, RELABEL_ID, "NUTRISCORE_E", "NutritionalScore", "nutritionalScore"
+        conn, RELABEL_ID, "NUTRISCORE_A", "NUTRISCORE_E", "NutritionalScore", "nutritionalScore"
     )
     assert outcome == "skip-already"
     assert conn.executed == []  # geen dubbele write
@@ -184,10 +205,43 @@ async def test_relabel_ref_is_idempotent_when_already_relabeled():
 async def test_relabel_ref_skips_missing_row():
     conn = _FakeConn(row=None)
     outcome, row = await _relabel_ref(
-        conn, "unknown-id", "NUTRISCORE_E", "NutritionalScore", "nutritionalScore"
+        conn, "unknown-id", "NUTRISCORE_A", "NUTRISCORE_E", "NutritionalScore", "nutritionalScore"
     )
     assert outcome == "skip-missing"
     assert conn.executed == []
+
+
+@pytest.mark.asyncio
+async def test_relabel_ref_refuses_write_on_unexpected_current_code(monkeypatch):
+    """Als de huidige code noch `old_code` noch `new_code` is (gedreven/handmatig
+    gewijzigd/onvolledige eerdere run), NIET blind overschrijven — dat zou een
+    verkeerde ref herlabelen (code review 2026-07-13, was ontbrekend)."""
+    conn = _FakeConn(
+        row={"t3777_code": "NUTRISCORE_B", "variant_label": "real-crop:a13", "storage_path": "crops/a13.png"}
+    )
+    outcome, row = await _relabel_ref(
+        conn, RELABEL_ID, "NUTRISCORE_A", "NUTRISCORE_E", "NutritionalScore", "nutritionalScore"
+    )
+    assert outcome == "skip-unexpected-code"
+    assert conn.executed == []  # geen write op een onverwachte staat
+
+
+@pytest.mark.asyncio
+async def test_relabel_ref_refuses_write_on_variant_label_conflict():
+    """`reference_logos` heeft `@@unique([t3777Code, variantLabel])` — bestaat
+    er al een ANDERE rij met dezelfde variant_label onder de nieuwe code, dan
+    moet dat vooraf gedetecteerd worden i.p.v. een ongehandelde unique-violation
+    te laten optreden (code review 2026-07-13, was ontbrekend)."""
+    conn = _FakeConn(
+        row={"t3777_code": "NUTRISCORE_A", "variant_label": "real-crop:d1", "storage_path": "crops/a13.png"},
+        fetchval_result=1,  # conflict: bestaande NUTRISCORE_E-rij met dit label
+    )
+    outcome, row = await _relabel_ref(
+        conn, RELABEL_ID, "NUTRISCORE_A", "NUTRISCORE_E", "NutritionalScore", "nutritionalScore"
+    )
+    assert outcome == "skip-conflict"
+    sqls = [sql.lower() for sql, _ in conn.executed]
+    assert not any("update reference_logos set t3777_code" in s for s in sqls)
 
 
 # --- _reconcile_gold_set ------------------------------------------------------ #
@@ -214,6 +268,16 @@ async def test_reconcile_gold_set_noop_when_storage_path_missing():
     retracted = await _reconcile_gold_set(conn, "NUTRISCORE_A", None)
     assert retracted == 0
     assert conn.executed == []  # geen enkele query/write bij ontbrekende crop_path
+
+
+@pytest.mark.asyncio
+async def test_reconcile_gold_set_noop_when_storage_path_empty_string():
+    """Een lege string is net zo 'geen crop_path' als None — anders zou een
+    lege-string-match tegen `crop_path = ''` geprobeerd worden."""
+    conn = _FakeConn(fetch_rows=[{"id": "gold-1"}])
+    retracted = await _reconcile_gold_set(conn, "NUTRISCORE_A", "")
+    assert retracted == 0
+    assert conn.executed == []
 
 
 # --- DRY_RUN (AC5) ------------------------------------------------------------ #
@@ -266,10 +330,85 @@ async def test_second_pass_on_already_corrected_state_is_a_noop():
     assert already_deactivated.executed == []
 
     already_relabeled = _FakeConn(
-        row={"t3777_code": "NUTRISCORE_E", "storage_path": "crops/a13.png"}
+        row={"t3777_code": "NUTRISCORE_E", "variant_label": "real-crop:a13", "storage_path": "crops/a13.png"}
     )
     outcome, _ = await _relabel_ref(
-        already_relabeled, RELABEL_ID, "NUTRISCORE_E", "NutritionalScore", "nutritionalScore"
+        already_relabeled,
+        RELABEL_ID,
+        "NUTRISCORE_A",
+        "NUTRISCORE_E",
+        "NutritionalScore",
+        "nutritionalScore",
     )
     assert outcome == "skip-already"
     assert already_relabeled.executed == []
+
+
+# --- run(apply=True) glue: falsafe op verkeerde omgeving --------------------- #
+class _AllMissingFakeConn:
+    """Simuleert een omgeving waar GEEN van de 19 ids bestaat (bv. verkeerde
+    DB/omgeving) — `fetchrow` geeft altijd None terug, ongeacht het id."""
+
+    def __init__(self):
+        self.executed = []
+
+    async def fetchrow(self, sql, *args):
+        return None
+
+    async def fetch(self, sql, *args):
+        return []
+
+    async def fetchval(self, sql, *args):
+        return None
+
+    async def execute(self, sql, *args):
+        self.executed.append((sql, args))
+        return "UPDATE 0"
+
+    def transaction(self):
+        return _NoopTransaction()
+
+
+class _NoopTransaction:
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return False
+
+
+class _FakeDbService:
+    def __init__(self, conn):
+        self._conn = conn
+
+    def get_connection(self):
+        return _ConnCtx(self._conn)
+
+
+class _ConnCtx:
+    def __init__(self, conn):
+        self._conn = conn
+
+    async def __aenter__(self):
+        return self._conn
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return False
+
+
+@pytest.mark.asyncio
+async def test_apply_returns_nonzero_when_all_ids_are_missing(monkeypatch):
+    """Als GEEN van de 19 ids gevonden wordt (verkeerde DB/omgeving), mag `run`
+    dat NOOIT als succes (exit 0) rapporteren aan een geautomatiseerde
+    aanroeper — dat zou een silent no-op verhullen als 'gelukt' (code review
+    2026-07-13, was ontbrekend: `run()` gaf altijd 0 terug)."""
+    import sys
+    import types
+
+    fake_conn = _AllMissingFakeConn()
+    fake_db_module = types.ModuleType("app.services.database")
+    fake_db_module.db_service = _FakeDbService(fake_conn)
+    monkeypatch.setitem(sys.modules, "app.services.database", fake_db_module)
+
+    exit_code = await run(apply=True)
+    assert exit_code == 1
