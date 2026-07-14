@@ -723,6 +723,32 @@ class DatabaseService:
                     )
             return out
 
+    async def review_item_exists(self, gtin: str, t3777_code: str, source_file: str) -> bool:
+        """Idempotency check for the declaration-driven Nutri-Score harvest (Story 12.15).
+
+        Returns True if an ``artwork_review_items`` row already exists for this
+        exact (gtin, t3777_code, source_file) combination, REGARDLESS of status
+        (open/confirmed/rejected) — a re-run of the harvest must never insert a
+        duplicate review item for a candidate it (or a human) already processed.
+        Deliberately narrow (no separate DB method for other harvesters): this
+        is the one harvest that is expected to be re-run repeatedly against the
+        same small GTIN scope (unlike queue_harvest.py/queue_harvest_nutriscore.py,
+        which advance an offset over the full corpus and never revisit a GTIN
+        within the same progress cycle).
+        """
+        async with self.get_connection() as conn:
+            row = await conn.fetchval(
+                """
+                SELECT 1 FROM artwork_review_items
+                WHERE gtin = $1 AND t3777_code = $2 AND source_file = $3
+                LIMIT 1
+                """,
+                gtin,
+                t3777_code,
+                source_file,
+            )
+            return row is not None
+
     async def get_active_reference_logos(self) -> List[Dict[str, Any]]:
         """Return all active reference keurmerk variants (one row per variant)."""
         async with self.get_connection() as conn:
