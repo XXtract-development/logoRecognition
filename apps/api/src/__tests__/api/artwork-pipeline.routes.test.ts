@@ -540,6 +540,41 @@ describe('Artwork Pipeline Routes (ATDD — Epic 8)', () => {
       expect(storage.downloadTrainingObject).toHaveBeenCalledWith('artwork-crops/08718989912451/crop-1.png');
     });
 
+    it('Story 12.19 — /source emits an X-Context-Window consistent with the extract', async () => {
+      const sharp = (await import('sharp')).default;
+      const png = await sharp({
+        create: { width: 1000, height: 800, channels: 3, background: { r: 255, g: 255, b: 255 } },
+      })
+        .png()
+        .toBuffer();
+      const storage = await import('../../services/storage');
+      (storage.downloadTrainingObject as vi.Mock).mockResolvedValue(png);
+      (mockPrisma.artworkReviewItem.findUnique as vi.Mock).mockResolvedValue({
+        id: 'ri-src',
+        sourceFile: 'artwork/08718989912451/page-0.png',
+        bbox: { x: 400, y: 300, width: 80, height: 60 },
+      });
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/v1/artwork/review-items/ri-src/source',
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.headers['content-type']).toContain('image/png');
+      const header = response.headers['x-context-window'] as string;
+      expect(header).toBeDefined();
+      const [left, top, rw, rh, W, H] = header.split(',').map(Number);
+      // Full artwork size is echoed back, and the extract window stays in-bounds.
+      expect([W, H]).toEqual([1000, 800]);
+      expect(left).toBeGreaterThanOrEqual(0);
+      expect(top).toBeGreaterThanOrEqual(0);
+      expect(left + rw).toBeLessThanOrEqual(W);
+      expect(top + rh).toBeLessThanOrEqual(H);
+      // The box (400,300,80,60) centres a 250px-margin window → 190,80,500,500.
+      expect([left, top, rw, rh]).toEqual([190, 80, 500, 500]);
+    });
+
     it('returns 404 on /crop for a crop-less item', async () => {
       (mockPrisma.artworkReviewItem.findUnique as vi.Mock).mockResolvedValue({
         id: 'ri-nocrop',

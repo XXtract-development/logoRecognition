@@ -40,6 +40,16 @@ Object.defineProperty(window, 'ResizeObserver', {
   value: MockResizeObserver,
 });
 
+// jsdom doesn't implement URL object-URL helpers; the review deck creates/revokes
+// object URLs for crop/source blobs. Provide no-op stubs so components that cache
+// and revoke them don't throw during render/unmount.
+if (typeof URL.createObjectURL !== 'function') {
+  URL.createObjectURL = () => 'blob:mock';
+}
+if (typeof URL.revokeObjectURL !== 'function') {
+  URL.revokeObjectURL = () => {};
+}
+
 // Mock getComputedStyle to handle Ant Design style calculations
 const originalGetComputedStyle = window.getComputedStyle;
 window.getComputedStyle = (elt: Element, pseudoElt?: string | null) => {

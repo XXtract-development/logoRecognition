@@ -176,16 +176,36 @@ export const fetchDeclaredMarks = async (gtin: string): Promise<DeclaredMarksRes
 };
 
 /**
- * Fetch the FULL source artwork as an authenticated blob (object URL). The deck
- * overlays the item's bbox on this so partial/tight crops stay interpretable
- * ("bekijk in context"). Caller revokes the URL when done.
+ * The "bekijk in context" fragment plus its mapping back to the full artwork.
+ * `window` = [left, top, rw, rh, W, H] in full-artwork pixels (the extract window
+ * and the full artwork size), from the X-Context-Window header. Null when the
+ * response is the whole artwork (identity mapping) — a box drawn on it is already
+ * in full-artwork fractions (Story 12.19).
  */
-export const fetchReviewItemSourceBlob = async (id: string): Promise<string | null> => {
+export interface ReviewItemSource {
+  url: string;
+  window: number[] | null;
+}
+
+/**
+ * Fetch the "bekijk in context" fragment as an authenticated blob (object URL)
+ * plus its full-artwork mapping window. The deck can render this in a drawable
+ * stage and convert a drawn box back to full-artwork fractions (Story 12.19).
+ * Caller revokes the URL when done.
+ */
+export const fetchReviewItemSourceBlob = async (id: string): Promise<ReviewItemSource | null> => {
   try {
     const response = await apiClient.get(`/artwork/review-items/${id}/source`, {
       responseType: 'blob',
     });
-    return response.data ? URL.createObjectURL(response.data as Blob) : null;
+    if (!response.data) return null;
+    const raw = response.headers?.['x-context-window'];
+    let parsedWindow: number[] | null = null;
+    if (typeof raw === 'string') {
+      const nums = raw.split(',').map((n) => Number(n));
+      if (nums.length === 6 && nums.every((n) => Number.isFinite(n))) parsedWindow = nums;
+    }
+    return { url: URL.createObjectURL(response.data as Blob), window: parsedWindow };
   } catch {
     return null;
   }

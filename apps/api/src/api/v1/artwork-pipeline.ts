@@ -1010,6 +1010,12 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
           .composite([{ input: overlay, top: 0, left: 0 }])
           .png()
           .toBuffer();
+        // Story 12.19 — expose the extract window (in full-artwork pixels) + the
+        // full artwork size so the client can convert a box drawn ON this
+        // fragment back to full-artwork fractions and annotate directly here.
+        // Absent header = the response is the whole artwork (identity mapping).
+        reply.header('X-Context-Window', `${left},${top},${rw},${rh},${W},${H}`);
+        reply.header('Access-Control-Expose-Headers', 'X-Context-Window');
         return reply.type('image/png').send(out);
       } catch (err) {
         // Any image-processing failure → fall back to the raw bytes (still works).

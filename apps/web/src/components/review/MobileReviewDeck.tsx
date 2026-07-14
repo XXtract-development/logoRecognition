@@ -36,6 +36,7 @@ import {
   fetchNominationEnabled,
   type ArtworkReviewItem,
   type ReviewRejectReason,
+  type ReviewItemSource,
 } from '@/services/artworkReviewService';
 import { canonicalDeclaredCode } from '@/services/declaredMarks';
 import ImageStage from './ImageStage';
@@ -147,7 +148,11 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
   const [context, setContext] = useState(false);
   const [srcUrl, setSrcUrl] = useState<string | null>(null);
   const [srcLoading, setSrcLoading] = useState(false);
-  const srcCache = useRef<Record<string, string>>({});
+  // Story 12.19 — the context fragment's mapping back to the full artwork
+  // ([left,top,rw,rh,W,H] in artwork pixels), so a box drawn ON the context view
+  // converts to full-artwork fractions. Null = the view is the whole artwork.
+  const [srcWindow, setSrcWindow] = useState<number[] | null>(null);
+  const srcCache = useRef<Record<string, ReviewItemSource>>({});
 
   // The FULL code universe across ALL recognised GS1 sporen — 884 T3777 +
   // Nutri-Score (keurmerk-codes.ts) PLUS DietTypeCode (incl. LACTOSE_FREE), GHS
@@ -235,21 +240,26 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
   useEffect(() => {
     if (!context || !cur) {
       setSrcUrl(null);
+      setSrcWindow(null);
       return;
     }
     const id = cur.id;
-    if (srcCache.current[id]) {
-      setSrcUrl(srcCache.current[id]);
+    const cached = srcCache.current[id];
+    if (cached) {
+      setSrcUrl(cached.url);
+      setSrcWindow(cached.window);
       return;
     }
     setSrcLoading(true);
     setSrcUrl(null);
+    setSrcWindow(null);
     let active = true;
     fetchReviewItemSourceBlob(id)
-      .then((url) => {
-        if (url) srcCache.current[id] = url;
+      .then((src) => {
+        if (src) srcCache.current[id] = src;
         if (active) {
-          setSrcUrl(url);
+          setSrcUrl(src?.url ?? null);
+          setSrcWindow(src?.window ?? null);
           setSrcLoading(false);
         }
       })
@@ -262,7 +272,7 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
   // Revoke cached source object URLs on unmount.
   useEffect(
     () => () => {
-      Object.values(srcCache.current).forEach((u) => URL.revokeObjectURL(u));
+      Object.values(srcCache.current).forEach((s) => URL.revokeObjectURL(s.url));
     },
     []
   );
@@ -474,6 +484,28 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
       }
     },
     [cur, busy, idx, goto, t, assignedCode]
+  );
+
+  // Story 12.19 — a box drawn on the "bekijk in context" fragment is in FRAGMENT
+  // fractions; convert to full-artwork fractions via the fragment window
+  // ([left,top,rw,rh,W,H] in artwork pixels) before annotating. No window (the
+  // view is the whole artwork) → the rel is already full-artwork fractions.
+  const applyContextAnnotation = useCallback(
+    (rel: { x: number; y: number; width: number; height: number }) => {
+      const w = srcWindow;
+      if (!w || w.length < 6 || !(w[4] > 0) || !(w[5] > 0)) {
+        void applyAnnotation(rel);
+        return;
+      }
+      const [left, top, rw, rh, W, H] = w;
+      void applyAnnotation({
+        x: (left + rel.x * rw) / W,
+        y: (top + rel.y * rh) / H,
+        width: (rel.width * rw) / W,
+        height: (rel.height * rh) / H,
+      });
+    },
+    [srcWindow, applyAnnotation]
   );
 
   // Accept the crop under a corrected keurmerk code (different from predicted).
@@ -889,13 +921,29 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
             srcLoading ? (
               <Spin />
             ) : srcUrl ? (
-              // The server returns a downscaled context fragment with the box
-              // already drawn (red) — just display it; no client-side overlay.
-              <img
+              // Story 12.19 — the server returns a downscaled context fragment
+              // with the proposed box drawn (red). Render it in a drawable stage
+              // so the reviewer can box the logo directly here; a box drawn on the
+              // fragment is converted back to full-artwork fractions before
+              // annotating (applyContextAnnotation via the X-Context-Window map).
+              <ImageStage
                 data-testid="deck-context"
                 src={srcUrl}
                 alt={`${cur!.t3777Code} context`}
-                style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                canDraw={canMutate}
+                busy={busy}
+                resetKey={`ctx:${cur!.id}`}
+                onConfirmBox={applyContextAnnotation}
+                onDraftChange={onDraftChange}
+                confirmToken={confirmBoxToken}
+                hint={
+                  <Text type="secondary" style={{ fontSize: 12, textAlign: 'center' }}>
+                    {t('review.contextDrawHint', {
+                      defaultValue:
+                        'Rood kader = voorgestelde plek. Sleep hier een kader om het keurmerk te markeren · dubbelklik = zoom.',
+                    })}
+                  </Text>
+                }
               />
             ) : (
               <Text type="secondary">

@@ -483,3 +483,60 @@ describe('Story 12.18 — Nutri-Score label-prior badge (kale letter ↔ NUTRISC
     expect(prior).toHaveTextContent('⚠ niet gedeclareerd op deze GTIN');
   });
 });
+
+/**
+ * Story 12.19 — een kader dat in de "bekijk in context"-weergave getekend wordt is
+ * in FRAGMENT-fracties; de deck rekent dat via het venster ([left,top,rw,rh,W,H])
+ * terug naar volledige-artwork-fracties vóór het annoteren.
+ */
+describe('Story 12.19 — annoteren in de context-weergave', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (fetchNominationEnabled as ReturnType<typeof vi.fn>).mockResolvedValue(false);
+    (acceptReviewItem as ReturnType<typeof vi.fn>).mockResolvedValue({ status: 'registered' });
+    (annotateReviewItem as ReturnType<typeof vi.fn>).mockResolvedValue({ status: 'registered', registered: 1 });
+    (reopenReviewItem as ReturnType<typeof vi.fn>).mockResolvedValue({ status: 'open' });
+    (fetchReviewItemCropBlob as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    (fetchReviewItemArtworkBlob as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    (fetchDeclaredMarks as ReturnType<typeof vi.fn>).mockResolvedValue({ gtin: 'g', marks: [], reason: 'ok' });
+  });
+
+  it('rekent het fragment-kader terug naar volledige-artwork-fracties', async () => {
+    // Venster: extract [left=100,top=50,rw=400,rh=300] uit artwork 1000×800.
+    // DECK_REL {0.1,0.1,0.3,0.3} → x=(100+0.1·400)/1000=0.14, y=(50+0.1·300)/800=0.1,
+    //   w=0.3·400/1000=0.12, h=0.3·300/800=0.1125.
+    (fetchReviewItemSourceBlob as ReturnType<typeof vi.fn>).mockResolvedValue({
+      url: 'blob:ctx',
+      window: [100, 50, 400, 300, 1000, 800],
+    });
+    const user = userEvent.setup();
+    render(<MobileReviewDeck items={[item]} canMutate />);
+
+    await user.click(await screen.findByTestId('deck-context-toggle'));
+    await user.click(await screen.findByTestId('mock-confirm-box'));
+
+    await waitFor(() =>
+      expect(annotateReviewItem).toHaveBeenCalledWith('ri-1', {
+        x: expect.closeTo(0.14, 5),
+        y: expect.closeTo(0.1, 5),
+        width: expect.closeTo(0.12, 5),
+        height: expect.closeTo(0.1125, 5),
+      })
+    );
+    expect(acceptReviewItem).not.toHaveBeenCalled();
+  });
+
+  it('zonder venster (hele artwork) geeft het kader identiek door', async () => {
+    (fetchReviewItemSourceBlob as ReturnType<typeof vi.fn>).mockResolvedValue({
+      url: 'blob:ctx',
+      window: null,
+    });
+    const user = userEvent.setup();
+    render(<MobileReviewDeck items={[item]} canMutate />);
+
+    await user.click(await screen.findByTestId('deck-context-toggle'));
+    await user.click(await screen.findByTestId('mock-confirm-box'));
+
+    await waitFor(() => expect(annotateReviewItem).toHaveBeenCalledWith('ri-1', DECK_REL));
+  });
+});

@@ -1,5 +1,11 @@
 # Versiegeschiedenis
 
+## 2026-07-14 (Een keurmerk markeren kan nu ook in de "bekijk in context"-weergave)
+
+### Zelf een kader tekenen kon alleen in de uitsnede-weergave
+- In het beoordelingsscherm kun je met "bekijk in context" het keurmerk ingezoomd in zijn omgeving zien. Tot nu toe was dat een platte afbeelding: je kon er niet zelf een kader op tekenen om het logo te markeren — dat kon alleen in de standaard uitsnede-weergave
+- Voortaan kun je óók in de "bekijk in context"-weergave rechtstreeks een kader om het keurmerk slepen en bevestigen. Het programma rekent jouw kader automatisch terug naar de juiste plek op de volledige verpakking, dus de opgeslagen crop klopt
+
 ## 2026-07-14 (Twee correcties in het beoordelingsscherm: getekend kader blijft behouden en de "gedeclareerd"-melding klopt)
 
 ### Een zelf getekend kader kon bij het accepteren verloren gaan
