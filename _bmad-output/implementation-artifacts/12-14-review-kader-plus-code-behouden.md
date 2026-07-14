@@ -104,6 +104,7 @@ Claude Sonnet 5 (implement-sprint epic-agent, epic-12 story 12.14)
 - `apps/web/src/components/review/ArtworkReviewItemCard.tsx` (documentatie-comment, geen gedragswijziging)
 - `_bmad-output/implementation-artifacts/12-14-ac-trace.md` (nieuw)
 - `_bmad-output/implementation-artifacts/12-14-nfr.md` (nieuw)
+- `_bmad-output/implementation-artifacts/12-14-adversarial-review.md` (nieuw, verdict: PASS)
 - `versions.md` (nieuwe entry 2026-07-14)
 - `_bmad-output/implementation-artifacts/sprint-status.yaml` (status → review + cleanup van een misplaatste 12-13-comment die onder de 12-14-sleutel stond)
 
