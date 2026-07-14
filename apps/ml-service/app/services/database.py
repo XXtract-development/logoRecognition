@@ -661,6 +661,68 @@ class DatabaseService:
                     )
             return out
 
+    async def find_similar_references_by_codes(
+        self,
+        embedding: np.ndarray,
+        t3777_codes: List[str],
+        limit: int = 1,
+        threshold: float = 0.6,
+    ) -> List[Dict[str, Any]]:
+        """Nearest-reference search restricted to an explicit code allowlist.
+
+        Story 12.12 (Nutri-Score vorm-oogst): the shape-based harvest matches a
+        candidate crop against the COMBINED Nutri-Score reference pool
+        (``NUTRISCORE_A``..``NUTRISCORE_E`` — real crops + the synthetic seeds,
+        Story 12.11) letter-independently, at a wide floor. This is deliberately
+        a SEPARATE method from ``find_similar_references`` (which searches every
+        active reference and is what Story 19.10's harvest/gate/conditie-C rely
+        on) — reusing it here would mean a Nutri-Score-shaped crop could match a
+        closer, unrelated active reference first and never reach the Nutri-Score
+        pool at all. An empty ``t3777_codes`` list never falls back to "every
+        active reference" (that would defeat the scoping) — it returns no
+        matches. ``similarity`` = 1 - cosine_distance, clamped into [0, 1].
+        """
+        if not t3777_codes:
+            return []
+        async with self.get_connection() as conn:
+            embedding_list = embedding.tolist()
+            probes = int(settings.REFERENCE_SEARCH_PROBES)
+            async with conn.transaction():
+                await conn.execute(
+                    "SELECT set_config('ivfflat.probes', $1, true)", str(probes)
+                )
+                rows = await conn.fetch(
+                    """
+                    SELECT
+                        rl.id AS reference_logo_id,
+                        rl.t3777_code,
+                        rl.variant_label,
+                        1 - (re.embedding <=> $1::vector) AS similarity
+                    FROM reference_embeddings re
+                    JOIN reference_logos rl ON re.reference_logo_id = rl.id
+                    WHERE rl.active = true AND rl.t3777_code = ANY($3::text[])
+                    ORDER BY re.embedding <=> $1::vector
+                    LIMIT $2
+                    """,
+                    str(embedding_list),
+                    limit,
+                    list(t3777_codes),
+                )
+            out: List[Dict[str, Any]] = []
+            for row in rows:
+                sim = float(row.get("similarity", 0.0) or 0.0)
+                sim = max(0.0, min(1.0, sim))
+                if sim >= threshold:
+                    out.append(
+                        {
+                            "reference_logo_id": str(row["reference_logo_id"]),
+                            "t3777_code": row["t3777_code"],
+                            "variant_label": row["variant_label"],
+                            "similarity": sim,
+                        }
+                    )
+            return out
+
     async def get_active_reference_logos(self) -> List[Dict[str, Any]]:
         """Return all active reference keurmerk variants (one row per variant)."""
         async with self.get_connection() as conn:
