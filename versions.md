@@ -1,5 +1,15 @@
 # Versiegeschiedenis
 
+## 2026-07-14 (Twee correcties in het beoordelingsscherm: getekend kader blijft behouden en de "gedeclareerd"-melding klopt)
+
+### Een zelf getekend kader kon bij het accepteren verloren gaan
+- In het beoordelingsscherm kun je zelf een kader om een keurmerk tekenen als het automatisch voorgestelde vakje ernaast zit. Tot nu toe registreerde de groene "Accepteer"-knop (en ook een veegbeweging of de sneltoets) tóch altijd het automatisch voorgestelde vakje — je zelfgetekende kader ging dan verloren, en soms belandde daardoor een verkeerd stukje van het etiket als voorbeeld in het systeem
+- Voortaan bewaart "Accepteer" jouw getekende kader zodra je er een hebt getekend; de knop toont dat ook met de tekst "Bevestig getekend kader". Heb je geen kader getekend, dan verandert er niets aan de werkwijze
+
+### De melding "niet gedeclareerd" verscheen ten onrechte bij elk Nutri-Score-item
+- Bij Nutri-Score-items toonde het scherm altijd de oranje waarschuwing "niet gedeclareerd op deze GTIN" — ook als de letter wél op de verpakking gedeclareerd was
+- Die melding klopt nu: staat de Nutri-Score-letter in de declaratie, dan zie je de groene bevestiging "gedeclareerd op verpakking"
+
 ## 2026-07-14 (Een nieuwe zoekmodus gebruikt de opgegeven Nutri-Score-letter zelf als bewijs)
 
 ### De letters C en D van de Nutri-Score hadden nog te weinig herkende voorbeelden

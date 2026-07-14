@@ -37,6 +37,7 @@ import {
   type ArtworkReviewItem,
   type ReviewRejectReason,
 } from '@/services/artworkReviewService';
+import { canonicalDeclaredCode } from '@/services/declaredMarks';
 import ImageStage from './ImageStage';
 import { KEURMERK_CODES } from '@/data/keurmerk-codes';
 import { isBeneluxCode } from '@/data/benelux-codes';
@@ -118,6 +119,14 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
   const [pendingRel, setPendingRel] = useState<
     Record<string, { x: number; y: number; width: number; height: number }>
   >({});
+  // Story 12.17 — a box drawn in ImageStage lives inside that component until the
+  // reviewer confirms it. Mirror its presence so the primary Accept button
+  // confirms THAT drawn box (→ annotate) instead of silently registering the
+  // auto-crop, which previously discarded the drawn box on item advance and could
+  // register a false-positive auto-crop as a live reference.
+  const [hasDraftBox, setHasDraftBox] = useState(false);
+  const [confirmBoxToken, setConfirmBoxToken] = useState(0);
+  const onDraftChange = useCallback((h: boolean) => setHasDraftBox(h), []);
   const [picker, setPicker] = useState(false);
   const [search, setSearch] = useState('');
   const touchStart = useRef<{ x: number; y: number } | null>(null);
@@ -208,7 +217,10 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
     let active = true;
     fetchDeclaredMarks(gtin).then((res) => {
       const has = res.reason === 'ok' && res.marks.length > 0;
-      const codes = res.marks.map((m) => m.code);
+      // Story 12.18 — canonicalise so Nutri-Score letters (bare 'D') match the
+      // review item's full code ('NUTRISCORE_D'); otherwise the prior always reads
+      // as "niet gedeclareerd" for Nutri-Score.
+      const codes = res.marks.map(canonicalDeclaredCode);
       declaredCache.current[gtin] = { codes, has };
       if (active) setDeclared({ codes: new Set(codes), has });
     });
@@ -347,6 +359,16 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
         return;
       }
 
+      // Story 12.17 — a reviewer-drawn (but not yet confirmed) correction box must
+      // win over the auto-crop for ANY accept entry point — button, swipe AND the
+      // "A" keyboard shortcut all funnel through here. Route to the stage's own
+      // confirm (→ applyAnnotation registers the DRAWN crop) and stop, so an
+      // accept can never silently register the auto-crop while a box is drawn.
+      if (label === 'ECHT' && hasDraftBox) {
+        setConfirmBoxToken((n) => n + 1);
+        return;
+      }
+
       setBusy(true);
       try {
         if (prev === label) {
@@ -407,7 +429,7 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
         setBusy(false);
       }
     },
-    [cur, busy, canMutate, decisions, idx, goto, t, flywheelOn]
+    [cur, busy, canMutate, decisions, idx, goto, t, flywheelOn, hasDraftBox]
   );
 
   const applyAnnotation = useCallback(
@@ -891,6 +913,8 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
               busy={busy}
               resetKey={cur!.id}
               onConfirmBox={applyAnnotation}
+              onDraftChange={onDraftChange}
+              confirmToken={confirmBoxToken}
               hint={
                 markedSrc ? (
                   <Text type="secondary" style={{ fontSize: 12, textAlign: 'center' }}>
@@ -948,6 +972,10 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
           icon={<CheckOutlined />}
           loading={busy}
           disabled={!canMutate}
+          // Story 12.17 — a single accept path (applyDecision) decides button vs
+          // swipe vs keyboard uniformly: while an unconfirmed drawn box exists it
+          // confirms THAT box (→ annotate) instead of the auto-crop. The label
+          // switches so it is unambiguous which crop is saved.
           onClick={() => applyDecision('ECHT')}
           data-testid="deck-accept"
           style={{
@@ -958,7 +986,9 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
             borderColor: canMutate ? (decision === 'ECHT' ? '#5a8a00' : '#7BA428') : undefined,
           }}
         >
-          {t('review.accept', { defaultValue: 'Accepteer' })}
+          {hasDraftBox
+            ? t('review.acceptDrawnBox', { defaultValue: 'Bevestig getekend kader' })
+            : t('review.accept', { defaultValue: 'Accepteer' })}
         </Button>
         <Button
           icon={<RightOutlined />}

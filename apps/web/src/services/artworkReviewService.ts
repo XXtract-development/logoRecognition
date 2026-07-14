@@ -151,6 +151,11 @@ export interface DeclaredMarksResult {
   reason: string;
 }
 
+// Story 12.18 — canonicalDeclaredCode lives in ./declaredMarks (a pure module
+// without apiClient) so consumers get the real implementation even in tests that
+// mock this service's network calls. Re-exported here for API cohesion.
+export { canonicalDeclaredCode } from './declaredMarks';
+
 /**
  * Fetch the GTIN's declared GS1 marks (Story 12.7). Lazy/on-view, like the crop
  * URL. Fail-safe: returns marks=[] with a reason on any miss (never throws on a

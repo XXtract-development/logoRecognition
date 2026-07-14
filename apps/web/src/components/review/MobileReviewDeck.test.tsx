@@ -12,7 +12,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-// Mock the review service (the deck imports these named exports directly).
+// Mock the review service network calls (the deck imports these directly). The
+// pure helper canonicalDeclaredCode (Story 12.18) lives in ./declaredMarks, which
+// is NOT mocked, so the badge test exercises the real normalisation.
 vi.mock('@/services/artworkReviewService', () => ({
   acceptReviewItem: vi.fn(),
   rejectReviewItem: vi.fn(),
@@ -48,17 +50,37 @@ vi.mock('react-i18next', () => ({
 }));
 
 // Story 12.14 — ImageStage draws a box via real pointer-drag geometry, which is
-// brittle/meaningless in jsdom (no real layout). Replace it with a single
-// button that, when drawing is allowed, fires onConfirmBox with a fixed rel —
-// exactly what happens when a reviewer drags a box and clicks "Bevestig kader".
-vi.mock('./ImageStage', () => ({
-  default: (props: { canDraw?: boolean; onConfirmBox?: (rel: typeof DECK_REL) => void }) =>
-    props.canDraw ? (
-      <button data-testid="mock-confirm-box" onClick={() => props.onConfirmBox?.(DECK_REL)}>
-        confirm-box
-      </button>
-    ) : null,
-}));
+// brittle/meaningless in jsdom (no real layout). Replace it with buttons:
+//  - "mock-confirm-box" fires onConfirmBox (drag + click "Bevestig kader");
+//  - "mock-draw" fires onDraftChange(true) (a box is drawn but NOT yet confirmed);
+//  - Story 12.17: when the host bumps confirmToken (its Accept pressed while a
+//    draft exists), the stage confirms the drawn box → onConfirmBox.
+vi.mock('./ImageStage', async () => {
+  const React = await vi.importActual<typeof import('react')>('react');
+  return {
+    default: (props: {
+      canDraw?: boolean;
+      onConfirmBox?: (rel: typeof DECK_REL) => void;
+      onDraftChange?: (hasDraft: boolean) => void;
+      confirmToken?: number;
+    }) => {
+      React.useEffect(() => {
+        if (props.confirmToken) props.onConfirmBox?.(DECK_REL);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, [props.confirmToken]);
+      return props.canDraw ? (
+        <>
+          <button data-testid="mock-confirm-box" onClick={() => props.onConfirmBox?.(DECK_REL)}>
+            confirm-box
+          </button>
+          <button data-testid="mock-draw" onClick={() => props.onDraftChange?.(true)}>
+            draw
+          </button>
+        </>
+      ) : null;
+    },
+  };
+});
 
 import MobileReviewDeck from './MobileReviewDeck';
 import {
@@ -351,5 +373,113 @@ describe('Story 12.14 — MobileReviewDeck kader + code samen bewaren', () => {
     await waitFor(() => expect(acceptReviewItem).toHaveBeenCalledWith('ri-1', OTHER_CODE));
     expect(annotateReviewItem).toHaveBeenCalledTimes(1);
     expect((annotateReviewItem as ReturnType<typeof vi.fn>).mock.calls[0]).toEqual(['ri-1', DECK_REL]);
+  });
+});
+
+/**
+ * Story 12.17 — de grote "Accepteer"-knop mag, zolang er een ONbevestigd
+ * getekend kader is, niet stilletjes de auto-crop registreren maar dat kader
+ * bevestigen (→ annotate). Regressie voor het ACC-incident waarbij een getekend
+ * kader verloren ging en een drukproef-tekst-auto-crop als referentie belandde.
+ */
+describe('Story 12.17 — Accepteer bevestigt een getekend kader i.p.v. de auto-crop', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (fetchNominationEnabled as ReturnType<typeof vi.fn>).mockResolvedValue(false);
+    (acceptReviewItem as ReturnType<typeof vi.fn>).mockResolvedValue({ status: 'registered' });
+    (annotateReviewItem as ReturnType<typeof vi.fn>).mockResolvedValue({ status: 'registered', registered: 1 });
+    (reopenReviewItem as ReturnType<typeof vi.fn>).mockResolvedValue({ status: 'open' });
+    (fetchReviewItemCropBlob as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    (fetchReviewItemArtworkBlob as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    (fetchReviewItemSourceBlob as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    (fetchDeclaredMarks as ReturnType<typeof vi.fn>).mockResolvedValue({ gtin: 'g', marks: [], reason: 'ok' });
+  });
+
+  it('met getekend kader: Accepteer roept annotateReviewItem aan, NIET acceptReviewItem', async () => {
+    const user = userEvent.setup();
+    render(<MobileReviewDeck items={[item]} canMutate />);
+
+    // Teken een kader (nog niet bevestigd) — de grote knop wordt kader-bewust.
+    await user.click(await screen.findByTestId('mock-draw'));
+    expect(screen.getByTestId('deck-accept')).toHaveTextContent('Bevestig getekend kader');
+
+    // Druk op de grote knop → moet het getekende kader bevestigen (annotate).
+    await user.click(screen.getByTestId('deck-accept'));
+
+    await waitFor(() => expect(annotateReviewItem).toHaveBeenCalledWith('ri-1', DECK_REL));
+    expect(acceptReviewItem).not.toHaveBeenCalled();
+  });
+
+  it('zonder getekend kader: Accepteer blijft acceptReviewItem(id) aanroepen (ongewijzigd)', async () => {
+    const user = userEvent.setup();
+    render(<MobileReviewDeck items={[item]} canMutate />);
+
+    await user.click(await screen.findByTestId('deck-accept'));
+
+    await waitFor(() => expect(acceptReviewItem).toHaveBeenCalledWith('ri-1'));
+    expect(annotateReviewItem).not.toHaveBeenCalled();
+  });
+
+  it('ook via de "A"-sneltoets: getekend kader bevestigt (annotate), niet de auto-crop', async () => {
+    // De accept-guard zit centraal in applyDecision, dus knop, swipe én toets
+    // gaan door dezelfde route (regressie voor het bypass-gat).
+    const user = userEvent.setup();
+    render(<MobileReviewDeck items={[item]} canMutate />);
+
+    await user.click(await screen.findByTestId('mock-draw'));
+    await user.keyboard('a');
+
+    await waitFor(() => expect(annotateReviewItem).toHaveBeenCalledWith('ri-1', DECK_REL));
+    expect(acceptReviewItem).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Story 12.18 — de "gedeclareerd"-badge moet de kale Nutri-Score-letter uit de
+ * declaratie ('D') matchen met de volledige item-code ('NUTRISCORE_D'), zodat
+ * een terecht gedeclareerd Nutri-Score-item niet vals "niet gedeclareerd" toont.
+ */
+describe('Story 12.18 — Nutri-Score label-prior badge (kale letter ↔ NUTRISCORE_-code)', () => {
+  const nutriItem: ArtworkReviewItem = {
+    ...item,
+    id: 'ri-ns',
+    gtin: '08718452660308',
+    t3777Code: 'NUTRISCORE_D',
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (fetchNominationEnabled as ReturnType<typeof vi.fn>).mockResolvedValue(false);
+    (fetchReviewItemCropBlob as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    (fetchReviewItemArtworkBlob as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    (fetchReviewItemSourceBlob as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+  });
+
+  it('declaratie letter D + item NUTRISCORE_D ⇒ groene "gedeclareerd", niet oranje', async () => {
+    (fetchDeclaredMarks as ReturnType<typeof vi.fn>).mockResolvedValue({
+      gtin: nutriItem.gtin,
+      marks: [
+        { code: 'D', fieldType: 'NutritionalScore' },
+        { code: 'GENERAL_FOODS', fieldType: 'NutritionalScore' },
+      ],
+      reason: 'ok',
+    });
+    render(<MobileReviewDeck items={[nutriItem]} canMutate />);
+
+    const prior = await screen.findByTestId('deck-prior');
+    expect(prior).toHaveTextContent('✓ gedeclareerd op verpakking');
+    expect(prior).not.toHaveTextContent('niet gedeclareerd');
+  });
+
+  it('declaratie letter D + item NUTRISCORE_C ⇒ terecht oranje "niet gedeclareerd"', async () => {
+    (fetchDeclaredMarks as ReturnType<typeof vi.fn>).mockResolvedValue({
+      gtin: nutriItem.gtin,
+      marks: [{ code: 'D', fieldType: 'NutritionalScore' }],
+      reason: 'ok',
+    });
+    render(<MobileReviewDeck items={[{ ...nutriItem, t3777Code: 'NUTRISCORE_C' }]} canMutate />);
+
+    const prior = await screen.findByTestId('deck-prior');
+    expect(prior).toHaveTextContent('⚠ niet gedeclareerd op deze GTIN');
   });
 });

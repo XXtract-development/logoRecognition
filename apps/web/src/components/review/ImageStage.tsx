@@ -25,6 +25,14 @@ interface ImageStageProps {
   hint?: React.ReactNode;
   /** Called with the box as fractions (0..1) of the artwork. */
   onConfirmBox?: (rel: Rel) => void;
+  /** Story 12.17 — fires true when a usable (unconfirmed) box is drawn and false
+   *  when it is cleared, so the host can route its own primary "accept" action to
+   *  confirm the drawn box instead of silently registering the auto-crop. */
+  onDraftChange?: (hasDraft: boolean) => void;
+  /** Story 12.17 — increment to confirm the currently-drawn box from outside
+   *  (e.g. the host's Accept button). Re-runs `confirm`, so the rel is recomputed
+   *  live and zoom/pan stay correct. No-op when no box is drawn. */
+  confirmToken?: number;
   /** Changing this resets zoom/pan/box (use the item id). */
   resetKey?: string | number;
   'data-testid'?: string;
@@ -50,6 +58,8 @@ const ImageStage: React.FC<ImageStageProps> = ({
   busy,
   hint,
   onConfirmBox,
+  onDraftChange,
+  confirmToken,
   resetKey,
   'data-testid': testId,
 }) => {
@@ -190,6 +200,36 @@ const ImageStage: React.FC<ImageStageProps> = ({
     if (rel.width < 0.005 || rel.height < 0.005) return;
     onConfirmBox(rel);
   }, [box, onConfirmBox]);
+
+  // Story 12.17 — mirror whether a usable drawn box exists so the host can adapt
+  // its primary action. A sub-threshold box counts as "no draft" (matches the
+  // `up`/`confirm` min-size guards) so a stray click never arms the host button.
+  useEffect(() => {
+    onDraftChange?.(!!box && box.w >= 6 && box.h >= 6);
+  }, [box, onDraftChange]);
+
+  // Story 12.17 — if the stage unmounts mid-draw (host toggles "Bekijk in
+  // context", or navigates to a crop-less item that renders no stage), clear the
+  // host's draft flag so its Accept never gets stuck routing to a confirm that
+  // has no mounted stage to handle it. Runs on unmount only (onDraftChange is a
+  // stable useCallback in the host).
+  useEffect(() => {
+    return () => onDraftChange?.(false);
+  }, [onDraftChange]);
+
+  // Story 12.17 — confirm the current box when the host bumps `confirmToken`
+  // (its Accept pressed while a draft box exists). `confirm` is read through a ref
+  // so this fires ONLY on token change, never when `box` mutates during drawing.
+  const confirmRef = useRef(confirm);
+  confirmRef.current = confirm;
+  const firstConfirmToken = useRef(true);
+  useEffect(() => {
+    if (firstConfirmToken.current) {
+      firstConfirmToken.current = false;
+      return;
+    }
+    confirmRef.current();
+  }, [confirmToken]);
 
   const cursor = space ? 'grab' : canDraw ? 'crosshair' : 'zoom-in';
 
