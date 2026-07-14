@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 // Mock the review service network calls (the deck imports these directly). The
@@ -538,5 +538,72 @@ describe('Story 12.19 — annoteren in de context-weergave', () => {
     await user.click(await screen.findByTestId('mock-confirm-box'));
 
     await waitFor(() => expect(annotateReviewItem).toHaveBeenCalledWith('ri-1', DECK_REL));
+  });
+});
+
+/**
+ * Story 12.20 — de kale Nutri-Score-placeholder ('NUTRISCORE', vorm-oogst 12.12)
+ * wordt getoond als een duidelijk "kies de letter"-label + hint i.p.v. de rauwe
+ * (niet-bestaande) code.
+ */
+describe('Story 12.20 — letterloze Nutri-Score-placeholder in de review-UI', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (fetchNominationEnabled as ReturnType<typeof vi.fn>).mockResolvedValue(false);
+    (fetchReviewItemCropBlob as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    (fetchReviewItemArtworkBlob as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    (fetchReviewItemSourceBlob as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    (fetchDeclaredMarks as ReturnType<typeof vi.fn>).mockResolvedValue({ gtin: 'g', marks: [], reason: 'ok' });
+  });
+
+  it("toont een 'kies de letter'-label + hint i.p.v. de rauwe code NUTRISCORE", async () => {
+    render(<MobileReviewDeck items={[{ ...item, id: 'ri-ns', t3777Code: 'NUTRISCORE' }]} canMutate />);
+
+    expect(await screen.findByText('Nutri-Score — kies de letter')).toBeInTheDocument();
+    expect(screen.getByTestId('deck-letterless-hint')).toBeInTheDocument();
+    // De rauwe placeholder-code staat NIET meer als label op het scherm.
+    expect(screen.queryByText('NUTRISCORE')).toBeNull();
+  });
+
+  it('een echte letter-code toont gewoon de code, geen hint', async () => {
+    render(<MobileReviewDeck items={[{ ...item, id: 'ri-c', t3777Code: 'NUTRISCORE_C' }]} canMutate />);
+
+    expect(await screen.findByText('NUTRISCORE_C')).toBeInTheDocument();
+    expect(screen.queryByTestId('deck-letterless-hint')).toBeNull();
+    expect(screen.queryByText('Nutri-Score — kies de letter')).toBeNull();
+  });
+
+  it('biedt de kale NUTRISCORE-placeholder NIET aan in de relabel-picker', async () => {
+    const user = userEvent.setup();
+    render(<MobileReviewDeck items={[{ ...item, id: 'ri-ns', t3777Code: 'NUTRISCORE' }]} canMutate />);
+
+    await user.click(await screen.findByTestId('deck-relabel-open'));
+    const options = screen.getAllByTestId('deck-relabel-option');
+    expect(options.some((el) => el.textContent?.trim() === 'NUTRISCORE')).toBe(false);
+  });
+
+  it('na relabelen naar een echte letter: het label wordt de code en de hint verdwijnt', async () => {
+    (acceptReviewItem as ReturnType<typeof vi.fn>).mockResolvedValue({ status: 'registered' });
+    (reopenReviewItem as ReturnType<typeof vi.fn>).mockResolvedValue({ status: 'open' });
+    (annotateReviewItem as ReturnType<typeof vi.fn>).mockResolvedValue({ status: 'registered', registered: 1 });
+    const user = userEvent.setup();
+    render(<MobileReviewDeck items={[{ ...item, id: 'ri-ns', t3777Code: 'NUTRISCORE' }]} canMutate />);
+
+    expect(await screen.findByTestId('deck-letterless-hint')).toBeInTheDocument();
+
+    await user.click(screen.getByTestId('deck-relabel-open'));
+    await user.type(screen.getByPlaceholderText('Zoek keurmerk…'), OTHER_CODE);
+    await user.click(findRelabelOption(OTHER_CODE));
+
+    // Single-item queue auto-advances; go back to the (now relabeled) item.
+    await waitFor(() => expect(acceptReviewItem).toHaveBeenCalledWith('ri-ns', OTHER_CODE));
+    await screen.findByTestId('review-deck-done');
+    await user.click(screen.getByRole('button', { name: /Terug/ }));
+
+    // De placeholder is opgelost → geen "kies de letter"-label of hint meer, en
+    // de kaart toont de echte gekozen code (binnen de deck, niet in lingering toasts).
+    await waitFor(() => expect(screen.queryByTestId('deck-letterless-hint')).toBeNull());
+    expect(screen.queryByText('Nutri-Score — kies de letter')).toBeNull();
+    expect(within(screen.getByTestId('mobile-review-deck')).getByText(OTHER_CODE, { exact: false })).toBeInTheDocument();
   });
 });

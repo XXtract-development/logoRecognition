@@ -42,6 +42,7 @@ import { canonicalDeclaredCode } from '@/services/declaredMarks';
 import ImageStage from './ImageStage';
 import { KEURMERK_CODES } from '@/data/keurmerk-codes';
 import { isBeneluxCode } from '@/data/benelux-codes';
+import { isLetterlessNutriscore } from '@/data/nutriscore';
 import { EXTRA_SPOOR_CODES, spoorLabelForCode, fieldTypeForCode } from '@/data/spoor-codes';
 
 /** Small flag tag marking a Benelux-relevant keurmerk. */
@@ -162,11 +163,27 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
     () =>
       Array.from(
         new Set([...KEURMERK_CODES, ...EXTRA_SPOOR_CODES, ...queue.map((q) => q.t3777Code)])
-      ).sort(),
+      )
+        // Story 12.20 — the letter-independent placeholder is not a selectable
+        // keurmerk; keep it out of the relabel picker so it is never offered or
+        // pinned (the reviewer picks a real NUTRISCORE_<letter> instead).
+        .filter((c) => !isLetterlessNutriscore(c))
+        .sort(),
     [queue]
   );
 
   const cur: ArtworkReviewItem | undefined = queue[idx];
+
+  // Story 12.20 — display label for a code: the letter-independent Nutri-Score
+  // placeholder ('NUTRISCORE') reads as a broken code, so show a "pick the letter"
+  // label everywhere it surfaces (main card + overview). Real codes unchanged.
+  const labelForCode = useCallback(
+    (code: string) =>
+      isLetterlessNutriscore(code)
+        ? t('review.nutriscorePickLetter', { defaultValue: 'Nutri-Score — kies de letter' })
+        : code,
+    [t]
+  );
 
   const loadCrop = useCallback((id: string) => {
     if (cache.current[id]) {
@@ -675,19 +692,19 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
                 {cache.current[it.id] ? (
                   <img
                     src={cache.current[it.id]}
-                    alt={it.t3777Code}
+                    alt={labelForCode(assignedCode[it.id] ?? it.t3777Code)}
                     style={{ maxWidth: '100%', maxHeight: 84, objectFit: 'contain' }}
                   />
                 ) : (
                   <Text type="secondary" style={{ fontSize: 11 }}>
-                    {assignedCode[it.id] ?? it.t3777Code}
+                    {labelForCode(assignedCode[it.id] ?? it.t3777Code)}
                   </Text>
                 )}
               </div>
               <Text
                 style={{ fontSize: 9, color: '#64748b', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
               >
-                {assignedCode[it.id] ?? it.t3777Code}
+                {labelForCode(assignedCode[it.id] ?? it.t3777Code)}
               </Text>
               <Text style={{ fontSize: 10, color: label === 'ECHT' ? '#5a8a00' : '#D64545', fontWeight: 700 }}>
                 {label}
@@ -759,6 +776,13 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
   const decision = decisions[cur!.id];
   const shownCode = assignedCode[cur!.id] ?? cur!.t3777Code;
   const relabeled = Boolean(assignedCode[cur!.id]);
+  // Story 12.20 — the letter-independent Nutri-Score placeholder ('NUTRISCORE',
+  // shape-harvest 12.12) is not a real code; show a clear "pick the letter" label
+  // + hint instead of the raw code so a reviewer knows to assign A–E. Only the
+  // DISPLAY changes; `shownCode` (used for refs/relabel/logic) is untouched. Once
+  // the reviewer relabels to a real NUTRISCORE_<letter>, this no longer applies.
+  const letterless = !relabeled && isLetterlessNutriscore(shownCode);
+  const codeLabel = labelForCode(shownCode);
   // Candidate (has a detected crop) with a usable bbox → show the proposed region
   // boxed on the full pack so the reviewer verifies the RIGHT logo before accepting.
   const bb = cur!.bbox as { x?: number; y?: number; width?: number; height?: number } | undefined;
@@ -835,8 +859,8 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
         )}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, gap: 8 }}>
           <Text strong style={{ color: relabeled ? '#2F5A7A' : '#1E293B', fontSize: 16 }}>
-            {shownCode}
-            {isBeneluxCode(shownCode) && <BeneluxTag />}
+            {codeLabel}
+            {!letterless && isBeneluxCode(shownCode) && <BeneluxTag />}
             {relabeled && (
               <Text type="secondary" style={{ fontSize: 11, fontWeight: 400, marginLeft: 6 }}>
                 {t('review.corrected', { defaultValue: '(gecorrigeerd)' })}
@@ -847,6 +871,28 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
             {typeof cur!.confidence === 'number' ? `${Math.round(cur!.confidence * 100)}%` : '—'}
           </Tag>
         </div>
+        {/* Story 12.20 — the shape harvest found a Nutri-Score logo but not its
+            letter; tell the reviewer to assign the grade (or reject if it's an
+            already-covered letter) instead of leaving the raw placeholder. */}
+        {letterless && (
+          <div
+            data-testid="deck-letterless-hint"
+            style={{
+              marginBottom: 8,
+              padding: '6px 10px',
+              background: '#FEF6E7',
+              border: '1px solid #E8A33D',
+              borderRadius: 6,
+              fontSize: 12,
+              color: '#1E293B',
+            }}
+          >
+            {t('review.nutriscoreLetterlessHint', {
+              defaultValue:
+                'Nutri-Score-vorm herkend, maar de letter is nog niet bepaald. Kies de juiste letter (A–E) via "Ander keurmerk koppelen" — of wijs af als die letter al gedekt is.',
+            })}
+          </div>
+        )}
         {/* Reference image of the keurmerk to look for — so the reviewer never
             has to guess what {code} looks like. Hidden when no reference exists. */}
         {refSrc && (
@@ -874,8 +920,12 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
             </Text>
           </div>
         )}
-        {/* Story 12.7 — label-prior: only shown when the GTIN has a declaration. */}
-        {declared.has && (
+        {/* Story 12.7 — label-prior: only shown when the GTIN has a declaration.
+            Story 12.20 — suppressed for the letterless placeholder: `declared.codes`
+            holds NUTRISCORE_<letter>, never the bare 'NUTRISCORE', so it would
+            always read "niet gedeclareerd" — a misleading signal next to the
+            "pick the letter" hint. */}
+        {declared.has && !letterless && (
           <div style={{ marginBottom: 8 }} data-testid="deck-prior">
             {declared.codes.has(shownCode) ? (
               <Tag color="#B7D945" style={{ color: '#1E293B' }}>

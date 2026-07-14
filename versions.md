@@ -1,5 +1,12 @@
 # Versiegeschiedenis
 
+## 2026-07-14 (Duidelijker beoordelen van Nutri-Score-vondsten zonder letter)
+
+### Sommige Nutri-Score-items toonden een verwarrende, "kapotte" code
+- De automatische vormherkenning zet Nutri-Score-logo's soms in de wachtrij zónder de letter al te bepalen — dan moet jij de juiste letter (A t/m E) toewijzen. Zulke items toonden de rauwe tekst "NUTRISCORE", wat overkwam als een foutieve code
+- Voortaan staat er duidelijk "Nutri-Score — kies de letter" met een korte uitleg: kies de juiste letter via "Ander keurmerk koppelen", of wijs het item af als die letter al gedekt is
+- De keuzelijst biedt die letterloze tussenstand niet meer als optie aan (je koppelt aan een echte letter), en de "niet gedeclareerd"-melding verschijnt niet meer misleidend op zo'n item
+
 ## 2026-07-14 (Een keurmerk markeren kan nu ook in de "bekijk in context"-weergave)
 
 ### Zelf een kader tekenen kon alleen in de uitsnede-weergave
