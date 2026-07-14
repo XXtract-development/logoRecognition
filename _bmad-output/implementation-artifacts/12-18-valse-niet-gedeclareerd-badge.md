@@ -1,6 +1,6 @@
 # Story 12.18: Valse "niet gedeclareerd op deze GTIN"-badge voor Nutri-Score (kale letter vs NUTRISCORE_-code)
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 <!-- Ontdekt tijdens de 12.15 Nutri-Score review-ronde (2026-07-14). -->

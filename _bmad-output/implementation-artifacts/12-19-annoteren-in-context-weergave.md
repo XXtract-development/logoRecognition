@@ -1,6 +1,6 @@
 # Story 12.19: Kader tekenen (annoteren) óók in de "bekijk in context"-weergave
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 <!-- Vervolg op 12.17/12.18, gevraagd door Friso tijdens de Nutri-Score review-ronde (2026-07-14). -->

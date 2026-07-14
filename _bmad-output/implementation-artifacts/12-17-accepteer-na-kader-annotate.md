@@ -1,6 +1,6 @@
 # Story 12.17: Accepteer-na-getekend-kader registreert het kader (annotate), niet de auto-crop
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 <!-- Ontdekt tijdens de 12.15 Nutri-Score review-ronde (2026-07-14). Zie onderaan "Bewijs op ACC". -->

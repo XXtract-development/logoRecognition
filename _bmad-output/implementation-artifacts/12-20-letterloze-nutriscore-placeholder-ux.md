@@ -1,6 +1,6 @@
 # Story 12.20: Duidelijke weergave van de letterloze Nutri-Score-placeholder
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 <!-- Gevraagd door Friso tijdens de Nutri-Score review-ronde (2026-07-14): de kale code 'NUTRISCORE' ziet er uit als een kapotte code. -->
