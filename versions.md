@@ -1,5 +1,13 @@
 # Versiegeschiedenis
 
+## 2026-07-14 (Een nieuwe zoekmodus gebruikt de opgegeven Nutri-Score-letter zelf als bewijs)
+
+### De letters C en D van de Nutri-Score hadden nog te weinig herkende voorbeelden
+- Elk product met een Nutri-Score-label geeft de letter (A t/m E) al zelf door aan de leveranciersdatabase. Die informatie stond al klaar, maar werd nog niet gebruikt om het vliegwiel te voeden met nieuwe voorbeelden voor de letters C en D
+- Er staat nu een nieuwe, apart te starten zoekmodus klaar die precies dat doet: bij een product waarvan de Nutri-Score-letter al bekend is, wordt op het etiket naar het bijbehorende vakje gezocht. Vindt de zoekmodus geen betrouwbaar vakje, dan wordt dat product gewoon overgeslagen — er wordt nooit een letter geraden of verzonnen
+- Gevonden vakjes komen voorgelabeld met de juiste letter in de beoordelingswachtrij terecht, zodat bevestigen nog maar één klik kost in plaats van eerst zelf de letter te moeten aflezen
+- Deze zoekmodus draait niet automatisch mee met de bestaande nachtelijke aanvulling; hij wordt pas op de praktijkomgeving gestart na expliciete goedkeuring
+
 ## 2026-07-13 (Een foutmelding bij te snel klikken toont voortaan de juiste, duidelijke tekst)
 
 ### Het reviewscherm gaf soms een verwarrende serverfout in plaats van "even rustig aan"
