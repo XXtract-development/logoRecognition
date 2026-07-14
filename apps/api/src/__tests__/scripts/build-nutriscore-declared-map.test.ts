@@ -131,7 +131,25 @@ describe('Story 12.15 — buildDeclaredMap', () => {
   it('lege invoer -> lege map, alle tellers 0', () => {
     const out = buildDeclaredMap([], FIXED_NOW);
     expect(out.entries).toEqual({});
-    expect(out.summary).toEqual({ gtinsProcessed: 0, resolved: 0, geenDeclaratie: 0, ambigu: 0, perLetter: {} });
+    expect(out.summary).toEqual({
+      gtinsProcessed: 0,
+      resolved: 0,
+      geenDeclaratie: 0,
+      ambigu: 0,
+      fout: 0,
+      perLetter: {},
+    });
+  });
+
+  it('fout-uitkomsten landen NIET in entries maar tellen apart (nooit gegokt bij een falende lookup)', () => {
+    const results = [
+      res('0001', { kind: 'fout', error: 'catalog timeout' }),
+      res('0002', { kind: 'resolved', letter: 'C' }),
+    ];
+    const out = buildDeclaredMap(results, FIXED_NOW);
+    expect(out.entries).toEqual({ '0002': 'C' });
+    expect(out.summary.fout).toBe(1);
+    expect(out.summary.resolved).toBe(1);
   });
 
   it('PRIORITY_LETTERS = C/D (story-scope)', () => {
@@ -191,5 +209,40 @@ describe('Story 12.15 — collectDeclaredMap (orchestratie, geïnjecteerde deps)
     );
     expect(out.entries).toEqual({});
     expect(calls).toBe(0);
+  });
+
+  // -------------------------------------------------------------------------
+  // Code-review-bevinding (Blind Hunter): één falende lookup mag de hele
+  // ~2000-GTIN-run niet laten afbreken zonder output.
+  // -------------------------------------------------------------------------
+  it('een falende resolveMarks voor ÉÉN GTIN gooit de hele run NIET omver — de rest wordt gewoon verwerkt', async () => {
+    const out = await collectDeclaredMap(
+      {
+        listGtins: async () => ['111', '222', '333'],
+        resolveMarks: async (gtin) => {
+          if (gtin === '222') throw new Error('catalog 500 (transient)');
+          return [mark('NutritionalScore', gtin === '111' ? 'C' : 'D')];
+        },
+      },
+      FIXED_NOW
+    );
+    expect(out.entries).toEqual({ '111': 'C', '333': 'D' });
+    expect(out.summary.fout).toBe(1);
+    expect(out.summary.gtinsProcessed).toBe(3);
+  });
+
+  it('een niet-Error throw (bv. een string) wordt ook gevangen (nooit een onbehandelde crash)', async () => {
+    const out = await collectDeclaredMap(
+      {
+        listGtins: async () => ['111'],
+        resolveMarks: async () => {
+          // eslint-disable-next-line @typescript-eslint/no-throw-literal
+          throw 'boom';
+        },
+      },
+      FIXED_NOW
+    );
+    expect(out.entries).toEqual({});
+    expect(out.summary.fout).toBe(1);
   });
 });

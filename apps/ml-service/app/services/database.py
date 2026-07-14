@@ -723,13 +723,29 @@ class DatabaseService:
                     )
             return out
 
-    async def review_item_exists(self, gtin: str, t3777_code: str, source_file: str) -> bool:
+    async def review_item_exists(self, gtin: str, reason: str, source_file: str) -> bool:
         """Idempotency check for the declaration-driven Nutri-Score harvest (Story 12.15).
 
         Returns True if an ``artwork_review_items`` row already exists for this
-        exact (gtin, t3777_code, source_file) combination, REGARDLESS of status
+        exact (gtin, reason, source_file) combination, REGARDLESS of status
         (open/confirmed/rejected) — a re-run of the harvest must never insert a
         duplicate review item for a candidate it (or a human) already processed.
+
+        Deliberately keyed on (gtin, reason, source_file) — NOT t3777_code
+        (code review finding, Story 12.15): the declared-letter map can be
+        rebuilt between runs (a GTIN's declaration can change, or a stale
+        cache entry can resolve differently), which would change the letter
+        for the SAME crop/GTIN. Keying on t3777_code as well would let a
+        re-run insert a SECOND, contradictory review item for the same region
+        under the new letter instead of recognising "this harvest already
+        processed this GTIN's page" — exactly the "geen dubbele refs per
+        storage_path/GTIN" idempotency AC4 requires. Scoping by ``reason``
+        (this harvest's own marker) rather than dropping it entirely matters
+        too: OTHER harvesters (12.6/12.12/19.10) may legitimately have their
+        own review item for a DIFFERENT code on the very same (gtin,
+        source_file) page (a label can carry multiple distinct keurmerken) —
+        this check must never treat that as "already processed by us".
+
         Deliberately narrow (no separate DB method for other harvesters): this
         is the one harvest that is expected to be re-run repeatedly against the
         same small GTIN scope (unlike queue_harvest.py/queue_harvest_nutriscore.py,
@@ -740,11 +756,11 @@ class DatabaseService:
             row = await conn.fetchval(
                 """
                 SELECT 1 FROM artwork_review_items
-                WHERE gtin = $1 AND t3777_code = $2 AND source_file = $3
+                WHERE gtin = $1 AND reason = $2 AND source_file = $3
                 LIMIT 1
                 """,
                 gtin,
-                t3777_code,
+                reason,
                 source_file,
             )
             return row is not None

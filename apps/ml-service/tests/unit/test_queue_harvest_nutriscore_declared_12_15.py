@@ -162,9 +162,9 @@ class _FakeDB:
         self.scoped_calls.append((list(t3777_codes), threshold))
         return self._find(threshold)
 
-    async def review_item_exists(self, gtin, t3777_code, source_file):
-        self.exists_calls.append((gtin, t3777_code, source_file))
-        return (gtin, t3777_code, source_file) in self._existing
+    async def review_item_exists(self, gtin, reason, source_file):
+        self.exists_calls.append((gtin, reason, source_file))
+        return (gtin, reason, source_file) in self._existing
 
 
 class _FakeModelManager:
@@ -451,10 +451,13 @@ def test_ac3_kalibreerbare_floor_via_env(harness):
 # =========================================================================== #
 # AC4 — idempotentie, per-letter-cap, DRY_RUN.
 # =========================================================================== #
+MARKER = "12.15 nutriscore-declaratie-oogst"
+
+
 def test_ac4_idempotentie_bestaand_review_item_wordt_overgeslagen(harness):
     src = "artwork/111/converted-0.png"
     scenario = [_gtin("111", "C", _region())]
-    out = harness.run(scenario, existing={("111", "NUTRISCORE_C", src)})
+    out = harness.run(scenario, existing={("111", MARKER, src)})
     assert out.result["candidates"] == 0
     assert out.result["inserted"] == 0
     assert out.result["skipped_duplicate"] == 1
@@ -468,12 +471,49 @@ def test_ac4_idempotentie_check_draait_ook_read_only_in_dry_run(harness):
     src = "artwork/111/converted-0.png"
     scenario = [_gtin("111", "C", _region()), _gtin("222", "D", _region())]
     out = harness.run(
-        scenario, existing={("111", "NUTRISCORE_C", src)}, dry_run=True
+        scenario, existing={("111", MARKER, src)}, dry_run=True
     )
     assert out.result["dry_run"] is True
     assert out.result["skipped_duplicate"] == 1
     assert out.result["candidates"] == 1
     assert out.result["inserted"] == 0
+
+
+def test_ac4_idempotentie_check_is_gescoped_op_reason_niet_op_t3777_code(harness):
+    """Code-review-bevinding (Edge Case Hunter): de idempotentie-check MOET
+    (gtin, reason, source_file) gebruiken, NIET (gtin, t3777_code,
+    source_file) — anders zou een herbouwde declaratie-map die voor dezelfde
+    GTIN/pagina een ANDERE letter oplevert (bv. C -> D) een TWEEDE,
+    tegenstrijdig review-item aanmaken i.p.v. te herkennen dat deze oogst die
+    pagina al verwerkte. Simuleer: er bestaat al een review-item voor (gtin,
+    MARKER, src) — ongeacht dat het t3777_code destijds NUTRISCORE_C was —
+    en de huidige declaratie-map zegt nu D. Verwacht: overgeslagen (0 inserted)."""
+    src = "artwork/111/converted-0.png"
+    scenario = [_gtin("111", "D", _region())]  # declaratie nu D, was ooit C
+    out = harness.run(scenario, existing={("111", MARKER, src)})
+    assert out.result["inserted"] == 0
+    assert out.result["skipped_duplicate"] == 1
+    assert out.conn.executes == []
+
+
+def test_ac4_idempotentie_check_negeert_review_items_van_andere_harvesters(harness):
+    """Een ANDER harvest-script (12.6/12.12/19.10, andere `reason`) kan
+    legitiem al een review-item voor een ANDERE code op dezelfde (gtin,
+    source_file)-pagina hebben (een label kan meerdere keurmerken dragen).
+    Dat mag deze oogst NIET als 'al door mij verwerkt' zien."""
+    src = "artwork/111/converted-0.png"
+    scenario = [_gtin("111", "C", _region())]
+    out = harness.run(scenario, existing={("111", "12.12 nutriscore-vorm-oogst (letter-onafhankelijk)", src)})
+    assert out.result["inserted"] == 1
+    assert out.result["skipped_duplicate"] == 0
+
+
+def test_ac4_skipped_cap_apart_geteld_bij_cap_overschrijding(harness):
+    """Observability (code-review-bevinding): candidates die door de cap
+    verworpen worden zijn zichtbaar in een eigen teller, niet stil verdwenen."""
+    scenario = [_gtin(f"g{i}", "C", _region()) for i in range(5)]
+    out = harness.run(scenario, per_code_cap=2)
+    assert out.result["skipped_cap"] == 3
 
 
 def test_ac4_per_bucket_cap_gehandhaafd(harness):

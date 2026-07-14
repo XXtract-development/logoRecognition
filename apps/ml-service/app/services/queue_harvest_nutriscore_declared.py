@@ -226,6 +226,7 @@ async def run_batch() -> dict:
     queue: dict = defaultdict(list)
     skipped_below_floor = 0
     skipped_duplicate = 0
+    skipped_cap = 0
     t0 = time.perf_counter()
     i = next_offset
     while i < end:
@@ -279,15 +280,30 @@ async def run_batch() -> dict:
 
         sim, crop, bbox = best
         if len(queue[declared_code]) >= PER_CODE_CAP:
+            # Observability (code-review-bevinding): apart geteld zodat een
+            # operator "geen kandidaten meer" kan onderscheiden van "cap
+            # bereikt, meer beschikbaar" i.p.v. dat dit stil in candidates=0
+            # verdwijnt.
+            skipped_cap += 1
             continue
 
-        # AC4 — idempotentie: sla over als er al een review-item voor exact deze
-        # (gtin, t3777_code, source_file)-combinatie bestaat (open of anderszins),
-        # zodat herdraaien geen dubbele refs per storage_path/GTIN oplevert. Dit
-        # is een READ (geen write) en draait ook in DRY_RUN mee (AC4 = read-only
-        # METING, patroon 12.12's test_ac5c_dry_run_meet_wel_de_kandidaten) —
-        # zodat de kandidatentelling de echte run al voorspelt.
-        exists = await db_service.review_item_exists(gtin=gtin, t3777_code=declared_code, source_file=src)
+        # AC4 — idempotentie: sla over als DEZE oogst (reason=MARKER) al een
+        # review-item voor (gtin, source_file) aanmaakte, ongeacht de letter —
+        # NIET gescoped op t3777_code (code-review-bevinding): de gedeclareerde-
+        # letter-map kan tussen runs herbouwd worden (een declaratie kan
+        # wijzigen, of een verse cache-hit resolveert anders), wat de letter
+        # voor DEZELFDE GTIN/pagina zou veranderen. Een check op t3777_code zou
+        # dan een TWEEDE, tegenstrijdig review-item voor dezelfde regio onder de
+        # nieuwe letter toelaten i.p.v. "deze oogst verwerkte deze pagina al" te
+        # herkennen — precies wat AC4's "geen dubbele refs per storage_path/GTIN"
+        # vereist. Scoping op `reason` (i.p.v. helemaal geen scope) voorkomt dat
+        # een ANDERE harvester (12.6/12.12/19.10) die legitiem een eigen
+        # review-item voor een ANDERE code op dezelfde pagina heeft, hier als
+        # "al door ons verwerkt" wordt aangezien. Dit is een READ (geen write)
+        # en draait ook in DRY_RUN mee (AC4 = read-only METING, patroon 12.12's
+        # test_ac5c_dry_run_meet_wel_de_kandidaten) — zodat de kandidatentelling
+        # de echte run al voorspelt.
+        exists = await db_service.review_item_exists(gtin=gtin, reason=MARKER, source_file=src)
         if exists:
             skipped_duplicate += 1
             continue
@@ -351,6 +367,7 @@ async def run_batch() -> dict:
         "inserted": inserted,
         "skipped_below_floor": skipped_below_floor,
         "skipped_duplicate": skipped_duplicate,
+        "skipped_cap": skipped_cap,
         "from_offset": next_offset,
         "to_offset": reached,
         "total_gtins": total,

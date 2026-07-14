@@ -68,7 +68,8 @@ export const PRIORITY_LETTERS = ['C', 'D'] as const;
 export type LetterOutcome =
   | { kind: 'resolved'; letter: string }
   | { kind: 'geen-declaratie' }
-  | { kind: 'ambigu'; letters: string[] };
+  | { kind: 'ambigu'; letters: string[] }
+  | { kind: 'fout'; error: string };
 
 export interface GtinLetterResult {
   gtin: string;
@@ -80,6 +81,9 @@ export interface DeclaredMapSummary {
   resolved: number;
   geenDeclaratie: number;
   ambigu: number;
+  /** GTINs waarvoor de lookup zelf faalde (code-review-bevinding: nooit de
+   * hele ~2000-GTIN-run laten afbreken op één falende lookup). */
+  fout: number;
   perLetter: Record<string, number>;
 }
 
@@ -129,11 +133,20 @@ export function buildDeclaredMap(results: GtinLetterResult[], now: Date = new Da
   const perLetter: Record<string, number> = {};
   let geenDeclaratie = 0;
   let ambigu = 0;
+  let fout = 0;
 
   const sorted = [...results].sort((a, b) => a.gtin.localeCompare(b.gtin));
   for (const { gtin, outcome } of sorted) {
     if (outcome.kind === 'geen-declaratie') {
       geenDeclaratie += 1;
+      continue;
+    }
+    if (outcome.kind === 'fout') {
+      fout += 1;
+      logger.warn('Nutri-Score-declaratie-lookup gefaald — GTIN overgeslagen (geen gok)', {
+        gtin,
+        error: outcome.error,
+      });
       continue;
     }
     if (outcome.kind === 'ambigu') {
@@ -156,6 +169,7 @@ export function buildDeclaredMap(results: GtinLetterResult[], now: Date = new Da
       resolved: Object.keys(entries).length,
       geenDeclaratie,
       ambigu,
+      fout,
       perLetter,
     },
   };
@@ -181,13 +195,31 @@ export interface DeclaredMapDeps {
   resolveMarks: (gtin: string) => Promise<DeclaredMark[]>;
 }
 
-/** Orkestreer de per-GTIN classificatie sequentieel (klein universum, ~1.9k GTINs — geen batch-state nodig). */
+/**
+ * Orkestreer de per-GTIN classificatie sequentieel (klein universum, ~1.9k
+ * GTINs — geen batch-state nodig).
+ *
+ * `resolveDeclaredMarks` zelf is fail-safe (nooit een throw — elke fout geeft
+ * `{marks: [], reason}`), maar `deps.resolveMarks` is een geïnjecteerde
+ * afhankelijkheid: een onverwachte fout daarin (of in een toekomstige andere
+ * implementatie van `DeclaredMapDeps`) mag NOOIT de hele ~2000-GTIN-run laten
+ * afbreken zonder enige output (code-review-bevinding, Story 12.15) — één
+ * flaky lookup zou anders alle al-succesvol-geresolvede GTINs weggooien. Elke
+ * GTIN wordt daarom individueel gevangen; een fout klassificeert als `fout`
+ * (nooit gegokt, telt apart in de samenvatting) en de run gaat door.
+ */
 export async function collectDeclaredMap(deps: DeclaredMapDeps, now: Date = new Date()): Promise<DeclaredMapResult> {
   const gtins = await deps.listGtins();
   const results: GtinLetterResult[] = [];
   for (const gtin of gtins) {
-    const marks = await deps.resolveMarks(gtin);
-    results.push({ gtin, outcome: classifyDeclaredLetter(marks) });
+    let outcome: LetterOutcome;
+    try {
+      const marks = await deps.resolveMarks(gtin);
+      outcome = classifyDeclaredLetter(marks);
+    } catch (err) {
+      outcome = { kind: 'fout', error: err instanceof Error ? err.message : 'unknown' };
+    }
+    results.push({ gtin, outcome });
   }
   return buildDeclaredMap(results, now);
 }
@@ -236,6 +268,7 @@ function printPlan(result: DeclaredMapResult, dryRun: boolean): void {
   console.log(`  Resolved (A-E)     : ${summary.resolved}`);
   console.log(`  Geen declaratie    : ${summary.geenDeclaratie}`);
   console.log(`  Ambigu (overgeslagen): ${summary.ambigu}`);
+  console.log(`  Fout (overgeslagen): ${summary.fout}`);
   console.log('  Per letter         :');
   for (const letter of ['A', 'B', 'C', 'D', 'E']) {
     const n = summary.perLetter[letter] ?? 0;
