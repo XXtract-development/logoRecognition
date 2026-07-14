@@ -132,6 +132,12 @@ const ArtworkReviewItemCard: React.FC<ArtworkReviewItemCardProps> = ({
     }
   }, [item.id, onReject]);
 
+  // Story 12.14 investigated the kader+code combine bug that affects the mobile
+  // deck (MobileReviewDeck.tsx) here too. It does NOT apply to this card: the
+  // desktop card has no code-picker/relabel path at all — only Accept (under the
+  // predicted code), Reject and this "Markeer keurmerk" annotate modal (kader
+  // under the bestaande code, no code override). There is nothing to combine, so
+  // no fix is needed here.
   const [annotating, setAnnotating] = useState(false);
   const handleAnnotate = useCallback(
     async (rel: { x: number; y: number; width: number; height: number }) => {

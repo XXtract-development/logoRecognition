@@ -7,6 +7,13 @@
 - Er staat nu een nieuwe, apart te starten zoekmodus klaar die precies dat doet: bij een product waarvan de Nutri-Score-letter al bekend is, wordt op het etiket naar het bijbehorende vakje gezocht. Vindt de zoekmodus geen betrouwbaar vakje, dan wordt dat product gewoon overgeslagen — er wordt nooit een letter geraden of verzonnen
 - Gevonden vakjes komen voorgelabeld met de juiste letter in de beoordelingswachtrij terecht, zodat bevestigen nog maar één klik kost in plaats van eerst zelf de letter te moeten aflezen
 - Deze zoekmodus draait niet automatisch mee met de bestaande nachtelijke aanvulling; hij wordt pas op de praktijkomgeving gestart na expliciete goedkeuring
+## 2026-07-14 (Zelfgetekend kader en gekozen keurmerk worden voortaan samen bewaard)
+
+### Een zelf getekende crop ging verloren zodra er ook een ander keurmerk gekozen werd
+- In het reviewscherm kon je zelf een kader om een keurmerk tekenen én uit de lijst een (ander) keurmerk kiezen. Die twee acties werkten tot nu toe niet goed samen: het systeem bewaarde ofwel het gekozen keurmerk mét de automatisch gevonden crop, ofwel het zelfgetekende kader mét het oorspronkelijke keurmerk — nooit allebei tegelijk
+- Beide acties worden nu, in welke volgorde je ze ook uitvoert, samen bewaard: de crop die je zelf hebt aangewezen, onder het keurmerk dat je hebt gekozen
+- Los een kader tekenen (zonder keurmerk te wisselen) en los een ander keurmerk kiezen (zonder zelf te tekenen) werken nog precies zoals voorheen
+- Bij het testen van deze correctie is ook een tweede, subtieler probleem gevonden en meteen meegenomen: als je een getekend kader of gekozen keurmerk eerst afwees en het item daarna opnieuw beoordeelde, kon een oud, al verlaten kader of keurmerk stiekem toch weer meegenomen worden. Dat gebeurt nu niet meer — een afwijzing wist altijd een eventueel nog openstaand kader/keurmerk voor dat item
 
 ## 2026-07-13 (Een foutmelding bij te snel klikken toont voortaan de juiste, duidelijke tekst)
 

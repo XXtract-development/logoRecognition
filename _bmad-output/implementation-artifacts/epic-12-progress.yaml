@@ -1,0 +1,22 @@
+- story: 12-14-review-kader-plus-code-behouden
+  status: review   # deploy permission-gated bij Friso; niet 'complete' zolang niet gedeployed/goedgekeurd
+  commit_sha: 2cf464f8b6462200e767d25dff429e047850c1a0
+  fix_commit_sha: ce9c7ad5ebea5ffdd4f3fdf7da0a7746229bbfaf
+  branch: epic-12-story-12.14
+  artifacts:
+    - _bmad-output/implementation-artifacts/12-14-review-kader-plus-code-behouden.md
+    - _bmad-output/implementation-artifacts/12-14-ac-trace.md
+    - _bmad-output/implementation-artifacts/12-14-nfr.md
+    - _bmad-output/implementation-artifacts/12-14-adversarial-review.md
+    - _bmad-output/implementation-artifacts/epic-12-14-retro-2026-07-14.md
+    - apps/web/src/components/review/MobileReviewDeck.tsx
+    - apps/web/src/components/review/MobileReviewDeck.test.tsx
+    - apps/web/src/components/review/ArtworkReviewItemCard.tsx
+    - versions.md
+  gates:
+    tsc: 0 errors
+    full_web_vitest: 132/132 passed
+    adversarial_review_verdict: PASS
+    ac_trace: 5/5 functional + 3/3 regression
+    nfr: PASS
+  timestamp: "2026-07-14T00:00:00Z"
