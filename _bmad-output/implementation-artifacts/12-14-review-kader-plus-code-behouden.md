@@ -1,6 +1,6 @@
 # Story 12.14: Review — zelfgetekend kader + gekozen code samen bewaren
 
-Status: in-progress
+Status: review
 
 <!-- BUGFIX (frontend). Gemeld door Friso 2026-07-13: als hij in de review-deck zelf met de muis een kader om het logo tekent én vervolgens een ander keurmerk uit de lijst kiest, wordt de accept doorgezet maar zijn zelfgetekende crop NIET bewaard (de auto-crop wordt geregistreerd). Oorzaak: de twee acties zijn gescheiden en combineren niet — de backend ondersteunt de combinatie al (`POST /annotate` met `rel` + `t3777Code`). Frontend-only fix. -->
 
@@ -82,9 +82,31 @@ De reviewer wees expliciet een crop én een code aan; beide zijn grondwaarheid v
 
 ## Dev Agent Record
 ### Agent Model Used
+Claude Sonnet 5 (implement-sprint epic-agent, epic-12 story 12.14)
+
 ### Debug Log References
+- CR (code review): Blind Hunter + Edge Case Hunter (parallel, adversarial) + Acceptance Auditor — independently converged on 1× HIGH finding (stale `pendingRel`/`assignedCode` on decision-switch via plain accept/reject buttons or the flywheel reject-reason modal, `commitReject`/`applyDecision`). Fixed; re-verified PASS by a follow-up Edge Case Hunter pass.
+- Trace: `_bmad-output/implementation-artifacts/12-14-ac-trace.md` — gate PASS, 5/5 functional AC's + 3/3 regression findings covered.
+- NFR: `_bmad-output/implementation-artifacts/12-14-nfr.md` — PASS on all applicable dimensions (performance, security, reliability/graceful degradation, accessibility, concurrency/idempotency, maintainability).
+
 ### Completion Notes List
+- Task 1 (kader-state + combineren): `pendingRel: Record<itemId, rel>` toegevoegd; `applyAnnotation`/`relabel` combineren nu via `annotateReviewItem(id, rel, code)` in beide volgordes (AC1, AC2); losse paden (AC3) behouden.
+- Task 2 (UI-terugkoppeling): `review.annotatedWithCode` melding ("Keurmerk gemarkeerd op je kader en gekoppeld aan {{code}}") bij de gecombineerde actie (AC4).
+- Task 3 (desktop-kaart): `ArtworkReviewItemCard.tsx` geverifieerd — geen relabel/code-pad aanwezig (`onAccept(id)`/`onReject(id)`/`onAnnotate(id, rel)`, geen code-override-mogelijkheid), dus geen fix nodig; vastgelegd als code-comment.
+- Task 4 (tests, AC5): 4 tests voor de vier gespecificeerde gevallen (a)-(d) + 3 regressietests voor de tijdens code review gevonden staleness-bug (2× via de gewone knoppen, 1× via de flywheel-redenmodal).
+- Task 5 (verificatie): `tsc --noEmit` 0 errors, volledige web-vitest 132/132 groen (na de laatste fix). Backend git-bevestigd ongewijzigd (`git diff HEAD --stat -- apps/api` = leeg).
+- CR-fix (niet in de oorspronkelijke tasks, uit adversarial review): `pendingRel`/`assignedCode` worden nu ook opgeruimd in `commitReject` en de decision-switch-tak van `applyDecision`, zodat een latere combineer-actie nooit stilzwijgend een verlaten kader/code van vóór een tussentijdse afwijzing hergebruikt.
+- Geen deploy uitgevoerd (permission-gated bij Friso, per afbakening).
+
 ### File List
+- `apps/web/src/components/review/MobileReviewDeck.tsx` (kern-fix)
+- `apps/web/src/components/review/MobileReviewDeck.test.tsx` (7 nieuwe tests: 4 AC + 3 regressie)
+- `apps/web/src/components/review/ArtworkReviewItemCard.tsx` (documentatie-comment, geen gedragswijziging)
+- `_bmad-output/implementation-artifacts/12-14-ac-trace.md` (nieuw)
+- `_bmad-output/implementation-artifacts/12-14-nfr.md` (nieuw)
+- `versions.md` (nieuwe entry 2026-07-14)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (status → review + cleanup van een misplaatste 12-13-comment die onder de 12-14-sleutel stond)
 
 ## Change Log
 - 2026-07-13: aangemaakt. BUGFIX gemeld door Friso: zelfgetekend kader + gekozen code combineren niet in de review-deck → de auto-crop wordt geregistreerd i.p.v. het getekende kader. Frontend-only; backend (`annotate` met `rel`+`t3777Code`) ondersteunt de combinatie al.
+- 2026-07-14: geïmplementeerd (kader+code combine, beide volgordes, losse paden behouden, UI-melding, desktop-kaart gedocumenteerd als niet-van-toepassing). Adversarial code review vond en fixte 1× HIGH (stale pending-state bij beslissingswissel). AC-trace PASS (5/5 + 3/3 regressie), NFR PASS. Gates groen: tsc 0, web-vitest 132/132. Status → review (deploy permission-gated).

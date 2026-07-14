@@ -111,6 +111,13 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
   // Code correction: when a crop is a real keurmerk but a DIFFERENT one than
   // predicted, the picker assigns the right code and accepts under it.
   const [assignedCode, setAssignedCode] = useState<Record<string, string>>({});
+  // Story 12.14 — remembers a drawn-but-not-yet-code-combined kader per item, so
+  // that whichever order the reviewer works in (kader→code or code→kader), the
+  // SECOND action can combine with the first via annotateReviewItem(id, rel,
+  // code) instead of losing one half to the auto-crop / bestaande code.
+  const [pendingRel, setPendingRel] = useState<
+    Record<string, { x: number; y: number; width: number; height: number }>
+  >({});
   const [picker, setPicker] = useState(false);
   const [search, setSearch] = useState('');
   const touchStart = useRef<{ x: number; y: number } | null>(null);
@@ -291,6 +298,24 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
         }
         await rejectReviewItem(cur.id, reason);
         setDecisions((d) => ({ ...d, [cur.id]: 'VALS' }));
+        // Story 12.14 fix — a reject via the reason modal finalises the item
+        // WITHOUT going through the combine paths (relabel/applyAnnotation), so
+        // any code/kader that was pending for this item is now abandoned. Clear
+        // both to prevent a later relabel/kader action from silently reattaching
+        // a stale box or code the reviewer never confirmed together (see review
+        // finding: reject after a drawn kader must not resurrect that kader).
+        setAssignedCode((a) => {
+          if (!(cur.id in a)) return a;
+          const next = { ...a };
+          delete next[cur.id];
+          return next;
+        });
+        setPendingRel((p) => {
+          if (!(cur.id in p)) return p;
+          const next = { ...p };
+          delete next[cur.id];
+          return next;
+        });
         setRejectReasonFor(null);
         if (!prev) goto(idx + 1);
         else setDrag(0);
@@ -337,6 +362,11 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
             delete next[cur.id];
             return next;
           });
+          setPendingRel((p) => {
+            const next = { ...p };
+            delete next[cur.id];
+            return next;
+          });
           message.success(t('review.undone', { defaultValue: 'Ongedaan gemaakt' }));
           setDrag(0);
           return;
@@ -348,6 +378,27 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
         if (label === 'ECHT') await acceptReviewItem(cur.id);
         else await rejectReviewItem(cur.id);
         setDecisions((d) => ({ ...d, [cur.id]: label }));
+        // Story 12.14 fix — a plain accept/reject via this button finalises the
+        // item WITHOUT going through the combine paths (relabel/applyAnnotation),
+        // so any code/kader still pending for this item is now abandoned. Clear
+        // both — otherwise a LATER relabel or kader draw on this same item would
+        // silently reattach a stale box or code from before this decision-switch
+        // (e.g. draw kader → reject → relabel would wrongly reuse the abandoned
+        // kader; relabel → reject → draw a new kader would wrongly reuse the
+        // abandoned code). The undo branch above already clears both for the
+        // same-choice-again case.
+        setAssignedCode((a) => {
+          if (!(cur.id in a)) return a;
+          const next = { ...a };
+          delete next[cur.id];
+          return next;
+        });
+        setPendingRel((p) => {
+          if (!(cur.id in p)) return p;
+          const next = { ...p };
+          delete next[cur.id];
+          return next;
+        });
         if (!prev) goto(idx + 1);
         else setDrag(0);
       } catch {
@@ -363,13 +414,35 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
     async (rel: { x: number; y: number; width: number; height: number }) => {
       if (!cur || busy) return;
       setBusy(true);
+      // Story 12.14 — if a code was already chosen for this item (code-then-kader
+      // order), combine the drawn kader with that code in one annotate call so
+      // the registered reference is the drawn crop UNDER the chosen code, not
+      // the bestaande/predicted code.
+      const code = assignedCode[cur.id];
       try {
-        await annotateReviewItem(cur.id, rel);
+        // Keep the "no code" call at its existing arity (2 args) — some tests /
+        // API mocks assert exact call shape, and a plain kader-only annotate
+        // must remain byte-identical to today (AC3).
+        if (code) await annotateReviewItem(cur.id, rel, code);
+        else await annotateReviewItem(cur.id, rel);
+        setPendingRel((p) => {
+          const next = { ...p };
+          if (code) delete next[cur.id];
+          // No code yet — remember the kader so a SUBSEQUENT code pick
+          // (relabel, kader-then-code order) can combine with it.
+          else next[cur.id] = rel;
+          return next;
+        });
         setDecisions((d) => ({ ...d, [cur.id]: 'ECHT' }));
         message.success(
-          t('review.annotated', {
-            defaultValue: 'Keurmerk gemarkeerd en als trainingsdata geregistreerd',
-          })
+          code
+            ? t('review.annotatedWithCode', {
+                defaultValue: 'Keurmerk gemarkeerd op je kader en gekoppeld aan {{code}}',
+                code,
+              })
+            : t('review.annotated', {
+                defaultValue: 'Keurmerk gemarkeerd en als trainingsdata geregistreerd',
+              })
         );
         goto(idx + 1);
       } catch {
@@ -378,7 +451,7 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
         setBusy(false);
       }
     },
-    [cur, busy, idx, goto, t]
+    [cur, busy, idx, goto, t, assignedCode]
   );
 
   // Accept the crop under a corrected keurmerk code (different from predicted).
@@ -392,16 +465,34 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
         return;
       }
       const prev = decisions[cur.id];
+      // Story 12.14 — a kader drawn earlier for this item (kader-then-code
+      // order) is remembered in pendingRel; combine it with the chosen code via
+      // annotate instead of accepting under the (auto-crop) accept-endpoint.
+      const rel = pendingRel[cur.id];
       setBusy(true);
       try {
         if (prev) await reopenReviewItem(cur.id);
-        await acceptReviewItem(cur.id, code);
+        if (rel) {
+          await annotateReviewItem(cur.id, rel, code);
+          setPendingRel((p) => {
+            const next = { ...p };
+            delete next[cur.id];
+            return next;
+          });
+        } else {
+          await acceptReviewItem(cur.id, code);
+        }
         setDecisions((d) => ({ ...d, [cur.id]: 'ECHT' }));
         setAssignedCode((a) => ({ ...a, [cur.id]: code }));
         setPicker(false);
         setSearch('');
         message.success(
-          t('review.relabeled', { defaultValue: 'Gekoppeld aan {{code}}', code })
+          rel
+            ? t('review.annotatedWithCode', {
+                defaultValue: 'Keurmerk gemarkeerd op je kader en gekoppeld aan {{code}}',
+                code,
+              })
+            : t('review.relabeled', { defaultValue: 'Gekoppeld aan {{code}}', code })
         );
         if (!prev) goto(idx + 1);
         else setDrag(0);
@@ -411,7 +502,7 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
         setBusy(false);
       }
     },
-    [cur, busy, canMutate, decisions, idx, goto, t]
+    [cur, busy, canMutate, decisions, pendingRel, idx, goto, t]
   );
 
   // Keyboard shortcuts — fast desktop review with minimal clicks. Ignored while

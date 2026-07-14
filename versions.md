@@ -1,5 +1,13 @@
 # Versiegeschiedenis
 
+## 2026-07-14 (Zelfgetekend kader en gekozen keurmerk worden voortaan samen bewaard)
+
+### Een zelf getekende crop ging verloren zodra er ook een ander keurmerk gekozen werd
+- In het reviewscherm kon je zelf een kader om een keurmerk tekenen én uit de lijst een (ander) keurmerk kiezen. Die twee acties werkten tot nu toe niet goed samen: het systeem bewaarde ofwel het gekozen keurmerk mét de automatisch gevonden crop, ofwel het zelfgetekende kader mét het oorspronkelijke keurmerk — nooit allebei tegelijk
+- Beide acties worden nu, in welke volgorde je ze ook uitvoert, samen bewaard: de crop die je zelf hebt aangewezen, onder het keurmerk dat je hebt gekozen
+- Los een kader tekenen (zonder keurmerk te wisselen) en los een ander keurmerk kiezen (zonder zelf te tekenen) werken nog precies zoals voorheen
+- Bij het testen van deze correctie is ook een tweede, subtieler probleem gevonden en meteen meegenomen: als je een getekend kader of gekozen keurmerk eerst afwees en het item daarna opnieuw beoordeelde, kon een oud, al verlaten kader of keurmerk stiekem toch weer meegenomen worden. Dat gebeurt nu niet meer — een afwijzing wist altijd een eventueel nog openstaand kader/keurmerk voor dat item
+
 ## 2026-07-13 (Een foutmelding bij te snel klikken toont voortaan de juiste, duidelijke tekst)
 
 ### Het reviewscherm gaf soms een verwarrende serverfout in plaats van "even rustig aan"
