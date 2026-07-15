@@ -1,6 +1,6 @@
 # Story 12.27 — Nutri-Score-veld in de kruischeck
 
-**Status:** review
+**Status:** done
 **Epic:** 12 (Keurmerk-dekking & Nutri-Score)
 **Datum:** 2026-07-15
 **Branch:** epic-12-story-12.23-testinfra (worktree logoRecognition-wt-1217)
@@ -44,6 +44,19 @@ Review-correctie op de reviewer zelf: het M1-voorbeeldscenario (embedding 0.84 v
 
 Door de review bevestigd zonder wijziging: cache retourneert verse objecten (mutatie van `declaration` veilig), geen alias-botsingen met `NUTRISCORE_*`, vliegwiel-pollutie onmogelijk (classifier-normalisatie → 0.90-drempel + geen-crop-skip), method-strings byte-exact gelijk aan ml-service.
 
-## Verificatie op ACC (na deploy, permission-gated)
+## Verificatie op ACC — UITGEVOERD 2026-07-15 (commit 937b4f0 live)
 
-Plan: `POST /api/v1/artwork/<gtin>/verify-declared` met `x-api-key` op een D-declarerend GTIN (08718452660308 / 08719587352908) → verwacht `declaration.codes` bevat `NUTRISCORE_D` en verdict `CONFIRMED` via `nutriscore-head`.
+`POST /api/v1/artwork/08719587352908/verify-declared` (x-api-key, Content-Type: application/json) → runId; poll via `GET /api/v1/artwork/verify-declared/runs/<runId>`:
+
+```json
+{"status":"done","gtin":"08719587352908",
+ "declaration":{"reason":"ok","codes":["NUTRISCORE_D"]},
+ "verdicts":[{"declaredCode":"NUTRISCORE_D","code":"NUTRISCORE_D","verdict":"CONFIRMED",
+   "confidence":0.846,"bbox":{"x":4098,"y":574,"width":391,"height":275},
+   "method":"nutriscore-head"}],
+ "processingTimeMs":33745}
+```
+
+AC1 exact zoals voorspeld: declaratie uit `nutritionalScore`-veld → `CONFIRMED` via `nutriscore-head`. Vóór deze story gaf hetzelfde GTIN `{"reason":"lege-declaratie","codes":[]}`.
+
+Caller-notities (n8n): poll-pad is `/verify-declared/runs/<runId>` (niet `/verify-declared/<runId>`); POST vereist `Content-Type: application/json` (leeg `{}`-body volstaat, anders 415); binnen het container-netwerk `127.0.0.1` gebruiken (`localhost` lost op naar IPv6, api luistert op IPv4).
