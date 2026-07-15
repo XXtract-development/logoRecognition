@@ -1,5 +1,13 @@
 # Versiegeschiedenis
 
+## 2026-07-15 (Nutri-Score-letters worden nu betrouwbaar gelezen door een specialist)
+
+### De letter (A t/m E) van een Nutri-Score-logo werd vaak verkeerd herkend
+- De vijf Nutri-Score-varianten lijken zo sterk op elkaar dat de algemene beeldherkenning ze slecht uit elkaar hield: in een praktijktest werd maar 1 op de 6 letters goed gelezen
+- Er is nu een gespecialiseerde lezer die werkt zoals een mens: hij zoekt de kenmerkende gekleurde balk en kijkt welk vakje uitvergroot is. In dezelfde praktijktest leest die 98% van de gevallen correct, en bij twijfel zegt hij eerlijk "geen lezing" in plaats van te gokken
+- De specialist herkent verschillende drukstijlen, gedraaide en ondersteboven gedrukte logo's, en negeert misleidende beelden zoals gekleurde grafiekjes op de verpakking
+- Voor alle andere keurmerken verandert er niets: de specialist grijpt alleen in bij een echt Nutri-Score-logo
+
 ## 2026-07-14 (Duidelijker beoordelen van Nutri-Score-vondsten zonder letter)
 
 ### Sommige Nutri-Score-items toonden een verwarrende, "kapotte" code

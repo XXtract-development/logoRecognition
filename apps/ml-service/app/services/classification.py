@@ -281,6 +281,57 @@ async def classify_crop(
     """
     explicit = confidence_threshold is not None
 
+    # --- Story 12.22: Nutri-Score-familie-head (vóór de embedding-route) -----
+    # Deterministische balk-lezer (kleurgeometrie, ~ms op CPU): leest hij een
+    # letter, dan beslist de head — de embedding kan de bijna-identieke letters
+    # niet scheiden (spike 12.21: 1/6; head 12.21b: 97,8% precisie). Geen
+    # lezing (geen gestandaardiseerde 5-vakjes-balk) → byte-identiek legacy-pad.
+    # Fail-open: een reader-fout mag de classificatie nooit breken (AC3/AC5f).
+    try:
+        # Alleen 3-kanaals uint8 BGR-ndarrays (adversarial-review L2): PIL,
+        # BGRA, float- of 1-kanaals-arrays gaan stil langs de head naar legacy
+        # (geen warning-ruis per crop).
+        if (
+            getattr(crop, "ndim", 0) == 3
+            and getattr(crop, "shape", (0, 0, 0))[2] == 3
+            and str(getattr(crop, "dtype", "")) == "uint8"
+        ):
+            from app.services.nutriscore_reader import read_nutriscore
+
+            ns_letter, ns_info = read_nutriscore(crop)
+            if ns_letter is not None:
+                ratio = float(ns_info.get("ratio", 1.12))
+                # confidence monotoon in de ratio: gemeten bereik [1,12–1,45]
+                # afgebeeld op [0,80–0,99] (12.21b), geclamped.
+                ns_confidence = round(
+                    min(0.99, max(0.80, 0.80 + (ratio - 1.12) * (0.19 / 0.33))), 3
+                )
+                # Adversarial-review M2: een expliciet meegegeven
+                # confidence_threshold wint ook van de head ("always wins",
+                # docstring-contract) — daaronder is het resultaat uncertain.
+                ns_uncertain = bool(explicit and ns_confidence < confidence_threshold)
+                logger.info(
+                    "Nutri-Score-head besliste de letter",
+                    extra={
+                        "t3777_code": f"NUTRISCORE_{ns_letter}",
+                        "ratio": ratio,
+                        "rotatie": ns_info.get("rotatie"),
+                        "confidence": ns_confidence,
+                        "uncertain": ns_uncertain,
+                    },
+                )
+                return {
+                    "t3777_code": f"NUTRISCORE_{ns_letter}",
+                    "confidence": ns_confidence,
+                    "method": "nutriscore-head",
+                    "uncertain": ns_uncertain,
+                }
+    except Exception as exc:
+        logger.warning(
+            "Nutri-Score-head faalde — door naar de legacy-route",
+            extra={"error": str(exc)},
+        )
+
     # --- Primary: embedding route -------------------------------------------
     embedding_threshold = (
         confidence_threshold if explicit else CLASSIFY_THRESHOLD_EMBEDDING
