@@ -359,3 +359,37 @@ describe('Story 12.8 — verify-flow', () => {
     ]);
   });
 });
+
+// ---------------------------------------------------------------------------
+// 12.26 — regressie: BullMQ verbiedt ':' in custom job-ids. `verify:<runId>`
+// faalde op ACC met "Custom Id cannot contain :" en blokkeerde ELKE
+// verify-declared-start (ontdekt bij de eerste echte API-run, 2026-07-15).
+// ---------------------------------------------------------------------------
+describe('12.26 — enqueueVerifyDeclared jobId', () => {
+  it('gebruikt een custom jobId zonder dubbele punt', async () => {
+    const addSpy = vi.fn().mockResolvedValue(undefined);
+    const closeSpy = vi.fn().mockResolvedValue(undefined);
+    const bullmq = await import('bullmq');
+    const queueSpy = vi
+      .spyOn(bullmq, 'Queue')
+      .mockImplementation(() => ({ add: addSpy, close: closeSpy }) as never);
+    const redis = await import('../../services/pipeline/queue');
+    vi.spyOn(redis, 'getRedisConnection').mockReturnValue({} as never);
+    // writeRunState gebruikt de redis-verbinding; stub de set-call
+    (redis.getRedisConnection as ReturnType<typeof vi.fn>).mockReturnValue({
+      set: vi.fn().mockResolvedValue('OK'),
+    } as never);
+
+    const { enqueueVerifyDeclared } = await import(
+      '../../services/pipeline/verify-flow'
+    );
+    await enqueueVerifyDeclared('08719587352908', 'run-123');
+
+    expect(addSpy).toHaveBeenCalledTimes(1);
+    const opts = addSpy.mock.calls[0][2];
+    expect(opts.jobId).toBeDefined();
+    expect(String(opts.jobId)).not.toContain(':');
+    expect(String(opts.jobId)).toContain('run-123');
+    queueSpy.mockRestore();
+  });
+});

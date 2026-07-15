@@ -632,7 +632,11 @@ export async function enqueueVerifyDeclared(gtin: string, runId: string): Promis
     await queue.add(
       VERIFY_JOB_NAME,
       { runId, gtin } as VerifyJobData,
-      { ...PIPELINE_JOB_OPTIONS, jobId: `verify:${runId}` }
+      // 12.26: BullMQ verbiedt ':' in custom job-ids (Redis-key-delimiter) —
+      // 'verify:<runId>' faalde op ACC met "Custom Id cannot contain :" en
+      // blokkeerde ELKE verify-declared-start. Dispatch gaat op job-NAAM, dus
+      // het id-formaat is verder nergens aan gekoppeld.
+      { ...PIPELINE_JOB_OPTIONS, jobId: `verify-${runId}` }
     );
   } finally {
     await queue.close();
