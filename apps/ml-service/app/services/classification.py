@@ -280,6 +280,7 @@ async def classify_crop(
     "embedding" / uncertain True. It never fabricates a label.
     """
     explicit = confidence_threshold is not None
+    ns_head_no_read = False  # Story 12.25: lezer geconsulteerd maar geen lezing
 
     # --- Story 12.22: Nutri-Score-familie-head (vóór de embedding-route) -----
     # Deterministische balk-lezer (kleurgeometrie, ~ms op CPU): leest hij een
@@ -299,6 +300,10 @@ async def classify_crop(
             from app.services.nutriscore_reader import read_nutriscore
 
             ns_letter, ns_info = read_nutriscore(crop)
+            if ns_letter is None:
+                # Story 12.25 — kandidaat voor het A2-vangnet (verderop, ná de
+                # embedding-route: de familie-poort heeft de embedding-buur nodig).
+                ns_head_no_read = True
             if ns_letter is not None:
                 ratio = float(ns_info.get("ratio", 1.12))
                 # confidence monotoon in de ratio: gemeten bereik [1,12–1,45]
@@ -344,6 +349,58 @@ async def classify_crop(
             extra={"error": str(exc)},
         )
         embedding_result = None
+
+    # --- Story 12.25: A2-vangnet, uitsluitend achter de familie-poort -------
+    # Alleen wanneer (a) de deterministische lezer niets las (12.22), (b) de
+    # embedding-buur al NUTRISCORE_* zegt (poort: blokkeert gemeten 197/199
+    # andere keurmerken) én (c) dat embedding-resultaat ONZEKER is, beslist het
+    # A2-model de letter — bewezen dekking van de gaten van de kleur-lezer
+    # (monochrome drukken, onleesbare uitvergroting). Adversarial-review M1:
+    # een CONFIDENT embedding-antwoord (>= drempel; sinds 12.3 zijn echte-crop-
+    # refs wél letter-onderscheidend voor herhaal-gevallen) wordt NOOIT
+    # overschreven — het vangnet vult gaten, het overruled geen zekerheid.
+    # NB (review L3, bewust): een gate-geblokkeerd/UNKNOWN embedding-resultaat
+    # opent de poort niet — positieve familie-evidentie is vereist.
+    # Geen letter of onder de vloer -> byte-identiek legacy. Fail-open: elke
+    # A2-fout laat het bestaande resultaat ongemoeid.
+    if (
+        ns_head_no_read
+        and embedding_result is not None
+        and embedding_result.get("uncertain", False)
+        and str(embedding_result.get("t3777_code", "")).startswith("NUTRISCORE_")
+    ):
+        try:
+            from app.services.nutriscore_a2 import min_conf, predict_letter
+
+            a2_letter, a2_conf, a2_info = predict_letter(crop)
+            if a2_letter is not None and a2_conf >= min_conf():
+                a2_confidence = round(float(a2_conf), 3)
+                a2_uncertain = bool(explicit and a2_confidence < confidence_threshold)
+                logger.info(
+                    "Nutri-Score-A2-vangnet besliste de letter",
+                    extra={
+                        "t3777_code": f"NUTRISCORE_{a2_letter}",
+                        "confidence": a2_confidence,
+                        "gate_nearest": embedding_result.get("t3777_code"),
+                        "uncertain": a2_uncertain,
+                    },
+                )
+                return {
+                    "t3777_code": f"NUTRISCORE_{a2_letter}",
+                    "confidence": a2_confidence,
+                    "method": "nutriscore-a2",
+                    "uncertain": a2_uncertain,
+                }
+            else:
+                logger.info(
+                    "Nutri-Score-A2-vangnet: poort open maar geen claim",
+                    extra={"a2": a2_info, "gate_nearest": embedding_result.get("t3777_code")},
+                )
+        except Exception as exc:
+            logger.warning(
+                "Nutri-Score-A2-vangnet faalde — legacy-resultaat blijft staan",
+                extra={"error": str(exc)},
+            )
 
     # A confident embedding match is the answer.
     if (

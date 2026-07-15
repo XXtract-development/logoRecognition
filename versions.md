@@ -1,5 +1,12 @@
 # Versiegeschiedenis
 
+## 2026-07-15 (Vangnet voor Nutri-Score-logo's die de specialist niet kan lezen)
+
+### Zwart-wit-gedrukte Nutri-Score-logo's kregen geen letter
+- De Nutri-Score-specialist leest op kleur — en sommige verpakkingen drukken het logo in zwart-wit, of met een onduidelijk uitvergroot vakje. Die gevallen bleven zonder letter
+- Er is nu een klein, speciaal getraind vangnet-model (geleerd van ruim 10.000 wetenschappelijk geannoteerde verpakkingsfoto's) dat alleen wordt geraadpleegd als de specialist niets kan lezen én er al aanwijzingen zijn dat het om een Nutri-Score gaat
+- Het vangnet overschrijft nooit een zeker antwoord van de bestaande herkenning en zegt bij twijfel eerlijk "weet ik niet" — in de praktijktest op onze eigen verpakkingen werden alle eerder onleesbare gevallen correct gelezen, zonder nieuwe fouten
+
 ## 2026-07-15 (Nutri-Score-letters worden nu betrouwbaar gelezen door een specialist)
 
 ### De letter (A t/m E) van een Nutri-Score-logo werd vaak verkeerd herkend
