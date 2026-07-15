@@ -1,6 +1,6 @@
 # Story 12.24: Embedding-shoot-out — SigLIP2 / CLIP / DINOv3 vs efficientnet_b0 (offline)
 
-Status: ready-for-dev
+Status: done (offline meet-fase afgerond — verdict NO-GO, zie meetrapport)
 
 <!-- Research rang 2 (research-technical-logo-herkenning-2026-07-14.md §4):
      Open Food Facts won +19–23 punten recall op exact onze architectuur en ons
