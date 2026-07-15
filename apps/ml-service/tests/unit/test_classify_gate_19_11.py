@@ -15,6 +15,8 @@ import os
 import sys
 import types
 
+_APP_PKG = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "app"))
+
 import numpy as np
 import pytest
 
@@ -34,7 +36,7 @@ def _install_collaborator_stubs():
     for name in ("app", "app.core", "app.services", "app.ml"):
         if name not in sys.modules:
             mod = types.ModuleType(name)
-            mod.__path__ = []
+            mod.__path__ = [os.path.join(_APP_PKG, *name.split(".")[1:])]  # echte pkg-paden: stubs mogen imports van andere tests niet vergiftigen (12.23)
             sys.modules[name] = mod
     logging_stub = types.ModuleType("app.core.logging")
     logging_stub.logger = types.SimpleNamespace(
@@ -65,6 +67,14 @@ def _install_collaborator_stubs():
 
 
 def _load_classification():
+    # 12.23: snapshot vóór het laden — deze functie draait op MODULE-niveau
+    # (collectie-tijd); zonder herstel overschaduwen de submodule-stubs
+    # (app.services.database e.d.) de ECHTE modules voor alle later
+    # gecollecteerde testbestanden (ImportError "unknown location"). De eigen
+    # tests herinstalleren hun stubs per test via de autouse-fixture, dus
+    # herstellen is veilig.
+    _touched = ("app", "app.core", "app.services", "app.ml", "app.core.logging", "app.ml.model_manager", "app.services.database", "app.services.keurmerk_gate", "app.services.classification")
+    _prev = {k: sys.modules.get(k) for k in _touched}
     _install_collaborator_stubs()
     spec = importlib.util.spec_from_file_location("app.services.classification", _MODULE_PATH)
     module = importlib.util.module_from_spec(spec)
@@ -72,6 +82,11 @@ def _load_classification():
     spec.loader.exec_module(module)
     # _to_pil vermijdt PIL/cv2 in de test (de embedding is toch gestubd).
     module._to_pil = lambda crop: crop
+    for _k, _v in _prev.items():
+        if _v is not None:
+            sys.modules[_k] = _v
+        else:
+            sys.modules.pop(_k, None)
     return module
 
 

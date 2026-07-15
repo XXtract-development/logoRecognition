@@ -20,6 +20,8 @@ import os
 import sys
 import types
 
+_APP_PKG = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "app"))
+
 import numpy as np
 import pytest
 
@@ -30,13 +32,21 @@ _MODULE_PATH = os.path.abspath(
 
 
 def _load_bootstrap_search():
+    # 12.23: snapshot vóór het laden — deze functie draait op MODULE-niveau
+    # (collectie-tijd); zonder herstel overschaduwen de submodule-stubs
+    # (app.services.database e.d.) de ECHTE modules voor alle later
+    # gecollecteerde testbestanden (ImportError "unknown location"). De eigen
+    # tests herinstalleren hun stubs per test via de autouse-fixture, dus
+    # herstellen is veilig.
+    _touched = ("app", "app.core", "app.services", "app.core.logging", "app.services.bootstrap_search")
+    _prev = {k: sys.modules.get(k) for k in _touched}
     """Laad bootstrap_search.py geïsoleerd met gestubde app-pakketten."""
     # Stub app / app.core / app.core.logging zodat de top-level import slaagt
     # zonder structlog/config, en app.services zodat het geen asyncpg trekt.
     for name in ("app", "app.core", "app.services"):
         if name not in sys.modules:
             mod = types.ModuleType(name)
-            mod.__path__ = []  # markeer als package
+            mod.__path__ = [os.path.join(_APP_PKG, *name.split(".")[1:])]  # echte pkg-paden: stubs mogen imports van andere tests niet vergiftigen (12.23)
             sys.modules[name] = mod
     logging_stub = types.ModuleType("app.core.logging")
     logging_stub.logger = types.SimpleNamespace(
@@ -52,6 +62,11 @@ def _load_bootstrap_search():
     module = importlib.util.module_from_spec(spec)
     sys.modules["app.services.bootstrap_search"] = module
     spec.loader.exec_module(module)
+    for _k, _v in _prev.items():
+        if _v is not None:
+            sys.modules[_k] = _v
+        else:
+            sys.modules.pop(_k, None)
     return module
 
 
@@ -139,7 +154,7 @@ def patched(monkeypatch):
     mm_mod = types.ModuleType("app.ml.model_manager")
     mm_mod.model_manager = fake_mm
     sys.modules["app.ml"] = types.ModuleType("app.ml")
-    sys.modules["app.ml"].__path__ = []
+    sys.modules["app.ml"].__path__ = [os.path.join(_APP_PKG, "ml")]
     sys.modules["app.ml.model_manager"] = mm_mod
 
     cls_mod = types.ModuleType("app.services.classification")
@@ -441,7 +456,7 @@ def patched_c(monkeypatch):
     mm_mod = types.ModuleType("app.ml.model_manager")
     mm_mod.model_manager = fake_mm
     sys.modules["app.ml"] = types.ModuleType("app.ml")
-    sys.modules["app.ml"].__path__ = []
+    sys.modules["app.ml"].__path__ = [os.path.join(_APP_PKG, "ml")]
     sys.modules["app.ml.model_manager"] = mm_mod
 
     cls_mod = types.ModuleType("app.services.classification")

@@ -1,6 +1,6 @@
 # Story 12.22: Nutri-Score-familie-head — deterministische letter-lezer in de classificatie-route
 
-Status: review
+Status: done
 
 <!-- Bouw-story na spike 12.21 (embedding ontoereikend), technical research
      (rang-1-advies) en spike 12.21b (prototype GO: 91/2/49 op 142 pagina's,

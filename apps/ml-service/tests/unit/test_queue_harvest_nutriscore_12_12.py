@@ -38,6 +38,11 @@ import os
 import sys
 import types
 
+_APP_PKG = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "app"))
+
+# 12.23: echte cv2 op collectie-moment vangen (zie fixture-commentaar).
+import cv2 as _REAL_CV2
+
 import numpy as np
 import pytest
 
@@ -63,7 +68,7 @@ NUTRISCORE_CODES = [
 def _fresh_module(monkeypatch):
     for name in ("app", "app.core", "app.services", "app.ml"):
         mod = types.ModuleType(name)
-        mod.__path__ = []
+        mod.__path__ = [os.path.join(_APP_PKG, *name.split(".")[1:])]  # echte pkg-paden: stubs mogen imports van andere tests niet vergiftigen (12.23)
         monkeypatch.setitem(sys.modules, name, mod)
 
     log_stub = types.ModuleType("app.core.logging")
@@ -433,17 +438,18 @@ def color_module(monkeypatch):
     gebruiken, ongeacht test-volgorde/eerder gestubde sessies."""
     for name in ("app", "app.core"):
         mod = types.ModuleType(name)
-        mod.__path__ = []
+        mod.__path__ = [os.path.join(_APP_PKG, *name.split(".")[1:])]  # echte pkg-paden: stubs mogen imports van andere tests niet vergiftigen (12.23)
         monkeypatch.setitem(sys.modules, name, mod)
     log_stub = types.ModuleType("app.core.logging")
     log_stub.logger = types.SimpleNamespace(info=lambda *a, **k: None, warning=lambda *a, **k: None, error=lambda *a, **k: None)
     monkeypatch.setitem(sys.modules, "app.core.logging", log_stub)
 
-    monkeypatch.delitem(sys.modules, "cv2", raising=False)
-    import importlib as _importlib
-
-    real_cv2 = _importlib.import_module("cv2")
-    monkeypatch.setitem(sys.modules, "cv2", real_cv2)
+    # 12.23: cv2 kan NIET in-proces geherimporteerd worden (native init —
+    # empirisch bewezen 2026-07-15: delitem + import_module crashte met
+    # "partially initialized module 'cv2'" zodra cv2 al eerder in de sessie
+    # geladen was, wat in volle-suite-runs altijd zo is). Gebruik daarom de op
+    # COLLECTIE-moment gevangen echte cv2 (monkeypatch draait het netjes terug).
+    monkeypatch.setitem(sys.modules, "cv2", _REAL_CV2)
 
     spec = importlib.util.spec_from_file_location(
         "app.services.queue_harvest_nutriscore_color", _MODULE_PATH

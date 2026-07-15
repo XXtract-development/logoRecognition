@@ -65,6 +65,8 @@ import os
 import sys
 import types
 
+_APP_PKG = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "app"))
+
 import numpy as np
 import pytest
 
@@ -87,7 +89,7 @@ ARTWORK_KEY = "artwork/111/converted-0.png"
 def _fresh_queue_harvest(monkeypatch):
     for name in ("app", "app.core", "app.services", "app.ml"):
         mod = types.ModuleType(name)
-        mod.__path__ = []  # markeer als package
+        mod.__path__ = [os.path.join(_APP_PKG, *name.split(".")[1:])]  # echte pkg-paden: stubs mogen imports van andere tests niet vergiftigen (12.23)
         monkeypatch.setitem(sys.modules, name, mod)
 
     log_stub = types.ModuleType("app.core.logging")

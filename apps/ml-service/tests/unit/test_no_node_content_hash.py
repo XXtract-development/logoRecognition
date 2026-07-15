@@ -47,7 +47,15 @@ def test_13_1_ac4_geen_node_crop_content_hash_implementatie():
     offenders: list[str] = []
     for ts_file in _API_SRC.rglob("*.ts"):
         text = ts_file.read_text(encoding="utf-8", errors="ignore")
-        if not _CONTENT_HASH_REF.search(text):
+        # 12.23: alleen content-hash-vermeldingen in CODE tellen — een
+        # commentaarregel (bv. artwork-pipeline.ts: "// ... upsert op
+        # contentHash ...") naast een legitieme AD-12-hash (sha256 over
+        # BRON-bestandsbytes) is geen crop-inhouds-hash-implementatie.
+        code_lines = [
+            ln for ln in text.splitlines()
+            if not ln.lstrip().startswith(("//", "*", "/*"))
+        ]
+        if not any(_CONTENT_HASH_REF.search(ln) for ln in code_lines):
             continue
         # ml-client.ts mag content_hash noemen: het is de delegatie naar /ml/phash.
         if ts_file.name == "ml-client.ts" and "/ml/phash" in text:
