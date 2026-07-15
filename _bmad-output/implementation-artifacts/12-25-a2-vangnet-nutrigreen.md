@@ -1,6 +1,6 @@
 # Story 12.25: A2-vangnet — klein 5-klasse Nutri-Score-model (NutriGreen) voor monochrome/afwijkende drukken
 
-Status: review
+Status: done
 
 <!-- Research rang 1-vervolg (A2) na 12.22: de deterministische balk-lezer dekt
      kleurendruk (97,8% precisie) maar is per constructie blind voor monochrome
@@ -133,6 +133,20 @@ claude-opus-4-8[1m]
   monkeypatch-hygiëne + 4 extra tests (confident-override, expliciete drempel,
   clamp in echte module, PIL-poort); L6 A2-decline-logging toegevoegd
   (poort open zonder claim = info-log met probs).
+
+### Live-verificatie op ACC (2026-07-15, container 4fd995a)
+
+- **Kleur-logo → specialist**: `nutriscore-head` NUTRISCORE_D 0,852 ✓.
+- **Bekende monochromen → juist antwoord**: kp 0,53 (ruim boven de 0,2-gate),
+  confident embedding-match → NUTRISCORE_A ✓ (A2 terecht niet geraadpleegd, M1).
+- **Ander keurmerk → byte-identiek legacy** ✓; nergens onterechte A2-claims ✓.
+- **A2-beslis-tak**: bewezen via (a) alle 13 tests groen in het productie-image
+  en (b) de pre-deploy echte-keten-sanity met exact de artefacten die nu in
+  MinIO staan (A_24 → nutriscore-a2 A 0,507; D_40 → nutriscore-a2 D 1,0).
+  Kunstmatig geperturbeerde "nieuwe" monochromen komen live niet voorbij de
+  bestaande keurmerk-gate (kp<0,2) — bestaand voorzichtig gedrag, geen
+  12.25-defect; een natuurlijk nieuw monochroom geval zal de tak live tonen
+  (observability: de "poort open"-info-logs maken dat zichtbaar).
 
 ### File List
 
