@@ -1,5 +1,13 @@
 # Versiegeschiedenis
 
+## 2026-07-15 (Kruischeck telt nu ook de gedeclareerde Nutri-Score mee)
+
+### Producten met een Nutri-Score kregen bij de kruischeck "geen declaraties gevonden"
+- De kruischeck (vergelijking tussen wat een leverancier declareert en wat er op het etiket staat) keek alleen naar het veld met keurmerk-codes; de Nutri-Score staat in de productdata echter in een eigen, apart veld
+- De kruischeck leest nu ook dat Nutri-Score-veld: declareert een product bijvoorbeeld een "D", dan wordt op het etiket gecontroleerd of daar inderdaad een Nutri-Score D staat — met de gespecialiseerde lezer en het vangnet die eerder zijn gebouwd
+- Als het ophalen van de Nutri-Score-declaratie een keer mislukt, draait de controle gewoon door op de keurmerk-codes; er valt dus nooit een controle uit
+- Ook opgelost: het starten van een kruischeck via de API gaf altijd een foutmelding door een technisch ongeldig taak-ID; dat is hersteld en de eerste succesvolle controles zijn gedraaid
+
 ## 2026-07-15 (Vangnet voor Nutri-Score-logo's die de specialist niet kan lezen)
 
 ### Zwart-wit-gedrukte Nutri-Score-logo's kregen geen letter

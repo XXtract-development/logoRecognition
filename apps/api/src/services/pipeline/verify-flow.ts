@@ -33,7 +33,13 @@ import { Queue } from 'bullmq';
 import { getRedisConnection, PIPELINE_JOB_OPTIONS } from './queue';
 import { mlClient } from '../ml-client';
 import { getThresholdForMethod } from '../artwork-crosscheck';
-import { resolveDeclarations, resolveGln, DeclarationReason } from '../t3777-declarations';
+import {
+  resolveDeclarations,
+  resolveDeclaredMarks,
+  nutriscoreDeclaredCodes,
+  resolveGln,
+  DeclarationReason,
+} from '../t3777-declarations';
 import { aliasDeclaredCodes } from '../t3777-aliases';
 import { nominateFromKruischeck } from '../flywheel/kruischeck-hook';
 import {
@@ -237,11 +243,17 @@ export function mapVerdicts(
   activeClasses: Set<string>,
   detections: VerifyDetection[]
 ): VerifyCodeResult[] {
-  // Best (highest-confidence) detection per canonical code.
+  // Beste detectie per canonieke code — gekozen op MARGE boven de eigen
+  // methode-drempel, niet op rauwe confidence (12.27 adversarial-review M1):
+  // methodes hebben uiteenlopende drempels (embedding 0.85, nutriscore-head
+  // 0.80, nutriscore-a2 0.50); een 0.84-embedding zou anders een geldige
+  // 0.80-head-treffer wegdrukken naar UNCERTAIN in multi-crop-gevallen.
+  // Bij één detectie per code is dit byte-identiek aan het oude gedrag.
   const bestByCode = new Map<string, VerifyDetection>();
+  const margin = (d: VerifyDetection) => d.confidence - getThresholdForMethod(d.method);
   for (const d of detections) {
     const prev = bestByCode.get(d.code);
-    if (!prev || d.confidence > prev.confidence) bestByCode.set(d.code, d);
+    if (!prev || margin(d) > margin(prev)) bestByCode.set(d.code, d);
   }
 
   return aliased.map(({ declared, canonical, alias }): VerifyCodeResult => {
@@ -400,7 +412,43 @@ export async function runVerifyDeclared(
     }
 
     // 2. Declarations (T3777) — reason carried 1:1 (AC2).
-    const declaration = await resolveDeclarations(gtin);
+    // 12.27 — Nutri-Score wordt in het APARTE GS1-veld `nutritionalScore`
+    // gedeclareerd (kale letter), niet in T3777; zonder deze stap kreeg elk
+    // NS-product "lege-declaratie" (ontdekt bij de eerste echte API-runs).
+    // Beide resolvers PARALLEL (eigen caches; cold-cache anders 2×10s
+    // sequentiële catalog-timeout, review-L); een marks-fout is fail-open
+    // (T3777-pad blijft byte-identiek).
+    const [declaration, marksSettled] = await Promise.all([
+      resolveDeclarations(gtin),
+      resolveDeclaredMarks(gtin).then(
+        (m) => ({ ok: true as const, marks: m.marks }),
+        (err: unknown) => ({ ok: false as const, err })
+      ),
+    ]);
+    let nsCodes: string[] = [];
+    try {
+      if (marksSettled.ok) {
+        nsCodes = nutriscoreDeclaredCodes(marksSettled.marks);
+      } else {
+        throw marksSettled.err;
+      }
+    } catch (err) {
+      logger.warn('Nutri-Score-declaratie-resolutie faalde (fail-open)', {
+        runId,
+        gtin,
+        error: err instanceof Error ? err.message : 'unknown',
+      });
+    }
+    const declaredCodes = [...new Set([...declaration.codes, ...nsCodes])];
+    // Adversarial-review M2: alléén 'lege-declaratie' mag naar 'ok' kantelen
+    // (T3777 geparsed maar leeg + NS-letter bestaat = er IS een declaratie).
+    // Harde faalredenen (api-fout, 404-mogelijk-TM-mismatch, …) blijven staan —
+    // de T3777-toestand is dan onbekend en dat mag nooit als "ok" ogen; de
+    // NS-letters worden wél gewoon geverifieerd (extra kennis gooien we niet weg).
+    if (nsCodes.length > 0 && declaration.reason === 'lege-declaratie') {
+      declaration.reason = 'ok';
+    }
+    declaration.codes = declaredCodes;
     const aliased = aliasDeclaredCodes(declaration.codes);
 
     // No declared codes → done with empty verdicts, reason preserved (AC2:

@@ -393,3 +393,227 @@ describe('12.26 — enqueueVerifyDeclared jobId', () => {
     queueSpy.mockRestore();
   });
 });
+
+// ---------------------------------------------------------------------------
+// 12.27 — Nutri-Score-declaraties (apart GS1-veld `nutritionalScore`) tellen
+// mee in de kruischeck. Ontdekt bij de eerste echte API-runs (2026-07-15):
+// NS-producten kregen "lege-declaratie" omdat alleen T3777 werd gelezen.
+// ---------------------------------------------------------------------------
+describe('12.27 — Nutri-Score-veld in de kruischeck', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    installFreshRedisCache();
+    delete process.env.FLYWHEEL_NOMINATION_ENABLED;
+    delete process.env.FLYWHEEL_KRUISCHECK_NOMINATION_ENABLED;
+    process.env.CATALOG_API_KEY = 'test-key';
+    mockPrisma.artworkImport.findFirst.mockResolvedValue({ gln: '8710000000005' });
+    mockPrisma.recognitionLog.create.mockResolvedValue({ id: 'log-1' });
+    mockPrisma.recognitionResult.createMany.mockResolvedValue({ count: 0 });
+    mockPrisma.mismatchEvent.createMany.mockResolvedValue({ count: 0 });
+  });
+
+  it('NS-only declaratie: letter D wordt NUTRISCORE_D en levert een CONFIRMED-verdict via de specialist', async () => {
+    const { runVerifyDeclared } = await import('../../services/pipeline/verify-flow');
+    mockPrisma.artworkImport.findMany.mockResolvedValue([
+      { storagePath: 'artwork/x/a.png', mimeType: 'image/png', fileName: 'a.png', pages: null },
+    ]);
+    const decl = await import('../../services/t3777-declarations');
+    vi.spyOn(decl, 'resolveDeclarations').mockResolvedValue({ codes: [], reason: 'lege-declaratie' });
+    vi.spyOn(decl, 'resolveDeclaredMarks').mockResolvedValue({
+      marks: [
+        { code: 'D', fieldType: 'NutritionalScore' },
+        { code: 'GENERAL_FOODS', fieldType: 'NutritionalScore' }, // categorie-lek: NIET meenemen
+        { code: 'VEGAN', fieldType: 'DietTypeCode' }, // ander spoor: NIET meenemen
+      ],
+      reason: 'ok',
+    });
+    mockPrisma.referenceLogo.findMany.mockResolvedValue([{ t3777Code: 'NUTRISCORE_D' }]);
+    const localizeSpy = vi.spyOn(mlClient, 'localizeArtwork').mockResolvedValue({
+      detections: [{ t3777_code: 'NUTRISCORE_D', bbox: { x: 1, y: 2, width: 10, height: 10 } }],
+      truncated: false,
+    } as never);
+    vi.spyOn(mlClient, 'classifyArtwork').mockResolvedValue({
+      results: [
+        {
+          bbox: { x: 1, y: 2, width: 10, height: 10 },
+          t3777_code: 'NUTRISCORE_D',
+          confidence: 0.852,
+          method: 'nutriscore-head',
+        },
+      ],
+    } as never);
+
+    const state = await runVerifyDeclared('run-ns-1', GTIN);
+
+    expect(state.status).toBe('done');
+    expect(state.declaration.reason).toBe('ok'); // er IS een declaratie (de letter)
+    expect(state.declaration.codes).toEqual(['NUTRISCORE_D']); // leak-guard + spoor-scope
+    expect(localizeSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ codes: ['NUTRISCORE_D'] })
+    );
+    const d = state.verdicts.find((v) => v.code === 'NUTRISCORE_D');
+    expect(d?.verdict).toBe('CONFIRMED'); // 0.852 >= nutriscore-head-drempel (0.80)
+    expect(d?.method).toBe('nutriscore-head');
+  });
+
+  it('T3777 + NS samen: samengevoegd zonder dubbelingen; T3777-gedrag ongewijzigd', async () => {
+    const { runVerifyDeclared } = await import('../../services/pipeline/verify-flow');
+    mockPrisma.artworkImport.findMany.mockResolvedValue([
+      { storagePath: 'artwork/x/a.png', mimeType: 'image/png', fileName: 'a.png', pages: null },
+    ]);
+    const decl = await import('../../services/t3777-declarations');
+    vi.spyOn(decl, 'resolveDeclarations').mockResolvedValue({ codes: ['GREEN_DOT'], reason: 'ok' });
+    vi.spyOn(decl, 'resolveDeclaredMarks').mockResolvedValue({
+      marks: [{ code: 'A', fieldType: 'NutritionalScore' }],
+      reason: 'ok',
+    });
+    mockPrisma.referenceLogo.findMany.mockResolvedValue([
+      { t3777Code: 'GREEN_DOT' },
+      { t3777Code: 'NUTRISCORE_A' },
+    ]);
+    vi.spyOn(mlClient, 'localizeArtwork').mockResolvedValue({ detections: [], truncated: false } as never);
+    vi.spyOn(mlClient, 'classifyArtwork').mockResolvedValue({ results: [] } as never);
+
+    const state = await runVerifyDeclared('run-ns-2', GTIN);
+    expect(state.declaration.codes.sort()).toEqual(['GREEN_DOT', 'NUTRISCORE_A']);
+  });
+
+  it('marks-resolutie faalt: kruischeck blijft byte-identiek op het T3777-pad (fail-open)', async () => {
+    const { runVerifyDeclared } = await import('../../services/pipeline/verify-flow');
+    mockPrisma.artworkImport.findMany.mockResolvedValue([
+      { storagePath: 'artwork/x/a.png', mimeType: 'image/png', fileName: 'a.png', pages: null },
+    ]);
+    const decl = await import('../../services/t3777-declarations');
+    vi.spyOn(decl, 'resolveDeclarations').mockResolvedValue({ codes: [], reason: 'lege-declaratie' });
+    vi.spyOn(decl, 'resolveDeclaredMarks').mockRejectedValue(new Error('marks kapot'));
+
+    const state = await runVerifyDeclared('run-ns-3', GTIN);
+    expect(state.status).toBe('done');
+    expect(state.declaration.reason).toBe('lege-declaratie');
+    expect(state.verdicts).toEqual([]);
+  });
+});
+
+describe('12.27 — drempels voor de Nutri-Score-methodes', () => {
+  it('nutriscore-head en nutriscore-a2 hebben eigen drempels (niet de strengste default)', async () => {
+    const { getThresholdForMethod } = await import('../../services/artwork-crosscheck');
+    // specialist: confidence-bereik [0.80-0.99]; kruischeck-stand = 0 fouten gemeten
+    expect(getThresholdForMethod('nutriscore-head')).toBe(0.8);
+    // vangnet: claimt alleen >= eigen vloer (0.5, achter de familie-poort)
+    expect(getThresholdForMethod('nutriscore-a2')).toBe(0.5);
+    // bestaande methodes ongewijzigd
+    expect(getThresholdForMethod('embedding')).toBeGreaterThan(0);
+    expect(getThresholdForMethod(undefined)).toBeGreaterThan(0);
+  });
+});
+
+describe('12.27 — adversarial-review-regressies', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    installFreshRedisCache();
+    delete process.env.FLYWHEEL_NOMINATION_ENABLED;
+    delete process.env.FLYWHEEL_KRUISCHECK_NOMINATION_ENABLED;
+    process.env.CATALOG_API_KEY = 'test-key';
+    mockPrisma.artworkImport.findFirst.mockResolvedValue({ gln: '8710000000005' });
+    mockPrisma.recognitionLog.create.mockResolvedValue({ id: 'log-1' });
+    mockPrisma.recognitionResult.createMany.mockResolvedValue({ count: 0 });
+    mockPrisma.mismatchEvent.createMany.mockResolvedValue({ count: 0 });
+    mockPrisma.artworkImport.findMany.mockResolvedValue([
+      { storagePath: 'artwork/x/a.png', mimeType: 'image/png', fileName: 'a.png', pages: null },
+    ]);
+  });
+
+  it('M1: winnaar per code op marge — 0.55-vangnet verslaat 0.79-embedding (multi-crop-inversie)', async () => {
+    const { runVerifyDeclared } = await import('../../services/pipeline/verify-flow');
+    const decl = await import('../../services/t3777-declarations');
+    vi.spyOn(decl, 'resolveDeclarations').mockResolvedValue({ codes: [], reason: 'lege-declaratie' });
+    vi.spyOn(decl, 'resolveDeclaredMarks').mockResolvedValue({
+      marks: [{ code: 'D', fieldType: 'NutritionalScore' }], reason: 'ok',
+    });
+    mockPrisma.referenceLogo.findMany.mockResolvedValue([{ t3777Code: 'NUTRISCORE_D' }]);
+    vi.spyOn(mlClient, 'localizeArtwork').mockResolvedValue({
+      detections: [
+        { t3777_code: 'NUTRISCORE_D', bbox: { x: 1, y: 2, width: 10, height: 10 } },
+        { t3777_code: 'NUTRISCORE_D', bbox: { x: 50, y: 60, width: 10, height: 10 } },
+      ],
+      truncated: false,
+    } as never);
+    vi.spyOn(mlClient, 'classifyArtwork').mockResolvedValue({
+      results: [
+        // embedding 0.79 < drempel 0.80 (marge -0.01) — rauwe-confidence-winnaar
+        { bbox: { x: 1, y: 2, width: 10, height: 10 }, t3777_code: 'NUTRISCORE_D', confidence: 0.79, method: 'embedding' },
+        // vangnet 0.55 >= drempel 0.50 (marge +0.05) — marge-winnaar
+        { bbox: { x: 50, y: 60, width: 10, height: 10 }, t3777_code: 'NUTRISCORE_D', confidence: 0.55, method: 'nutriscore-a2' },
+      ],
+    } as never);
+
+    const state = await runVerifyDeclared('run-m1', GTIN);
+    const d = state.verdicts.find((v) => v.code === 'NUTRISCORE_D');
+    expect(d?.verdict).toBe('CONFIRMED'); // a2 0.55 >= 0.50 wint op marge van embedding 0.79 < 0.80
+    expect(d?.method).toBe('nutriscore-a2');
+  });
+
+  it('M2: harde T3777-faalreden (api-fout) wordt NIET gemaskeerd; NS-letter wordt wél geverifieerd', async () => {
+    const { runVerifyDeclared } = await import('../../services/pipeline/verify-flow');
+    const decl = await import('../../services/t3777-declarations');
+    vi.spyOn(decl, 'resolveDeclarations').mockResolvedValue({ codes: [], reason: 'api-fout' });
+    vi.spyOn(decl, 'resolveDeclaredMarks').mockResolvedValue({
+      marks: [{ code: 'D', fieldType: 'NutritionalScore' }], reason: 'ok',
+    });
+    mockPrisma.referenceLogo.findMany.mockResolvedValue([{ t3777Code: 'NUTRISCORE_D' }]);
+    vi.spyOn(mlClient, 'localizeArtwork').mockResolvedValue({
+      detections: [{ t3777_code: 'NUTRISCORE_D', bbox: { x: 1, y: 2, width: 10, height: 10 } }],
+      truncated: false,
+    } as never);
+    vi.spyOn(mlClient, 'classifyArtwork').mockResolvedValue({
+      results: [{ bbox: { x: 1, y: 2, width: 10, height: 10 }, t3777_code: 'NUTRISCORE_D', confidence: 0.9, method: 'nutriscore-head' }],
+    } as never);
+
+    const state = await runVerifyDeclared('run-m2', GTIN);
+    expect(state.declaration.reason).toBe('api-fout'); // T3777-toestand blijft eerlijk onbekend
+    expect(state.declaration.codes).toEqual(['NUTRISCORE_D']);
+    expect(state.verdicts.find((v) => v.code === 'NUTRISCORE_D')?.verdict).toBe('CONFIRMED');
+  });
+
+  it('NS zonder actieve referentieklasse -> UNSUPPORTED (nooit stil overgeslagen)', async () => {
+    const { runVerifyDeclared } = await import('../../services/pipeline/verify-flow');
+    const decl = await import('../../services/t3777-declarations');
+    vi.spyOn(decl, 'resolveDeclarations').mockResolvedValue({ codes: [], reason: 'lege-declaratie' });
+    vi.spyOn(decl, 'resolveDeclaredMarks').mockResolvedValue({
+      marks: [{ code: 'B', fieldType: 'NutritionalScore' }], reason: 'ok',
+    });
+    mockPrisma.referenceLogo.findMany.mockResolvedValue([]); // geen actieve refs
+    vi.spyOn(mlClient, 'localizeArtwork').mockResolvedValue({ detections: [], truncated: false } as never);
+    vi.spyOn(mlClient, 'classifyArtwork').mockResolvedValue({ results: [] } as never);
+
+    const state = await runVerifyDeclared('run-unsup', GTIN);
+    expect(state.verdicts.find((v) => v.code === 'NUTRISCORE_B')?.verdict).toBe('UNSUPPORTED');
+  });
+
+  it('NS gedeclareerd maar niets gevonden op het artwork -> NOT_FOUND', async () => {
+    const { runVerifyDeclared } = await import('../../services/pipeline/verify-flow');
+    const decl = await import('../../services/t3777-declarations');
+    vi.spyOn(decl, 'resolveDeclarations').mockResolvedValue({ codes: [], reason: 'lege-declaratie' });
+    vi.spyOn(decl, 'resolveDeclaredMarks').mockResolvedValue({
+      marks: [{ code: 'E', fieldType: 'NutritionalScore' }], reason: 'ok',
+    });
+    mockPrisma.referenceLogo.findMany.mockResolvedValue([{ t3777Code: 'NUTRISCORE_E' }]);
+    vi.spyOn(mlClient, 'localizeArtwork').mockResolvedValue({ detections: [], truncated: false } as never);
+    vi.spyOn(mlClient, 'classifyArtwork').mockResolvedValue({ results: [] } as never);
+
+    const state = await runVerifyDeclared('run-nf', GTIN);
+    expect(state.verdicts.find((v) => v.code === 'NUTRISCORE_E')?.verdict).toBe('NOT_FOUND');
+  });
+
+  it('realistisch marks-faalpad (reason != ok, lege marks) -> byte-identiek T3777-gedrag', async () => {
+    const { runVerifyDeclared } = await import('../../services/pipeline/verify-flow');
+    const decl = await import('../../services/t3777-declarations');
+    vi.spyOn(decl, 'resolveDeclarations').mockResolvedValue({ codes: [], reason: 'lege-declaratie' });
+    vi.spyOn(decl, 'resolveDeclaredMarks').mockResolvedValue({ marks: [], reason: 'api-fout' });
+
+    const state = await runVerifyDeclared('run-real', GTIN);
+    expect(state.status).toBe('done');
+    expect(state.declaration.reason).toBe('lege-declaratie');
+    expect(state.verdicts).toEqual([]);
+  });
+});

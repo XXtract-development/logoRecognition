@@ -451,6 +451,27 @@ async function marksCacheWrite(
 }
 
 /**
+ * 12.27 — Nutri-Score-declaraties voor de kruischeck: de GS1-`nutritionalScore`-
+ * declaratie is een KALE letter (A-E) in een apart veld, geen T3777-code. Map
+ * alleen kale enkele letters naar de canonieke `NUTRISCORE_<letter>`-codes;
+ * categorie-waarden die hetzelfde veld gebruiken (GENERAL_FOODS, CHEESES, …)
+ * en andere sporen (DietType etc.) tellen NIET mee (zelfde leak-guard als de
+ * 12.15-map-bouw en de 12.18-frontend-normalisatie). Pure functie.
+ */
+export function nutriscoreDeclaredCodes(
+  marks: Array<{ code: string; fieldType: string }>
+): string[] {
+  const letters = new Set<string>();
+  for (const m of marks) {
+    const code = (m.code || '').trim().toUpperCase();
+    if (m.fieldType === 'NutritionalScore' && /^[A-E]$/.test(code)) {
+      letters.add(`NUTRISCORE_${code}`);
+    }
+  }
+  return [...letters].sort();
+}
+
+/**
  * Resolve the declared GS1 marks for a GTIN (all sporen). Mirrors
  * resolveDeclarations' fail-safe order; NEVER throws. Returns marks + a distinct
  * reason so an empty prior never silently looks like "no data".

@@ -46,6 +46,18 @@ const REVIEW_MIN_CONFIDENCE = parseFloat(
   process.env.REVIEW_MIN_CONFIDENCE || '0.50'
 );
 
+/** 12.27 — drempels voor de Nutri-Score-methodes (zie getThresholdForMethod).
+ * NB (review-L): deze gelden formeel óók voor de LIVE crosscheck-auto-accept,
+ * maar zijn daar slapend — de live declaration-provider levert alleen T3777,
+ * dus NUTRISCORE_* komt daar nooit in de declaredSet. Wie de live provider
+ * later óók NS laat leveren: eerst de auto-accept-precisie op die stand meten. */
+export const CROSSCHECK_THRESHOLD_NUTRISCORE_HEAD: number = parseFloat(
+  process.env.CROSSCHECK_THRESHOLD_NUTRISCORE_HEAD || '0.80'
+);
+export const CROSSCHECK_THRESHOLD_NUTRISCORE_A2: number = parseFloat(
+  process.env.CROSSCHECK_THRESHOLD_NUTRISCORE_A2 || '0.50'
+);
+
 /** Status assigned to a sub-floor review item so it is kept but hidden. */
 export const LOW_CONF_DISMISS_STATUS = 'dismissed_low_conf';
 
@@ -57,6 +69,17 @@ export function getThresholdForMethod(method?: string): number {
       return CROSSCHECK_THRESHOLD_EMBEDDING;
     case 'classifier':
       return CROSSCHECK_THRESHOLD_CLASSIFIER;
+    // 12.27 — Nutri-Score-familie-head (12.22): deterministische balk-lezer,
+    // confidence-bereik [0.80-0.99]; op de kruischeck-stand (ratio-vloer 1.18)
+    // 0 fouten gemeten → eigen drempel op de onderkant van dat bereik. Zonder
+    // deze case viel hij in de strengste default (0.85) en bleven treffers
+    // van 0.80-0.85 onterecht UNCERTAIN.
+    case 'nutriscore-head':
+      return CROSSCHECK_THRESHOLD_NUTRISCORE_HEAD;
+    // 12.27 — A2-vangnet (12.25): claimt alleen ≥ zijn eigen vloer (0.5,
+    // achter de familie-poort) — de claim-vloer IS de drempel.
+    case 'nutriscore-a2':
+      return CROSSCHECK_THRESHOLD_NUTRISCORE_A2;
     default:
       // No method provided → apply strictest threshold
       return CROSSCHECK_THRESHOLD_CLASSIFIER;
