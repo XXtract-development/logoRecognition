@@ -43,3 +43,10 @@ Ruwe data: scratchpad `cu_prod_meting.json` (per code de GTIN-lijst, voor de 20.
 ## Sampler-scope 20.2 (definitief)
 
 Direct te bemonsteren (gedeclareerd ∧ artwork ∧ gezaaid): **AISE_1 (28), AISE_5 (17), AISE_2 (13), AISE_12 (9), AISE_10 (7)** — GTIN-lijsten in `20-1-meting-consumerusage-data.json`. De overige gezaaide AISE-codes (3/4/6/7/8/11/13) hebben geen declarerende artwork-producten en dienen als bibliotheek-dekking.
+
+
+## Route A gestart (2026-07-16, keuze Friso)
+
+Voor de 3 waarschuwings-codes is gekozen voor **oogsten uit eigen artwork** (route A) i.p.v. externe bronnen: echte crops zijn bewezen sterkere referenties (12.3-les) en vermijden licentie-/stijlvarianten-vragen. Correctie op de startsituatie: de bestaande "1 actieve code / 4 refs" in categorie 3 blijkt **PREGNANCY_WARNING** te zijn (eerdere bootstrap-run) — zwangerschap heeft dus al echte referenties; niet-rijden en 18+ starten op 0.
+
+Klaargezet in de beoordelings-wachtrij (reason `route-a-waarschuwing`, volledige pagina als startbeeld, Friso tekent het kader + accepteert): PREGNANCY_WARNING 6, MINIMUM_DRINKING_AGE_18_WARNING 5, DO_NOT_DRINK_AND_DRIVE_WARNING 4 open items. Script: scratchpad route_a_items.py (idempotent via review_item_exists; dedup bleek (gtin, source_file)-breed — 1 slot-telling-fix onderweg). Externe bronnen (route B) blijven alleen als restdekking voor AISE_9/POULTRY_MEAT_WARNING in beeld.
