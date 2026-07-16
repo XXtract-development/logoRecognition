@@ -54,7 +54,7 @@ def test_anchor_returns_none_when_no_code_within_window():
 def test_placeholder_and_minres_constants_are_sane():
     assert extract_gs1.PLACEHOLDER_MAX >= 1
     assert extract_gs1.MIN_RES == 200
-    assert extract_gs1.FIELD_TYPE == "ACCREDITATION"
+    assert extract_gs1.FIELD_TYPE == "PackagingMarkedLabelAccreditationCode"
 
 
 # --- Integration (real guide; skipped when absent) ---
@@ -79,10 +79,60 @@ def test_proof_slice_extracts_five_usable_png_logos(tmp_path):
     for e in manifest["entries"]:
         assert (tmp_path / e["file"]).is_file()
         assert e["file"].endswith(".png")          # all transcoded to PNG
-        assert e["fieldType"] == "ACCREDITATION"
+        assert e["fieldType"] == "PackagingMarkedLabelAccreditationCode"
     # BETER_LEVEN is JPEG in the guide → must be transcoded to PNG on disk
     bl = next(e for e in manifest["entries"] if e["code"] == "BETER_LEVEN_1_STER")
     assert bl["file"].endswith(".png")
     # small logos flagged below-min-res (seeds may be < 200px)
     triman = next(e for e in manifest["entries"] if e["code"] == "TRIMAN")
     assert triman["belowMinRes"] is True
+
+
+# --- Story 20.1: multi-sheet extractie (Labels_Instructions, categorie 3) ---
+
+def test_normalize_code_collapses_spaces_around_underscores():
+    # De gids bevat de typo "CLOSE _THE_LID" (spatie voor de underscore).
+    assert extract_gs1._normalize_code("CLOSE _THE_LID") == "CLOSE_THE_LID"
+    assert extract_gs1._normalize_code("  KEEP_AWAY_FROM_CHILDREN  ") == "KEEP_AWAY_FROM_CHILDREN"
+    assert extract_gs1._normalize_code("DO NOT INGEST") == "DO_NOT_INGEST"
+
+
+def test_normalize_code_is_identity_for_clean_codes():
+    for c in ("RECYCLABLE_GENERAL_CLAIM", "AISE_1", "NUTRISCORE_A", "TRIMAN"):
+        assert extract_gs1._normalize_code(c) == c
+
+
+def test_header_text_is_not_a_valid_code():
+    header = "GDS Code - for use with Attribute: consumerUsageLabelCode"
+    assert not extract_gs1._is_valid_code(extract_gs1._normalize_code(header))
+    assert extract_gs1._is_valid_code("KEEP_AWAY_FROM_CHILDREN")
+    assert extract_gs1._is_valid_code("AISE_1")
+    # legitieme keurmerk-codes met +/haakjes/mixed case blijven geldig
+    assert extract_gs1._is_valid_code("ENERGY_LABEL_A+")
+    assert extract_gs1._is_valid_code("RABBINICAL_COUNCIL_OF_CALIFORNIA_(RCC)")
+
+
+@pytest.mark.skipif(not os.path.isfile(_GUIDE), reason="GS1 guide xlsx not present")
+def test_instructions_sheet_extracts_consumerusage_pictograms(tmp_path):
+    import json
+    out = tmp_path / "out"
+    sys.argv = [
+        "x", "--xlsx", _GUIDE, "--out", str(out),
+        "--sheet", "Labels_Instructions",
+        "--field-type", "EU_consumerUsageLabelCodeList",
+        "--gs1-field", "enumerationValue",
+        "--normalize-codes",
+    ]
+    rc = extract_gs1.main()
+    assert rc == 0
+    manifest = json.loads((out / "manifest.json").read_text())
+    assert manifest["sheet"] == "Labels_Instructions"
+    entries = manifest["entries"]
+    assert len(entries) >= 10  # 12 pictogrammen, wmf-drops gerapporteerd i.p.v. stil
+    codes = {e["code"] for e in entries}
+    assert "CLOSE_THE_LID" in codes  # typo genormaliseerd
+    assert "KEEP_AWAY_FROM_CHILDREN" in codes
+    for e in entries:
+        assert e["fieldType"] == "EU_consumerUsageLabelCodeList"
+        assert e["gs1Field"] == "enumerationValue"
+        assert extract_gs1._is_valid_code(e["code"])

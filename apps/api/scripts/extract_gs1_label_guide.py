@@ -33,6 +33,25 @@ SHEET = "Labels_Packaging"
 FIELD_TYPE = "PackagingMarkedLabelAccreditationCode"  # GS1-codelijstnaam (Labels_Packaging == T3777)
 GS1_FIELD = "packagingMarkedLabelAccreditationCode"   # GS1-declaratieveld (crosscheck)
 
+# Story 20.1 — de gids bevat code-typo's zoals "CLOSE _THE_LID" (spatie voor de
+# underscore op het Labels_Instructions-blad). Normaliseer naar de canonieke
+# underscore-vorm en wijs header-/lopende-tekstrijen af als code.
+# Ruim genoeg voor echte gids-codes (ENERGY_LABEL_A+, ..._(RCC), mixed case),
+# maar wijst prose/header-rijen af (bevatten ":" of spaties na normalisatie).
+_CODE_RE = __import__("re").compile(r"^[A-Za-z0-9_+().&'-]+$")
+
+
+def _normalize_code(raw: str) -> str:
+    import re
+    code = raw.strip()
+    code = re.sub(r"\s*_\s*", "_", code)   # spaties rond underscores weg
+    code = re.sub(r"\s+", "_", code)       # resterende interne spaties -> underscore
+    return code
+
+
+def _is_valid_code(code: str) -> bool:
+    return bool(code) and bool(_CODE_RE.match(code))
+
 
 def _load_image_bytes(img):
     """openpyxl Image → raw bytes, across versions (.ref BytesIO/path or ._data())."""
@@ -82,6 +101,14 @@ def main() -> int:
     ap.add_argument("--xlsx", required=True)
     ap.add_argument("--out", required=True)
     ap.add_argument("--codes", default="", help="comma-separated code filter; default all")
+    # Story 20.1 — multi-sheet: extraheer desgewenst een ander gids-blad met
+    # bijpassende GS1-veld-metadata (bv. Labels_Instructions / consumerUsage).
+    ap.add_argument("--sheet", default=SHEET)
+    ap.add_argument("--field-type", default=FIELD_TYPE, dest="field_type")
+    ap.add_argument("--gs1-field", default=GS1_FIELD, dest="gs1_field")
+    # Opt-in (20.1): default UIT zodat het bestaande Labels_Packaging-gedrag
+    # byte-identiek blijft (codes met spaties/plussen zijn daar al zo geseed).
+    ap.add_argument("--normalize-codes", action="store_true", dest="normalize_codes")
     args = ap.parse_args()
 
     xlsx = os.path.expanduser(args.xlsx)
@@ -94,7 +121,7 @@ def main() -> int:
     os.makedirs(out, exist_ok=True)
 
     wb = openpyxl.load_workbook(xlsx, data_only=True)   # full load (images); read-only intent
-    ws = wb[SHEET]
+    ws = wb[args.sheet]
 
     # Group images per code first so multi-image rows become numbered variants.
     per_code: dict[str, list] = defaultdict(list)
@@ -108,6 +135,10 @@ def main() -> int:
         except Exception:
             continue
         code, neighbor = _code_for_anchor_row(ws, row0 + 1)
+        if code and args.normalize_codes:
+            code = _normalize_code(str(code))
+            if not _is_valid_code(code):
+                code = None
         if not code:
             stats["no_code"] += 1
             continue
@@ -156,8 +187,8 @@ def main() -> int:
             im.save(fpath, "PNG")           # PNG/JPEG/GIF → PNG (transcode, opaque-on-white)
             manifest.append({
                 "code": code,
-                "fieldType": FIELD_TYPE,
-                "gs1Field": GS1_FIELD,
+                "fieldType": args.field_type,
+                "gs1Field": args.gs1_field,
                 "variant": variant,
                 "file": os.path.relpath(fpath, out),
                 "width": w, "height": h,
@@ -170,7 +201,7 @@ def main() -> int:
             variant += 1
 
     with open(os.path.join(out, "manifest.json"), "w") as fh:
-        json.dump({"sheet": SHEET, "stats": stats, "entries": manifest}, fh, indent=2)
+        json.dump({"sheet": args.sheet, "stats": stats, "entries": manifest}, fh, indent=2)
 
     codes_done = len({m["code"] for m in manifest})
     print(f"codes={codes_done} entries={len(manifest)} "
