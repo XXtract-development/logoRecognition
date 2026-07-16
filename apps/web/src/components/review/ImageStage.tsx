@@ -234,10 +234,20 @@ const ImageStage: React.FC<ImageStageProps> = ({
   const cursor = space ? 'grab' : canDraw ? 'crosshair' : 'zoom-in';
 
   return (
-    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'center' }}>
+    <div
+      // Story 20.3 (review-L3): de marker ook op de buitencontainer, zodat de
+      // hint-tekst en de bevestig-knop ONDER de afbeelding binnen de
+      // uitgesloten zone vallen (een tap haalt de swipe-drempel toch nooit).
+      data-image-stage=""
+      style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'center' }}
+    >
       <div
         ref={wrapRef}
         data-testid={testId}
+        // Story 20.3 — stabiele zone-marker: touch-gebaren die hier starten zijn
+        // teken-/zoom-gebaren en mogen NOOIT als kaart-swipe (ECHT/VALS) van de
+        // review-deck geïnterpreteerd worden (de deck sluit deze zone uit).
+        data-image-stage=""
         onPointerDown={down}
         onPointerMove={move}
         onPointerUp={up}

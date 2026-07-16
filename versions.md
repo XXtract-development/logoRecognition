@@ -1,5 +1,12 @@
 # Versiegeschiedenis
 
+## 2026-07-16 (Kader tekenen op telefoon en tablet werkt nu betrouwbaar)
+
+### Op mobiel kon het tekenen van een kader het item per ongeluk goed- of afkeuren
+- In de beoordeel-app veeg je een kaartje naar rechts (goedkeuren) of links (afwijzen). Op een telefoon werd het tekenen van een kader om een logo soms als zo'n veegbeweging gezien — het item werd dan weggeveegd terwijl je alleen wilde markeren
+- Teken- en zoombewegingen op de afbeelding tellen nu nooit meer als veegbeslissing, ook niet als je het toestel met een tweede vinger vasthoudt
+- De bedieningstips passen zich aan het apparaat aan: op aanraakschermen lees je nu vinger-instructies (dubbeltik om te zoomen) in plaats van muis- en toetsenbordtaal
+
 ## 2026-07-16 (Preciezer uitlezen van gedeclareerde keurmerken en Nutri-Score)
 
 ### Verwante productvelden konden meelezen als declaratie

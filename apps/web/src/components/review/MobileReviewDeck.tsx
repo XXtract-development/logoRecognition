@@ -90,6 +90,12 @@ const RefThumb: React.FC<{ code: string }> = ({ code }) => {
   );
 };
 
+// Story 20.3 — aanraakapparaat-detectie voor touch-passende bedieningshints.
+// Defensief: jsdom/oudere browsers hebben geen matchMedia.
+function isCoarsePointer(): boolean {
+  return typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)').matches;
+}
+
 const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate }) => {
   const { t } = useTranslation();
   const [queue] = useState<ArtworkReviewItem[]>(items);
@@ -628,6 +634,22 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
   }, [cur, idx, picker, canMutate, decisions, applyDecision, goto]);
 
   const onTouchStart = (e: React.TouchEvent) => {
+    // Story 20.3 — een gebaar dat in een teken-/zoom-zone (ImageStage) start is
+    // een KADER- of zoombeweging, geen kaart-swipe: volledig negeren, anders
+    // veegt een horizontaal getekend kader de kaart weg als beslissing.
+    // Review-H1: óók ontwapenen bij multi-touch — e.touches[0] is de EERSTE
+    // vinger; een tweede vinger buiten de stage zou de swipe anders
+    // her-bewapenen op de coördinaten van de tekenende vinger.
+    // Review-M2: drag altijd terugzetten, anders blijft de kaart scheef staan
+    // (met accept-tint) na een halverwege genegeerd gebaar.
+    if (
+      e.touches.length !== 1 ||
+      (e.target as HTMLElement | null)?.closest?.('[data-image-stage]')
+    ) {
+      touchStart.current = null;
+      setDrag(0);
+      return;
+    }
     touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
   };
   const onTouchMove = (e: React.TouchEvent) => {
@@ -827,13 +849,21 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
         {OverviewBtn}
       </div>
       <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 8 }}>
-        {t('review.shortcuts', {
-          defaultValue:
-            'Sneltoetsen: A goedkeuren · R afwijzen · L ander keurmerk · ←/→ navigeren · sleep = kader tekenen · dubbelklik = zoom (dan slepen = verschuiven)',
-        })}
+        <span data-testid="deck-shortcuts-hint">
+          {isCoarsePointer()
+            ? t('review.shortcutsTouch', {
+                defaultValue:
+                  'Veeg = goedkeuren/afwijzen · sleep op de afbeelding = kader tekenen · dubbeltik = zoom',
+              })
+            : t('review.shortcuts', {
+                defaultValue:
+                  'Sneltoetsen: A goedkeuren · R afwijzen · L ander keurmerk · ←/→ navigeren · sleep = kader tekenen · dubbelklik = zoom (dan slepen = verschuiven)',
+              })}
+        </span>
       </Text>
 
       <div
+        data-testid="deck-swipe-card"
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
@@ -988,10 +1018,15 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
                 confirmToken={confirmBoxToken}
                 hint={
                   <Text type="secondary" style={{ fontSize: 12, textAlign: 'center' }}>
-                    {t('review.contextDrawHint', {
-                      defaultValue:
-                        'Rood kader = voorgestelde plek. Sleep hier een kader om het keurmerk te markeren · dubbelklik = zoom.',
-                    })}
+                    {isCoarsePointer()
+                      ? t('review.contextDrawHintTouch', {
+                          defaultValue:
+                            'Rood kader = voorgestelde plek. Sleep met je vinger een kader om het keurmerk te markeren · dubbeltik = zoom.',
+                        })
+                      : t('review.contextDrawHint', {
+                          defaultValue:
+                            'Rood kader = voorgestelde plek. Sleep hier een kader om het keurmerk te markeren · dubbelklik = zoom.',
+                        })}
                   </Text>
                 }
               />
