@@ -1,5 +1,11 @@
 # Versiegeschiedenis
 
+## 2026-07-16 (Preciezer uitlezen van gedeclareerde keurmerken en Nutri-Score)
+
+### Verwante productvelden konden meelezen als declaratie
+- Bij het uitlezen van de productdata kon een veld met een langere, verwante naam (zoals de Nutri-Score-categoriecode) per ongeluk meetellen als echte declaratie
+- De uitlezer kijkt nu strikt naar de exacte veldnaam, zodat alleen de echte declaraties (keurmerken, dieet-codes, de Nutri-Score-letter) worden gebruikt — gecontroleerd tegen echte productdata uit de catalogus
+
 ## 2026-07-15 (Kruischeck telt nu ook de gedeclareerde Nutri-Score mee)
 
 ### Producten met een Nutri-Score kregen bij de kruischeck "geen declaraties gevonden"

@@ -362,3 +362,44 @@ describe('T3777 declaration provider (8-3D)', () => {
     });
   });
 });
+
+describe('12.16 — tag-grens in de declared-marks/T3777-parse (prefix-collisie)', () => {
+  it('nutritionalScoreProductCategoryCode lekt NIET als NutritionalScore-mark', () => {
+    const xml =
+      '<ns:nutritionalScoreProductCategoryCode>FRDR2023_1</ns:nutritionalScoreProductCategoryCode>' +
+      '<ns:nutritionalScore>d</ns:nutritionalScore>';
+    expect(parseDeclaredMarks(xml)).toEqual([
+      { code: 'D', fieldType: 'NutritionalScore' },
+    ]);
+  });
+
+  it('langere tags met een MARK_FIELDS-tag als prefix lekken voor géén enkel veld', () => {
+    const xml =
+      '<a:dietTypeCodeSubdivision>HALAL_SUB</a:dietTypeCodeSubdivision>' +
+      '<a:packagingMarkedLabelAccreditationCodeExtra>FAKE_CODE</a:packagingMarkedLabelAccreditationCodeExtra>' +
+      '<a:dietTypeCode>VEGAN</a:dietTypeCode>';
+    expect(parseDeclaredMarks(xml)).toEqual([
+      { code: 'VEGAN', fieldType: 'DietTypeCode' },
+    ]);
+  });
+
+  it('parseT3777Codes negeert langere tags met de T3777-tag als prefix', () => {
+    const xml =
+      '<x:packagingMarkedLabelAccreditationCodeReference>NOT_A_CODE</x:packagingMarkedLabelAccreditationCodeReference>' +
+      '<x:packagingMarkedLabelAccreditationCode>FSC_MIX</x:packagingMarkedLabelAccreditationCode>';
+    expect(parseT3777Codes(xml)).toEqual(['FSC_MIX']);
+  });
+
+  it('tags mét attributen en self-contained whitespace blijven gewoon matchen', () => {
+    const xml =
+      '<gs1:nutritionalScore languageCode="nl">B</gs1:nutritionalScore>' +
+      '<gs1:packagingMarkedLabelAccreditationCode codeListVersion="T3777">EU_ORGANIC</gs1:packagingMarkedLabelAccreditationCode>';
+    expect(parseDeclaredMarks(xml)).toEqual(
+      expect.arrayContaining([
+        { code: 'B', fieldType: 'NutritionalScore' },
+        { code: 'EU_ORGANIC', fieldType: 'PackagingMarkedLabelAccreditationCode' },
+      ])
+    );
+    expect(parseT3777Codes(xml)).toEqual(['EU_ORGANIC']);
+  });
+});

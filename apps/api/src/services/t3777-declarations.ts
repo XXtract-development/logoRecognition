@@ -79,7 +79,9 @@ function readEnv() {
  * packaging layers, trim, uppercase, dedup.
  */
 export function parseT3777Codes(xml: string): string[] {
-  const re = /<(?:[\w.-]+:)?packagingMarkedLabelAccreditationCode[^>]*>([^<]+)</g;
+  // (?=[\s/>]) = tag-grens: zonder die grens matcht de tag ook langere
+  // GS1-veldnamen met deze naam als prefix (12.16, zie parseDeclaredMarks).
+  const re = /<(?:[\w.-]+:)?packagingMarkedLabelAccreditationCode(?=[\s/>])[^>]*>([^<]+)</g;
   const set = new Set<string>();
   let m: RegExpExecArray | null;
   while ((m = re.exec(xml)) !== null) {
@@ -382,7 +384,10 @@ export function parseDeclaredMarks(xml: string): DeclaredMark[] {
   };
 
   for (const { tag, fieldType } of MARK_FIELDS) {
-    const re = new RegExp(`<(?:[\\w.-]+:)?${tag}[^>]*>([^<]+)<`, 'g');
+    // (?=[\s/>]) = tag-grens (12.16): `nutritionalScore` mag niet ook
+    // `nutritionalScoreProductCategoryCode` matchen — na de tagnaam moet
+    // direct whitespace (attributen), '/' of '>' volgen.
+    const re = new RegExp(`<(?:[\\w.-]+:)?${tag}(?=[\\s/>])[^>]*>([^<]+)<`, 'g');
     let m: RegExpExecArray | null;
     while ((m = re.exec(xml)) !== null) {
       push(fieldType, m[1]);
