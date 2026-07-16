@@ -50,3 +50,8 @@ Direct te bemonsteren (gedeclareerd ∧ artwork ∧ gezaaid): **AISE_1 (28), AIS
 Voor de 3 waarschuwings-codes is gekozen voor **oogsten uit eigen artwork** (route A) i.p.v. externe bronnen: echte crops zijn bewezen sterkere referenties (12.3-les) en vermijden licentie-/stijlvarianten-vragen. Correctie op de startsituatie: de bestaande "1 actieve code / 4 refs" in categorie 3 blijkt **PREGNANCY_WARNING** te zijn (eerdere bootstrap-run) — zwangerschap heeft dus al echte referenties; niet-rijden en 18+ starten op 0.
 
 Klaargezet in de beoordelings-wachtrij (reason `route-a-waarschuwing`, volledige pagina als startbeeld, Friso tekent het kader + accepteert): PREGNANCY_WARNING 6, MINIMUM_DRINKING_AGE_18_WARNING 5, DO_NOT_DRINK_AND_DRIVE_WARNING 4 open items. Script: scratchpad route_a_items.py (idempotent via review_item_exists; dedup bleek (gtin, source_file)-breed — 1 slot-telling-fix onderweg). Externe bronnen (route B) blijven alleen als restdekking voor AISE_9/POULTRY_MEAT_WARNING in beeld.
+
+
+## Sampler-run uitgevoerd (2026-07-16, generieke declaratie-oogst)
+
+Dry-run voorspelde 36 kandidaten; echte run leverde exact **36 open review-items** (voorspelling = uitkomst, 285 paren in ~7 min): PREGNANCY_WARNING 15 (cap; 17 extra beschikbaar voor een volgende ronde), DO_NOT_DRINK_AND_DRIVE_WARNING 8, MINIMUM_DRINKING_AGE_18_WARNING 5, AISE_1 3, AISE_5 3, AISE_2 2. AISE_10/AISE_12 gaven 0 boven de vloer (gids-zaad matcht die pagina's niet ≥0,60) — herkansen nadat de eerste echte crops van de andere codes bevestigd zijn (conditie C-effect), of met een verlaagde vloer.
