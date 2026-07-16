@@ -31,3 +31,15 @@ Eerste meetpoging via `catalog.acc.xxtract.com/api/tradeitemxml` haalde maar 267
 5. **Bron-loos-lijst** (gedeclareerd, geen bron in gids): PREGNANCY_WARNING, DO_NOT_DRINK_AND_DRIVE_WARNING, MINIMUM_DRINKING_AGE_18_WARNING, AISE_14, DO_NOT_FLUSH, NIX18.
 
 Ruwe data: scratchpad `cu_prod_meting.json` (per code de GTIN-lijst, voor de 20.2-sampler-run en de herkennings-tests).
+
+
+## Seed-resultaat (2026-07-16, met toestemming Friso)
+
+- **12/12 gids-pictogrammen geseed** op ACC onder de gedeclareerde AISE-codes (AISE_1 t/m 8, 10 t/m 13), fieldType `EU_consumerUsageLabelCodeList`, gs1Field `enumerationValue`, variantLabel `gs1-guide`, herkomst-alias (`guideSourceCode`) in het manifest vastgelegd.
+- Embedding-rebuild automatisch meegedraaid: 256 referenties verwerkt, 0 fouten. DB-verificatie: alle 12 actief met 1 embedding elk.
+- Idempotentie bevestigd: tweede run herschrijft dezelfde (code, variant)-rijen, 0 nieuwe records.
+- Template-telling na seeding: 256 actieve referenties totaal (was 244).
+
+## Sampler-scope 20.2 (definitief)
+
+Direct te bemonsteren (gedeclareerd ∧ artwork ∧ gezaaid): **AISE_1 (28), AISE_5 (17), AISE_2 (13), AISE_12 (9), AISE_10 (7)** — GTIN-lijsten in `20-1-meting-consumerusage-data.json`. De overige gezaaide AISE-codes (3/4/6/7/8/11/13) hebben geen declarerende artwork-producten en dienen als bibliotheek-dekking.

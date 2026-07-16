@@ -1,0 +1,15 @@
+{
+  "_comment": "Story 20.1 — gids-GDS-naam (Labels_Instructions) -> gedeclareerde Benelux-code (EU_consumerUsageLabelCodeList). Bron: benelux-fmcg-data-model Codelijsten (officiele EN-naam matcht 1:1). Zie 20-1-meting-consumerusage-declaraties.md.",
+  "KEEP_AWAY_FROM_CHILDREN": "AISE_1",
+  "KEEP_AWAY_FROM_EYES": "AISE_2",
+  "RINSE_HANDS_AFTER_USE": "AISE_3",
+  "AVOID_PROLONGED_SKIN_CONTACT": "AISE_4",
+  "DO_NOT_INGEST": "AISE_5",
+  "DO_NOT_CHANGE_CONTAINERS": "AISE_6",
+  "DO_NOT_MIX_WITH_OTHER_PRODUCTS": "AISE_7",
+  "VENTILATE_ROOM_AFTER_USE": "AISE_8",
+  "USE_WITH_DRY_HANDS": "AISE_10",
+  "CLOSE_THE_LID": "AISE_11",
+  "CLOSE_THE_BAG": "AISE_12",
+  "DO_NOT_PIERCE_BREAK_OR_CUT": "AISE_13"
+}

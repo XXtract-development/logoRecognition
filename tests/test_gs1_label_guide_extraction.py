@@ -136,3 +136,35 @@ def test_instructions_sheet_extracts_consumerusage_pictograms(tmp_path):
         assert e["fieldType"] == "EU_consumerUsageLabelCodeList"
         assert e["gs1Field"] == "enumerationValue"
         assert extract_gs1._is_valid_code(e["code"])
+
+
+_CODE_MAP = os.path.join(os.path.dirname(_SCRIPT), "code-maps", "consumerusage-aise.json")
+
+
+@pytest.mark.skipif(not os.path.isfile(_GUIDE), reason="GS1 guide xlsx not present")
+def test_code_map_remaps_to_declared_aise_codes(tmp_path):
+    import json
+    out = tmp_path / "out"
+    sys.argv = [
+        "x", "--xlsx", _GUIDE, "--out", str(out),
+        "--sheet", "Labels_Instructions",
+        "--field-type", "EU_consumerUsageLabelCodeList",
+        "--gs1-field", "enumerationValue",
+        "--normalize-codes", "--code-map", _CODE_MAP,
+    ]
+    assert extract_gs1.main() == 0
+    manifest = json.loads((out / "manifest.json").read_text())
+    codes = {e["code"] for e in manifest["entries"]}
+    assert "AISE_1" in codes and "AISE_11" in codes  # incl. de typo-rij via CLOSE_THE_LID
+    a1 = next(e for e in manifest["entries"] if e["code"] == "AISE_1")
+    assert a1["guideSourceCode"] == "KEEP_AWAY_FROM_CHILDREN"  # herkomst-alias bewaard
+
+
+def test_missing_sheet_gives_clean_error(tmp_path, capsys):
+    # maak een minimaal xlsx zonder het gevraagde blad
+    import openpyxl
+    x = tmp_path / "mini.xlsx"
+    openpyxl.Workbook().save(x)
+    sys.argv = ["x", "--xlsx", str(x), "--out", str(tmp_path / "o"), "--sheet", "Bestaat_Niet"]
+    assert extract_gs1.main() == 2  # nette exit-code, geen KeyError
+    assert "sheet not found" in capsys.readouterr().err

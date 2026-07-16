@@ -109,6 +109,9 @@ def main() -> int:
     # Opt-in (20.1): default UIT zodat het bestaande Labels_Packaging-gedrag
     # byte-identiek blijft (codes met spaties/plussen zijn daar al zo geseed).
     ap.add_argument("--normalize-codes", action="store_true", dest="normalize_codes")
+    # Review-L2 (20.1): hernoem codes via een JSON-map {bronCode: doelCode}; de
+    # bron-naam wordt als guideSourceCode in het manifest bewaard (herkomst-alias).
+    ap.add_argument("--code-map", default="", dest="code_map")
     args = ap.parse_args()
 
     xlsx = os.path.expanduser(args.xlsx)
@@ -120,7 +123,15 @@ def main() -> int:
         return 2
     os.makedirs(out, exist_ok=True)
 
+    code_map = {}
+    if args.code_map:
+        with open(os.path.expanduser(args.code_map)) as fh:
+            code_map = {k: v for k, v in json.load(fh).items() if not k.startswith("_")}
+
     wb = openpyxl.load_workbook(xlsx, data_only=True)   # full load (images); read-only intent
+    if args.sheet not in wb.sheetnames:                  # review-L1: nette fout i.p.v. KeyError
+        print(f"ERROR: sheet not found: {args.sheet} (beschikbaar: {wb.sheetnames})", file=sys.stderr)
+        return 2
     ws = wb[args.sheet]
 
     # Group images per code first so multi-image rows become numbered variants.
@@ -185,10 +196,13 @@ def main() -> int:
             else:
                 im = im.convert("RGB")
             im.save(fpath, "PNG")           # PNG/JPEG/GIF → PNG (transcode, opaque-on-white)
+            source_code = code
+            mapped = code_map.get(code, code)
             manifest.append({
-                "code": code,
+                "code": mapped,
                 "fieldType": args.field_type,
                 "gs1Field": args.gs1_field,
+                **({"guideSourceCode": source_code} if mapped != source_code else {}),
                 "variant": variant,
                 "file": os.path.relpath(fpath, out),
                 "width": w, "height": h,
