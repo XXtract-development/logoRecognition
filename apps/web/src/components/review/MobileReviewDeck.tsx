@@ -120,6 +120,13 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
   // Code correction: when a crop is a real keurmerk but a DIFFERENT one than
   // predicted, the picker assigns the right code and accepts under it.
   const [assignedCode, setAssignedCode] = useState<Record<string, string>>({});
+  // Story 20.4 — code die is KLAARGEZET (picker-keuze terwijl een onbevestigd
+  // kader klaarstaat) maar nog niet ingediend; pas de hoofdknop dient hem in.
+  const [stagedCode, setStagedCode] = useState<Record<string, string>>({});
+  // applyDecision staat vóór relabel in declaratievolgorde; via een ref kan de
+  // accept-zonder-kader-maar-met-klaargezette-code-tak het relabel-indienpad
+  // aanroepen zonder herordening van de bestaande callbacks.
+  const relabelRef = useRef<((code: string) => Promise<void>) | null>(null);
   // Story 12.14 — remembers a drawn-but-not-yet-code-combined kader per item, so
   // that whichever order the reviewer works in (kader→code or code→kader), the
   // SECOND action can combine with the first via annotateReviewItem(id, rel,
@@ -355,6 +362,12 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
           delete next[cur.id];
           return next;
         });
+        setStagedCode((s0) => {
+          if (!(cur.id in s0)) return s0;
+          const next = { ...s0 };
+          delete next[cur.id];
+          return next;
+        });
         setPendingRel((p) => {
           if (!(cur.id in p)) return p;
           const next = { ...p };
@@ -401,6 +414,15 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
         setConfirmBoxToken((n) => n + 1);
         return;
       }
+      // Story 20.4 — the box was cleared but a staged code remains: accepting
+      // must honor that code (relabel submit path) instead of silently
+      // registering under the predicted code. Review-M1: NIET wanneer de kaart
+      // al op ECHT staat — dan betekent nogmaals drukken "ongedaan maken" en
+      // moet de undo-tak hieronder gewoon zijn werk doen.
+      if (label === 'ECHT' && stagedCode[cur.id] && prev !== 'ECHT') {
+        void relabelRef.current?.(stagedCode[cur.id]);
+        return;
+      }
 
       setBusy(true);
       try {
@@ -414,6 +436,11 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
           });
           setAssignedCode((a) => {
             const next = { ...a };
+            delete next[cur.id];
+            return next;
+          });
+          setStagedCode((s0) => {
+            const next = { ...s0 };
             delete next[cur.id];
             return next;
           });
@@ -448,6 +475,12 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
           delete next[cur.id];
           return next;
         });
+        setStagedCode((s0) => {
+          if (!(cur.id in s0)) return s0;
+          const next = { ...s0 };
+          delete next[cur.id];
+          return next;
+        });
         setPendingRel((p) => {
           if (!(cur.id in p)) return p;
           const next = { ...p };
@@ -462,7 +495,7 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
         setBusy(false);
       }
     },
-    [cur, busy, canMutate, decisions, idx, goto, t, flywheelOn, hasDraftBox]
+    [cur, busy, canMutate, decisions, idx, goto, t, flywheelOn, hasDraftBox, stagedCode]
   );
 
   const applyAnnotation = useCallback(
@@ -473,7 +506,9 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
       // order), combine the drawn kader with that code in one annotate call so
       // the registered reference is the drawn crop UNDER the chosen code, not
       // the bestaande/predicted code.
-      const code = assignedCode[cur.id];
+      // Story 20.4 — a staged (not yet submitted) code wins over an earlier
+      // applied one; on success it is promoted to assignedCode.
+      const code = stagedCode[cur.id] ?? assignedCode[cur.id];
       try {
         // Keep the "no code" call at its existing arity (2 args) — some tests /
         // API mocks assert exact call shape, and a plain kader-only annotate
@@ -489,6 +524,15 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
           return next;
         });
         setDecisions((d) => ({ ...d, [cur.id]: 'ECHT' }));
+        if (code) {
+          setAssignedCode((a) => ({ ...a, [cur.id]: code }));
+          setStagedCode((s0) => {
+            if (!(cur.id in s0)) return s0;
+            const next = { ...s0 };
+            delete next[cur.id];
+            return next;
+          });
+        }
         message.success(
           code
             ? t('review.annotatedWithCode', {
@@ -506,7 +550,7 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
         setBusy(false);
       }
     },
-    [cur, busy, idx, goto, t, assignedCode]
+    [cur, busy, idx, goto, t, assignedCode, stagedCode]
   );
 
   // Story 12.19 — a box drawn on the "bekijk in context" fragment is in FRAGMENT
@@ -542,6 +586,22 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
         return;
       }
       const prev = decisions[cur.id];
+      // Story 20.4 — while an UNCONFIRMED drawn box exists, a picker choice only
+      // STAGES the code: nothing is submitted until the (retitled) main accept
+      // button confirms box + code together. Submitting here would register the
+      // AUTO-crop and advance — exactly the premature-approve Friso reported.
+      if (hasDraftBox) {
+        setStagedCode((a) => ({ ...a, [cur.id]: code }));
+        setPicker(false);
+        setSearch('');
+        message.success(
+          t('review.codeStaged', {
+            defaultValue: '{{code}} klaargezet — bevestig met de goedkeurknop',
+            code,
+          })
+        );
+        return;
+      }
       // Story 12.14 — a kader drawn earlier for this item (kader-then-code
       // order) is remembered in pendingRel; combine it with the chosen code via
       // annotate instead of accepting under the (auto-crop) accept-endpoint.
@@ -561,6 +621,12 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
         }
         setDecisions((d) => ({ ...d, [cur.id]: 'ECHT' }));
         setAssignedCode((a) => ({ ...a, [cur.id]: code }));
+        setStagedCode((s0) => {
+          if (!(cur.id in s0)) return s0;
+          const next = { ...s0 };
+          delete next[cur.id];
+          return next;
+        });
         setPicker(false);
         setSearch('');
         message.success(
@@ -579,8 +645,9 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
         setBusy(false);
       }
     },
-    [cur, busy, canMutate, decisions, pendingRel, idx, goto, t]
+    [cur, busy, canMutate, decisions, pendingRel, hasDraftBox, idx, goto, t]
   );
+  relabelRef.current = relabel;
 
   // Keyboard shortcuts — fast desktop review with minimal clicks. Ignored while
   // typing in the relabel search; Esc closes the picker / draw mode.
@@ -1008,6 +1075,7 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
               // annotating (applyContextAnnotation via the X-Context-Window map).
               <ImageStage
                 data-testid="deck-context"
+                hideConfirm
                 src={srcUrl}
                 alt={`${cur!.t3777Code} context`}
                 canDraw={canMutate}
@@ -1040,6 +1108,7 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
           ) : markedSrc || cropUrl ? (
             <ImageStage
               data-testid="deck-stage"
+              hideConfirm
               src={(markedSrc ?? cropUrl) as string}
               alt={cur!.t3777Code}
               canDraw={canMutate && (!!markedSrc || cropIsArtwork)}
@@ -1120,8 +1189,18 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
           }}
         >
           {hasDraftBox
-            ? t('review.acceptDrawnBox', { defaultValue: 'Bevestig getekend kader' })
-            : t('review.accept', { defaultValue: 'Accepteer' })}
+            ? cur && stagedCode[cur.id]
+              ? t('review.acceptDrawnBoxAs', {
+                  defaultValue: 'Bevestig kader als {{code}}',
+                  code: stagedCode[cur.id],
+                })
+              : t('review.acceptDrawnBox', { defaultValue: 'Bevestig getekend kader' })
+            : cur && stagedCode[cur.id]
+              ? t('review.acceptAs', {
+                  defaultValue: 'Accepteer als {{code}}',
+                  code: stagedCode[cur.id],
+                })
+              : t('review.accept', { defaultValue: 'Accepteer' })}
         </Button>
         <Button
           icon={<RightOutlined />}

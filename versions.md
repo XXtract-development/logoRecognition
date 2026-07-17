@@ -1,5 +1,13 @@
 # Versiegeschiedenis
 
+## 2026-07-17 (Getekend kader bevestig je nu bewust — met keurmerk-keuze vooraf)
+
+### Een getekend kader werd direct goedgekeurd en het volgende item verscheen meteen
+- Wie een kader om een logo tekende kon dat per ongeluk direct indienen via de knop onder de afbeelding — zonder kans om eerst het juiste keurmerk te kiezen
+- Nu zet tekenen het kader alleen klaar: de grote goedkeurknop verandert van tekst ("Bevestig kader…") en pas als je díe indrukt wordt het kader geregistreerd
+- Kies je tussendoor een ander keurmerk, dan wordt dat klaargezet en toont de knop beide ("Bevestig kader als …"); kader en keurmerk worden dan samen in één keer vastgelegd
+- Nogmaals drukken op een al-goedgekeurd item blijft gewoon "ongedaan maken"
+
 ## 2026-07-16 (Kader tekenen op telefoon en tablet werkt nu betrouwbaar)
 
 ### Op mobiel kon het tekenen van een kader het item per ongeluk goed- of afkeuren

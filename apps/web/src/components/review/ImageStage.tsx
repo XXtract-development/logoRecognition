@@ -35,6 +35,10 @@ interface ImageStageProps {
   confirmToken?: number;
   /** Changing this resets zoom/pan/box (use the item id). */
   resetKey?: string | number;
+  /** Story 20.4 — hide the internal "Bevestig kader" button so the HOST's
+   *  primary action is the only way to submit a drawn box (the host confirms
+   *  via `confirmToken`). Default false: other consumers keep the button. */
+  hideConfirm?: boolean;
   'data-testid'?: string;
 }
 
@@ -61,6 +65,7 @@ const ImageStage: React.FC<ImageStageProps> = ({
   onDraftChange,
   confirmToken,
   resetKey,
+  hideConfirm,
   'data-testid': testId,
 }) => {
   const { t } = useTranslation();
@@ -329,7 +334,7 @@ const ImageStage: React.FC<ImageStageProps> = ({
         )}
       </div>
       {hint}
-      {box && onConfirmBox && (
+      {box && onConfirmBox && !hideConfirm && (
         <Button
           type="primary"
           loading={busy}
