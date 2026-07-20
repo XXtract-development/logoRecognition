@@ -1,5 +1,12 @@
 # Versiegeschiedenis
 
+## 2026-07-20 (Bij de beoordeling zie je nu altijd het voorbeeld-logo)
+
+### Voor sommige keurmerken ontbrak het voorbeeld-logo, waardoor je niet wist waar je naar zocht
+- Keurmerken zonder eerder bevestigde referentie toonden geen voorbeeldbeeld; de hele voorbeeld-regel verdween dan
+- Er verschijnt nu altijd een voorbeeld: bestaat er nog geen bevestigd logo, dan valt de app terug op het officiële logo uit de GS1-gids
+- Voor de enkele keurmerken waarvan de gids alleen tekening-bestanden heeft die we niet kunnen tonen, verschijnt een duidelijke melding ("geen voorbeeld beschikbaar — zoek op de naam") in plaats van een lege regel
+
 ## 2026-07-20 (Gecorrigeerde uitsnede is direct correct zichtbaar, ook op desktop)
 
 ### Na een correctie bleef de oude automatische uitsnede soms tot 5 minuten in beeld

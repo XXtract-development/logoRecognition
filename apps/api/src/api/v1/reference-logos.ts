@@ -309,18 +309,50 @@ export async function referenceLogosRoutes(fastify: FastifyInstance) {
     { config: { rateLimit: { max: 300, timeWindow: 60000 } } },
     async (request: FastifyRequest<{ Params: { code: string } }>, reply: FastifyReply) => {
       const { code } = request.params;
+      // Story 20.8 review-F2 — defensie in de diepte: `code` gaat straks in een
+      // storage-key (`reference-examples/<code>.png`). Weiger traversal-tekens
+      // zodat rauwe input nooit `../` in de sleutel kan brengen (de bucket is al
+      // vast op training-images en `.png` is geforceerd, dus niet exploiteerbaar,
+      // maar dit is de enige tak die input in een key interpoleert).
+      if (code.includes('/') || code.includes('\\') || code.includes('..')) {
+        return reply.status(404).send({ error: 'Ongeldige code' });
+      }
       const ref = await prisma.referenceLogo.findFirst({
         where: { t3777Code: code, active: true },
         orderBy: { variantLabel: 'asc' },
       });
+
+      // Story 20.8 — een reviewer moet ALTIJD zien naar welk logo hij zoekt.
+      // Zonder actieve referentie vallen we terug op het opgeslagen GS1-gids-
+      // VOORBEELDbeeld (weergave-only: geen reference_logos-rij, geen embedding,
+      // dus de herkenning blijft ongemoeid). Bestaat ook dat niet -> 404 en de
+      // frontend toont een placeholder.
       if (!ref) {
-        return reply.status(404).send({ error: 'Geen referentie voor deze code' });
+        const example = await downloadTrainingObject(`reference-examples/${code}.png`);
+        if (!example) {
+          return reply.status(404).send({ error: 'Geen referentie voor deze code' });
+        }
+        reply.header('Cache-Control', 'private, max-age=3600');
+        reply.header('X-Reference-Source', 'guide-example');
+        // Review-F3 — normaliseer/cap net als het ref-pad (consistent, en een
+        // te groot gids-voorbeeld wordt begrensd); rauw als sharp faalt.
+        try {
+          const out = await sharp(example)
+            .resize({ width: 400, withoutEnlargement: true })
+            .png()
+            .toBuffer();
+          return reply.type('image/png').send(out);
+        } catch {
+          return reply.type('image/png').send(example);
+        }
       }
+
       const buffer = await downloadTrainingObject(ref.storagePath);
       if (!buffer) {
         return reply.status(404).send({ error: 'Referentiebeeld niet gevonden' });
       }
       reply.header('Cache-Control', 'private, max-age=3600');
+      reply.header('X-Reference-Source', 'reference');
       const ext = ref.storagePath.split('.').pop()?.toLowerCase();
       if (ext === 'svg') {
         return reply.type('image/svg+xml').send(buffer);

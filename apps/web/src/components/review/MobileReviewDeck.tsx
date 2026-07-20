@@ -924,7 +924,10 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
         }`
       : null;
   // Reference image of the (possibly relabeled) code — "this is what to look for".
-  const refSrc = refError ? null : `/api/v1/reference-logos/code/${encodeURIComponent(shownCode)}/image`;
+  // Story 20.8 — de URL blijft altijd staan (het endpoint valt terug op een
+  // GS1-gids-voorbeeld als er geen echte referentie is); pas als óók dat 404't
+  // (`refError`) tonen we een placeholder i.p.v. de rij te verbergen.
+  const refSrc = `/api/v1/reference-logos/code/${encodeURIComponent(shownCode)}/image`;
   // Searchable pick list over the FULL code universe: filter by query, pin the
   // predicted code on top, cap the rendered count so 889 codes stay fast.
   const pickQuery = search.trim().toLowerCase();
@@ -1030,9 +1033,13 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
           </div>
         )}
         {/* Reference image of the keurmerk to look for — so the reviewer never
-            has to guess what {code} looks like. Hidden when no reference exists. */}
-        {refSrc && (
+            has to guess what {code} looks like. Story 20.8: ALTIJD getoond voor
+            een echte code (endpoint valt terug op een GS1-gids-voorbeeld); alleen
+            als óók dat 404't tonen we een placeholder i.p.v. de rij te verbergen.
+            Letterloze Nutri-Score-placeholder heeft geen zinvol voorbeeld. */}
+        {!letterless && (
           <div
+            data-testid="deck-reference-row"
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -1044,16 +1051,45 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
               borderRadius: 6,
             }}
           >
-            <img
-              data-testid="deck-reference"
-              src={refSrc}
-              onError={() => setRefError(true)}
-              alt={`${shownCode} referentie`}
-              style={{ height: 44, width: 44, objectFit: 'contain', flex: '0 0 auto' }}
-            />
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              {t('review.lookForThis', { defaultValue: 'Zoek dit keurmerk op de verpakking' })}
-            </Text>
+            {refError ? (
+              <>
+                <div
+                  data-testid="deck-reference-placeholder"
+                  style={{
+                    height: 44,
+                    width: 44,
+                    flex: '0 0 auto',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: '1px dashed #94A3B8',
+                    borderRadius: 6,
+                    color: '#94A3B8',
+                    fontSize: 20,
+                  }}
+                >
+                  ?
+                </div>
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  {t('review.noReferenceImage', {
+                    defaultValue: 'Geen voorbeeld beschikbaar — zoek op de naam hierboven',
+                  })}
+                </Text>
+              </>
+            ) : (
+              <>
+                <img
+                  data-testid="deck-reference"
+                  src={refSrc}
+                  onError={() => setRefError(true)}
+                  alt={`${shownCode} referentie`}
+                  style={{ height: 44, width: 44, objectFit: 'contain', flex: '0 0 auto' }}
+                />
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  {t('review.lookForThis', { defaultValue: 'Zoek dit keurmerk op de verpakking' })}
+                </Text>
+              </>
+            )}
           </div>
         )}
         {/* Story 12.7 — label-prior: only shown when the GTIN has a declaration.
