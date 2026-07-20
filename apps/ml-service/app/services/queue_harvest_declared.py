@@ -59,6 +59,12 @@ BATCH = int(os.environ.get("DECLARED_HARVEST_BATCH", "400"))
 PER_CODE_CAP = int(os.environ.get("DECLARED_HARVEST_PER_CODE_CAP", "15"))
 MAX_SECONDS = float(os.environ.get("DECLARED_HARVEST_MAX_SECONDS", "1000"))
 DRY_RUN = os.environ.get("DECLARED_HARVEST_DRY_RUN", "").lower() in ("1", "true", "yes")
+# Story 20.7 — cross-code-discriminatie: verwerp een regio die ONgescopet op een
+# ANDERE (naast-liggende, gelijkende) code met minstens deze marge beter lijkt dan
+# op de gedeclareerde code. De scoped floor-match garandeert alleen dat de regio
+# OP de code lijkt, niet dat hij niet nóg meer op een buur-icoon lijkt (auto/18+/
+# zwangerschap staan naast elkaar en lijken ~0,6 op elkaar in de grove embedding).
+CROSS_CODE_MARGIN = float(os.environ.get("DECLARED_HARVEST_CROSS_CODE_MARGIN", "0.03"))
 HARVEST_CODES = {
     c.strip().upper()
     for c in os.environ.get("DECLARED_HARVEST_CODES", "").split(",")
@@ -69,6 +75,20 @@ HARVEST_CODES = {
 def _marker(code: str) -> str:
     """Idempotentie-reason per code — zie moduledoc (AC2)."""
     return f"declared-harvest:{code}"
+
+
+def _cross_code_rejected(declared_code, declared_sim, open_matches, margin) -> bool:
+    """True als een ANDERE code de regio (ongescopet) met >= marge beter matcht
+    dan de gedeclareerde code — dan is het een look-alike buur-icoon (Story 20.7).
+
+    Pure beslissing, exhaustief getest. `open_matches` = ongescopete nearest-
+    reference-resultaten ({t3777_code, similarity}). Leeg / geen sterkere rivaal
+    (o.a. cold-start van andere codes) -> False (behouden).
+    """
+    for m in open_matches:
+        if m.get("t3777_code") != declared_code and float(m.get("similarity", 0.0)) >= declared_sim + margin:
+            return True
+    return False
 
 
 def _crop_bgr(img, b):
@@ -184,6 +204,7 @@ async def run_batch() -> dict:
     skipped_below_floor = 0
     skipped_duplicate = 0
     skipped_cap = 0
+    skipped_cross_code = 0  # Story 20.7 — buur-icoon tegengehouden
     t0 = time.perf_counter()
     i = next_offset
     # Per-pagina-cache binnen de batch: een multi-code-GTIN (alcohol) leest en
@@ -215,7 +236,7 @@ async def run_batch() -> dict:
 
         # AC3: alleen de BESTE regio per paar; de declaratie garandeert de CODE,
         # niet de locatie — geen enkele regio >= floor betekent: overslaan.
-        best = None  # (similarity, crop, bbox)
+        best = None  # (similarity, crop, bbox, embedding)
         for b in boxes:
             c = _crop_bgr(img, b)
             if c is None:
@@ -234,13 +255,23 @@ async def run_batch() -> dict:
                 continue
             sim = float(matches[0]["similarity"])
             if best is None or sim > best[0]:
-                best = (sim, c, b)
+                best = (sim, c, b, emb)
 
         if best is None:
             skipped_below_floor += 1
             continue
 
-        sim, crop, bbox = best
+        sim, crop, bbox, best_emb = best
+
+        # Story 20.7 — cross-code-guard: matcht de gekozen regio ONgescopet op een
+        # ANDERE code duidelijk beter, dan is het een buur-icoon → verwerpen.
+        open_matches = await db_service.find_similar_references(
+            embedding=best_emb, limit=3, threshold=0.0
+        )
+        if _cross_code_rejected(code, sim, open_matches, CROSS_CODE_MARGIN):
+            skipped_cross_code += 1
+            continue
+
         if len(queue[code]) >= PER_CODE_CAP:
             skipped_cap += 1
             continue
@@ -312,6 +343,7 @@ async def run_batch() -> dict:
         "skipped_below_floor": skipped_below_floor,
         "skipped_duplicate": skipped_duplicate,
         "skipped_cap": skipped_cap,
+        "skipped_cross_code": skipped_cross_code,
         "total_pairs": total,
         "from_offset": next_offset,
         "to_offset": reached,

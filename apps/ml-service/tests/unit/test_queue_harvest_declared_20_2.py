@@ -122,9 +122,10 @@ class _FakePool:
 
 
 class _FakeDB:
-    def __init__(self, conn, find_fn, existing=None):
+    def __init__(self, conn, find_fn, existing=None, open_fn=None):
         self.pool = _FakePool(conn)
         self._find = find_fn
+        self._open_fn = open_fn
         self.scoped_calls = []
         self._existing = set(existing or [])
         self.exists_calls = []
@@ -136,6 +137,14 @@ class _FakeDB:
         self.scoped_calls.append((list(t3777_codes), threshold))
         return self._find(threshold)
 
+    # Story 20.7 — ongescopete cross-code-lookup. Default: leeg (geen rivaal ->
+    # geen verwerping), zodat bestaande 20.2-tests byte-gelijk blijven. Per-regio
+    # instelbaar via region_meta["open_matches"].
+    async def find_similar_references(self, embedding, limit=5, threshold=0.75):
+        self.open_calls = getattr(self, "open_calls", [])
+        self.open_calls.append((limit, threshold))
+        return list(self._open_fn(embedding)) if self._open_fn else []
+
     async def review_item_exists(self, gtin, reason, source_file):
         self.exists_calls.append((gtin, reason, source_file))
         return (gtin, reason, source_file) in self._existing
@@ -144,11 +153,18 @@ class _FakeDB:
 class _FakeModelManager:
     is_loaded = True
 
+    def __init__(self, shared):
+        self.shared = shared
+
     async def load_models(self):  # pragma: no cover
         pass
 
     async def generate_embedding(self, pil_img):
-        return [0.0]
+        # Story 20.7-review-M1: distincte embedding per regio (= [current_x]) zodat
+        # de test AANTOONT dat de guard de BESTE-regio-embedding krijgt, niet de
+        # laatst-verwerkte. Een regressie die `emb` i.p.v. `best_emb` doorgeeft,
+        # levert dan een andere open-match-set en valt om.
+        return [float(self.shared.get("current_x", 0))]
 
 
 class _Harness:
@@ -226,8 +242,16 @@ class _Harness:
                 return []
             return [{"t3777_code": meta.get("matched_code", "X"), "similarity": meta["sim"]}]
 
-        db = _FakeDB(conn, find_fn, existing=existing)
-        mm = _FakeModelManager()
+        def open_fn(embedding):
+            # Story 20.7-review-M1: map de doorgegeven embedding ([x]) terug naar
+            # de regio; zo bewijst de test dat de guard de embedding van de
+            # WINNENDE regio gebruikt (best_emb), niet die van de laatste box.
+            x = int(round(float(embedding[0])))
+            meta = region_meta.get((shared["current_src"], x))
+            return meta.get("open_matches", []) if meta else []
+
+        db = _FakeDB(conn, find_fn, existing=existing, open_fn=open_fn)
+        mm = _FakeModelManager(shared)
 
         mm_mod = types.ModuleType("app.ml.model_manager")
         mm_mod.model_manager = mm
@@ -273,8 +297,13 @@ def harness(monkeypatch):
     return _Harness(monkeypatch)
 
 
-def _region(*, kp=None, sim=0.95, matched_code="X"):
-    return {"kp": kp, "sim": sim, "matched_code": matched_code}
+def _region(*, kp=None, sim=0.95, matched_code="X", open_matches=None):
+    return {
+        "kp": kp,
+        "sim": sim,
+        "matched_code": matched_code,
+        "open_matches": open_matches or [],
+    }
 
 
 def _page(gtin, *regions):
@@ -398,3 +427,152 @@ def test_ac4_misvormde_map_geeft_nul_kandidaten_geen_crash(harness):
     )
     assert h.result["inserted"] == 0
     assert h.conn.executes == []
+
+
+# =========================================================================== #
+# Story 20.7 — cross-code-guard: een naast-liggend, gelijkend icoon dat op een
+# ANDERE code beter lijkt, mag niet onder de gedeclareerde code belanden.
+# =========================================================================== #
+
+def test_207_helper_rivaal_verslaat_gedeclareerde_code_boven_marge(monkeypatch):
+    m = _fresh_module(monkeypatch)
+    # auto-regio: 18+-sim 0,61 maar auto-sim 0,75 -> rivaal wint met >0,03
+    open_matches = [
+        {"t3777_code": "DO_NOT_DRINK_AND_DRIVE_WARNING", "similarity": 0.75},
+        {"t3777_code": "MINIMUM_DRINKING_AGE_18_WARNING", "similarity": 0.61},
+    ]
+    assert m._cross_code_rejected(
+        "MINIMUM_DRINKING_AGE_18_WARNING", 0.61, open_matches, 0.03
+    ) is True
+
+
+def test_207_helper_gedeclareerde_code_is_top_niet_verworpen(monkeypatch):
+    m = _fresh_module(monkeypatch)
+    open_matches = [
+        {"t3777_code": "MINIMUM_DRINKING_AGE_18_WARNING", "similarity": 0.9},
+        {"t3777_code": "DO_NOT_DRINK_AND_DRIVE_WARNING", "similarity": 0.5},
+    ]
+    assert m._cross_code_rejected(
+        "MINIMUM_DRINKING_AGE_18_WARNING", 0.9, open_matches, 0.03
+    ) is False
+
+
+def test_207_helper_rivaal_onder_marge_niet_verworpen(monkeypatch):
+    m = _fresh_module(monkeypatch)
+    # rivaal 0,62 vs gedeclareerd 0,61 -> verschil 0,01 < marge 0,03 -> behouden
+    open_matches = [
+        {"t3777_code": "DO_NOT_DRINK_AND_DRIVE_WARNING", "similarity": 0.62},
+        {"t3777_code": "MINIMUM_DRINKING_AGE_18_WARNING", "similarity": 0.61},
+    ]
+    assert m._cross_code_rejected(
+        "MINIMUM_DRINKING_AGE_18_WARNING", 0.61, open_matches, 0.03
+    ) is False
+
+
+def test_207_helper_lege_matches_cold_start_niet_verworpen(monkeypatch):
+    m = _fresh_module(monkeypatch)
+    assert m._cross_code_rejected("X", 0.7, [], 0.03) is False
+
+
+def test_207_helper_grensgeval_marge_exact_verworpen(monkeypatch):
+    m = _fresh_module(monkeypatch)
+    # rivaal precies op gedeclareerd + marge -> verworpen (>=)
+    open_matches = [{"t3777_code": "Y", "similarity": 0.64}]
+    assert m._cross_code_rejected("X", 0.61, open_matches, 0.03) is True
+
+
+def test_207_integratie_auto_onder_18plus_wordt_tegengehouden(harness):
+    # 18+ gedeclareerd; de beste 18+-regio (0,61) lijkt ongescopet BETER op de
+    # auto-code (0,75) -> kandidaat verworpen, niets ingezet.
+    h = harness.run(
+        [
+            _page(
+                "03147692359997",
+                _region(
+                    sim=0.61,
+                    open_matches=[
+                        {"t3777_code": "DO_NOT_DRINK_AND_DRIVE_WARNING", "similarity": 0.75},
+                        {"t3777_code": "MINIMUM_DRINKING_AGE_18_WARNING", "similarity": 0.61},
+                    ],
+                ),
+            )
+        ],
+        {"MINIMUM_DRINKING_AGE_18_WARNING": ["03147692359997"]},
+    )
+    assert h.result["inserted"] == 0
+    assert h.result["skipped_cross_code"] == 1
+    assert _inserted_codes(h.conn) == []
+
+
+def test_207_integratie_echte_18plus_blijft_behouden(harness):
+    # 18+ gedeclareerd; de regio lijkt ongescopet ook het meest op 18+ -> behouden.
+    h = harness.run(
+        [
+            _page(
+                "03219820000078",
+                _region(
+                    sim=0.8,
+                    open_matches=[
+                        {"t3777_code": "MINIMUM_DRINKING_AGE_18_WARNING", "similarity": 0.8},
+                        {"t3777_code": "DO_NOT_DRINK_AND_DRIVE_WARNING", "similarity": 0.55},
+                    ],
+                ),
+            )
+        ],
+        {"MINIMUM_DRINKING_AGE_18_WARNING": ["03219820000078"]},
+    )
+    assert h.result["inserted"] == 1
+    assert h.result["skipped_cross_code"] == 0
+    assert _inserted_codes(h.conn) == ["MINIMUM_DRINKING_AGE_18_WARNING"]
+
+
+def test_207_integratie_beste_regio_is_NIET_de_laatste_guard_pakt_de_juiste(harness):
+    # Review-M1: pagina met twee regio's; de BESTE (hoogste sim, 0,8) is de EERSTE
+    # en lijkt ongescopet BETER op de auto-code -> die embedding moet de guard
+    # voeden, niet de laatste (zwakke) regio. Verwacht: verworpen.
+    h = harness.run(
+        [
+            _page(
+                "03147692359997",
+                _region(
+                    sim=0.8,  # winnaar (eerste regio)
+                    open_matches=[
+                        {"t3777_code": "DO_NOT_DRINK_AND_DRIVE_WARNING", "similarity": 0.9},
+                        {"t3777_code": "MINIMUM_DRINKING_AGE_18_WARNING", "similarity": 0.8},
+                    ],
+                ),
+                _region(  # laatste regio, zwakker — mag de guard NIET voeden
+                    sim=0.5,
+                    open_matches=[
+                        {"t3777_code": "MINIMUM_DRINKING_AGE_18_WARNING", "similarity": 0.99},
+                    ],
+                ),
+            )
+        ],
+        {"MINIMUM_DRINKING_AGE_18_WARNING": ["03147692359997"]},
+    )
+    assert h.result["inserted"] == 0
+    assert h.result["skipped_cross_code"] == 1
+
+
+def test_207_env_marge_ophogen_laat_zwakke_rivaal_door(harness, monkeypatch):
+    # Escape hatch (review-M2): een ruimere DECLARED_HARVEST_CROSS_CODE_MARGIN
+    # laat een net-hogere rivaal alsnog door (cold-start van een verwarbare code).
+    monkeypatch.setenv("DECLARED_HARVEST_CROSS_CODE_MARGIN", "0.20")
+    h = harness.run(
+        [
+            _page(
+                "0001",
+                _region(
+                    sim=0.61,
+                    open_matches=[
+                        {"t3777_code": "SIBLING", "similarity": 0.70},  # +0,09 < 0,20
+                        {"t3777_code": "TARGET", "similarity": 0.61},
+                    ],
+                ),
+            )
+        ],
+        {"TARGET": ["0001"]},
+    )
+    assert h.result["inserted"] == 1
+    assert h.result["skipped_cross_code"] == 0
