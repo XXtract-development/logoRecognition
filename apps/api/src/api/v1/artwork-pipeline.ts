@@ -66,6 +66,35 @@ import sharp from 'sharp';
 /** RBAC: import runs and data write operations require ADMIN. */
 const REQUIRE_ADMIN = requireRole('ADMIN');
 
+/**
+ * Story 20.6 — de per-item beeld-endpoints (marked/crop/source/artwork) renderen
+ * MUTABELE item-staat: bbox en cropPath wijzigen zodra een reviewer een crop
+ * corrigeert (human-annotation). Een blinde `max-age` serveert dan tot 5 minuten
+ * de oude auto-crop na de correctie. Gebruik revalidatie: een zwakke ETag uit
+ * `updatedAt` — de browser mag cachen maar MOET revalideren; ongewijzigd levert
+ * een goedkope 304 (geen download/render), gewijzigd een verse 200.
+ *
+ * @returns true als een 304 is verstuurd — de caller MOET dan meteen stoppen.
+ */
+function sendRevalidatingImageHeaders(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  item: { id: string; updatedAt: Date | string }
+): boolean {
+  const stamp =
+    item.updatedAt instanceof Date
+      ? item.updatedAt.getTime()
+      : new Date(item.updatedAt).getTime();
+  const etag = `W/"${item.id}-${stamp}"`;
+  reply.header('Cache-Control', 'private, no-cache');
+  reply.header('ETag', etag);
+  if (request.headers['if-none-match'] === etag) {
+    reply.status(304).send();
+    return true;
+  }
+  return false;
+}
+
 /** Default concurrent mediaserver downloads per run. */
 const DEFAULT_CONCURRENCY = parseInt(
   process.env.ARTWORK_IMPORT_CONCURRENCY || '3',
@@ -807,6 +836,7 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
       if (!item) {
         return reply.status(404).send({ error: 'Review item niet gevonden' });
       }
+      if (sendRevalidatingImageHeaders(request, reply, item)) return;
 
       const key = await resolveArtworkKeyForGtin(item.gtin);
       if (!key) {
@@ -818,7 +848,6 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
         return reply.status(404).send({ error: 'Artwork niet gevonden in opslag' });
       }
 
-      reply.header('Cache-Control', 'private, max-age=300');
       try {
         // Downscale so the multi-MB high-DPI page loads fast in the review card.
         const out = await sharp(buffer)
@@ -850,6 +879,7 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
       if (!item || !item.cropPath) {
         return reply.status(404).send({ error: 'Geen crop voor dit reviewitem' });
       }
+      if (sendRevalidatingImageHeaders(request, reply, item)) return;
 
       const buffer = await downloadTrainingObject(item.cropPath);
       if (!buffer) {
@@ -858,7 +888,6 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
 
       const ext = item.cropPath.split('.').pop()?.toLowerCase();
       const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : 'image/png';
-      reply.header('Cache-Control', 'private, max-age=300');
       return reply.type(mime).send(buffer);
     }
   );
@@ -881,6 +910,7 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
       if (!item) {
         return reply.status(404).send({ error: 'Review item niet gevonden' });
       }
+      if (sendRevalidatingImageHeaders(request, reply, item)) return;
 
       const key = item.sourceFile || (await resolveArtworkKeyForGtin(item.gtin));
       if (!key) {
@@ -896,7 +926,6 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
         typeof bb.x === 'number' && typeof bb.y === 'number' &&
         typeof bb.width === 'number' && typeof bb.height === 'number' && bb.width > 0 && bb.height > 0;
 
-      reply.header('Cache-Control', 'private, max-age=300');
       try {
         const meta = await sharp(buffer).metadata();
         const W = meta.width ?? 0;
@@ -949,13 +978,13 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
       if (!item || !item.sourceFile) {
         return reply.status(404).send({ error: 'Geen bronafbeelding voor dit reviewitem' });
       }
+      if (sendRevalidatingImageHeaders(request, reply, item)) return;
 
       const buffer = await downloadTrainingObject(item.sourceFile);
       if (!buffer) {
         return reply.status(404).send({ error: 'Bronafbeelding niet gevonden in opslag' });
       }
 
-      reply.header('Cache-Control', 'private, max-age=300');
 
       const bb = (item.bbox ?? {}) as { x?: number; y?: number; width?: number; height?: number };
       const hasBox =

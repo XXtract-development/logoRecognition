@@ -1,5 +1,11 @@
 # Versiegeschiedenis
 
+## 2026-07-20 (Gecorrigeerde uitsnede is direct correct zichtbaar, ook op desktop)
+
+### Na een correctie bleef de oude automatische uitsnede soms tot 5 minuten in beeld
+- De verpakkingsbeelden in de beoordeel-app werden door de browser tot 5 minuten bewaard. Corrigeerde je een uitsnede en ging je terug, dan kon je nog de oude automatische uitsnede zien — terwijl je correctie al correct was opgeslagen
+- De beelden worden nu bij elke terugkeer geverifieerd: is er niets veranderd, dan blijft het snel; heb je gecorrigeerd, dan zie je meteen je nieuwe uitsnede en kader. Dit geldt zowel op desktop als mobiel
+
 ## 2026-07-17 (Zelf-getekende correcties blijven staan en tonen het juiste keurmerk)
 
 ### Na een zelf-getekende crop stond bij terugkeer soms weer de oude uitsnede/keurmerk

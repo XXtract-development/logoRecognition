@@ -575,6 +575,95 @@ describe('Artwork Pipeline Routes (ATDD — Epic 8)', () => {
       expect([left, top, rw, rh]).toEqual([190, 80, 500, 500]);
     });
 
+    // --- Story 20.6: per-item beeld-endpoints revalideren i.p.v. 5-min blind cachen ---
+
+    it('20.6 AC1: /crop stuurt no-cache + een ETag afgeleid van updatedAt (geen max-age)', async () => {
+      const storage = await import('../../services/storage');
+      (storage.downloadTrainingObject as vi.Mock).mockResolvedValue(Buffer.from('png-bytes'));
+      (mockPrisma.artworkReviewItem.findUnique as vi.Mock).mockResolvedValue({
+        id: 'ri-c1',
+        cropPath: 'artwork-crops/g/annot_ri-c1.png',
+        updatedAt: new Date('2026-07-20T14:48:41.494Z'),
+      });
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/v1/artwork/review-items/ri-c1/crop',
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.headers['cache-control']).toBe('private, no-cache');
+      expect(response.headers['cache-control']).not.toContain('max-age');
+      expect(response.headers['etag']).toBe(`W/"ri-c1-${new Date('2026-07-20T14:48:41.494Z').getTime()}"`);
+    });
+
+    it('20.6 AC2: /crop met matchende If-None-Match -> 304 zonder de crop te downloaden', async () => {
+      const storage = await import('../../services/storage');
+      (storage.downloadTrainingObject as vi.Mock).mockResolvedValue(Buffer.from('png-bytes'));
+      (mockPrisma.artworkReviewItem.findUnique as vi.Mock).mockResolvedValue({
+        id: 'ri-c2',
+        cropPath: 'artwork-crops/g/annot_ri-c2.png',
+        updatedAt: new Date('2026-07-20T14:48:41.494Z'),
+      });
+      const etag = `W/"ri-c2-${new Date('2026-07-20T14:48:41.494Z').getTime()}"`;
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/v1/artwork/review-items/ri-c2/crop',
+        headers: { 'if-none-match': etag },
+      });
+
+      expect(response.statusCode).toBe(304);
+      expect(storage.downloadTrainingObject).not.toHaveBeenCalled();
+    });
+
+    it('20.6 AC3: na een correctie (nieuwe updatedAt) wijkt de ETag af -> verse 200', async () => {
+      const storage = await import('../../services/storage');
+      (storage.downloadTrainingObject as vi.Mock).mockResolvedValue(Buffer.from('nieuwe-crop'));
+      (mockPrisma.artworkReviewItem.findUnique as vi.Mock).mockResolvedValue({
+        id: 'ri-c3',
+        cropPath: 'artwork-crops/g/annot_ri-c3.png',
+        updatedAt: new Date('2026-07-20T15:00:00.000Z'),
+      });
+      const staleEtag = `W/"ri-c3-${new Date('2026-07-20T14:48:41.494Z').getTime()}"`;
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/v1/artwork/review-items/ri-c3/crop',
+        headers: { 'if-none-match': staleEtag },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toBe('nieuwe-crop');
+      expect(response.headers['etag']).toBe(`W/"ri-c3-${new Date('2026-07-20T15:00:00.000Z').getTime()}"`);
+    });
+
+    it('20.6 AC1: /marked stuurt eveneens no-cache + ETag (box weerspiegelt bbox)', async () => {
+      const sharp = (await import('sharp')).default;
+      const png = await sharp({
+        create: { width: 600, height: 2000, channels: 3, background: { r: 255, g: 255, b: 255 } },
+      })
+        .png()
+        .toBuffer();
+      const storage = await import('../../services/storage');
+      (storage.downloadTrainingObject as vi.Mock).mockResolvedValue(png);
+      (mockPrisma.artworkReviewItem.findUnique as vi.Mock).mockResolvedValue({
+        id: 'ri-m1',
+        sourceFile: 'artwork/g/page-0.png',
+        bbox: { x: 59, y: 374, width: 45, height: 40 },
+        updatedAt: new Date('2026-07-20T14:48:41.494Z'),
+      });
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/v1/artwork/review-items/ri-m1/marked',
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.headers['cache-control']).toBe('private, no-cache');
+      expect(response.headers['etag']).toBe(`W/"ri-m1-${new Date('2026-07-20T14:48:41.494Z').getTime()}"`);
+    });
+
     it('returns 404 on /crop for a crop-less item', async () => {
       (mockPrisma.artworkReviewItem.findUnique as vi.Mock).mockResolvedValue({
         id: 'ri-nocrop',
