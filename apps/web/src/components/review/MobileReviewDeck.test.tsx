@@ -400,8 +400,12 @@ describe('Story 12.17 — Accepteer bevestigt een getekend kader i.p.v. de auto-
     render(<MobileReviewDeck items={[item]} canMutate />);
 
     // Teken een kader (nog niet bevestigd) — de grote knop wordt kader-bewust.
+    // Story 20.5: het label toont nu de code die wordt opgeslagen (de voorspelde
+    // code), zodat niets stilzwijgend onder een verkeerd keurmerk belandt.
     await user.click(await screen.findByTestId('mock-draw'));
-    expect(screen.getByTestId('deck-accept')).toHaveTextContent('Bevestig getekend kader');
+    expect(screen.getByTestId('deck-accept')).toHaveTextContent(
+      'Bevestig kader als EU_ORGANIC_FARMING'
+    );
 
     // Druk op de grote knop → moet het getekende kader bevestigen (annotate).
     await user.click(screen.getByTestId('deck-accept'));

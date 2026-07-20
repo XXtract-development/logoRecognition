@@ -1,5 +1,12 @@
 # Versiegeschiedenis
 
+## 2026-07-17 (Zelf-getekende correcties blijven staan en tonen het juiste keurmerk)
+
+### Na een zelf-getekende crop stond bij terugkeer soms weer de oude uitsnede/keurmerk
+- Wie het logo zelf overtekende en accepteerde, zag bij terugkeer naar dat item nog de oorspronkelijke automatische uitsnede — de correctie was wel opgeslagen, maar het scherm toonde het oude beeld door een verouderde weergave-cache. Dat is verholpen: je ziet nu je eigen correctie terug
+- De grote goedkeurknop toont voortaan onder welk keurmerk het kader wordt opgeslagen ("Bevestig kader als …"), zodat een correctie nooit stilzwijgend onder een verkeerd keurmerk belandt; klopt het keurmerk niet, dan kies je met één tik het juiste
+- Voor een Nutri-Score waarvan de letter nog niet gekozen is, opent het bevestigen eerst de keuzelijst voor de letter, in plaats van op te slaan zonder letter
+
 ## 2026-07-17 (Getekend kader bevestig je nu bewust — met keurmerk-keuze vooraf)
 
 ### Een getekend kader werd direct goedgekeurd en het volgende item verscheen meteen

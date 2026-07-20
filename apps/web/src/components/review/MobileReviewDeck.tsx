@@ -123,6 +123,10 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
   // Story 20.4 — code die is KLAARGEZET (picker-keuze terwijl een onbevestigd
   // kader klaarstaat) maar nog niet ingediend; pas de hoofdknop dient hem in.
   const [stagedCode, setStagedCode] = useState<Record<string, string>>({});
+  // Story 20.5 — versie per item, opgehoogd na een succesvolle annotate. Gebruikt
+  // om (a) de gecachete crop-blob te invalideren en (b) de /marked-URL te
+  // cache-busten, zodat revisit de OPGESLAGEN correctie toont i.p.v. de auto-crop.
+  const [editedVersion, setEditedVersion] = useState<Record<string, number>>({});
   // applyDecision staat vóór relabel in declaratievolgorde; via een ref kan de
   // accept-zonder-kader-maar-met-klaargezette-code-tak het relabel-indienpad
   // aanroepen zonder herordening van de bestaande callbacks.
@@ -197,6 +201,23 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
         : code,
     [t]
   );
+
+  // Story 20.5 — invalidatie na een correctie: revoke + wis de blob-cache en
+  // hoog de item-versie op (bust van de /marked-URL). loadCrop haalt daardoor bij
+  // terugkeer de nieuwe crop op en het pack toont het bijgewerkte kader.
+  const bumpEdited = useCallback((id: string) => {
+    if (cache.current[id]) {
+      try {
+        URL.revokeObjectURL(cache.current[id]);
+      } catch {
+        /* no-op */
+      }
+      delete cache.current[id];
+    }
+    delete artworkCache.current[id];
+    setMarkedError(false);
+    setEditedVersion((v) => ({ ...v, [id]: (v[id] ?? 0) + 1 }));
+  }, []);
 
   const loadCrop = useCallback((id: string) => {
     if (cache.current[id]) {
@@ -410,6 +431,20 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
       // "A" keyboard shortcut all funnel through here. Route to the stage's own
       // confirm (→ applyAnnotation registers the DRAWN crop) and stop, so an
       // accept can never silently register the auto-crop while a box is drawn.
+      // Story 20.5 (review-6) — een getekend kader op een letterloze Nutri-Score
+      // placeholder mag NOOIT onder de niet-bestaande 'NUTRISCORE'-code landen;
+      // de knop zegt "kies de letter", dus stuur naar de picker i.p.v. indienen.
+      const effCode = stagedCode[cur.id] ?? assignedCode[cur.id] ?? cur.t3777Code;
+      if (label === 'ECHT' && hasDraftBox && isLetterlessNutriscore(effCode)) {
+        setSearch('');
+        setPicker(true);
+        message.info(
+          t('review.pickLetterFirst', {
+            defaultValue: 'Kies eerst de Nutri-Score-letter voor dit kader',
+          })
+        );
+        return;
+      }
       if (label === 'ECHT' && hasDraftBox) {
         setConfirmBoxToken((n) => n + 1);
         return;
@@ -495,7 +530,7 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
         setBusy(false);
       }
     },
-    [cur, busy, canMutate, decisions, idx, goto, t, flywheelOn, hasDraftBox, stagedCode]
+    [cur, busy, canMutate, decisions, idx, goto, t, flywheelOn, hasDraftBox, stagedCode, assignedCode]
   );
 
   const applyAnnotation = useCallback(
@@ -524,6 +559,7 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
           return next;
         });
         setDecisions((d) => ({ ...d, [cur.id]: 'ECHT' }));
+        bumpEdited(cur.id);
         if (code) {
           setAssignedCode((a) => ({ ...a, [cur.id]: code }));
           setStagedCode((s0) => {
@@ -550,7 +586,7 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
         setBusy(false);
       }
     },
-    [cur, busy, idx, goto, t, assignedCode, stagedCode]
+    [cur, busy, idx, goto, t, assignedCode, stagedCode, bumpEdited]
   );
 
   // Story 12.19 — a box drawn on the "bekijk in context" fragment is in FRAGMENT
@@ -611,6 +647,7 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
         if (prev) await reopenReviewItem(cur.id);
         if (rel) {
           await annotateReviewItem(cur.id, rel, code);
+          bumpEdited(cur.id);
           setPendingRel((p) => {
             const next = { ...p };
             delete next[cur.id];
@@ -645,7 +682,7 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
         setBusy(false);
       }
     },
-    [cur, busy, canMutate, decisions, pendingRel, hasDraftBox, idx, goto, t]
+    [cur, busy, canMutate, decisions, pendingRel, hasDraftBox, idx, goto, t, bumpEdited]
   );
   relabelRef.current = relabel;
 
@@ -882,7 +919,9 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
     (bb.height as number) > 0;
   const markedSrc =
     cur!.cropPath && hasBbox && !markedError
-      ? `/api/v1/artwork/review-items/${cur!.id}/marked`
+      ? `/api/v1/artwork/review-items/${cur!.id}/marked${
+          editedVersion[cur!.id] ? `?v=${editedVersion[cur!.id]}` : ''
+        }`
       : null;
   // Reference image of the (possibly relabeled) code — "this is what to look for".
   const refSrc = refError ? null : `/api/v1/reference-logos/code/${encodeURIComponent(shownCode)}/image`;
@@ -1194,7 +1233,17 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
                   defaultValue: 'Bevestig kader als {{code}}',
                   code: stagedCode[cur.id],
                 })
-              : t('review.acceptDrawnBox', { defaultValue: 'Bevestig getekend kader' })
+              : letterless
+                ? t('review.acceptDrawnBoxPickLetter', {
+                    defaultValue: 'Bevestig kader — kies de letter',
+                  })
+                : // Story 20.5 — toon de code die wordt opgeslagen (de voorspelde/
+                  // effectieve code), zodat niets stilzwijgend onder een verkeerd
+                  // keurmerk belandt; de picker ernaast wijzigt hem.
+                  t('review.acceptDrawnBoxAs', {
+                    defaultValue: 'Bevestig kader als {{code}}',
+                    code: shownCode,
+                  })
             : cur && stagedCode[cur.id]
               ? t('review.acceptAs', {
                   defaultValue: 'Accepteer als {{code}}',
