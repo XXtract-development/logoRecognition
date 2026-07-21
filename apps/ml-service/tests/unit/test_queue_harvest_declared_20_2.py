@@ -183,6 +183,7 @@ class _Harness:
         existing=None,
         batch=None,
         map_override=None,
+        keyline_max_bpp=None,
     ):
         """Draai één generieke declaratie-oogst-batch.
 
@@ -197,8 +198,11 @@ class _Harness:
             "DECLARED_HARVEST_DRY_RUN",
             "DECLARED_HARVEST_BATCH",
             "DECLARED_HARVEST_MAX_SECONDS",
+            "DECLARED_HARVEST_KEYLINE_MAX_BPP",
         ):
             mp.delenv(var, raising=False)
+        if keyline_max_bpp is not None:
+            mp.setenv("DECLARED_HARVEST_KEYLINE_MAX_BPP", str(keyline_max_bpp))
         if floor is not None:
             mp.setenv("DECLARED_HARVEST_FLOOR", str(floor))
         if codes is not None:
@@ -576,3 +580,59 @@ def test_207_env_marge_ophogen_laat_zwakke_rivaal_door(harness, monkeypatch):
     )
     assert h.result["inserted"] == 1
     assert h.result["skipped_cross_code"] == 0
+
+
+# =========================================================================== #
+# Story 20.9 — keyline-guard: technische snijlijn-/cutter-pagina's overslaan.
+# =========================================================================== #
+
+def test_209_is_keyline_onder_drempel_true(monkeypatch):
+    m = _fresh_module(monkeypatch)
+    assert m._is_keyline(0.01, 0.03) is True
+
+
+def test_209_is_keyline_boven_drempel_false(monkeypatch):
+    m = _fresh_module(monkeypatch)
+    assert m._is_keyline(0.10, 0.03) is False
+
+
+def test_209_is_keyline_grensgeval_gelijk_false(monkeypatch):
+    m = _fresh_module(monkeypatch)
+    # detail == drempel telt als 'genoeg detail' -> geen keyline (strikt <)
+    assert m._is_keyline(0.03, 0.03) is False
+
+
+def test_209_is_keyline_drempel_nul_uitgeschakeld(monkeypatch):
+    m = _fresh_module(monkeypatch)
+    assert m._is_keyline(0.0001, 0.0) is False
+    assert m._is_keyline(0.0001, -1.0) is False
+
+
+def test_209_page_detail_bpp_uit_png_bytes(monkeypatch):
+    m = _fresh_module(monkeypatch)
+    import numpy as _np
+    img = _np.zeros((8, 8, 3), dtype=_np.uint8)  # stub-cv2 imencode -> 3 bytes
+    assert abs(m._page_detail_bpp(img) - 3 / 64) < 1e-9
+
+
+def test_209_integratie_keyline_pagina_wordt_overgeslagen(harness):
+    # drempel hoog genoeg dat de stub-bpp (~0,047) als keyline telt -> 0 kandidaten
+    h = harness.run(
+        [_page("111", _region(sim=0.9))],
+        {"AISE_1": ["111"]},
+        keyline_max_bpp=0.1,
+    )
+    assert h.result["inserted"] == 0
+    assert h.result["skipped_keyline"] == 1
+    assert _inserted_codes(h.conn) == []
+
+
+def test_209_integratie_print_pagina_wordt_verwerkt(harness):
+    # default-drempel 0,03 < stub-bpp 0,047 -> geen keyline -> normaal verwerkt
+    h = harness.run(
+        [_page("111", _region(sim=0.9))],
+        {"AISE_1": ["111"]},
+    )
+    assert h.result["inserted"] == 1
+    assert h.result["skipped_keyline"] == 0
+    assert _inserted_codes(h.conn) == ["AISE_1"]

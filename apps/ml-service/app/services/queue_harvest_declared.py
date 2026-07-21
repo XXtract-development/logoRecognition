@@ -65,6 +65,11 @@ DRY_RUN = os.environ.get("DECLARED_HARVEST_DRY_RUN", "").lower() in ("1", "true"
 # OP de code lijkt, niet dat hij niet nóg meer op een buur-icoon lijkt (auto/18+/
 # zwangerschap staan naast elkaar en lijken ~0,6 op elkaar in de grove embedding).
 CROSS_CODE_MARGIN = float(os.environ.get("DECLARED_HARVEST_CROSS_CODE_MARGIN", "0.03"))
+# Story 20.9 — keyline-guard: een technische snijlijn-/cutter-pagina (nauwelijks
+# bedrukte inhoud, lege panelen) mag geen kandidaten opleveren. Detail-maat =
+# gecomprimeerde-PNG-bytes-per-pixel; keyline-sheets liggen ~0,01-0,02, echt
+# bedrukt artwork ~0,10-0,29 (gemeten). Env-drempel; <= 0 schakelt de guard uit.
+KEYLINE_MAX_BPP = float(os.environ.get("DECLARED_HARVEST_KEYLINE_MAX_BPP", "0.03"))
 HARVEST_CODES = {
     c.strip().upper()
     for c in os.environ.get("DECLARED_HARVEST_CODES", "").split(",")
@@ -75,6 +80,28 @@ HARVEST_CODES = {
 def _marker(code: str) -> str:
     """Idempotentie-reason per code — zie moduledoc (AC2)."""
     return f"declared-harvest:{code}"
+
+
+def _page_detail_bpp(img) -> float:
+    """Detail-maat van een pagina: gecomprimeerde-PNG-bytes per pixel (Story 20.9).
+    Vlakke keyline-/cutter-sheets comprimeren extreem (lage bpp); echt bedrukt
+    artwork heeft veel detail (hoge bpp). Retourneert 0.0 bij een lege pagina."""
+    h, w = img.shape[:2]
+    if h * w == 0:
+        return 0.0
+    ok, buf = cv2.imencode(".png", img)
+    if not ok:
+        return 0.0
+    return len(buf) / float(h * w)
+
+
+def _is_keyline(detail: float, threshold: float) -> bool:
+    """True als de pagina onder de detail-drempel ligt (technische keyline-sheet).
+    threshold <= 0 schakelt de guard uit (Story 20.9, AC4). Strikt `<` zodat een
+    pagina precies op de drempel als 'genoeg detail' telt."""
+    if threshold <= 0:
+        return False
+    return detail < threshold
 
 
 def _cross_code_rejected(declared_code, declared_sim, open_matches, margin) -> bool:
@@ -205,6 +232,7 @@ async def run_batch() -> dict:
     skipped_duplicate = 0
     skipped_cap = 0
     skipped_cross_code = 0  # Story 20.7 — buur-icoon tegengehouden
+    skipped_keyline = 0  # Story 20.9 — technische snijlijn-/cutter-pagina tegengehouden
     t0 = time.perf_counter()
     i = next_offset
     # Per-pagina-cache binnen de batch: een multi-code-GTIN (alcohol) leest en
@@ -220,7 +248,7 @@ async def run_batch() -> dict:
             continue
 
         if src in page_cache:
-            img, boxes = page_cache[src]
+            img, boxes, is_keyline = page_cache[src]
         else:
             try:
                 data = storage_service.get_training_image(src)
@@ -230,8 +258,16 @@ async def run_batch() -> dict:
             if img is None:
                 continue
             boxes, _ = propose_regions(img)
-            page_cache[src] = (img, boxes)
+            # Story 20.9 — beslis eenmaal per pagina of het een technische
+            # keyline-/cutter-sheet is (gecachet, ook voor multi-code-GTINs).
+            is_keyline = _is_keyline(_page_detail_bpp(img), KEYLINE_MAX_BPP)
+            page_cache[src] = (img, boxes, is_keyline)
         if img is None:
+            continue
+
+        # Story 20.9 — keyline-pagina levert geen bruikbare crops (lege panelen).
+        if is_keyline:
+            skipped_keyline += 1
             continue
 
         # AC3: alleen de BESTE regio per paar; de declaratie garandeert de CODE,
@@ -344,6 +380,7 @@ async def run_batch() -> dict:
         "skipped_duplicate": skipped_duplicate,
         "skipped_cap": skipped_cap,
         "skipped_cross_code": skipped_cross_code,
+        "skipped_keyline": skipped_keyline,
         "total_pairs": total,
         "from_offset": next_offset,
         "to_offset": reached,
