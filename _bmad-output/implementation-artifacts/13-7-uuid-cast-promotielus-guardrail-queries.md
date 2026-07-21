@@ -1,6 +1,6 @@
 # Story 13.7: uuid=text-fix in de promotielus-guardrailquery's (Postgres 42883)
 
-Status: review
+Status: done
 
 <!-- Aangemaakt via create-story workflow, 2026-07-21. Bugfix-story op afgeronde Epic 13 (vliegwiel). Bron: read-only diagnose 2026-07-21 op ACC (geheugen project_flywheel_two_findings_20260721) + broncode-lokalisatie. Epic-13 heropend van 'done' → 'in-progress' voor deze fix. Vereist: 13.4 (promotielus/guardrails) en 13.5 (regressiepoort) — beide done. -->
 

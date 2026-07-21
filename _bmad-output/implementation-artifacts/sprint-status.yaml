@@ -174,7 +174,7 @@ development_status:
   13-4-nachtelijke-promotielus-batching-en-guardrails: done
   13-5-kwaliteitspoort-regressietest-promotie-en-quarantaine: done
   13-6-rollback-persistente-pauze-en-automatische-stilstand: done
-  13-7-uuid-cast-promotielus-guardrail-queries: review  # 2026-07-21: bugfix, root cause gelokaliseerd (guardrails.ts:432/:538); fix + pg-regressietest gebouwd
+  13-7-uuid-cast-promotielus-guardrail-queries: done  # 2026-07-21: fix (= ANY(::uuid[])) + pg-regressietest, adversarial PASS. AC5 (ACC-drain batch 12e27fbc) gated op go Friso
   epic-13-retrospective: optional
 
   epic-14: done  # 2026-07-03: 3/3 stories done, migratie 0016 lokaal, adversarial PASS (M1 gefixt: reject-idempotentie); api vitest 508/2skip
