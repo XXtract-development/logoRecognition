@@ -429,7 +429,7 @@ export async function hasCosineDuplicate(
           UNION ALL
           SELECT (1 - (ce.embedding <=> (SELECT embedding FROM cand))) AS similarity
           FROM candidate_embeddings ce
-          WHERE ce.reference_candidate_id IN (${Prisma.join(otherSurvivors)})
+          WHERE ce.reference_candidate_id = ANY(${otherSurvivors}::uuid[])
             AND ce.embedding IS NOT NULL
         `
       : Prisma.empty;
@@ -535,7 +535,7 @@ export async function loadCandidateEmbeddings(
   >(Prisma.sql`
     SELECT reference_candidate_id, embedding::text AS embedding_text
     FROM candidate_embeddings
-    WHERE reference_candidate_id IN (${Prisma.join(candidateIds)})
+    WHERE reference_candidate_id = ANY(${candidateIds}::uuid[])
       AND embedding IS NOT NULL
   `);
 

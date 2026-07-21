@@ -40,7 +40,7 @@
 # - Volgorde-advies: Epic 9 strikt sequentieel 9.1→9.6 (Redis-infra in 9.1 is BLOCKER; migratienummers 0007/0008 vereisen volgorde 9.2 vóór 9.5); Epic 10 bouwt op 9; Epic 11 optioneel
 
 generated: 2026-06-03
-last_updated: 2026-07-14  # 12.17-12.20 (review-UI: kader-behoud, badge, tekenen-in-context, letterloze placeholder) done+live op ACC (8a2452f/7592225/c1dd3ed) na adversarial review + live-verificatie
+last_updated: 2026-07-21  # Epic-13 heropend voor bugfix-story 13.7 (uuid=text-fix promotielus-guardrail); fix + pg-regressietest, adversarial PASS
 project: logoRecognition
 project_key: NOKEY
 tracking_system: file-system
@@ -167,13 +167,14 @@ development_status:
   # Volgorde: 12.8 (verify-flow) moet gebouwd/gemerged zijn vóór 16.4 (controle-cohort steunt op de verify-flow).
   # LET OP: elke story met schemawijziging (13.2, 13.3, 13.4, 13.6, 14.3, 15.4, 16.1, 16.2, 18.1) vereist expliciete migratie-toestemming per geval (teamregel) + down-script.
   # ============================================
-  epic-13: done  # 2026-07-03: 6/6 stories done, migraties 0012-0015 lokaal, adversarial PASS (review-epic-13-adversarial.md), vitest 449/2skip
+  epic-13: in-progress  # 2026-07-21: heropend voor bugfix-story 13.7 (uuid=text in promotielus-guardrail); was done sinds 2026-07-03 (6/6 stories, migraties 0012-0015, adversarial PASS)
   13-1-canonieke-inhouds-hash-service: done
   13-2-automatische-nominatie-bij-dubbele-bevestiging: done
   13-3-gold-set-naar-beheerde-opslag-met-seed-import: done
   13-4-nachtelijke-promotielus-batching-en-guardrails: done
   13-5-kwaliteitspoort-regressietest-promotie-en-quarantaine: done
   13-6-rollback-persistente-pauze-en-automatische-stilstand: done
+  13-7-uuid-cast-promotielus-guardrail-queries: review  # 2026-07-21: bugfix, root cause gelokaliseerd (guardrails.ts:432/:538); fix + pg-regressietest gebouwd
   epic-13-retrospective: optional
 
   epic-14: done  # 2026-07-03: 3/3 stories done, migratie 0016 lokaal, adversarial PASS (M1 gefixt: reject-idempotentie); api vitest 508/2skip

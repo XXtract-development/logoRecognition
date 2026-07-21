@@ -1,5 +1,12 @@
 # Versiegeschiedenis
 
+## 2026-07-21 (De nachtelijke keurmerk-aanvulling liep vast op een verborgen databasefout — opgelost)
+
+### De nachtelijke controleronde van nieuwe keurmerk-voorbeelden stopte halverwege
+- De automatische nachtelijke ronde die beoordeelde keurmerk-voorbeelden definitief goedkeurt of apart zet, liep sinds begin juli telkens vast op een verborgen databasefout. Daardoor bleef een groep goedgekeurde voorbeelden hangen zonder verwerkt te worden. Omdat die keurmerken al andere voorbeelden hadden, was er in de herkenning zelf niets vreemds te zien — de storing was stil
+- De oorzaak was een typefout in twee database-opdrachten die een lijst van identificatienummers vergeleek als tekst in plaats van als het juiste nummer-type. Dit is nu gecorrigeerd, zonder dat er iets aan de werking of de uitkomsten van die controle verandert
+- Er is bovendien een nieuwe test toegevoegd die precies dit soort fout voortaan afvangt tegen een echte database — de bestaande testopzet kon hem principieel niet zien. Het daadwerkelijk verwerken van de vastgelopen groep gebeurt pas op de praktijkomgeving na expliciete goedkeuring
+
 ## 2026-07-20 (Bij de beoordeling zie je nu altijd het voorbeeld-logo)
 
 ### Voor sommige keurmerken ontbrak het voorbeeld-logo, waardoor je niet wist waar je naar zocht

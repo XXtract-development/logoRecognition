@@ -9,6 +9,7 @@
     "start": "node dist/main.js",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "test:integration": "bash scripts/run-pg-integration-tests.sh",
     "lint": "eslint src --ext ts",
     "type-check": "tsc --noEmit"
   },
