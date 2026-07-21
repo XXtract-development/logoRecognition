@@ -166,6 +166,16 @@ class ModelManager:
         if self.embedding_model is None:
             raise RuntimeError("Embedding model not loaded")
 
+        # Normaliseer naar RGB vóór preprocessing. Een niet-RGB-beeld (RGBA/LA/P/
+        # CMYK) levert via ToTensor een N!=3-kanaals tensor die botst met de
+        # 3-kanaals Normalize (mean/std van 3) -> "tensor a (N) must match tensor
+        # b (3)". Bv. menselijk-geannoteerde gold-set-crops worden als RGBA
+        # opgeslagen. Eén centrale cast dekt alle aanroepers (regression-eval,
+        # similarity, bootstrap, harvest, detection); convert("RGB") is een no-op
+        # op een reeds-RGB-beeld (bit-identiek resultaat).
+        if image.mode != "RGB":
+            image = image.convert("RGB")
+
         try:
             import torch
             from torchvision import transforms

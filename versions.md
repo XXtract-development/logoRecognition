@@ -1,5 +1,12 @@
 # Versiegeschiedenis
 
+## 2026-07-21 (Keurmerk-voorbeelden met transparantielaag blokkeerden de kwaliteitscontrole niet langer)
+
+### De nachtelijke kwaliteitscontrole kon met-de-hand-getekende voorbeelden niet verwerken
+- De controleronde die nieuwe keurmerk-voorbeelden goedkeurt, moet eerst een set ijk-voorbeelden doorrekenen. Een deel daarvan — juist de met-de-hand-getekende correcties uit de beoordeel-app — was opgeslagen mét een transparantielaag, en daar liep de beeldherkenning op vast. Gevolg: elke batch werd veiligheidshalve apart gezet en er werd niets goedgekeurd
+- De beeldherkenning zet een plaatje nu altijd eerst om naar een standaardvorm zonder transparantie vóór het rekenen. Dat lost het voor alle onderdelen tegelijk op; aan de uitkomst voor gewone (transparantie-loze) plaatjes verandert niets
+- Er is een test toegevoegd die precies dit soort plaatje afvangt, zodat het niet opnieuw kan gebeuren
+
 ## 2026-07-21 (De nachtelijke keurmerk-aanvulling liep vast op een verborgen databasefout — opgelost)
 
 ### De nachtelijke controleronde van nieuwe keurmerk-voorbeelden stopte halverwege
