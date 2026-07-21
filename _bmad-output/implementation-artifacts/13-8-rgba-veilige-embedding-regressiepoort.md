@@ -1,6 +1,6 @@
 # Story 13.8: RGBA-veilige embedding — deblokkeer de regressiepoort
 
-Status: review
+Status: done
 
 <!-- Aangemaakt 2026-07-21 op basis van investigation-rgba-goldset-embedding-2026-07-21.md (BMAD investigate→story). Bugfix op afgeronde Epic 13 (vliegwiel), volgt op 13.7 (uuid-fix). Epic-13 staat al `in-progress`. -->
 

@@ -175,7 +175,7 @@ development_status:
   13-5-kwaliteitspoort-regressietest-promotie-en-quarantaine: done
   13-6-rollback-persistente-pauze-en-automatische-stilstand: done
   13-7-uuid-cast-promotielus-guardrail-queries: done  # 2026-07-21: fix (= ANY(::uuid[])) + pg-regressietest, adversarial PASS. AC5 (ACC-drain batch 12e27fbc) gated op go Friso
-  13-8-rgba-veilige-embedding-regressiepoort: review  # 2026-07-21: kernfix gebouwd (generate_embedding RGB-veilig) + ATDD RED->GREEN (echte torch), volledige ml-suite +3/0-regressie. AC3 (ACC-deploy) gated op go Friso
+  13-8-rgba-veilige-embedding-regressiepoort: done  # 2026-07-21: kernfix (generate_embedding RGB-veilig) + ATDD RED->GREEN, ml-suite +3/0-regressie, adversarial PASS (review-13-8.md). AC3 (ACC-deploy+drain) gated op go Friso
   epic-13-retrospective: optional
 
   epic-14: done  # 2026-07-03: 3/3 stories done, migratie 0016 lokaal, adversarial PASS (M1 gefixt: reject-idempotentie); api vitest 508/2skip
