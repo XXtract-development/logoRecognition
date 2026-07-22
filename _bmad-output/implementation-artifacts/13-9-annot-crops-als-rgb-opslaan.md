@@ -8,11 +8,12 @@ Status: review
 
 Als **datamanager**
 wil ik **dat met-de-hand-geannoteerde keurmerk-crops meteen als 3-kanaals RGB worden opgeslagen**
-zodat **de opslag consistent RGB is en downstream-verwerking (herkenning, vliegwiel-eval) nooit meer op een alfakanaal struikelt**.
+zodat **deze crops — de bewezen bron van de RGBA-blokkade in de vliegwiel-regressiepoort — niet langer met een alfakanaal in de opslag belanden**.
 
 ### Afbakening
-- **Upstream-cleanup, niet-blokkerend:** 13.8 vangt bestaande RGBA-crops al af bij embed-tijd (`generate_embedding` cast naar RGB). Deze story voorkomt dat er NIEUWE RGBA-crops ontstaan.
-- Alleen het opslaan van de annotatie-crop (`apps/api/src/api/v1/artwork-pipeline.ts`). Geen migratie, geen herverwerking van bestaande crops.
+- **Upstream-cleanup, niet-blokkerend:** 13.8 vangt bestaande RGBA-crops al af bij embed-tijd (`generate_embedding` cast naar RGB). Deze story voorkomt dat er NIEUWE RGBA-crops ontstaan via het annotatie-pad.
+- Alleen het opslaan van de annotatie-crop (`apps/api/src/api/v1/artwork-pipeline.ts`, `annot_*.png`). Geen migratie, geen herverwerking van bestaande crops.
+- **Expliciet NIET in scope:** andere opslagpaden die een ruwe (mogelijk RGBA) upload wegschrijven, zoals `apps/api/src/api/v1/reference-logos.ts` (referentie-logo-upload). Die blijven functioneel afgedekt door 13.8's embed-tijd-cast; een bredere RGB-normalisatie is een aparte afweging.
 
 ## Acceptatiecriteria
 1. **RGB-opslag.** Given een bron-artwork dat RGBA is (alfakanaal), when een reviewer een crop opslaat, then heeft het opgeslagen `annot_*.png` exact 3 kanalen (RGB), zonder alfakanaal.
@@ -20,8 +21,9 @@ zodat **de opslag consistent RGB is en downstream-verwerking (herkenning, vliegw
 
 ## Tasks / Subtasks
 - [x] 1. `artwork-pipeline.ts`: `.removeAlpha()` invoegen in de sharp-pijplijn vóór `.png()` (AC 1/2).
-- [x] 2. Test: sharp-pijplijn op een synthetische RGBA-buffer → output `metadata().channels === 3`; RGB-bron blijft 3 kanalen.
-- [ ] 3. versions.md; Engelse commit. Deploy (apps/api) gated op go Friso.
+- [x] 2. **Route-niveau** test in `flywheel-review-redirect.routes.test.ts`: `/annotate` met een RGBA-bronbuffer → assert op de buffer die daadwerkelijk aan `uploadReferenceLogo` wordt meegegeven (`channels === 3`, `hasAlpha === false`) én op de RGB-pixelwaarden (`[200,30,30]`, geen compositing → AC2). Raakt de productiecode: `.removeAlpha()` weghalen maakt de test rood.
+- [x] 3. versions.md bijgewerkt; Engelse commit met co-author.
+- [ ] 4. Deploy (apps/api) — gated op expliciete go van Friso.
 
 ## Dev Notes
 - Root: `sharp(buffer).extract(...).png()` behoudt het alfakanaal van RGBA-bron-artwork → RGBA-crop. `.removeAlpha()` laat de alfaband vallen en behoudt RGB — matcht PIL `convert("RGB")` (geen compositing), dus embedding-identiek aan 13.8's live-conversie.
@@ -32,10 +34,11 @@ zodat **de opslag consistent RGB is en downstream-verwerking (herkenning, vliegw
 ### Agent Model Used
 claude-opus-4-8 (orchestrator-directe implementatie; onafhankelijke review).
 ### Completion Notes List
-- `.removeAlpha()` toegevoegd (AC1/2). Test bevestigt 3-kanaals output op RGBA-bron + no-op op RGB.
+- `.removeAlpha()` toegevoegd (AC1/2).
+- **Review-remediatie (bevinding 1/3):** de eerste testopzet spiegelde de sharp-pijplijn in de test zelf en bood daardoor géén regressiebescherming (`.removeAlpha()` weghalen liet 'm groen). Vervangen door een route-niveau test die de échte handler draait en assert op de buffer die naar `uploadReferenceLogo` gaat, inclusief pixelwaarden voor AC2.
 ### File List
 - Gewijzigd: `apps/api/src/api/v1/artwork-pipeline.ts`
-- Nieuw: `apps/api/src/__tests__/services/artwork-crop-rgb-13-9.test.ts`
+- Gewijzigd: `apps/api/src/__tests__/api/flywheel-review-redirect.routes.test.ts` (route-niveau AC1/AC2-test)
 
 ## Change Log
 - 2026-07-22: Story + fix (nazorg #2 uit RGBA-investigation).

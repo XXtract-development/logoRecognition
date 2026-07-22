@@ -174,10 +174,10 @@ development_status:
   13-4-nachtelijke-promotielus-batching-en-guardrails: done
   13-5-kwaliteitspoort-regressietest-promotie-en-quarantaine: done
   13-6-rollback-persistente-pauze-en-automatische-stilstand: done
-  13-7-uuid-cast-promotielus-guardrail-queries: done  # 2026-07-21: fix (= ANY(::uuid[])) + pg-regressietest, adversarial PASS. AC5 (ACC-drain batch 12e27fbc) gated op go Friso
-  13-8-rgba-veilige-embedding-regressiepoort: done  # 2026-07-21: kernfix (generate_embedding RGB-veilig) + ATDD RED->GREEN, ml-suite +3/0-regressie, adversarial PASS (review-13-8.md). GEDEPLOYED+LIVE (b013797); vliegwiel end-to-end werkend (batch 788eeea6 passed, 5 promoted)
-  13-9-annot-crops-als-rgb-opslaan: review  # 2026-07-22: nazorg #2 — sharp .removeAlpha() zodat nieuwe annot-crops RGB zijn; test 3-kanaals bevestigd. Deploy (apps/api) gated op go Friso
-  13-10-cv2-test-isolatie-hygiene: review  # 2026-07-22: nazorg #3 — nep-cv2 __spec__ + monkeypatch.setitem (geen sys.modules-lek); no-eager probe groen in volledige suite. Test-only, geen deploy
+  13-7-uuid-cast-promotielus-guardrail-queries: done  # 2026-07-21: fix (= ANY(::uuid[])) codefix 8d980e1, adversarial PASS; GEDEPLOYED+LIVE, batch 12e27fbc gedraind
+  13-8-rgba-veilige-embedding-regressiepoort: done  # 2026-07-21: kernfix (generate_embedding RGB-veilig) codefix d11d8f1, adversarial PASS (review-13-8.md); GEDEPLOYED+LIVE; vliegwiel end-to-end werkend (batch 788eeea6 passed, 5 promoted)
+  13-9-annot-crops-als-rgb-opslaan: review  # 2026-07-22: nazorg #2 — sharp .removeAlpha(); route-test assert de ECHT geuploade buffer op 3 kanalen + RGB-waarden. Deploy (apps/api) gated op go Friso
+  13-10-cv2-test-isolatie-hygiene: review  # 2026-07-22: nazorg #3 — nep-cv2 __spec__ + monkeypatch.setitem; 13.8-test draait nu ZONDER eager-import en fungeert als lazy-torchvision-probe. Test-only, geen deploy
   epic-13-retrospective: optional
 
   epic-14: done  # 2026-07-03: 3/3 stories done, migratie 0016 lokaal, adversarial PASS (M1 gefixt: reject-idempotentie); api vitest 508/2skip

@@ -17,7 +17,7 @@ import cookie from '@fastify/cookie';
 import sharp from 'sharp';
 import { PrismaClient } from '@prisma/client';
 import { mlClient } from '../../services/ml-client';
-import { downloadTrainingObject } from '../../services/storage';
+import { downloadTrainingObject, uploadReferenceLogo } from '../../services/storage';
 
 const mockPrisma = new PrismaClient() as unknown as Record<string, any>;
 
@@ -142,5 +142,43 @@ describe('Story 19.12 — reviewstation-accept → directe referentie', () => {
       'EU_ORGANIC_FARMING'
     );
     expect(addSpy).not.toHaveBeenCalled();
+  });
+
+  // Story 13.9 — de crop die de route daadwerkelijk naar opslag schrijft moet
+  // 3-kanaals RGB zijn, óók als het bron-artwork RGBA is. Dit raakt de
+  // PRODUCTIEcode (`.removeAlpha()` in artwork-pipeline.ts): haal die weg en
+  // deze test wordt rood (4 kanalen).
+  it('Story 13.9: annotate slaat de crop als 3-kanaals RGB op, ook bij een RGBA-bron', async () => {
+    process.env.FLYWHEEL_NOMINATION_ENABLED = 'true';
+    (mlClient.registerReference as any).mockResolvedValueOnce({ added: true, reason: 'added' });
+    // RGBA-bron-artwork (mét alfakanaal) — precies het geval dat vóór 13.9 een
+    // RGBA-crop opleverde en de vliegwiel-regressiepoort fail-closed zette (13.8).
+    const rgbaPng = await sharp({
+      create: { width: 40, height: 40, channels: 4, background: { r: 200, g: 30, b: 30, alpha: 0.5 } },
+    })
+      .png()
+      .toBuffer();
+    (downloadTrainingObject as any).mockResolvedValue(rgbaPng);
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/v1/artwork/review-items/ri-0001/annotate',
+      payload: { rel: { x: 0.1, y: 0.1, width: 0.5, height: 0.5 } },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(uploadReferenceLogo).toHaveBeenCalled();
+
+    // AC1: de buffer die écht naar opslag gaat heeft 3 kanalen, geen alfa.
+    const uploaded = (uploadReferenceLogo as any).mock.calls[0][0] as Buffer;
+    const meta = await sharp(uploaded).metadata();
+    expect(meta.channels).toBe(3);
+    expect(meta.hasAlpha).toBe(false);
+
+    // AC2: removeAlpha dropt de alfaband zónder compositing — de RGB-waarden
+    // blijven exact staan (identiek aan de ml-side PIL `convert("RGB")`), dus
+    // embedding-identiek. Borgt tegen een toekomstige compositing-regressie.
+    const { data } = await sharp(uploaded).raw().toBuffer({ resolveWithObject: true });
+    expect([data[0], data[1], data[2]]).toEqual([200, 30, 30]);
   });
 });

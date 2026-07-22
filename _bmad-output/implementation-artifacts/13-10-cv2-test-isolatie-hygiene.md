@@ -22,7 +22,8 @@ zodat **tests die (lazy) de echte torchvision/cv2-import raken niet volgorde-afh
 ## Tasks / Subtasks
 - [x] 1. Nep-`cv2` een `__spec__` geven: `importlib.util.spec_from_loader("cv2", loader=None)` (beide fixtures) (AC 1).
 - [x] 2. `sys.modules["cv2"] = fake_cv2` → `monkeypatch.setitem(sys.modules, "cv2", fake_cv2)` (beide fixtures) (AC 2).
-- [ ] 3. Verificatie: volledige ml-suite groen; een lazy-torchvision-probe zónder eager-import slaagt in de volledige suite (AC 3). Geen deploy (test-only).
+- [x] 3. **Eager-import-workaround uit 13.8's test verwijderd**, zodat `test_generate_embedding_rgba_13_8.py` de echte lazy-torchvision-probe IS en permanent in de repo bewaakt of de cv2-pollutie terugkeert (AC 3). Geen deploy (test-only).
+- [x] 4. Verificatie: volledige ml-suite groen mét die probe (bewijs in Debug Log).
 
 ## Dev Notes
 - Boosdoener: bare `types.ModuleType("cv2")` → `__spec__ is None`; direct `sys.modules["cv2"] = fake_cv2` zonder teardown → lek. Een láter draaiende test die torchvision lazy importeert (bv. `generate_embedding`) crasht op `cv2.__spec__ is None` (13.8's test moest daarom eager torchvision importeren).
@@ -34,8 +35,11 @@ zodat **tests die (lazy) de echte torchvision/cv2-import raken niet volgorde-afh
 claude-opus-4-8 (orchestrator-directe implementatie; onafhankelijke review).
 ### Completion Notes List
 - `__spec__` + `monkeypatch.setitem` in beide fixtures (`patched`, `patched_c`).
+- **Review-remediatie (bevinding 2):** AC3 was als afgevinkt gepresenteerd zonder achterblijvend bewijs (de probe was een wegwerp-run). Nu structureel opgelost: 13.8's eager-`importorskip("torchvision")`-workaround is verwijderd, waardoor die test de lazy import écht uitoefent en permanent als regressieprobe fungeert. Suite-run als bewijs in de Debug Log.
+- **Review-remediatie (bevinding 4):** de comment bij `setitem` nuanceert nu expliciet dat alléén cv2 is opgelost en de `app.*`-stubs nog steeds lekken (bewust buiten scope).
 ### File List
 - Gewijzigd: `apps/ml-service/tests/unit/test_bootstrap_search_service.py`
+- Gewijzigd: `apps/ml-service/tests/unit/test_generate_embedding_rgba_13_8.py` (eager-import-workaround verwijderd → is nu de probe)
 
 ## Change Log
 - 2026-07-22: Story + fix (nazorg #3 uit RGBA-investigation).

@@ -20,13 +20,12 @@ from PIL import Image
 from app.ml.model_manager import ModelManager
 
 torch = pytest.importorskip("torch")
-# Importeer torchvision eager op collection-tijd (vóór enige test draait). De
-# echte ``generate_embedding`` doet ``from torchvision import transforms`` lazy;
-# zou torchvision pas tijdens onze test voor het eerst geladen worden, dan trapt
-# die import over een door een ándere test in ``sys.modules`` geïnjecteerde
-# nep-``cv2`` (zonder ``__spec__``) -> volgorde-afhankelijke flakiness. Eager
-# laden cachet torchvision schoon, ongeacht testvolgorde.
-pytest.importorskip("torchvision")
+# BEWUST GEEN eager torchvision-import: de echte ``generate_embedding`` doet
+# ``from torchvision import transforms`` LAZY. Deze test is daarmee tegelijk de
+# regressieprobe voor Story 13.10 — zou een andere test opnieuw een nep-``cv2``
+# zónder ``__spec__`` in ``sys.modules`` achterlaten, dan crasht die lazy import
+# hier op ``cv2.__spec__ is None`` en wordt deze test rood. (13.8 had hier
+# tijdelijk een eager-import-workaround; 13.10 nam de oorzaak weg.)
 
 
 def _stub_embedding_model(input_tensor):

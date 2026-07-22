@@ -201,7 +201,9 @@ def patched(monkeypatch):
 
     fake_cv2.imencode = _imencode
     # setitem i.p.v. directe toewijzing: monkeypatch herstelt cv2 ná de test, zodat
-    # de nep niet naar andere tests lekt (test-isolatie, geen sys.modules-vervuiling).
+    # de nep-cv2 niet naar andere tests lekt. NB: de app.*-stubs hierboven worden
+    # nog wél direct in sys.modules gezet en lekken dus nog steeds — bewust buiten
+    # scope van 13.10 (alleen cv2 brak de importlib-machinerie van latere tests).
     monkeypatch.setitem(sys.modules, "cv2", fake_cv2)
 
     # De module heeft numpy top-level; cv2 wordt lazy geïmporteerd (uit sys.modules).
@@ -495,7 +497,9 @@ def patched_c(monkeypatch):
     fake_cv2.resize = lambda a, size, interpolation=None: np.zeros((64, 64, 3), np.uint8)
     fake_cv2.imencode = lambda ext, crop: (True, np.frombuffer(b"png", np.uint8))
     # setitem i.p.v. directe toewijzing: monkeypatch herstelt cv2 ná de test, zodat
-    # de nep niet naar andere tests lekt (test-isolatie, geen sys.modules-vervuiling).
+    # de nep-cv2 niet naar andere tests lekt. NB: de app.*-stubs hierboven worden
+    # nog wél direct in sys.modules gezet en lekken dus nog steeds — bewust buiten
+    # scope van 13.10 (alleen cv2 brak de importlib-machinerie van latere tests).
     monkeypatch.setitem(sys.modules, "cv2", fake_cv2)
 
     # _content_digest: het zaad (ndarray) -> "seed"; regio-crops (strings) -> uniek
