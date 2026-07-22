@@ -1,39 +1,55 @@
-# Adversariële review — Story 13.9 + 13.10 (RGBA-nazorg)
+# Adversariële review — Story 13.9 + 13.10 (RGBA-nazorg) — RE-REVIEW na remediatie
 
 ```yaml
-reviewed_commit: d4b0b7a
+reviewed_commit: ab45ab3
+previous_review: d4b0b7a (verdict FAIL — 2 medium, 6 low)
 branch: epic/vliegwiel-13-9-10-nazorg
 base: origin/acc
-verdict: FAIL
-severity_count: {critical: 0, high: 0, medium: 2, low: 6}
+verdict: PASS
+severity_count: {critical: 0, high: 0, medium: 0, low: 4}
 ```
 
-## Wat is onafhankelijk geverifieerd (niet uit de story overgenomen)
+De twee blokkerende bevindingen zijn **structureel** opgelost (niet cosmetisch weggeschreven), en
+één eerdere bevinding was **mijn fout** — dat wordt hieronder eerlijk teruggedraaid.
+
+## Wat is in deze re-review onafhankelijk uitgevoerd
 
 | Verificatie | Methode | Uitkomst |
 |---|---|---|
-| `removeAlpha()` dropt alfa zónder compositing | sharp 0.33.5, RGBA-bron `rgba(200,30,30,0.5)` door exact de productie-pijplijn | out = 3 kanalen, `hasAlpha=false`, pixel = **200,30,30** → identiek aan PIL `convert("RGB")` |
-| No-op op RGB-bron | idem, RGB-bron `(10,20,30)` | 3 kanalen, pixel **10,20,30** ongewijzigd |
-| Grayscale(+alfa)-bron | b-w 1ch en b-w+alfa 2ch | mét removeAlpha 3ch / zónder removeAlpha 4ch → removeAlpha dropt uitsluitend de alfaband; de b-w→sRGB-promotie komt van de PNG-encoder en bestond al |
-| CMYK-bron | libvips `vips_image_hasalpha`: 4 banden mét interpretatie CMYK ⇒ géén alfa | removeAlpha is no-op, geen kanaalverlies |
-| api-suite regressie | `npx vitest run` in de worktree (node_modules gesymlinkt) | **962 pass / 0 fail** |
-| Nieuwe vitest-test draait groen | idem | 2/2 pass |
-| `spec_from_loader("cv2", loader=None)` | Python 3, `find_spec("cv2")` na injectie | geeft `ModuleSpec(name='cv2', loader=None)`; `find_spec` crasht niet meer |
-| `monkeypatch.setitem` herstelt afwezige key | `inspect.getsource(MonkeyPatch.undo)` (pytest 9.0.3) | `value is notset` ⇒ `del dictionary[key]` — dus ook correct als cv2 vóór de test afwezig was |
-| ml-suite draaien | — | **NIET mogelijk in deze omgeving** (geen numpy/venv). AC3 van 13.10 is dus niet empirisch bevestigd. |
+| Nieuwe route-test draait groen | `npx vitest run src/__tests__/api/flywheel-review-redirect.routes.test.ts` (node_modules gesymlinkt) | **4 pass / 0 fail** (3 bestaande + 1 nieuwe) |
+| **RED-claim gereproduceerd** | `.removeAlpha()` fysiek uit `artwork-pipeline.ts:1258` verwijderd, testfile opnieuw gedraaid | **3 pass / 1 FAIL** — `AssertionError: expected 4 to be 3` op r.175. Productiecode daarna hersteld (`git status` schoon). |
+| Volledige api-suite | `npx vitest run` in `apps/api` | **961 pass / 0 fail** (was 962; −2 verwijderde spiegel-tests, +1 route-test) |
+| Typecheck api | `npx tsc --noEmit -p tsconfig.json` | exit 0 |
+| Mock-index `calls[0][0]` correct | `grep uploadReferenceLogo apps/api/src/api/v1/artwork-pipeline.ts` → precies **één** aanroep (r.1263) in het annotate-pad; `vi.clearAllMocks()` in `beforeEach` (r.54) | geen eerdere upload-call mogelijk; empirisch bevestigd door de RED-run (die las de júiste buffer: 4 kanalen) |
+| Co-Authored-By in `d4b0b7a` | `git cat-file commit d4b0b7a` + `git log -1 --format='%(trailers:key=Co-Authored-By)'` | **trailer is aanwezig** → bevinding 5 was géén defect (zie hieronder) |
+| Co-Authored-By in `ab45ab3` | idem | aanwezig |
+| Andere spec-loze cv2-stubs in de ml-suite | `grep -rn 'ModuleType("cv2")' / 'sys.modules["cv2"]' over tests/` | `test_queue_harvest_19_10.py:103` en `test_queue_harvest_declared_20_2.py:56` maken óók een bare stub, maar registreren die via `monkeypatch.setitem` → **lekken niet**. `test_nutriscore_*` zetten de **echte** cv2 terug (heeft spec). De enige lekkende bron was bootstrap — die is gedicht. |
+| Collectievolgorde van de probe | alfabetisch binnen `tests/unit/`: `test_bootstrap_search_service.py` < `test_generate_embedding_rgba_13_8.py` | vervuiler draait vóór de probe ⇒ probe is effectief in de standaardvolgorde (zie N3) |
+| ml-suite draaien | geen numpy/torch/torchvision beschikbaar (python3, python3.11, geen venv, geen container) | **opnieuw niet mogelijk**; AC3's suite-cijfer blijft niet-reproduceerbaar in deze omgeving (zie N4) |
 
-## Bevindingen
+## Status van de 8 eerdere bevindingen
 
-1. `apps/api/src/__tests__/services/artwork-crop-rgb-13-9.test.ts:13-19` — de test herimplementeert de sharp-pijplijn lokaal i.p.v. de productiecode aan te roepen; `.removeAlpha()` uit `artwork-pipeline.ts` verwijderen laat deze test groen → nul regressiebescherming — **medium**
-2. `_bmad-output/implementation-artifacts/sprint-status.yaml:178` — claimt "no-eager probe groen in volledige suite" terwijl story-task 3 onafgevinkt is, er geen probe-artefact in de diff zit en 13.8's `pytest.importorskip("torchvision")` (de eager-workaround) nog gewoon in de repo staat → AC3 als afgevinkt gepresenteerd zonder bewijs — **medium**
-3. `apps/api/src/__tests__/services/artwork-crop-rgb-13-9.test.ts:29-31,40-41` — alleen `channels`/`hasAlpha` worden geassert; de kern van AC2 (RGB-waarden ongewijzigd, embedding-identiek aan PIL) wordt door geen enkele assert bewaakt (klopt feitelijk, maar breekt stil bij een sharp-upgrade naar compositing-gedrag) — **low**
-4. `apps/ml-service/tests/unit/test_bootstrap_search_service.py:160-176,467-483` — `app.services.classification/keurmerk_gate/region_proposer/storage` en `app.ml.model_manager` worden nog steeds via directe `sys.modules[...] =` geïnjecteerd zonder teardown; die nep-modules overschaduwen na afloop de échte modules voor later gecollecteerde tests. Pre-existing en expliciet out-of-scope verklaard, maar de "geen sys.modules-vervuiling"-comment op r.203/497 overdrijft wat is opgelost — **low**
-5. `commit d4b0b7a` — commit-body bevat geen `Co-Authored-By`-regel; in strijd met de commit-standaard (Engels is wél correct) — **low**
-6. `_bmad-output/implementation-artifacts/13-9-annot-crops-als-rgb-opslaan.md:24` — task 3 (`versions.md; Engelse commit`) staat op `[ ]` terwijl versions.md is bijgewerkt en de commit Engels is; alleen de deploy is nog open — checkbox is misleidend — **low**
-7. `_bmad-output/implementation-artifacts/sprint-status.yaml:175` — de 13.8-regel is in deze commit herschreven naar "GEDEPLOYED+LIVE (b013797)"; dat valt buiten de scope van 13.9/13.10, en `b013797` is de docs-commit, niet de codefix (`d11d8f1`) — **low**
-8. `apps/api/src/api/v1/reference-logos.ts:125` — referentie-logo's worden nog steeds als ruwe (mogelijk RGBA) upload opgeslagen; de story-belofte "downstream struikelt nooit meer op een alfakanaal" is breder dan de fix. Niet-blokkerend (13.8 vangt af bij embed-tijd), maar de formulering overreikt — **low**
+| # | Sev (was) | Status | Bewijs |
+|---|---|---|---|
+| **1** | medium | **OPGELOST** | Spiegel-test `artwork-crop-rgb-13-9.test.ts` is verwijderd (−44 regels). Vervangen door `apps/api/src/__tests__/api/flywheel-review-redirect.routes.test.ts:151-178`, die de échte Fastify-handler via `app.inject('POST …/annotate')` draait en assert op `(uploadReferenceLogo as any).mock.calls[0][0]`. Ik heb de RED-claim **zelf gereproduceerd**: zonder `.removeAlpha()` faalt de test met `expected 4 to be 3`. Dit is echte regressiebescherming. |
+| **2** | medium | **OPGELOST** | Optie 1 uit het vorige rapport is gekozen én consequent doorgevoerd: `pytest.importorskip("torchvision")` is uit `test_generate_embedding_rgba_13_8.py:22-28` verdwenen, waardoor die drie tests de lazy `from torchvision import transforms` (`model_manager.py:181`) écht uitoefenen en permanent als pollutieprobe in de repo staan. `sprint-status.yaml:180` claimt niet langer een wegwerp-probe maar beschrijft de structurele situatie. De claim is nu falsifieerbaar door de suite zelf i.p.v. door een verdwenen run. |
+| **3** | low | **OPGELOST** | `flywheel-review-redirect.routes.test.ts:176-177`: `sharp(uploaded).raw().toBuffer()` → `expect([data[0],data[1],data[2]]).toEqual([200,30,30])`. Dit bewaakt AC2's kern (alfa droppen zónder compositing); bij een sharp-upgrade naar compositing-gedrag wordt de test rood i.p.v. stil fout. |
+| **4** | low | **OPGELOST** | `test_bootstrap_search_service.py:202-204` en `498-500`: de comment stelt nu expliciet dat alléén cv2 is gedicht en dat de `app.*`-stubs nog steeds lekken (bewust buiten scope). Geen overclaim meer. |
+| **5** | low | **WAS GEEN DEFECT — mijn fout** | `git cat-file commit d4b0b7a` toont regel 23 van de body: `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>`, en `--format='%(trailers:key=Co-Authored-By)'` resolvet hem. De auteur heeft gelijk. Oorzaak van de valse melding: de git-proxy in deze omgeving levert bij `git log --format=%B | grep` een afgekapt/gefilterd resultaat (`grep -c` geeft nog steeds 0 terwijl `tail -3` de trailer wél toont) — een omgevings-artefact, geen commit-defect. Les: trailers uitsluitend via `git cat-file commit` of `%(trailers:…)` beoordelen. |
+| **6** | low | **OPGELOST** | `13-9-…md:22-26`: taak 3 (versions.md + Engelse commit met co-author) staat op `[x]`, de deploy is afgesplitst naar taak 4 en staat als enige nog op `[ ]` — wat de werkelijkheid is (deploy gated op go Friso). |
+| **7** | low | **OPGELOST** | `sprint-status.yaml:177-178` citeert nu de codefix-commits `8d980e1` (13.7) en `d11d8f1` (13.8) i.p.v. de docs-commit `b013797`. Beide hashes geverifieerd tegen `git log`: het zijn inderdaad de `fix(…)`-commits. |
+| **8** | low | **OPGELOST** | `13-9-…md:16` verklaart `apps/api/src/api/v1/reference-logos.ts` expliciet buiten scope en de story-belofte op r.11 is versmald van "downstream struikelt nooit meer op een alfakanaal" naar "deze crops … belanden niet langer met een alfakanaal in de opslag". De formulering overreikt niet meer. |
 
-Geen debug-code, geen ongewenste bestanden: de diff is exact 7 bestanden, alle relevant; worktree schoon.
+## Nieuwe bevindingen (alle low — niet blokkerend)
+
+1. `_bmad-output/implementation-artifacts/13-10-cv2-test-isolatie-hygiene.md:26` — taak 4 en de completion note verwijzen naar bewijs "in de Debug Log", maar de story bevat geen Debug Log-sectie; het suite-cijfer (179 passed) staat alléén in de commit-body van `ab45ab3` — **low**
+2. `apps/ml-service/tests/unit/test_generate_embedding_rgba_13_8.py:22` — zonder `importorskip("torchvision")` falen deze 3 tests hard (i.p.v. skip) in een omgeving mét torch maar zónder torchvision; risico klein omdat `requirements.txt:16-17` beide samen pint, maar de skip-vangnet-asymmetrie met `torch` is nu onbedoeld — **low**
+3. `apps/ml-service/tests/unit/test_generate_embedding_rgba_13_8.py:23-28` — de probe detecteert pollutie alleen als de vervuilende test eerder draait; dat berust op de alfabetische collectievolgorde (`test_bootstrap_…` < `test_generate_…`) en is nergens afgedwongen of gedocumenteerd. Bij random test-ordering of een hernoeming valt de dekking stil weg — **low**
+4. `commit ab45ab3` — het ml-suite-cijfer daalt van 182 (`d4b0b7a`) naar 179 zonder toelichting; plausibel verklaard door het wegvallen van het wegwerp-probebestand (3 tests), maar dat staat nergens vastgelegd en is in deze omgeving niet reproduceerbaar (geen torch/numpy) — **low, traceerbaarheid**
+
+Geen scope-overschrijding in de remediatie-diff: 8 bestanden, alle terug te voeren op een concrete bevinding.
+Geen debug-code, geen ongewenste bestanden, worktree schoon. De 3 bestaande tests in
+`flywheel-review-redirect.routes.test.ts` (19.12) zijn ongewijzigd en blijven groen.
 
 ## Acceptance-audit
 
@@ -41,26 +57,24 @@ Geen debug-code, geen ongewenste bestanden: de diff is exact 7 bestanden, alle r
 
 | AC | Oordeel | Bewijs |
 |---|---|---|
-| **AC1** RGBA-bron → opgeslagen `annot_*.png` heeft exact 3 kanalen | **gedeeltelijk gedekt** | Gedrag zelfstandig bevestigd (RGBA-bron door de productie-pijplijn → 3 kanalen, `hasAlpha=false`). Code-wijziging op `artwork-pipeline.ts:1256-1260` is correct. Maar de AC-formulering is "when een reviewer een crop opslaat" — de route `POST /review-items/:id/annotate` wordt door geen enkele test met een RGBA-bron doorlopen. Terwijl de haak bestaat: `flywheel-review-redirect.routes.test.ts:121-145` roept exact die route al aan met een echte sharp-buffer en gemockte upload — daar had de crop-buffer op 3 kanalen geassert kunnen worden. → bevinding 1. |
-| **AC2** RGB-behoud + embedding-consistentie met PIL `convert("RGB")` | **feitelijk waar, niet getest** | Zelf gemeten: RGBA `(200,30,30,α=0.5)` → `(200,30,30)`; RGB-bron ongewijzigd. Geen compositing, dus embedding-identiek aan `PIL.convert("RGB")`. De testsuite assert dit nergens → bevinding 3. Rand: 16-bit RGBA-bron blijft 16-bit RGB, waar PIL bij inlezen naar 8-bit gaat — theoretische afwijking, pre-existing (`.png()` behield de diepte al), niet blokkerend. |
+| **AC1** RGBA-bron → opgeslagen `annot_*.png` heeft exact 3 kanalen | **GEDEKT** | Productiecode `artwork-pipeline.ts:1256-1260` voegt `.removeAlpha()` toe vóór `.png()`. De AC-formulering ("when een reviewer een crop opslaat") wordt nu op routeniveau uitgeoefend: `POST /api/v1/artwork/review-items/:id/annotate` met een RGBA-bron via `downloadTrainingObject`, assert `channels === 3` en `hasAlpha === false` op de buffer die naar `uploadReferenceLogo` gaat. RED-check zelf uitgevoerd: zonder de fix rapporteert de test 4 kanalen. |
+| **AC2** RGB-behoud + embedding-consistentie met PIL `convert("RGB")` | **GEDEKT** | Pixelassert `[200,30,30]` op de daadwerkelijk geüploade crop bewijst dat de alfaband wordt gedropt zónder compositing (compositing op wit zou ~`227,142,142` geven) — identiek aan `PIL.convert("RGB")`, dus embedding-identiek aan 13.8's live-conversie. De no-op op een RGB-bron blijft gedekt door de bestaande 19.12-annotate-test (RGB-bron, route slaagt) plus de sharp-metingen uit de eerste review. Rand blijft: een 16-bit RGBA-bron blijft 16-bit RGB waar PIL naar 8-bit gaat — pre-existing (`.png()` behield de diepte al), niet blokkerend. |
 
 ### Story 13.10
 
 | AC | Oordeel | Bewijs |
 |---|---|---|
-| **AC1** geldige `__spec__` op de nep-cv2 | **gedekt** | `importlib.util` is top-level geïmporteerd (r.19); `spec_from_loader("cv2", loader=None)` levert een echte `ModuleSpec` (zelf uitgevoerd), en `find_spec("cv2")` geeft die terug i.p.v. `ValueError: cv2.__spec__ is None`. Toegepast in béide fixtures (r.183, r.487). |
-| **AC2** geen lek — cv2 hersteld na de test | **gedekt** | `monkeypatch` is fixture-parameter in zowel `patched` (r.135) als `patched_c` (r.431); `MonkeyPatch.undo` (pytest 9.0.3, broncode gelezen) doet `del sys.modules["cv2"]` als de key vooraf ontbrak en herstelt anders de oude waarde. De nep blijft tíjdens de test actief (setitem zet direct), dus het bootstrap-gedrag is ongewijzigd; de bestaande in-place mutaties op r.278-279/319 blijven werken. |
-| **AC3** geen regressie + lazy-torchvision-test slaagt zónder eager-import-workaround | **niet gedekt / onbewezen** | ml-suite lokaal niet draaibaar (geen numpy). Task 3 staat op `[ ]`. `apps/ml-service/tests/unit/test_generate_embedding_rgba_13_8.py:23-29` bevat nog steeds de eager `pytest.importorskip("torchvision")`-workaround; de "zónder workaround"-probe is niet in de repo achtergebleven. sprint-status claimt hem tóch groen → bevinding 2. |
+| **AC1** geldige `__spec__` op de nep-cv2 | **GEDEKT** | `importlib.util` top-level (r.18); `fake_cv2.__spec__ = importlib.util.spec_from_loader("cv2", loader=None)` in béide fixtures (r.185 `patched`, r.491 `patched_c`). Eerder zelf uitgevoerd: dit levert een echte `ModuleSpec`, waarna `find_spec("cv2")` niet meer op `ValueError: cv2.__spec__ is None` klapt. |
+| **AC2** geen lek — cv2 hersteld na de test | **GEDEKT** | `monkeypatch.setitem(sys.modules, "cv2", fake_cv2)` in beide fixtures (r.207, r.503); `MonkeyPatch.undo` verwijdert de key als die vooraf ontbrak en herstelt hem anders. De in-place `imdecode`-mutaties op r.281/321 raken de fake (die tijdens de test in `sys.modules` staat) en niet de echte cv2 — die fake wordt per test opnieuw gebouwd, dus ook daar geen residu. |
+| **AC3** geen regressie + lazy-torchvision-test slaagt zónder eager-import-workaround | **GEDEKT (structureel); suite-cijfer niet reproduceerbaar** | De workaround is daadwerkelijk verwijderd, en `generate_embedding` importeert torchvision aantoonbaar lazy (`model_manager.py:181`) — de test oefent die import dus echt uit en is nu de permanente probe die AC3 bewaakt. Ik heb bovendien geverifieerd dat er geen andere lekkende spec-loze cv2-stub in de suite meer bestaat. Wat ik **niet** kan bevestigen is de telling "179 passed / 0 failed": in deze omgeving ontbreken numpy/torch/torchvision (zie N4). Dat is een omgevingsbeperking, geen aanwijzing voor een defect — de eerdere reden voor medium (onbewijsbare claim zónder achterblijvend artefact) is weggenomen doordat het bewijs nu in de repo staat. |
 
-## Wat moet wijzigen vóór PASS
+## Conclusie
 
-1. **(bevinding 1)** Laat de 13.9-test de productiecode raken: breid `flywheel-review-redirect.routes.test.ts` (of een nieuwe route-test) uit met een RGBA-bronbuffer via `downloadTrainingObject`, en assert op de buffer die aan `uploadReferenceLogo` wordt meegegeven: `(await sharp(buf).metadata()).channels === 3`. De huidige spiegel-test mag blijven als documentatie, maar telt niet als dekking.
-2. **(bevinding 2)** Kies één van beide en maak het consistent:
-   - laat de no-eager-probe als test in de repo achter (bv. `test_lazy_torchvision_no_eager.py`) en verwijder de eager `pytest.importorskip("torchvision")` uit `test_generate_embedding_rgba_13_8.py`, met een suite-run als bewijs; **óf**
-   - haal de claim uit `sprint-status.yaml:178` en noteer AC3 expliciet als "nog te verifiëren" zolang task 3 open staat.
+**PASS.** Beide blokkerende bevindingen zijn bij de wortel opgelost: de 13.9-test raakt nu
+aantoonbaar de productiecode (RED-check door mij gereproduceerd) en 13.10's AC3 wordt niet meer
+door een verdwenen run gedragen maar door een permanente probe in de suite. Bevinding 5 was een
+onterechte melding van mijn kant; dat is hierboven rechtgezet. De vier resterende punten zijn
+documentatie-/robuustheidsnuances zonder gedragsrisico.
 
-## Aanbevolen (niet blokkerend)
-
-- Bevinding 3: één extra assert op de RGB-pixelwaarden (`.raw().toBuffer()` → `[200,30,30]`) om AC2's kern te borgen.
-- Bevinding 4: comment op r.203/497 nuanceren ("cv2 lekt niet meer; de app.*-stubs nog wél — bewust buiten scope").
-- Bevindingen 5-7: commit amenden met `Co-Authored-By`, task 3 van 13.9 afvinken op alles behalve deploy, en de 13.8-statusregel corrigeren naar de codefix-commit `d11d8f1`.
+Rest-actie buiten deze review: de deploy van `apps/api` (13.9) staat nog open en blijft gated op
+expliciete go.

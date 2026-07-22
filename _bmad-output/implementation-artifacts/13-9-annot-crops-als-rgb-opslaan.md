@@ -1,6 +1,6 @@
 # Story 13.9: Geannoteerde crops als RGB opslaan (upstream-tegenhanger van 13.8)
 
-Status: review
+Status: done
 
 <!-- Nazorg-opvolgpunt #2 uit de RGBA-investigation (2026-07-21). Epic-13, na 13.8. -->
 
@@ -33,6 +33,12 @@ zodat **deze crops — de bewezen bron van de RGBA-blokkade in de vliegwiel-regr
 ## Dev Agent Record
 ### Agent Model Used
 claude-opus-4-8 (orchestrator-directe implementatie; onafhankelijke review).
+
+### Debug Log References
+- **Route-test groen:** `flywheel-review-redirect.routes.test.ts` 4/4 passed (3 bestaande + de nieuwe 13.9-test).
+- **RED-check (bewijst dekking):** met `.removeAlpha()` uit `artwork-pipeline.ts` verwijderd faalt de nieuwe test op `expect(meta.channels).toBe(3)` (`expected 4 to be 3`); ná herstel weer groen en `git diff` schoon. De test beschermt dus aantoonbaar de productiecode — anders dan de eerste (verwijderde) spiegel-test.
+- **Volledige apps/api-suite:** **961 passed / 0 failed / 2 skipped / 37 todo** (83 bestanden). Telling t.o.v. de vorige ronde: −2 (spiegel-test verwijderd) +1 (route-test toegevoegd).
+- **Gedrag onafhankelijk gemeten:** RGBA-bron `rgba(200,30,30,α=0.5)` door de productie-pijplijn → 3 kanalen, `hasAlpha=false`, pixel exact `200,30,30` (geen compositing) → embedding-identiek aan de ml-side PIL `convert("RGB")`. RGB-bron blijft ongewijzigd.
 ### Completion Notes List
 - `.removeAlpha()` toegevoegd (AC1/2).
 - **Review-remediatie (bevinding 1/3):** de eerste testopzet spiegelde de sharp-pijplijn in de test zelf en bood daardoor géén regressiebescherming (`.removeAlpha()` weghalen liet 'm groen). Vervangen door een route-niveau test die de échte handler draait en assert op de buffer die naar `uploadReferenceLogo` gaat, inclusief pixelwaarden voor AC2.

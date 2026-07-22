@@ -176,8 +176,8 @@ development_status:
   13-6-rollback-persistente-pauze-en-automatische-stilstand: done
   13-7-uuid-cast-promotielus-guardrail-queries: done  # 2026-07-21: fix (= ANY(::uuid[])) codefix 8d980e1, adversarial PASS; GEDEPLOYED+LIVE, batch 12e27fbc gedraind
   13-8-rgba-veilige-embedding-regressiepoort: done  # 2026-07-21: kernfix (generate_embedding RGB-veilig) codefix d11d8f1, adversarial PASS (review-13-8.md); GEDEPLOYED+LIVE; vliegwiel end-to-end werkend (batch 788eeea6 passed, 5 promoted)
-  13-9-annot-crops-als-rgb-opslaan: review  # 2026-07-22: nazorg #2 — sharp .removeAlpha(); route-test assert de ECHT geuploade buffer op 3 kanalen + RGB-waarden. Deploy (apps/api) gated op go Friso
-  13-10-cv2-test-isolatie-hygiene: review  # 2026-07-22: nazorg #3 — nep-cv2 __spec__ + monkeypatch.setitem; 13.8-test draait nu ZONDER eager-import en fungeert als lazy-torchvision-probe. Test-only, geen deploy
+  13-9-annot-crops-als-rgb-opslaan: done  # 2026-07-22: nazorg #2 — sharp .removeAlpha(); route-test assert de ECHT geuploade buffer op 3 kanalen + RGB-waarden. Deploy (apps/api) gated op go Friso
+  13-10-cv2-test-isolatie-hygiene: done  # 2026-07-22: nazorg #3 — nep-cv2 __spec__ + monkeypatch.setitem; 13.8-test draait nu ZONDER eager-import en fungeert als lazy-torchvision-probe. Test-only, geen deploy
   epic-13-retrospective: optional
 
   epic-14: done  # 2026-07-03: 3/3 stories done, migratie 0016 lokaal, adversarial PASS (M1 gefixt: reject-idempotentie); api vitest 508/2skip

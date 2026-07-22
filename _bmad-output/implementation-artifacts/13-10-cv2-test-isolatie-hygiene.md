@@ -1,6 +1,6 @@
 # Story 13.10: cv2 test-isolatie — geen sys.modules-lek meer
 
-Status: review
+Status: done
 
 <!-- Nazorg-opvolgpunt #3 uit de RGBA-investigation (2026-07-21). Test-hygiëne in de ml-suite. -->
 
@@ -33,6 +33,12 @@ zodat **tests die (lazy) de echte torchvision/cv2-import raken niet volgorde-afh
 ## Dev Agent Record
 ### Agent Model Used
 claude-opus-4-8 (orchestrator-directe implementatie; onafhankelijke review).
+
+### Debug Log References
+- **Volledige ml-suite (AC3-bewijs)**, gedraaid in het ml-image `logo-recognition-ml:b013797` met de branch-tests gemount, exclusief 4 pré-existente omgevings-only uitvallers (`test_correct_nutriscore_labels`, `test_restore_recyclable_refs_19_13`, `test_no_node_content_hash`, `test_phash_service` — die falen op ontbrekende `scripts/`/`requirements.txt`/padstructuur in het PROD-image, niet op deze wijziging): **179 passed / 0 failed / 14 skipped**.
+- **Testtelling 182 → 179 verklaard:** de eerste verificatieronde draaide met een wégwerp-probe-bestand (`test_pollution_probe.py`, 3 tests) náást de 13.8-test. Die wegwerp-probe is verwijderd omdat 13.8's eigen test — ná het schrappen van de eager-import-workaround — nu zélf de probe is. 182 − 3 = 179; er is dus geen test verdwenen, alleen de duplicaat.
+- **Probe-werking bevestigd:** met de eager-import-workaround weg importeert `generate_embedding` torchvision lazy tijdens de test; die import slaagt nu ook ná de bootstrap-fixtures → de `cv2.__spec__ is None`-crash treedt niet meer op.
+- **Skip-vriendelijkheid behouden:** torchvision-aanwezigheid wordt met `importlib.util.find_spec` gecheckt (resolven zonder importeren), zodat een omgeving zónder torchvision netjes skipt in plaats van hard faalt — zonder de lazy import (de probe) te ondermijnen.
 ### Completion Notes List
 - `__spec__` + `monkeypatch.setitem` in beide fixtures (`patched`, `patched_c`).
 - **Review-remediatie (bevinding 2):** AC3 was als afgevinkt gepresenteerd zonder achterblijvend bewijs (de probe was een wegwerp-run). Nu structureel opgelost: 13.8's eager-`importorskip("torchvision")`-workaround is verwijderd, waardoor die test de lazy import écht uitoefent en permanent als regressieprobe fungeert. Suite-run als bewijs in de Debug Log.
