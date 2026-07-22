@@ -179,6 +179,10 @@ def patched(monkeypatch):
     # in een 4x4-array (geldig); imencode slaagt altijd. Het zaad-beeld krijgt tag
     # SEED, de eerste regio MATCH, de tweede MISS.
     fake_cv2 = types.ModuleType("cv2")
+    # Geef de nep-cv2 een geldige __spec__: zonder spec leverde de bare ModuleType
+    # `cv2.__spec__ is None`, wat importlib-machinerie in een láter draaiende test
+    # (bv. torchvision's lazy import) liet crashen — volgorde-afhankelijke flakiness.
+    fake_cv2.__spec__ = importlib.util.spec_from_loader("cv2", loader=None)
     fake_cv2.IMREAD_COLOR = 1
     fake_cv2.COLOR_BGR2RGB = 4
     fake_cv2.INTER_AREA = 3
@@ -196,7 +200,9 @@ def patched(monkeypatch):
         return True, np.frombuffer(b"png", np.uint8)
 
     fake_cv2.imencode = _imencode
-    sys.modules["cv2"] = fake_cv2
+    # setitem i.p.v. directe toewijzing: monkeypatch herstelt cv2 ná de test, zodat
+    # de nep niet naar andere tests lekt (test-isolatie, geen sys.modules-vervuiling).
+    monkeypatch.setitem(sys.modules, "cv2", fake_cv2)
 
     # De module heeft numpy top-level; cv2 wordt lazy geïmporteerd (uit sys.modules).
     # _crop_bgr en _content_digest zijn module-functies — patch ze zodat crops de
@@ -477,6 +483,10 @@ def patched_c(monkeypatch):
     sys.modules["app.services.storage"] = st_mod
 
     fake_cv2 = types.ModuleType("cv2")
+    # Geef de nep-cv2 een geldige __spec__: zonder spec leverde de bare ModuleType
+    # `cv2.__spec__ is None`, wat importlib-machinerie in een láter draaiende test
+    # (bv. torchvision's lazy import) liet crashen — volgorde-afhankelijke flakiness.
+    fake_cv2.__spec__ = importlib.util.spec_from_loader("cv2", loader=None)
     fake_cv2.IMREAD_COLOR = 1
     fake_cv2.COLOR_BGR2RGB = 4
     fake_cv2.INTER_AREA = 3
@@ -484,7 +494,9 @@ def patched_c(monkeypatch):
     fake_cv2.cvtColor = lambda a, code: a
     fake_cv2.resize = lambda a, size, interpolation=None: np.zeros((64, 64, 3), np.uint8)
     fake_cv2.imencode = lambda ext, crop: (True, np.frombuffer(b"png", np.uint8))
-    sys.modules["cv2"] = fake_cv2
+    # setitem i.p.v. directe toewijzing: monkeypatch herstelt cv2 ná de test, zodat
+    # de nep niet naar andere tests lekt (test-isolatie, geen sys.modules-vervuiling).
+    monkeypatch.setitem(sys.modules, "cv2", fake_cv2)
 
     # _content_digest: het zaad (ndarray) -> "seed"; regio-crops (strings) -> uniek
     # per tag, zodat NFR-6 alleen slaat als een test dat expliciet forceert.

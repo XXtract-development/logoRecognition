@@ -1,5 +1,10 @@
 # Versiegeschiedenis
 
+## 2026-07-22 (Nieuwe met-de-hand-getekende keurmerk-voorbeelden worden meteen in de juiste vorm opgeslagen)
+
+### Vervolg op de transparantielaag-oplossing
+- Met-de-hand-getekende keurmerk-voorbeelden werden opgeslagen mét transparantielaag; dat was de oorzaak dat de nachtelijke kwaliteitscontrole eerder vastliep. De draaiende controle ving dat al af, maar nu worden nieuwe voorbeelden ook meteen zónder transparantielaag opgeslagen, zodat het probleem bij de bron niet meer kan ontstaan. Aan bestaande voorbeelden of aan de weergave verandert niets
+
 ## 2026-07-21 (Keurmerk-voorbeelden met transparantielaag blokkeerden de kwaliteitscontrole niet langer)
 
 ### De nachtelijke kwaliteitscontrole kon met-de-hand-getekende voorbeelden niet verwerken

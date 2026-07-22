@@ -1246,7 +1246,18 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
       const w = Math.max(2, Math.min(Math.round(rel.width * W), W - x));
       const h = Math.max(2, Math.min(Math.round(rel.height * H), H - y));
 
-      const cropBuf = await sharp(buffer).extract({ left: x, top: y, width: w, height: h }).png().toBuffer();
+      // removeAlpha(): sla de crop op als 3-kanaals RGB. Bron-artwork kan RGBA
+      // zijn (PDF-render/PNG met alfa); een RGBA-crop brak eerder de embedding in
+      // de vliegwiel-regressiepoort (Story 13.8, fail-closed quarantine). Dit is
+      // de upstream-tegenhanger: nieuwe crops zijn meteen RGB. removeAlpha laat
+      // de alfalaag vallen en behoudt de RGB-waarden ongewijzigd — exact zoals de
+      // ml-side PIL `convert("RGB")` (geen compositing), dus embedding-identiek.
+      // No-op op een reeds-RGB-bron.
+      const cropBuf = await sharp(buffer)
+        .extract({ left: x, top: y, width: w, height: h })
+        .removeAlpha()
+        .png()
+        .toBuffer();
       const code = override || item.t3777Code;
       const cropKey = `artwork-crops/${item.gtin}/annot_${id}.png`;
       await uploadReferenceLogo(cropBuf, cropKey, 'image/png');
