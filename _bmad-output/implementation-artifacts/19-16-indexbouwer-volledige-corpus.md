@@ -149,6 +149,17 @@ Mediums verwerkt: foutratio-noemer is nu de **verwerkte** GTINs (90% fouten op e
 - **RED-bewijs**: de limiet-check uitzetten maakt exact de H2-test rood; 7a/7d uitzetten exact die twee. Na herstel telkens schoon.
 - **Volledige api-suite**: 992 passed / 6 failed. Alle zes slagen **geïsoleerd** (artwork-detection-orchestration 17/17 ×3; de drie flywheel-routes 12/13/14; cohort 21/21 ×3). De **basis `origin/acc`** varieert in dezelfde opzet zelf tussen **1 en 7** uitvallers per run. Belasting-afhankelijke, bestaande instabiliteit — geen regressie.
 
+### Her-review-remediatie (2026-07-26, `review-19-16-code-v2.md` → deploy PASS, story-done FAIL op N1)
+De her-review bevestigde H1 en H2 als opgelost en vond één nieuwe **high**, die klopte en scherp was:
+- **N1 — de backoff was in productie een no-op.** Mijn twee eigen criteria vochten elkaar: AC4 cachet een `api-fout` (300s) en AC9 probeert opnieuw. De herkansing riep `resolveDeclaredMarks` opnieuw aan, kreeg de zojuist gecachete fout terug en **bereikte de bron nooit**. Hij werkte alleen als Redis stuk was — precies wanneer je hem niet nodig hebt. De reviewer bewees dit met een wegwerp-test tegen de échte service: 3 aanroepen → **1** `fetch`. De test die "hij probeert opnieuw" claimde, mockte de hele service weg en toetste dus de mock.
+  **Opgelost door de herkansing ONDER de cache te leggen** (`fetchTradeItemXmlWithRetry`, in de transportlaag). Dat lost meteen ook N2 en N3 op: de samengestelde stap (inclusief de mediaserver-aanroep) wordt niet meer herhaald, dus geen 3× zoveel gelijktijdige verzoeken en geen per-GTIN worst case van ~91s — de transport-herkansingen vallen binnen het bestaande per-GTIN budget.
+- De scriptniveau-retry en de bijbehorende helpers (`getMaxRetries`, `backoffDelayMs`, `sleep`, de `retries`-optie) zijn verwijderd; de mock-gebaseerde backoff-tests zijn vervangen door tests die **echte fetch-aanroepen tellen**.
+- Lows meegenomen: ondergrens in de body-aborttest (zonder die grens zou hij ook slagen bij connection-refused en niets bewijzen).
+
+**RED-bewijs:** zet de herkansing terug boven de cache (de oude opzet) en exact de twee nieuwe backoff-tests worden rood.
+
+**Verificatie:** tsc 0. Story-suites + gedeelde service + live paden: **165 passed**. Volledige api-suite: 992 passed / 5 failed — dezelfde bekende, belasting-afhankelijke set die geïsoleerd slaagt en waarvan de basis zelf tussen 1 en 7 varieert.
+
 ## Change Log
 - 2026-07-22: Story aangemaakt (nazorg 19.3).
 - 2026-07-25: Herschreven na adversariële review — verdict FAIL geadresseerd.

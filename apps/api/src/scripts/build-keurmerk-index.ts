@@ -47,6 +47,7 @@ import prisma from '../core/db';
 import {
   resolveDeclaredMarks,
   catalogEnvTag,
+  catalogFetchRetries,
   marksCacheStats,
   type DeclaredMark,
 } from '../services/t3777-declarations';
@@ -371,18 +372,6 @@ function mapDeclarationReason(reason: string): CollectReason {
   }
 }
 
-export const getMaxRetries = (): number => {
-  const v = parseInt(process.env.KEURMERK_INDEX_RETRIES ?? '', 10);
-  return Number.isFinite(v) && v >= 0 ? Math.min(v, 5) : 2;
-};
-
-/** Exponentiële wachttijd vóór poging `attempt` (0-based): 500ms, 1s, 2s, … */
-export function backoffDelayMs(attempt: number): number {
-  return 500 * Math.pow(2, attempt);
-}
-
-const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
-
 /** Verstrijkt het budget vóór `p`, dan wint deze race met een `timeout`-uitkomst. */
 function withBudget<T>(p: Promise<T>, ms: number, onTimeout: T): Promise<T> {
   return new Promise<T>((resolve) => {
@@ -421,8 +410,6 @@ export async function collectGtinData(
     gtinTimeoutMs?: number;
     maxRuntimeMs?: number;
     progressEvery?: number;
-    /** Aantal HERkansingen bij een transiënte fout. 0 = uit (isoleert het budget). */
-    retries?: number;
     onProgress?: (line: string) => void;
   } = {}
 ): Promise<CollectOutcome> {
@@ -430,7 +417,6 @@ export async function collectGtinData(
   const gtinTimeoutMs = opts.gtinTimeoutMs ?? getGtinTimeoutMs();
   const maxRuntimeMs = opts.maxRuntimeMs ?? getMaxRuntimeMs();
   const progressEvery = opts.progressEvery ?? getProgressEvery();
-  const maxRetries = opts.retries ?? getMaxRetries();
   const emit = opts.onProgress ?? ((line: string) => process.stdout.write(line + '\n'));
 
   const out: GtinData[] = [];
@@ -452,41 +438,30 @@ export async function collectGtinData(
 
     const chunk = universe.slice(i, i + concurrency);
     const results = await Promise.all(
-      chunk.map(async ({ gtin, gln }) => {
-        // AC9 — exponentiële backoff bij een TRANSIËNTE fout (`api-fout` dekt 429,
-        // 5xx, netwerkfouten en aborts) of een timeout. De onderliggende service
-        // vertaalt statuscodes al naar reden-strings, dus 429 en 5xx zijn hier niet
-        // los te onderscheiden; opnieuw proberen op `api-fout` is de beschikbare
-        // benadering. 404 en lege-declaratie zijn stabiele antwoorden → nooit retry.
-        let last: { entry: GtinData; reason: CollectReason } = {
-          entry: { gtin, gln, marks: [], labels: [] },
-          reason: 'timeout',
-        };
-        for (let attempt = 0; attempt <= maxRetries; attempt++) {
-          if (attempt > 0) {
-            // Nooit over de globale deadline heen blijven proberen.
-            if (Date.now() - startedAt >= maxRuntimeMs) break;
-            await sleep(backoffDelayMs(attempt - 1));
-          }
-          last = await withBudget(
-            (async (): Promise<{ entry: GtinData; reason: CollectReason }> => {
-              const [marksResult, mediaItems] = await Promise.all([
-                resolveDeclaredMarks(gtin, gln),
-                mediaServerClient.discoverArtwork(gtin).catch(() => []),
-              ]);
-              const labels = mediaItems.map((m) => m.previewUrl).filter((u): u is string => !!u);
-              return {
-                entry: { gtin, gln, marks: marksResult.marks, labels },
-                reason: mapDeclarationReason(marksResult.reason),
-              };
-            })(),
-            gtinTimeoutMs,
-            { entry: { gtin, gln, marks: [], labels: [] }, reason: 'timeout' as CollectReason }
-          );
-          if (last.reason !== 'api-fout' && last.reason !== 'timeout') break;
-        }
-        return last;
-      })
+      chunk.map(({ gtin, gln }) =>
+        // GEEN herkansing op dit niveau. Die zat hier eerst, maar was in productie
+        // een no-op: de herkansing riep `resolveDeclaredMarks` opnieuw aan, kreeg de
+        // zojuist gecachete `api-fout` terug en bereikte de bron nooit. Bovendien
+        // herhaalde hij de HELE samengestelde stap terwijl de vorige poging niet
+        // geannuleerd wordt — tot 3x zoveel gelijktijdige mediaserver-verzoeken, en
+        // een per-GTIN worst case van ~91s i.p.v. 30s. De herkansing zit nu ONDER de
+        // cache, in de transportlaag (`fetchTradeItemXmlWithRetry`).
+        withBudget(
+          (async (): Promise<{ entry: GtinData; reason: CollectReason }> => {
+            const [marksResult, mediaItems] = await Promise.all([
+              resolveDeclaredMarks(gtin, gln),
+              mediaServerClient.discoverArtwork(gtin).catch(() => []),
+            ]);
+            const labels = mediaItems.map((m) => m.previewUrl).filter((u): u is string => !!u);
+            return {
+              entry: { gtin, gln, marks: marksResult.marks, labels },
+              reason: mapDeclarationReason(marksResult.reason),
+            };
+          })(),
+          gtinTimeoutMs,
+          { entry: { gtin, gln, marks: [], labels: [] }, reason: 'timeout' as CollectReason }
+        )
+      )
     );
 
     for (const r of results) {
@@ -689,7 +664,7 @@ async function main(): Promise<void> {
   /* eslint-disable no-console */
   console.log(
     `Start: ${universe.length}/${universeTotal} GTINs · bron=${envTag} · concurrency=${getConcurrency()} · ` +
-      `budget/GTIN=${getGtinTimeoutMs()}ms · retries=${getMaxRetries()} · ` +
+      `budget/GTIN=${getGtinTimeoutMs()}ms · transport-retries=${catalogFetchRetries()} · ` +
       `deadline=${Math.round(getMaxRuntimeMs() / 1000)}s`
   );
   if (truncated > 0) {

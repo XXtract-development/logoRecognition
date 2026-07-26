@@ -37,7 +37,6 @@ import {
   evaluateGate,
   emptyReasonCounts,
   buildIndex,
-  backoffDelayMs,
   type GtinUniverseEntry,
 } from '../../scripts/build-keurmerk-index';
 
@@ -64,7 +63,6 @@ describe('AC2 — per-GTIN totaalbudget', () => {
       concurrency: 1,
       gtinTimeoutMs: 40,
       maxRuntimeMs: 60_000,
-      retries: 0, // isoleert het budget; backoff heeft zijn eigen tests
       onProgress: () => {},
     });
 
@@ -78,7 +76,6 @@ describe('AC2 — per-GTIN totaalbudget', () => {
     const res = await collectGtinData(universe(2), {
       concurrency: 1,
       gtinTimeoutMs: 40,
-      retries: 0,
       onProgress: () => {},
     });
     expect(res.reasons.timeout).toBe(1);
@@ -88,7 +85,6 @@ describe('AC2 — per-GTIN totaalbudget', () => {
     resolveDeclaredMarks.mockRejectedValueOnce(new Error('parse kapot'));
     const res = await collectGtinData(universe(2), {
       concurrency: 1,
-      retries: 0,
       onProgress: () => {},
     });
     expect(res.data).toHaveLength(2);
@@ -314,45 +310,4 @@ describe('7b — foutratio wordt gemeten over de VERWERKTE GTINs', () => {
   });
 });
 
-describe('AC9 — backoff bij transiënte fouten', () => {
-  it('probeert opnieuw bij api-fout en slaagt alsnog', async () => {
-    resolveDeclaredMarks
-      .mockResolvedValueOnce({ marks: [], reason: 'api-fout' })
-      .mockResolvedValueOnce({ marks: [{ code: 'X', fieldType: 'F' }], reason: 'ok' });
 
-    const res = await collectGtinData(universe(1), {
-      concurrency: 1,
-      onProgress: () => {},
-    });
-
-    expect(resolveDeclaredMarks).toHaveBeenCalledTimes(2);
-    expect(res.reasons.ok).toBe(1);
-    expect(res.reasons['api-fout']).toBe(0);
-  });
-
-  it('probeert NIET opnieuw bij een stabiel antwoord (404)', async () => {
-    resolveDeclaredMarks.mockResolvedValue({ marks: [], reason: '404-mogelijk-TM-mismatch' });
-    await collectGtinData(universe(1), { concurrency: 1, onProgress: () => {} });
-    expect(resolveDeclaredMarks).toHaveBeenCalledTimes(1);
-  });
-
-  it('exponentieel: 500ms, 1s, 2s', () => {
-    expect(backoffDelayMs(0)).toBe(500);
-    expect(backoffDelayMs(1)).toBe(1000);
-    expect(backoffDelayMs(2)).toBe(2000);
-  });
-});
-
-describe('AC2+AC9 — een AANHOUDENDE hang eindigt alsnog als timeout', () => {
-  it('na de herkansingen blijft de uitkomst timeout, de run gaat door', async () => {
-    resolveDeclaredMarks.mockImplementation(() => new Promise(() => {}));
-    const res = await collectGtinData(universe(1), {
-      concurrency: 1,
-      gtinTimeoutMs: 20,
-      retries: 2,
-      onProgress: () => {},
-    });
-    expect(res.reasons.timeout).toBe(1);
-    expect(resolveDeclaredMarks).toHaveBeenCalledTimes(3); // 1 + 2 herkansingen
-  });
-});

@@ -110,6 +110,9 @@ describe('AC2 — de aborttimer dekt ook de BODY-read (het echte hang-scenario)'
       expect(res.reason).toBe('api-fout');
       expect(res.marks).toEqual([]);
       // Afgebroken door de timer, niet blijven hangen.
+      // Ondergrens: zonder deze zou de test ook slagen als het verzoek om een
+      // heel andere reden meteen faalt (verkeerde poort) — dan bewijst hij niets.
+      expect(elapsed).toBeGreaterThanOrEqual(400);
       expect(elapsed).toBeLessThan(5_000);
     } finally {
       delete process.env.CATALOG_FETCH_TIMEOUT_MS;
@@ -185,4 +188,60 @@ describe('AC6/AC10 — knownGln en geen regressie op de live paden', () => {
     expect(res.reason).toBe('api-fout');
     expect(res.marks).toEqual([]);
   });
+});
+
+describe('AC9 — backoff zit ONDER de cache en bereikt de bron echt', () => {
+  it('een 503 wordt opnieuw geprobeerd en slaagt alsnog — met ECHTE fetch-teller', async () => {
+    // Dit is de test die de vorige opzet miste: die mockte de hele service weg,
+    // dus de cachelaag kwam er niet in voor en "hij probeert opnieuw" bewees niets.
+    // De herkansing zat toen BOVEN de cache: poging 2 kreeg de zojuist gecachete
+    // api-fout terug en raakte de bron nooit. Nu telt deze test echte fetch-calls.
+    process.env.CATALOG_FETCH_RETRIES = '2';
+    let calls = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        calls += 1;
+        if (calls < 3) return new Response('', { status: 503 });
+        return new Response(XML, { status: 200 });
+      })
+    );
+
+    const res = await resolveDeclaredMarks('00000000000010', '8712345000000');
+
+    expect(calls).toBe(3); // 1 poging + 2 herkansingen die de bron ECHT bereiken
+    expect(res.reason).toBe('ok');
+    delete process.env.CATALOG_FETCH_RETRIES;
+  }, 15_000);
+
+  it('een 404 wordt NIET opnieuw geprobeerd (stabiel antwoord)', async () => {
+    process.env.CATALOG_FETCH_RETRIES = '2';
+    let calls = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        calls += 1;
+        return new Response('', { status: 404 });
+      })
+    );
+    await resolveDeclaredMarks('00000000000011', '8712345000000');
+    expect(calls).toBe(1);
+    delete process.env.CATALOG_FETCH_RETRIES;
+  });
+
+  it('een blijvende 503 eindigt na de herkansingen als api-fout', async () => {
+    process.env.CATALOG_FETCH_RETRIES = '1';
+    let calls = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        calls += 1;
+        return new Response('', { status: 503 });
+      })
+    );
+    const res = await resolveDeclaredMarks('00000000000012', '8712345000000');
+    expect(calls).toBe(2);
+    expect(res.reason).toBe('api-fout');
+    delete process.env.CATALOG_FETCH_RETRIES;
+  }, 15_000);
 });

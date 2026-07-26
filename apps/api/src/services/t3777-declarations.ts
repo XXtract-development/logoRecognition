@@ -115,6 +115,38 @@ type FetchXmlReason = 'ok' | '404-mogelijk-TM-mismatch' | 'api-fout';
  * throws. Shared by the T3777 crosscheck (parseT3777Codes) and the label-prior
  * (parseDeclaredMarks) so both go through one cached, fail-safe catalog path.
  */
+/**
+ * Story 19.16 (AC9) — herkansingen bij een TRANSIËNTE transportfout, met
+ * exponentiële wachttijd (500ms, 1s, 2s).
+ *
+ * Bewust HIER en niet in de indexbouwer. Een herkansing op scriptniveau roept
+ * `resolveDeclaredMarks` opnieuw aan, en die leest éérst de cache — waar de zojuist
+ * geschreven `api-fout` staat. De herkansing kreeg dan een cache-hit en bereikte de
+ * bron nooit; hij werkte alleen als Redis stuk was, precies wanneer je hem niet
+ * nodig hebt. Onder de cache retryen lost dat op, én voorkomt dat de samengestelde
+ * stap (inclusief de mediaserver-aanroep) onnodig wordt herhaald.
+ */
+export function catalogFetchRetries(): number {
+  const v = parseInt(process.env.CATALOG_FETCH_RETRIES ?? '', 10);
+  return Number.isFinite(v) && v >= 0 ? Math.min(v, 5) : 2;
+}
+
+async function fetchTradeItemXmlWithRetry(
+  baseUrl: string,
+  apiKey: string,
+  gln: string,
+  gtin: string,
+  tm: string
+): Promise<{ xml: string | null; reason: FetchXmlReason }> {
+  const attempts = catalogFetchRetries();
+  let last = await fetchTradeItemXml(baseUrl, apiKey, gln, gtin, tm);
+  for (let i = 0; i < attempts && last.reason === 'api-fout'; i++) {
+    await new Promise((r) => setTimeout(r, 500 * Math.pow(2, i)));
+    last = await fetchTradeItemXml(baseUrl, apiKey, gln, gtin, tm);
+  }
+  return last;
+}
+
 async function fetchTradeItemXml(
   baseUrl: string,
   apiKey: string,
@@ -594,7 +626,7 @@ export async function resolveDeclaredMarks(
   }
   marksCacheStats.misses += 1;
 
-  const { xml, reason } = await fetchTradeItemXml(baseUrl, apiKey, gln, gtin, targetMarket);
+  const { xml, reason } = await fetchTradeItemXmlWithRetry(baseUrl, apiKey, gln, gtin, targetMarket);
   let result: DeclaredMarksResult;
   if (reason !== 'ok' || xml == null) {
     result = { marks: [], reason };
