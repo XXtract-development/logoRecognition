@@ -1,6 +1,6 @@
 # Story 20.10: "Geen keurmerk" afwijzen moet ook werken op een kaderloos reviewitem
 
-Status: review
+Status: done
 
 <!-- Live gevonden door Friso op ACC, 2026-07-26: HTTP 422 bij afwijzen van een
 kaderloos reviewitem. NB (correctie na review): dit is een BESTAANDE bug sinds Story
@@ -67,7 +67,7 @@ De frontend biedt wél een tweede knop ("Onjuiste locatie / verkeerde code") die
 - [x] 1. Guard vervangen: bij `reason === 'geen-keurmerk'` zonder `cropPath` de registerstap **overslaan** i.p.v. 422 teruggeven (AC1).
 - [x] 2. Logregel toevoegen bij het overslaan (AC4).
 - [x] 3. Tests: kaderloos → 200 zonder registers; met crop → registers wél; 503-pad en idempotentie-guard onaangetast (AC2/AC3/AC5).
-- [ ] 4. Verificatie op ACC ná deploy: het nog openstaande kaderloze item (`05000394169654`, SEPARATE_COLLECTION) via de UI kunnen afwijzen.
+- [x] 4. Verificatie op ACC ná deploy: het nog openstaande kaderloze item (`05000394169654`, SEPARATE_COLLECTION) via de UI kunnen afwijzen.
 
 ## Dev Notes
 
@@ -85,7 +85,13 @@ De frontend biedt wél een tweede knop ("Onjuiste locatie / verkeerde code") die
 - **Tests** (3, in de bestaande route-suite, zelfde mock-opzet — géén module-mock, dus de 11 zustertests blijven heel): kaderloos → 200 + `registersSkipped: true` + geen phash/gold-set/hard-negative + status wél `rejected`; mét crop → `registersSkipped: false` en registers wél gevoed; kaderloos + andere reden → ongewijzigd.
 - **RED-bewijs**: de oude 422-guard terugzetten maakt exact de kaderloze test rood; na herstel schoon.
 - **Verificatie**: tsc 0. Route-suite **54/54**. Volledige api-suite 1002 passed / 3 failed — alle drie geïsoleerd groen (6/6, 4/4, 17/17), bekende belasting-afhankelijke flakes.
-- **Resteert**: ACC-verificatie ná deploy op het nog openstaande kaderloze item `05000394169654` (SEPARATE_COLLECTION).
+- **ACC-verificatie GEDAAN (2026-07-26, image `177bc65`)** — end-to-end tegen het ECHTE endpoint, met een **wegwerp**-kaderloos item zodat Friso's openstaande item onaangeroerd bleef:
+  ```
+  PATCH /api/v1/artwork/review-items/<wegwerp>/reject  {"reason":"geen-keurmerk"}
+  → HTTP 200  {"status":"rejected","reason":"geen-keurmerk","registersSkipped":true}
+  ```
+  Status in de DB daarna `rejected`; **0** gold-set-records voor dat item; wegwerp-item daarna verwijderd. Vóór deze story gaf exact dit verzoek een 422.
+- **Nog open voor Friso**: item `17bcfb1a-…` (GTIN `05000394169654`, SEPARATE_COLLECTION) staat bewust nog open — dat is zíjn keuze: afwijzen (werkt nu) of alsnog een kader tekenen, wat SEPARATE_COLLECTION boven de drempel van 3 tilt.
 
 ## Change Log
 - 2026-07-26: Story aangemaakt na live 422 op ACC (Friso).
