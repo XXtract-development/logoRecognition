@@ -20,6 +20,11 @@
  *   - api-key-ontbreekt        CATALOG_API_KEY not configured
  *   - gln-ontbreekt            no gln on any import row for this GTIN
  *   - 404-mogelijk-TM-mismatch catalog 404 (likely the targetMarket is wrong)
+ *   - geen-tradeitem-bestand   catalog 500 met "File not found at path" — de catalog
+ *     meldt een ONTBREKEND trade-item-bestand met een 500 i.p.v. een 404. Semantisch
+ *     is dat "niet gevonden", geen storing: stabiel, zinloos om te herhalen, en het
+ *     hoort NIET mee te tellen als technische fout (Story 19.16; live gemeten op ACC:
+ *     129 van 129 500-responses hadden exact deze body).
  *   - api-fout                 any other status >= 400 OR a network/fetch error
  *   - lege-declaratie          fetched + parsed but no T3777 codes present
  *   - ok                       at least one code resolved
@@ -45,6 +50,7 @@ export type DeclarationReason =
   | 'api-key-ontbreekt'
   | 'gln-ontbreekt'
   | '404-mogelijk-TM-mismatch'
+  | 'geen-tradeitem-bestand'
   | 'api-fout'
   | 'lege-declaratie';
 
@@ -107,7 +113,7 @@ function cacheKey(gln: string, gtin: string, tm: string): string {
 }
 
 /** Transport-level outcome of a trade-item XML fetch (before any parsing). */
-type FetchXmlReason = 'ok' | '404-mogelijk-TM-mismatch' | 'api-fout';
+type FetchXmlReason = 'ok' | '404-mogelijk-TM-mismatch' | 'geen-tradeitem-bestand' | 'api-fout';
 
 /**
  * Fetch the raw trade-item XML. Distinguishes 404 (likely TM mismatch) from any
@@ -189,6 +195,20 @@ async function fetchTradeItemXml(
     }
 
     if (response.status >= 400) {
+      // De catalog geeft een ONTBREKEND trade-item-bestand terug als 500 met een
+      // JSON-body "File not found at path: tradeItems/...". Dat is inhoudelijk een
+      // 404. Zonder deze herkenning telt zo'n GTIN als technische fout, wordt hij
+      // (zinloos) opnieuw geprobeerd en kort gecached — op ACC ging dat om 26% van
+      // het hele corpus, genoeg om de kwaliteitspoort te laten blokkeren.
+      const peek = await response.text().catch(() => '');
+      if (response.status === 500 && /File not found at path/i.test(peek)) {
+        logger.info('Catalog: geen trade-item-bestand', {
+          reason: 'geen-tradeitem-bestand',
+          gtin,
+          tm,
+        });
+        return { xml: null, reason: 'geen-tradeitem-bestand' };
+      }
       logger.warn('Catalog declaration error status', { reason: 'api-fout', gtin, status: response.status });
       return { xml: null, reason: 'api-fout' };
     }

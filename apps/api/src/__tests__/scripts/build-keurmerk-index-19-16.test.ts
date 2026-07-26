@@ -310,4 +310,22 @@ describe('7b — foutratio wordt gemeten over de VERWERKTE GTINs', () => {
   });
 });
 
-
+describe('geen-tradeitem-bestand telt niet mee als technische fout (7b)', () => {
+  it('een corpus met 26% ontbrekende bestanden passeert de poort', () => {
+    // Exact het live-scenario: 487 van 1862 GTINs hebben geen trade-item-bestand.
+    // Als api-fout geteld = 26,2% → poort dicht. Als normaal beeld = 0% → open.
+    const v = evaluateGate({
+      reasons: { ...emptyReasonCounts(), ok: 820, '404': 143, 'lege-declaratie': 412, 'geen-tradeitem-bestand': 487 },
+      universeSize: 1862,
+      universeTotal: 1862,
+      deadlineHit: false,
+      existing: { distinctKeys: 32, gtinsWithData: 70 },
+      fresh: { distinctKeys: 78, gtinsWithData: 815 },
+      allowShrink: false,
+      allowPartial: false,
+      maxErrorRate: 0.05,
+    });
+    expect(v.errorRate).toBe(0);
+    expect(v.ok).toBe(true);
+  });
+});

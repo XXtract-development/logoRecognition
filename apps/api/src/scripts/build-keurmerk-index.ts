@@ -325,6 +325,7 @@ export const getMaxErrorRate = (): number => {
 export type CollectReason =
   | 'ok'
   | '404'
+  | 'geen-tradeitem-bestand'
   | 'lege-declaratie'
   | 'api-fout'
   | 'timeout'
@@ -338,6 +339,7 @@ export function emptyReasonCounts(): ReasonCounts {
   return {
     ok: 0,
     '404': 0,
+    'geen-tradeitem-bestand': 0,
     'lege-declaratie': 0,
     'api-fout': 0,
     timeout: 0,
@@ -361,6 +363,10 @@ function mapDeclarationReason(reason: string): CollectReason {
       return 'ok';
     case '404-mogelijk-TM-mismatch':
       return '404';
+    case 'geen-tradeitem-bestand':
+      // Normaal beeld, GEEN technische fout: het product heeft simpelweg geen
+      // trade-item-bestand in de catalog.
+      return 'geen-tradeitem-bestand';
     case 'lege-declaratie':
       return 'lege-declaratie';
     case 'api-key-ontbreekt':
@@ -477,7 +483,7 @@ export async function collectGtinData(
       emit(
         `[voortgang] ${processed}/${universe.length} · ${Math.round(elapsed / 1000)}s verstreken · ` +
           `ETA ~${etaS}s · ok=${reasons.ok} 404=${reasons['404']} leeg=${reasons['lege-declaratie']} ` +
-          `api-fout=${reasons['api-fout']} timeout=${reasons.timeout}`
+          `geen-bestand=${reasons['geen-tradeitem-bestand']} api-fout=${reasons['api-fout']} timeout=${reasons.timeout}`
       );
     }
   }
@@ -623,6 +629,7 @@ function printPlan(
   if (reasons) {
     console.log(
       `  Reden-verdeling    : ok=${reasons.ok} 404=${reasons['404']} leeg=${reasons['lege-declaratie']} ` +
+        `geen-bestand=${reasons['geen-tradeitem-bestand']} ` +
         `api-fout=${reasons['api-fout']} timeout=${reasons.timeout} ` +
         `niet-verwerkt=${reasons['niet-verwerkt']} api-key-ontbreekt=${reasons['api-key-ontbreekt']} ` +
         `gln-ontbreekt=${reasons['gln-ontbreekt']}`

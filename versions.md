@@ -6,6 +6,8 @@
 
 De achtergrondtaak die bijhoudt welke keurmerken op welke etiketten voorkomen, kon tot nu toe maar een klein deel van de producten verwerken; bij een grotere hoeveelheid liep hij vast. Dat is verholpen: hij verwerkt nu de hele catalogus, laat tussentijds zien hoever hij is, en stopt netjes in plaats van te blijven hangen.
 
+Ook opgelost: voor een deel van de producten meldde de catalogus “bestand niet gevonden” op een manier die het systeem als storing las. Die producten werden daardoor onnodig steeds opnieuw opgevraagd. Ze tellen nu als “geen gegevens”, wat ze feitelijk zijn.
+
 Belangrijker nog: er zit nu een controle op het resultaat. Ging er tijdens het bijwerken te veel mis, of is de taak halverwege afgebroken, dan wordt de bestaande lijst NIET overschreven. Voorheen kon een mislukte run ongemerkt een goede lijst vervangen door een onvolledige.
 
 ## 2026-07-22 (Nieuwe met-de-hand-getekende keurmerk-voorbeelden worden meteen in de juiste vorm opgeslagen)

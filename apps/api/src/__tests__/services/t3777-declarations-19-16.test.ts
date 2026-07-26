@@ -245,3 +245,46 @@ describe('AC9 — backoff zit ONDER de cache en bereikt de bron echt', () => {
     delete process.env.CATALOG_FETCH_RETRIES;
   }, 15_000);
 });
+
+describe('Live-vondst: catalog meldt een ONTBREKEND bestand met een 500', () => {
+  const FNF = JSON.stringify({
+    error: 'File not found at path: tradeItems/5488888005778/5488888005778_00000050160167_528.xml',
+  });
+
+  it('500 + "File not found" telt als geen-tradeitem-bestand, niet als api-fout', async () => {
+    // Op ACC bleken 129 van 129 500-responses exact deze body te hebben — 26% van
+    // het corpus. Als api-fout geteld blokkeerde dat de kwaliteitspoort onterecht.
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(FNF, { status: 500 })));
+    const res = await resolveDeclaredMarks('00000000000020', '8712345000000');
+    expect(res.reason).toBe('geen-tradeitem-bestand');
+    expect(res.marks).toEqual([]);
+  });
+
+  it('wordt NIET opnieuw geprobeerd (stabiel antwoord)', async () => {
+    process.env.CATALOG_FETCH_RETRIES = '2';
+    let calls = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        calls += 1;
+        return new Response(FNF, { status: 500 });
+      })
+    );
+    await resolveDeclaredMarks('00000000000021', '8712345000000');
+    expect(calls).toBe(1);
+    delete process.env.CATALOG_FETCH_RETRIES;
+  });
+
+  it('krijgt de LANGE cache-TTL (stabiel, geen transiënte fout)', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(FNF, { status: 500 })));
+    await resolveDeclaredMarks('00000000000022', '8712345000000');
+    const ttl = redisSetex.mock.calls.at(-1)?.[1] as number;
+    expect(ttl).toBeGreaterThan(300);
+  });
+
+  it('een ECHTE 500 blijft wél api-fout — geen blinde 500-vrijbrief', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('Internal Server Error', { status: 500 })));
+    const res = await resolveDeclaredMarks('00000000000023', '8712345000000');
+    expect(res.reason).toBe('api-fout');
+  }, 15_000);
+});
