@@ -135,7 +135,21 @@ Diagnose 2026-07-22, aanleiding: "Verpakking & recycling" groen krijgen. De twee
 - Gewijzigd: `apps/api/src/services/pipeline/queue.ts` (`closeRedisConnection()`)
 - Nieuw: `apps/api/src/__tests__/scripts/build-keurmerk-index-19-16.test.ts`
 
+### Code-review-remediatie (2026-07-26, `review-19-16-code.md` → FAIL: 3 high, 7 medium)
+Alle drie de blokkers waren terecht en zijn verholpen:
+- **H2 (de ernstigste).** `KEURMERK_INDEX_LIMIT` kapte het universum stil af en `universeSize` wás die afgekapte omvang. Een run over 500 van 1862 GTINs meldde zich dus als *volledig*: `niet-verwerkt`=0 (7d zweeg) en 500 GTINs leveren ruim meer dan de 32 bestaande sleutels (7c zweeg). De goede index werd overschreven met exitcode 0 — exact het gat waarvoor 7d bestaat, maar binnengekomen via de limiet. `loadGtinUniverse` geeft nu `{entries, total, truncated}`; 7d blokkeert op **beide** bronnen van onvolledigheid.
+- **H1.** `closeRedisConnection()` zette de referentie op `null`, waardoor een niet-geannuleerde budget-verliezer via `getRedisConnection()` een **nieuwe** verbinding opende — de hang kon terugkomen. Nu blijft de afgesloten client staan achter een `redisShutdown`-vlag, zodat late commando's direct falen.
+- **H3.** De door AC9 verplichte backoff bestónd niet, terwijl ik Task 3 had afgevinkt met "+ backoff bij 429/5xx". Dat was een onterechte afvinking. Nu geïmplementeerd (exponentieel 500ms/1s/2s, max 2 herkansingen, respecteert de globale deadline). NB: de service vertaalt statuscodes al naar reden-strings, dus 429 en 5xx zijn hier niet los te onderscheiden — er wordt geretried op `api-fout`/`timeout`; 404 en lege-declaratie nooit.
+
+Mediums verwerkt: foutratio-noemer is nu de **verwerkte** GTINs (90% fouten op een afgekapte run mat eerst als 4,8%); de door AC2 verplichte bewijstests bestaan nu écht — met een **echte HTTP-server die headers stuurt en dan stilvalt** (een nep-object reageert niet op `AbortController` en bewees niets); `catalogEnvTag` wordt niet langer weggemockt maar echt getest; AC10-regressietests toegevoegd; cache-hits/-misses worden geteld en gelogd; `FETCH_TIMEOUT_MS` is instelbaar geworden (`CATALOG_FETCH_TIMEOUT_MS`) omdat de timer nu óók de body dekt op twee live paden.
+
+### Verificatie na remediatie
+- **tsc**: 0 fouten.
+- **Story-suites + gedeelde service**: **132 passed** (19.16: 25, 19.3: 13, t3777 bestaand: 26, t3777 nieuw: 12, overige scripts: 56).
+- **RED-bewijs**: de limiet-check uitzetten maakt exact de H2-test rood; 7a/7d uitzetten exact die twee. Na herstel telkens schoon.
+- **Volledige api-suite**: 992 passed / 6 failed. Alle zes slagen **geïsoleerd** (artwork-detection-orchestration 17/17 ×3; de drie flywheel-routes 12/13/14; cohort 21/21 ×3). De **basis `origin/acc`** varieert in dezelfde opzet zelf tussen **1 en 7** uitvallers per run. Belasting-afhankelijke, bestaande instabiliteit — geen regressie.
+
 ## Change Log
 - 2026-07-22: Story aangemaakt (nazorg 19.3).
 - 2026-07-25: Herschreven na adversariële review — verdict FAIL geadresseerd.
-- 2026-07-26: Geïmplementeerd (alle 10 AC's). Status → review.
+- 2026-07-26: Geïmplementeerd (alle 10 AC's). Adversariële code-review FAIL (3 high) → geremedieerd. Status → review.

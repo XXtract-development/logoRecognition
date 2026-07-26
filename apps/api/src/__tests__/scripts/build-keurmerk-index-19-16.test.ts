@@ -37,6 +37,7 @@ import {
   evaluateGate,
   emptyReasonCounts,
   buildIndex,
+  backoffDelayMs,
   type GtinUniverseEntry,
 } from '../../scripts/build-keurmerk-index';
 
@@ -63,6 +64,7 @@ describe('AC2 — per-GTIN totaalbudget', () => {
       concurrency: 1,
       gtinTimeoutMs: 40,
       maxRuntimeMs: 60_000,
+      retries: 0, // isoleert het budget; backoff heeft zijn eigen tests
       onProgress: () => {},
     });
 
@@ -76,6 +78,7 @@ describe('AC2 — per-GTIN totaalbudget', () => {
     const res = await collectGtinData(universe(2), {
       concurrency: 1,
       gtinTimeoutMs: 40,
+      retries: 0,
       onProgress: () => {},
     });
     expect(res.reasons.timeout).toBe(1);
@@ -83,7 +86,11 @@ describe('AC2 — per-GTIN totaalbudget', () => {
 
   it('een throw (bv. misvormde XML) laat de run doorgaan', async () => {
     resolveDeclaredMarks.mockRejectedValueOnce(new Error('parse kapot'));
-    const res = await collectGtinData(universe(2), { concurrency: 1, onProgress: () => {} });
+    const res = await collectGtinData(universe(2), {
+      concurrency: 1,
+      retries: 0,
+      onProgress: () => {},
+    });
     expect(res.data).toHaveLength(2);
     expect(res.reasons.timeout + res.reasons['api-fout']).toBeGreaterThanOrEqual(1);
   });
@@ -142,6 +149,7 @@ describe('AC5 — voortgang', () => {
 describe('AC7 — kwaliteitspoort', () => {
   const base = {
     universeSize: 100,
+    universeTotal: 100,
     deadlineHit: false,
     existing: { distinctKeys: 32, gtinsWithData: 70 },
     fresh: { distinctKeys: 40, gtinsWithData: 90 },
@@ -253,5 +261,98 @@ describe('Besluit 2026-07-25 — bronvermelding in de index', () => {
   it('laat het veld weg als er geen bron is (indexen van vóór 19.16)', () => {
     const idx = buildIndex([], new Date('2026-07-26T00:00:00Z'));
     expect(idx.declarationSource).toBeUndefined();
+  });
+});
+
+describe('H2 — de LIMIET maakt een run ook onvolledig (gevonden in code-review)', () => {
+  const base = {
+    reasons: { ...emptyReasonCounts(), ok: 500 },
+    universeSize: 500,
+    deadlineHit: false,
+    existing: { distinctKeys: 32, gtinsWithData: 70 },
+    fresh: { distinctKeys: 120, gtinsWithData: 400 },
+    allowShrink: false,
+    allowPartial: false,
+    maxErrorRate: 0.05,
+  };
+
+  it('KEURMERK_INDEX_LIMIT die het universum afkapt blokkeert de write', () => {
+    // Zonder universeTotal meldde een run over 500 van 1862 GTINs zich als
+    // "volledig": niet-verwerkt=0, dus 7d zweeg, en 120 sleutels > 32 bestaande,
+    // dus 7c zweeg ook. De goede index werd overschreven met exitcode 0.
+    const v = evaluateGate({ ...base, universeTotal: 1862 });
+    expect(v.ok).toBe(false);
+    expect(v.blockers.join(' ')).toContain('buiten de limiet');
+    expect(v.blockers.join(' ')).toContain('500/1862');
+  });
+
+  it('zonder afkap gaat dezelfde run wél door', () => {
+    expect(evaluateGate({ ...base, universeTotal: 500 }).ok).toBe(true);
+  });
+
+  it('--allow-partial forceert ook bij afkap', () => {
+    expect(evaluateGate({ ...base, universeTotal: 1862, allowPartial: true }).ok).toBe(true);
+  });
+});
+
+describe('7b — foutratio wordt gemeten over de VERWERKTE GTINs', () => {
+  it('90% fouten op een afgekapte run meet als 90%, niet als 4,8%', () => {
+    // Noemer was universeSize: 90 fouten op 1862 = 4,8% → poort open.
+    const v = evaluateGate({
+      reasons: { ...emptyReasonCounts(), ok: 10, 'api-fout': 90, 'niet-verwerkt': 1762 },
+      universeSize: 1862,
+      universeTotal: 1862,
+      deadlineHit: true,
+      existing: null,
+      fresh: { distinctKeys: 5, gtinsWithData: 10 },
+      allowShrink: false,
+      allowPartial: true, // 7d bewust uit, zodat we 7b isoleren
+      maxErrorRate: 0.05,
+    });
+    expect(v.errorRate).toBeCloseTo(0.9, 2);
+    expect(v.ok).toBe(false);
+  });
+});
+
+describe('AC9 — backoff bij transiënte fouten', () => {
+  it('probeert opnieuw bij api-fout en slaagt alsnog', async () => {
+    resolveDeclaredMarks
+      .mockResolvedValueOnce({ marks: [], reason: 'api-fout' })
+      .mockResolvedValueOnce({ marks: [{ code: 'X', fieldType: 'F' }], reason: 'ok' });
+
+    const res = await collectGtinData(universe(1), {
+      concurrency: 1,
+      onProgress: () => {},
+    });
+
+    expect(resolveDeclaredMarks).toHaveBeenCalledTimes(2);
+    expect(res.reasons.ok).toBe(1);
+    expect(res.reasons['api-fout']).toBe(0);
+  });
+
+  it('probeert NIET opnieuw bij een stabiel antwoord (404)', async () => {
+    resolveDeclaredMarks.mockResolvedValue({ marks: [], reason: '404-mogelijk-TM-mismatch' });
+    await collectGtinData(universe(1), { concurrency: 1, onProgress: () => {} });
+    expect(resolveDeclaredMarks).toHaveBeenCalledTimes(1);
+  });
+
+  it('exponentieel: 500ms, 1s, 2s', () => {
+    expect(backoffDelayMs(0)).toBe(500);
+    expect(backoffDelayMs(1)).toBe(1000);
+    expect(backoffDelayMs(2)).toBe(2000);
+  });
+});
+
+describe('AC2+AC9 — een AANHOUDENDE hang eindigt alsnog als timeout', () => {
+  it('na de herkansingen blijft de uitkomst timeout, de run gaat door', async () => {
+    resolveDeclaredMarks.mockImplementation(() => new Promise(() => {}));
+    const res = await collectGtinData(universe(1), {
+      concurrency: 1,
+      gtinTimeoutMs: 20,
+      retries: 2,
+      onProgress: () => {},
+    });
+    expect(res.reasons.timeout).toBe(1);
+    expect(resolveDeclaredMarks).toHaveBeenCalledTimes(3); // 1 + 2 herkansingen
   });
 });

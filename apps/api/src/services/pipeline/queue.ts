@@ -74,7 +74,13 @@ export interface JobStatusResult {
  */
 let redisConnection: Redis | null = null;
 
+let redisShutdown = false;
+
 export function getRedisConnection(): Redis {
+  // Story 19.16: na een expliciete afsluiting (scripts) nooit stilzwijgend een
+  // nieuwe verbinding openen — dat zou late, niet-geannuleerde commando's opnieuw
+  // laten hangen. De afgesloten client teruggeven laat ze direct falen.
+  if (redisShutdown && redisConnection) return redisConnection;
   if (!redisConnection) {
     const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
     redisConnection = new Redis(redisUrl, {
@@ -109,7 +115,13 @@ export function closeRedisConnection(): void {
       error: err instanceof Error ? err.message : 'unknown',
     });
   } finally {
-    redisConnection = null;
+    // BEWUST de referentie NIET op null zetten. Een per-GTIN budget-timeout laat de
+    // verliezende belofte gewoon doorlopen (er wordt niets geannuleerd); bereikt die
+    // daarna de cache-write, dan zou `getRedisConnection()` bij een null-referentie
+    // een NIEUWE verbinding openen en de hang terugbrengen die dit juist wegneemt.
+    // Door de afgesloten client te bewaren, falen late commando's direct
+    // ("Connection is closed") in plaats van te blijven wachten.
+    redisShutdown = true;
   }
 }
 

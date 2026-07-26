@@ -56,8 +56,18 @@ export interface DeclarationResult {
 /** Hard cap on the response body we will buffer/parse (self-review: huge XML). */
 const MAX_RESPONSE_BYTES = 5 * 1024 * 1024; // 5 MiB
 
-/** fetch timeout (self-review: a hung catalog must not stall the worker). */
-const FETCH_TIMEOUT_MS = 10_000;
+/**
+ * fetch timeout (self-review: a hung catalog must not stall the worker).
+ *
+ * Story 19.16: deze timer dekt nu de HELE uitwisseling (headers + body), niet
+ * alleen de headers. Dat is strenger dan voorheen en raakt ook de twee live paden,
+ * dus is hij instelbaar gemaakt: een trage-maar-gezonde grote body (tot 5 MiB) mag
+ * niet ineens afgebroken worden. Default blijft 10s.
+ */
+function fetchTimeoutMs(): number {
+  const v = parseInt(process.env.CATALOG_FETCH_TIMEOUT_MS ?? '', 10);
+  return Number.isFinite(v) && v > 0 ? v : 10_000;
+}
 
 /**
  * Env is read lazily INSIDE the resolver (never at import time) so (a) there are
@@ -118,7 +128,7 @@ async function fetchTradeItemXml(
   // werd voorheen in de `finally` van de fetch gewist, waardoor `response.text()`
   // hieronder buiten elke bovengrens viel: een server die headers stuurt en dan
   // stilvalt liet de run oneindig hangen (waargenomen: 25 min, 0:00 CPU).
-  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), fetchTimeoutMs());
 
   let response: Response;
   try {
@@ -442,6 +452,18 @@ export function catalogEnvTag(baseUrl: string): string {
   }
 }
 
+/**
+ * Story 19.16 (AC4) — teller voor cache-hits/-misses, zodat een lange indexrun kan
+ * aantonen dat de cache daadwerkelijk werkt (en een tweede run goedkoop is).
+ * Procesbreed en bewust simpel; alleen scripts lezen hem uit.
+ */
+export const marksCacheStats = { hits: 0, misses: 0 };
+
+export function resetMarksCacheStats(): void {
+  marksCacheStats.hits = 0;
+  marksCacheStats.misses = 0;
+}
+
 /** Separate cache namespace from the T3777-only crosscheck cache. */
 function marksCacheKey(gln: string, gtin: string, tm: string, envTag: string): string {
   return `marks:${envTag}:${gln}:${gtin}:${tm}`;
@@ -566,7 +588,11 @@ export async function resolveDeclaredMarks(
 
   const key = marksCacheKey(gln, gtin, targetMarket, catalogEnvTag(baseUrl));
   const cached = await marksCacheRead(key, gtin);
-  if (cached) return cached;
+  if (cached) {
+    marksCacheStats.hits += 1;
+    return cached;
+  }
+  marksCacheStats.misses += 1;
 
   const { xml, reason } = await fetchTradeItemXml(baseUrl, apiKey, gln, gtin, targetMarket);
   let result: DeclaredMarksResult;
