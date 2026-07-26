@@ -44,9 +44,14 @@
  */
 
 import prisma from '../core/db';
-import { resolveDeclaredMarks, type DeclaredMark } from '../services/t3777-declarations';
+import {
+  resolveDeclaredMarks,
+  catalogEnvTag,
+  type DeclaredMark,
+} from '../services/t3777-declarations';
 import { mediaServerClient } from '../services/mediaserver-client';
-import { getStorageAdapter, BUCKETS } from '../services/storage';
+import { getStorageAdapter, BUCKETS, downloadTrainingObject } from '../services/storage';
+import { closeRedisConnection } from '../services/pipeline/queue';
 import { createLogger } from '../core/logger';
 
 const logger = createLogger('build-keurmerk-index');
@@ -100,6 +105,14 @@ export interface IndexLabelEntry {
 export interface KeurmerkIndex {
   /** Wanneer de index gebouwd is (ISO). */
   builtAt: string;
+  /**
+   * Story 19.16 — op WELKE declaratiebron is deze index gebouwd (host-tag, bv.
+   * `stage` of `acc`). Besluit 2026-07-25: we bouwen op stage-declaraties omdat de
+   * ACC-catalog niets teruggeeft. Zonder deze vermelding is later niet herleidbaar
+   * welke bron aan een index ten grondslag lag. Optioneel: indexen van vóór 19.16
+   * missen het veld.
+   */
+  declarationSource?: string;
   /** Referentie naar de universum-bron (herleidbaarheid). */
   universeReference: string;
   /** Aantal codes in het universum (Result_4.xlsx). */
@@ -146,7 +159,11 @@ export function indexKey(fieldType: string, code: string): string {
  *     herhaalde invoer).
  *   - Sortering: sleutels alfabetisch, vermeldingen op GTIN, labels alfabetisch.
  */
-export function buildIndex(data: GtinData[], now: Date = new Date()): KeurmerkIndex {
+export function buildIndex(
+  data: GtinData[],
+  now: Date = new Date(),
+  declarationSource?: string
+): KeurmerkIndex {
   // sleutel → (gtin → labels) zodat dedup per (sleutel, gtin) triviaal is.
   const bySleutel = new Map<string, Map<string, IndexLabelEntry>>();
 
@@ -197,6 +214,7 @@ export function buildIndex(data: GtinData[], now: Date = new Date()): KeurmerkIn
 
   return {
     builtAt: now.toISOString(),
+    ...(declarationSource ? { declarationSource } : {}),
     universeReference: UNIVERSE_REFERENCE,
     universeCodeCount: UNIVERSE_CODE_COUNT,
     entries,
@@ -266,30 +284,300 @@ export async function loadGtinUniverse(limit: number): Promise<GtinUniverseEntry
   return out;
 }
 
+/** Story 19.16 — env-instellingen voor budget, parallellisme en voortgang. */
+function envInt(name: string, fallback: number, max?: number): number {
+  const v = parseInt(process.env[name] ?? '', 10);
+  if (!Number.isFinite(v) || v <= 0) return fallback;
+  return max ? Math.min(v, max) : v;
+}
+export const getGtinTimeoutMs = (): number => envInt('KEURMERK_INDEX_GTIN_TIMEOUT_MS', 30_000);
+export const getConcurrency = (): number => envInt('KEURMERK_INDEX_CONCURRENCY', 3, 8);
+export const getMaxRuntimeMs = (): number => envInt('KEURMERK_INDEX_MAX_RUNTIME_MS', 20 * 60_000);
+export const getProgressEvery = (): number => envInt('KEURMERK_INDEX_PROGRESS_EVERY', 25);
+export const getMaxErrorRate = (): number => {
+  const v = parseFloat(process.env.KEURMERK_INDEX_MAX_ERROR_RATE ?? '');
+  return Number.isFinite(v) && v >= 0 && v <= 1 ? v : 0.05;
+};
+
 /**
- * Haal per GTIN de declaraties (5/5 velden) + labels (previewUrls) op. Elke
- * fout-modus is fail-safe binnen de onderliggende services (nooit throw): een GTIN
- * zonder declaratie of zonder labels valt in de pure bouw vanzelf weg.
+ * Waarom een GTIN wel/niet bijdroeg. `ok`/`404`/`lege-declaratie` horen bij het
+ * normale beeld; `api-fout`/`timeout` zijn TECHNISCHE fouten (AC7b) en
+ * `niet-verwerkt` betekent dat de deadline toesloeg vóór deze GTIN (AC7d).
  */
-async function collectGtinData(universe: GtinUniverseEntry[]): Promise<GtinData[]> {
-  const out: GtinData[] = [];
-  for (const { gtin, gln } of universe) {
-    const [marksResult, mediaItems] = await Promise.all([
-      resolveDeclaredMarks(gtin),
-      mediaServerClient.discoverArtwork(gtin).catch(() => []),
-    ]);
-    const labels = mediaItems.map((m) => m.previewUrl).filter((u): u is string => !!u);
-    out.push({ gtin, gln, marks: marksResult.marks, labels });
-  }
-  return out;
+export type CollectReason =
+  | 'ok'
+  | '404'
+  | 'lege-declaratie'
+  | 'api-fout'
+  | 'timeout'
+  | 'api-key-ontbreekt'
+  | 'gln-ontbreekt'
+  | 'niet-verwerkt';
+
+export type ReasonCounts = Record<CollectReason, number>;
+
+export function emptyReasonCounts(): ReasonCounts {
+  return {
+    ok: 0,
+    '404': 0,
+    'lege-declaratie': 0,
+    'api-fout': 0,
+    timeout: 0,
+    'api-key-ontbreekt': 0,
+    'gln-ontbreekt': 0,
+    'niet-verwerkt': 0,
+  };
 }
 
-function printPlan(index: KeurmerkIndex, dryRun: boolean, universeSize: number): void {
+export interface CollectOutcome {
+  data: GtinData[];
+  reasons: ReasonCounts;
+  /** True zodra de globale deadline (AC9) de run heeft afgekapt. */
+  deadlineHit: boolean;
+}
+
+/** Map de reden van de declaratielaag naar onze telling. */
+function mapDeclarationReason(reason: string): CollectReason {
+  switch (reason) {
+    case 'ok':
+      return 'ok';
+    case '404-mogelijk-TM-mismatch':
+      return '404';
+    case 'lege-declaratie':
+      return 'lege-declaratie';
+    case 'api-key-ontbreekt':
+      return 'api-key-ontbreekt';
+    case 'gln-ontbreekt':
+      return 'gln-ontbreekt';
+    default:
+      return 'api-fout';
+  }
+}
+
+/** Verstrijkt het budget vóór `p`, dan wint deze race met een `timeout`-uitkomst. */
+function withBudget<T>(p: Promise<T>, ms: number, onTimeout: T): Promise<T> {
+  return new Promise<T>((resolve) => {
+    const timer = setTimeout(() => resolve(onTimeout), ms);
+    p.then(
+      (v) => {
+        clearTimeout(timer);
+        resolve(v);
+      },
+      () => {
+        clearTimeout(timer);
+        resolve(onTimeout);
+      }
+    );
+  });
+}
+
+/**
+ * Haal per GTIN de declaraties (5/5 velden) + labels (previewUrls) op.
+ *
+ * Story 19.16:
+ *  - **AC2** elke GTIN krijgt een TOTAALBUDGET. De onderliggende services hebben
+ *    weliswaar eigen timeouts, maar niet alles viel daarbinnen (body-read) en
+ *    ioredis-commando's rejecteren met `maxRetriesPerRequest: null` nooit. Eén
+ *    `Promise.race` per GTIN dekt álle stappen, ongeacht waar het blijft hangen.
+ *  - **AC9** begrensde parallellisatie (chunked, zoals artwork-pipeline) + een
+ *    globale deadline; resterende GTINs tellen als `niet-verwerkt` (AC7d).
+ *  - **AC6** de al bekende gln gaat mee, zodat de index-gln en de opgehaalde gln
+ *    gelijk zijn én ~1862 DB-queries vervallen.
+ *  - **AC5** voortgang wordt periodiek geflusht.
+ */
+export async function collectGtinData(
+  universe: GtinUniverseEntry[],
+  opts: {
+    concurrency?: number;
+    gtinTimeoutMs?: number;
+    maxRuntimeMs?: number;
+    progressEvery?: number;
+    onProgress?: (line: string) => void;
+  } = {}
+): Promise<CollectOutcome> {
+  const concurrency = opts.concurrency ?? getConcurrency();
+  const gtinTimeoutMs = opts.gtinTimeoutMs ?? getGtinTimeoutMs();
+  const maxRuntimeMs = opts.maxRuntimeMs ?? getMaxRuntimeMs();
+  const progressEvery = opts.progressEvery ?? getProgressEvery();
+  const emit = opts.onProgress ?? ((line: string) => process.stdout.write(line + '\n'));
+
+  const out: GtinData[] = [];
+  const reasons = emptyReasonCounts();
+  const startedAt = Date.now();
+  let processed = 0;
+  let deadlineHit = false;
+
+  for (let i = 0; i < universe.length; i += concurrency) {
+    if (Date.now() - startedAt >= maxRuntimeMs) {
+      deadlineHit = true;
+      reasons['niet-verwerkt'] += universe.length - i;
+      emit(
+        `[deadline] ${maxRuntimeMs}ms verstreken na ${processed}/${universe.length} GTINs — ` +
+          `${universe.length - i} niet verwerkt; de index wordt NIET overschreven (AC7d).`
+      );
+      break;
+    }
+
+    const chunk = universe.slice(i, i + concurrency);
+    const results = await Promise.all(
+      chunk.map(({ gtin, gln }) =>
+        withBudget(
+          (async (): Promise<{ entry: GtinData; reason: CollectReason }> => {
+            const [marksResult, mediaItems] = await Promise.all([
+              resolveDeclaredMarks(gtin, gln),
+              mediaServerClient.discoverArtwork(gtin).catch(() => []),
+            ]);
+            const labels = mediaItems.map((m) => m.previewUrl).filter((u): u is string => !!u);
+            return {
+              entry: { gtin, gln, marks: marksResult.marks, labels },
+              reason: mapDeclarationReason(marksResult.reason),
+            };
+          })(),
+          gtinTimeoutMs,
+          { entry: { gtin, gln, marks: [], labels: [] }, reason: 'timeout' as CollectReason }
+        )
+      )
+    );
+
+    for (const r of results) {
+      out.push(r.entry);
+      reasons[r.reason] += 1;
+      processed += 1;
+    }
+
+    if (processed % progressEvery < concurrency || processed === universe.length) {
+      const elapsed = Date.now() - startedAt;
+      const perItem = elapsed / Math.max(processed, 1);
+      const etaS = Math.round(((universe.length - processed) * perItem) / 1000);
+      emit(
+        `[voortgang] ${processed}/${universe.length} · ${Math.round(elapsed / 1000)}s verstreken · ` +
+          `ETA ~${etaS}s · ok=${reasons.ok} 404=${reasons['404']} leeg=${reasons['lege-declaratie']} ` +
+          `api-fout=${reasons['api-fout']} timeout=${reasons.timeout}`
+      );
+    }
+  }
+
+  return { data: out, reasons, deadlineHit };
+}
+
+// ---------------------------------------------------------------------------
+// Kwaliteitspoort (AC7) — beschermt de bestaande index tegen een slechte run
+// ---------------------------------------------------------------------------
+
+export interface GateInput {
+  reasons: ReasonCounts;
+  universeSize: number;
+  deadlineHit: boolean;
+  /** Samenvatting van de BESTAANDE index; null = niet aanwezig/onleesbaar. */
+  existing: { distinctKeys: number; gtinsWithData: number } | null;
+  fresh: { distinctKeys: number; gtinsWithData: number };
+  allowShrink: boolean;
+  allowPartial: boolean;
+  maxErrorRate: number;
+}
+
+export interface GateVerdict {
+  ok: boolean;
+  /** Machineleesbare redenen waarom de write geblokkeerd is (leeg = doorgang). */
+  blockers: string[];
+  errorRate: number;
+}
+
+/**
+ * Vier onafhankelijke voorwaarden; élke overtreding blokkeert het overschrijven.
+ * De bouw schrijft naar één vaste sleutel zonder versie of back-up, dus een
+ * slechte run zou een goede index stilzwijgend vervangen.
+ */
+export function evaluateGate(input: GateInput): GateVerdict {
+  const blockers: string[] = [];
+  const { reasons, universeSize } = input;
+
+  // 7a — configuratiefout is fataal, NIET "geen fout". Zonder API-sleutel keert de
+  // declaratielaag terug vóór elk netwerkverkeer: 0 technische fouten, 0 data. Zonder
+  // deze regel passeert een LEGE index de poort en overschrijft hij de goede.
+  if (reasons['api-key-ontbreekt'] > 0) {
+    blockers.push(`api-key-ontbreekt bij ${reasons['api-key-ontbreekt']} GTIN(s) — configuratiefout`);
+  }
+  if (universeSize === 0) {
+    blockers.push('leeg GTIN-universum — niets te indexeren');
+  }
+
+  // 7b — technische foutratio (404/lege-declaratie tellen NIET mee: normaal beeld).
+  const technical = reasons['api-fout'] + reasons.timeout;
+  const errorRate = universeSize > 0 ? technical / universeSize : 0;
+  if (errorRate > input.maxErrorRate) {
+    blockers.push(
+      `technische foutratio ${(errorRate * 100).toFixed(1)}% > ${(input.maxErrorRate * 100).toFixed(1)}%`
+    );
+  }
+
+  // 7d — volledigheid. Bewust vóór 7c: een afgekapte run kan MÉÉR sleutels hebben
+  // dan de (kleine) bestaande index en zou de krimptoets dus gewoon passeren.
+  if ((input.deadlineHit || reasons['niet-verwerkt'] > 0) && !input.allowPartial) {
+    blockers.push(
+      `onvolledige run: ${reasons['niet-verwerkt']} GTIN(s) niet verwerkt (gebruik --allow-partial om toch te schrijven)`
+    );
+  }
+
+  // 7c — krimpbeveiliging t.o.v. de vorige stand. Niet van toepassing als er geen
+  // leesbare bestaande index is; dat wordt expliciet gelogd door de aanroeper.
+  if (input.existing && !input.allowShrink) {
+    if (input.fresh.distinctKeys < input.existing.distinctKeys) {
+      blockers.push(
+        `krimp: ${input.fresh.distinctKeys} sleutels < bestaand ${input.existing.distinctKeys} (gebruik --allow-shrink)`
+      );
+    }
+    if (input.fresh.gtinsWithData < input.existing.gtinsWithData) {
+      blockers.push(
+        `krimp: ${input.fresh.gtinsWithData} GTINs met data < bestaand ${input.existing.gtinsWithData} (gebruik --allow-shrink)`
+      );
+    }
+  }
+
+  return { ok: blockers.length === 0, blockers, errorRate };
+}
+
+/**
+ * Lees de bestaande index voor de krimpvergelijking (7c). Nooit fataal: geen index,
+ * onleesbare JSON of ontbrekende samenvatting → `null`, waarna 7c niet van toepassing
+ * is en 7a/7b/7d alleen beslissen (de aanroeper logt dat expliciet).
+ */
+export async function readExistingSummary(): Promise<{
+  distinctKeys: number;
+  gtinsWithData: number;
+} | null> {
+  try {
+    const buf = await downloadTrainingObject(INDEX_OBJECT_KEY);
+    if (!buf) return null;
+    const parsed = JSON.parse(buf.toString('utf8')) as KeurmerkIndex;
+    const s = parsed?.summary;
+    if (!s || typeof s.distinctKeys !== 'number' || typeof s.gtinsWithData !== 'number') return null;
+    return { distinctKeys: s.distinctKeys, gtinsWithData: s.gtinsWithData };
+  } catch {
+    return null;
+  }
+}
+
+function printPlan(
+  index: KeurmerkIndex,
+  dryRun: boolean,
+  universeSize: number,
+  reasons?: ReasonCounts
+): void {
   const { summary } = index;
   /* eslint-disable no-console */
   console.log('=== Keurmerk→etiket-index ===');
   console.log(`  Modus              : ${dryRun ? 'DROGE RUN (schrijft niets)' : 'ECHTE BOUW'}`);
+  console.log(`  Declaratiebron     : ${index.declarationSource ?? 'onbekend'}`);
   console.log(`  GTIN-universum     : ${universeSize} (gln gevuld, limiet ${getIndexLimit()})`);
+  if (reasons) {
+    console.log(
+      `  Reden-verdeling    : ok=${reasons.ok} 404=${reasons['404']} leeg=${reasons['lege-declaratie']} ` +
+        `api-fout=${reasons['api-fout']} timeout=${reasons.timeout} ` +
+        `niet-verwerkt=${reasons['niet-verwerkt']} api-key-ontbreekt=${reasons['api-key-ontbreekt']} ` +
+        `gln-ontbreekt=${reasons['gln-ontbreekt']}`
+    );
+  }
   console.log(`  GTINs met data     : ${summary.gtinsWithData}`);
   console.log(`  Unieke keurmerken  : ${summary.distinctKeys} (fieldType/code-sleutels)`);
   console.log(`  Codes aanwezig     : ${summary.codesPresent.length} / ${UNIVERSE_CODE_COUNT} universum-codes`);
@@ -317,19 +605,63 @@ async function writeIndex(index: KeurmerkIndex): Promise<void> {
 
 async function main(): Promise<void> {
   const dryRun = process.argv.includes('--dry-run');
+  const allowShrink = process.argv.includes('--allow-shrink');
+  const allowPartial = process.argv.includes('--allow-partial');
   const limit = getIndexLimit();
+  const envTag = catalogEnvTag(process.env.CATALOG_API_BASE || 'https://catalog.acc.xxtract.com');
 
   const universe = await loadGtinUniverse(limit);
-  const data = await collectGtinData(universe);
-  const index = buildIndex(data);
+  /* eslint-disable no-console */
+  console.log(
+    `Start: ${universe.length} GTINs · bron=${envTag} · concurrency=${getConcurrency()} · ` +
+      `budget/GTIN=${getGtinTimeoutMs()}ms · deadline=${Math.round(getMaxRuntimeMs() / 1000)}s`
+  );
+  /* eslint-enable no-console */
 
-  printPlan(index, dryRun, universe.length);
+  const { data, reasons, deadlineHit } = await collectGtinData(universe);
+  const index = buildIndex(data, new Date(), envTag);
 
-  if (dryRun) {
+  printPlan(index, dryRun, universe.length, reasons);
+
+  // De poort oordeelt in BEIDE modi, zodat een droge run hetzelfde verdict toont
+  // als de echte bouw zou krijgen. Alleen de write hangt aan `dryRun`.
+  const existing = await readExistingSummary();
+  if (!existing) {
     // eslint-disable-next-line no-console
-    console.log('Droge run — er is niets naar de opslag geschreven.');
+    console.log('  Let op: geen leesbare bestaande index — krimpbeveiliging (7c) niet van toepassing.');
+  }
+  const verdict = evaluateGate({
+    reasons,
+    universeSize: universe.length,
+    deadlineHit,
+    existing,
+    fresh: { distinctKeys: index.summary.distinctKeys, gtinsWithData: index.summary.gtinsWithData },
+    allowShrink,
+    allowPartial,
+    maxErrorRate: getMaxErrorRate(),
+  });
+
+  /* eslint-disable no-console */
+  if (existing) {
+    console.log(
+      `  Vergelijking       : sleutels ${existing.distinctKeys} → ${index.summary.distinctKeys}, ` +
+        `GTINs met data ${existing.gtinsWithData} → ${index.summary.gtinsWithData}`
+    );
+  }
+  console.log(`  Technische fouten  : ${(verdict.errorRate * 100).toFixed(1)}% (grens ${(getMaxErrorRate() * 100).toFixed(1)}%)`);
+
+  if (!verdict.ok) {
+    console.error('KWALITEITSPOORT BLOKKEERT — de bestaande index blijft ongewijzigd:');
+    for (const b of verdict.blockers) console.error(`  - ${b}`);
+    process.exitCode = 1;
     return;
   }
+
+  if (dryRun) {
+    console.log('Droge run — er is niets naar de opslag geschreven. Poort: DOORGANG.');
+    return;
+  }
+  /* eslint-enable no-console */
 
   await writeIndex(index);
   // eslint-disable-next-line no-console
@@ -348,6 +680,10 @@ if (require.main === module) {
       process.exitCode = 1;
     })
     .finally(async () => {
+      // Story 19.16 (AC3): sluit ALLE lang-levende handles, anders blijft dit script
+      // na afloop hangen tot een externe kill — de ioredis-singleton hield de
+      // event-loop open. Geen process.exit(): dat zou de MinIO-write kunnen afkappen.
       await prisma.$disconnect();
+      closeRedisConnection();
     });
 }

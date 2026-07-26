@@ -88,6 +88,31 @@ export function getRedisConnection(): Redis {
   return redisConnection;
 }
 
+/**
+ * Story 19.16 (AC3) — sluit de gedeelde ioredis-verbinding zodat een SCRIPT (geen
+ * server) zijn event-loop kan leegdraaien en vanzelf eindigt. Zonder dit bleef de
+ * indexbouwer na het printen van zijn plan hangen tot een externe `kill`.
+ *
+ * Bewust `disconnect()` en niet `quit()`: `quit()` wacht op openstaande commando's,
+ * en met `maxRetriesPerRequest: null` rejecteren die nooit — precies in het scenario
+ * waarin een commando al hangt zou `quit()` dus mee blijven hangen. `disconnect()`
+ * breekt direct af. Idempotent: tweemaal aanroepen is veilig.
+ *
+ * NIET aanroepen vanuit de draaiende API/worker — daar is de verbinding gedeeld.
+ */
+export function closeRedisConnection(): void {
+  if (!redisConnection) return;
+  try {
+    redisConnection.disconnect();
+  } catch (err) {
+    logger.warn('Redis disconnect failed', {
+      error: err instanceof Error ? err.message : 'unknown',
+    });
+  } finally {
+    redisConnection = null;
+  }
+}
+
 // ============================================
 // Queue factory
 // ============================================

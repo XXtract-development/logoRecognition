@@ -114,6 +114,10 @@ async function fetchTradeItemXml(
 ): Promise<{ xml: string | null; reason: FetchXmlReason }> {
   const url = `${baseUrl}/api/tradeitemxml/${gln}-${gtin}-${tm}`;
   const controller = new AbortController();
+  // Story 19.16 (AC2): de timer dekt de HELE uitwisseling — headers ÉN body. Hij
+  // werd voorheen in de `finally` van de fetch gewist, waardoor `response.text()`
+  // hieronder buiten elke bovengrens viel: een server die headers stuurt en dan
+  // stilvalt liet de run oneindig hangen (waargenomen: 25 min, 0:00 CPU).
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
   let response: Response;
@@ -125,52 +129,58 @@ async function fetchTradeItemXml(
     });
   } catch (err) {
     // network error / timeout (AbortError) — never throw, never log the key/URL
+    clearTimeout(timer);
     logger.warn('Catalog declaration fetch failed', {
       reason: 'api-fout',
       gtin,
       error: err instanceof Error ? err.message : 'unknown',
     });
     return { xml: null, reason: 'api-fout' };
+  }
+
+  // Vanaf hier is de timer nog ACTIEF (19.16/AC2) — hij dekt ook de body-read.
+  // Elke uitgang hieronder loopt daarom door de `finally` die hem wist.
+  try {
+    if (response.status === 404) {
+      logger.info('Catalog declaration not found', { reason: '404-mogelijk-TM-mismatch', gtin, tm });
+      return { xml: null, reason: '404-mogelijk-TM-mismatch' };
+    }
+
+    if (response.status >= 400) {
+      logger.warn('Catalog declaration error status', { reason: 'api-fout', gtin, status: response.status });
+      return { xml: null, reason: 'api-fout' };
+    }
+
+    // Guard against pathologically large bodies before buffering the whole thing.
+    const declaredLength = Number(response.headers.get('content-length') ?? '');
+    if (Number.isFinite(declaredLength) && declaredLength > MAX_RESPONSE_BYTES) {
+      logger.warn('Catalog declaration response too large', { reason: 'api-fout', gtin, bytes: declaredLength });
+      return { xml: null, reason: 'api-fout' };
+    }
+
+    let xml: string;
+    try {
+      xml = await response.text();
+    } catch (err) {
+      // Ook een abort door de timer landt hier (AbortError) → fail-safe, geen throw.
+      logger.warn('Catalog declaration body read failed', {
+        reason: 'api-fout',
+        gtin,
+        error: err instanceof Error ? err.message : 'unknown',
+      });
+      return { xml: null, reason: 'api-fout' };
+    }
+
+    if (xml.length > MAX_RESPONSE_BYTES) {
+      // Streaming-less guard for servers that omit content-length.
+      logger.warn('Catalog declaration body too large', { reason: 'api-fout', gtin, bytes: xml.length });
+      return { xml: null, reason: 'api-fout' };
+    }
+
+    return { xml, reason: 'ok' };
   } finally {
     clearTimeout(timer);
   }
-
-  if (response.status === 404) {
-    logger.info('Catalog declaration not found', { reason: '404-mogelijk-TM-mismatch', gtin, tm });
-    return { xml: null, reason: '404-mogelijk-TM-mismatch' };
-  }
-
-  if (response.status >= 400) {
-    logger.warn('Catalog declaration error status', { reason: 'api-fout', gtin, status: response.status });
-    return { xml: null, reason: 'api-fout' };
-  }
-
-  // Guard against pathologically large bodies before buffering the whole thing.
-  const declaredLength = Number(response.headers.get('content-length') ?? '');
-  if (Number.isFinite(declaredLength) && declaredLength > MAX_RESPONSE_BYTES) {
-    logger.warn('Catalog declaration response too large', { reason: 'api-fout', gtin, bytes: declaredLength });
-    return { xml: null, reason: 'api-fout' };
-  }
-
-  let xml: string;
-  try {
-    xml = await response.text();
-  } catch (err) {
-    logger.warn('Catalog declaration body read failed', {
-      reason: 'api-fout',
-      gtin,
-      error: err instanceof Error ? err.message : 'unknown',
-    });
-    return { xml: null, reason: 'api-fout' };
-  }
-
-  if (xml.length > MAX_RESPONSE_BYTES) {
-    // Streaming-less guard for servers that omit content-length.
-    logger.warn('Catalog declaration body too large', { reason: 'api-fout', gtin, bytes: xml.length });
-    return { xml: null, reason: 'api-fout' };
-  }
-
-  return { xml, reason: 'ok' };
 }
 
 /**
@@ -411,9 +421,42 @@ export function parseDeclaredMarks(xml: string): DeclaredMark[] {
   return out;
 }
 
+/**
+ * Story 19.16 (AC8) — de cachesleutel draagt een OMGEVINGSDIMENSIE, afgeleid van de
+ * catalog-host. Zonder die dimensie schrijft een index-run tegen `catalog.stage…`
+ * entries die de LIVE ACC-paden (review-prior in artwork-pipeline, bootstrap-
+ * declaratieguard) daarna als ACC-waarheid teruglezen. Besluit 2026-07-25: we bouwen
+ * de index op stage-declaraties, dus die scheiding is een harde voorwaarde.
+ *
+ * Sleutels van vóór 19.16 (zonder env-segment) worden hierdoor niet meer gelezen;
+ * ze verlopen vanzelf binnen de TTL. Dat is gewenst: hun herkomst is onbekend.
+ */
+export function catalogEnvTag(baseUrl: string): string {
+  try {
+    const host = new URL(baseUrl).hostname.toLowerCase();
+    // catalog.stage.xxtract.com -> stage ; catalog.acc.xxtract.com -> acc
+    const parts = host.split('.');
+    return parts.length >= 3 ? parts[1] : host.replace(/[^a-z0-9]/g, '');
+  } catch {
+    return 'onbekend';
+  }
+}
+
 /** Separate cache namespace from the T3777-only crosscheck cache. */
-function marksCacheKey(gln: string, gtin: string, tm: string): string {
-  return `marks:${gln}:${gtin}:${tm}`;
+function marksCacheKey(gln: string, gtin: string, tm: string, envTag: string): string {
+  return `marks:${envTag}:${gln}:${gtin}:${tm}`;
+}
+
+/**
+ * Story 19.16 (AC4) — TTL voor NEGATIEVE uitkomsten die transiënt kunnen zijn.
+ * `api-fout` dekt 5xx, netwerkfouten en timeouts; die 24h vasthouden betekent dat
+ * één slechte upstream-minuut een etmaal doorwerkt in élke consument. 404 en
+ * lege-declaratie zijn wél stabiele uitspraken en houden de normale TTL.
+ */
+const TRANSIENT_CACHE_TTL_S = 300;
+
+function ttlForReason(reason: DeclarationReason, normalTtlS: number): number {
+  return reason === 'api-fout' ? Math.min(TRANSIENT_CACHE_TTL_S, normalTtlS) : normalTtlS;
 }
 
 async function marksCacheRead(key: string, gtin: string): Promise<DeclaredMarksResult | null> {
@@ -481,7 +524,17 @@ export function nutriscoreDeclaredCodes(
  * resolveDeclarations' fail-safe order; NEVER throws. Returns marks + a distinct
  * reason so an empty prior never silently looks like "no data".
  */
-export async function resolveDeclaredMarks(gtin: string): Promise<DeclaredMarksResult> {
+export async function resolveDeclaredMarks(
+  gtin: string,
+  /**
+   * Story 19.16 (AC6) — optioneel de AL BEKENDE gln meegeven. De indexbouwer kent
+   * die uit het universum; zonder deze parameter deed deze functie een eigen
+   * `findFirst` zónder `orderBy`, wat twee problemen gaf: ~1862 overbodige queries
+   * per volledige run, én een gln die kon afwijken van de gln in de index wanneer
+   * een GTIN meerdere GLN's heeft. Weglaten = ongewijzigd oud gedrag.
+   */
+  knownGln?: string
+): Promise<DeclaredMarksResult> {
   const { apiKey, baseUrl, targetMarket, cacheTtlS } = readEnv();
 
   if (!apiKey) {
@@ -489,13 +542,15 @@ export async function resolveDeclaredMarks(gtin: string): Promise<DeclaredMarksR
     return { marks: [], reason: 'api-key-ontbreekt' };
   }
 
-  let gln: string | null = null;
+  let gln: string | null = knownGln ?? null;
   try {
-    const row = await prisma.artworkImport.findFirst({
-      where: { gtin, gln: { not: null } },
-      select: { gln: true },
-    });
-    gln = row?.gln ?? null;
+    if (!gln) {
+      const row = await prisma.artworkImport.findFirst({
+        where: { gtin, gln: { not: null } },
+        select: { gln: true },
+      });
+      gln = row?.gln ?? null;
+    }
   } catch (err) {
     logger.warn('gln lookup failed', {
       reason: 'gln-ontbreekt',
@@ -509,7 +564,7 @@ export async function resolveDeclaredMarks(gtin: string): Promise<DeclaredMarksR
     return { marks: [], reason: 'gln-ontbreekt' };
   }
 
-  const key = marksCacheKey(gln, gtin, targetMarket);
+  const key = marksCacheKey(gln, gtin, targetMarket, catalogEnvTag(baseUrl));
   const cached = await marksCacheRead(key, gtin);
   if (cached) return cached;
 
@@ -518,11 +573,26 @@ export async function resolveDeclaredMarks(gtin: string): Promise<DeclaredMarksR
   if (reason !== 'ok' || xml == null) {
     result = { marks: [], reason };
   } else {
-    const marks = parseDeclaredMarks(xml);
+    // 19.16: parseDeclaredMarks is de enige aanroep die kán throwen (alle andere
+    // paden zijn fail-safe). Zonder deze guard breekt één misvormde XML de
+    // "NEVER throws"-belofte van deze functie — en daarmee een hele indexrun.
+    let marks: DeclaredMark[] = [];
+    try {
+      marks = parseDeclaredMarks(xml);
+    } catch (err) {
+      logger.warn('Declaration parse failed', {
+        reason: 'api-fout',
+        gtin,
+        error: err instanceof Error ? err.message : 'unknown',
+      });
+      result = { marks: [], reason: 'api-fout' };
+      await marksCacheWrite(key, result, ttlForReason(result.reason, cacheTtlS), gtin);
+      return result;
+    }
     result = marks.length === 0 ? { marks: [], reason: 'lege-declaratie' } : { marks, reason: 'ok' };
   }
 
-  await marksCacheWrite(key, result, cacheTtlS, gtin);
+  await marksCacheWrite(key, result, ttlForReason(result.reason, cacheTtlS), gtin);
   return result;
 }
 
