@@ -1031,6 +1031,73 @@ describe('Artwork Pipeline Routes (ATDD — Epic 8)', () => {
       );
     });
 
+    // ---- Story 20.10 — kaderloos item ----------------------------------
+    // Sinds Epic 8 maakt de crosscheck voor elke "gedeclareerd maar niet
+    // gevonden"-code een open item ZONDER crop. Die liepen sinds 14.1 op een 422
+    // zodra een reviewer ze met "geen keurmerk" afwees, terwijl dat oordeel juist
+    // klopt. Er is dan niets om als hard-negative vast te leggen.
+    const itemZonderCrop = {
+      ...item,
+      id: 'ri-20-10',
+      cropPath: null,
+      bbox: {},
+      confidence: null,
+      method: 'human-annotation-request',
+      reason: 'Verwacht maar niet gevonden op het artwork (gedeclareerd)',
+    };
+
+    it('Story 20.10: reject "geen-keurmerk" op een KADERLOOS item → 200, registers overgeslagen', async () => {
+      process.env.FLYWHEEL_NOMINATION_ENABLED = 'true';
+      (mockPrisma.artworkReviewItem.findUnique as vi.Mock).mockResolvedValue(itemZonderCrop);
+
+      const res = await app.inject({
+        method: 'PATCH',
+        url: '/api/v1/artwork/review-items/ri-20-10/reject',
+        payload: { reason: 'geen-keurmerk' },
+      });
+
+      // Vóór 20.10 was dit een 422 en liep de reviewer vast.
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.status).toBe('rejected');
+      expect(body.registersSkipped).toBe(true);
+
+      // Geen hash, geen registers — er is geen crop om te hashen.
+      expect(mlClient.computePhash).not.toHaveBeenCalled();
+      expect(mockPrisma.goldSetRecord.create).not.toHaveBeenCalled();
+      expect(mockPrisma.hardNegative.upsert).not.toHaveBeenCalled();
+
+      // De afwijzing zelf moet WEL landen.
+      expect(mockPrisma.artworkReviewItem.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { status: 'rejected' } }),
+      );
+    });
+
+    it('Story 20.10: mét crop blijft registersSkipped false (geen stille uitzondering)', async () => {
+      process.env.FLYWHEEL_NOMINATION_ENABLED = 'true';
+      const res = await app.inject({
+        method: 'PATCH',
+        url: '/api/v1/artwork/review-items/ri-14/reject',
+        payload: { reason: 'geen-keurmerk' },
+      });
+      expect(res.statusCode).toBe(200);
+      expect(JSON.parse(res.body).registersSkipped).toBe(false);
+      expect(mockPrisma.goldSetRecord.create).toHaveBeenCalled();
+    });
+
+    it('Story 20.10: kaderloos + "onjuiste-locatie-verkeerde-code" blijft ongewijzigd werken', async () => {
+      process.env.FLYWHEEL_NOMINATION_ENABLED = 'true';
+      (mockPrisma.artworkReviewItem.findUnique as vi.Mock).mockResolvedValue(itemZonderCrop);
+      const res = await app.inject({
+        method: 'PATCH',
+        url: '/api/v1/artwork/review-items/ri-20-10/reject',
+        payload: { reason: 'onjuiste-locatie-verkeerde-code' },
+      });
+      expect(res.statusCode).toBe(200);
+      expect(JSON.parse(res.body).registersSkipped).toBe(false);
+      expect(mockPrisma.goldSetRecord.create).not.toHaveBeenCalled();
+    });
+
     it('vlag AAN: reject "onjuiste-locatie-verkeerde-code" → GEEN registers (AC2)', async () => {
       process.env.FLYWHEEL_NOMINATION_ENABLED = 'true';
       const res = await app.inject({

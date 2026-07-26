@@ -1,5 +1,13 @@
 # Versiegeschiedenis
 
+## 26 juli 2026 (later)
+
+**Afwijzen werkt weer op producten zonder voorgesteld kader**
+
+Bij sommige producten toont de review-app het hele etiket in plaats van een voorgesteld kader — dat gebeurt wanneer een keurmerk wél is opgegeven maar niet op het etiket teruggevonden werd. Wie zo'n item afwees met "geen keurmerk", kreeg een foutmelding en kon niet verder. Dat is verholpen: de afwijzing gaat nu gewoon door.
+
+Er valt in dat geval niets vast te leggen als tegenvoorbeeld — er is immers geen uitsnede — en dat wordt nu netjes overgeslagen in plaats van als fout behandeld.
+
 ## 26 juli 2026
 
 **Keurmerk-index kan nu de volledige productcatalogus aan**

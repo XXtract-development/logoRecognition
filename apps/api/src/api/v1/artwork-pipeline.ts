@@ -1392,13 +1392,31 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
 
       // Reden "geen-keurmerk": VALS-record + hard-negative, VÓÓR de status-update,
       // fail-closed. Faalt de hash → 503 en géén statuswijziging (nooit een halve
-      // beslissing). De crop is vereist om een hash/hard-negative te maken.
-      if (reason === 'geen-keurmerk') {
-        if (!item.cropPath) {
-          return reply
-            .status(422)
-            .send({ error: 'Geen crop voor dit reviewitem — "geen keurmerk" niet mogelijk' });
-        }
+      // beslissing).
+      //
+      // Story 20.10 — een reviewitem ZONDER crop mag hier niet stranden. Sinds Epic 8
+      // maakt de crosscheck voor elke "gedeclareerd maar niet gevonden"-code een open
+      // item zonder crop (er is niets gedetecteerd om uit te snijden); op ACC zijn dat
+      // er 50. Die liepen sinds 14.1 allemaal op een 422 zodra een reviewer ze met
+      // "geen keurmerk" afwees — terwijl dat oordeel juist klopt: het keurmerk staat
+      // niet op het artwork. Er is dan simpelweg niets om als hard-negative vast te
+      // leggen, dus de registerstap is NIET VAN TOEPASSING (niet: incompleet).
+      // Stuurt bewust op `cropPath` en niet op method/reason-markers: die zijn slechts
+      // een wachtrij-conventie en ontbreken op de 48 oudere items.
+      let registersSkipped = false;
+      if (reason === 'geen-keurmerk' && !item.cropPath) {
+        registersSkipped = true;
+        logger.info('Reject "geen-keurmerk" zonder crop — registers overgeslagen', {
+          reviewItemId: id,
+          gtin: item.gtin,
+          t3777Code: item.t3777Code,
+          // Expliciet loggen zodat een latere analyse niet denkt dat de
+          // hard-negative-registratie stilzwijgend faalde (AC4).
+          reasonSkipped: 'geen-crop-om-te-hashen',
+        });
+      }
+
+      if (reason === 'geen-keurmerk' && item.cropPath) {
         try {
           await recordRejectGeenKeurmerk({
             t3777Code: item.t3777Code,
@@ -1423,7 +1441,9 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
 
       logger.info('Review item rejected', { reviewItemId: id, reason: reason ?? null });
 
-      return reply.status(200).send({ status: 'rejected', reason: reason ?? null });
+      return reply
+        .status(200)
+        .send({ status: 'rejected', reason: reason ?? null, registersSkipped });
     }
   );
 
