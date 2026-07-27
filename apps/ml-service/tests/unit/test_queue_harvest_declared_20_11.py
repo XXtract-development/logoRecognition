@@ -164,3 +164,116 @@ def test_read_int_hanteert_max_en_rommel(monkeypatch, tmp_path):
     p.write_text("1234")
     assert m._read_int(str(p)) == 1234
     assert m._read_int(str(tmp_path / "bestaat-niet")) is None
+
+
+# ---------------------------------------------------------------------------
+# AC3/AC6 — offset, flush-volgorde en run-marker (via een ECHTE run_batch)
+# ---------------------------------------------------------------------------
+#
+# Deze tests roepen `run_batch` daadwerkelijk aan. De eerste testronde deed dat
+# NIET — daardoor bleef een livelock onopgemerkt: de pagina-groepen werden op
+# paginasleutel gesorteerd, terwijl de offset een aaneengesloten prefix over de
+# OORSPRONKELIJKE parenlijst is. Brak de run vroeg af (timebox of geheugenstop),
+# dan bleef `to_offset == from_offset` en deed de volgende run exact hetzelfde
+# werk opnieuw — stil, want dedup blokkeert dubbele rijen.
+
+import json  # noqa: E402
+import os  # noqa: E402
+
+sys.path.insert(0, os.path.dirname(__file__))
+
+from test_queue_harvest_declared_20_2 import _Harness, _page, _region  # noqa: E402
+
+
+def _state_of(res):
+    raw = res.storage.store.get("keurmerk-harvest/declared-harvest-state.json")
+    return json.loads(raw.decode("utf-8")) if raw else {}
+
+
+def test_page_order_zet_de_groep_met_de_laagste_index_eerst(monkeypatch):
+    """H1-regressie, direct op de sorteerlogica.
+
+    Paginasleutels staan hier bewust omgekeerd t.o.v. de paar-indices. Met
+    `sorted(groups)` (op sleutel) komt `a_page` eerst en blijft index 0 liggen —
+    breekt de run daarvoor af, dan schuift de offset nooit op → livelock.
+    """
+    m = _load_module(monkeypatch)
+    groups = {"z_page": [0, 2], "a_page": [1, 3], "m_page": [4, 5]}
+
+    assert m.page_order(groups) == ["z_page", "a_page", "m_page"]
+    # Contrast: sorteren op sleutel zou hier fout zijn.
+    assert sorted(groups) == ["a_page", "m_page", "z_page"]
+
+
+def test_page_order_garandeert_voortgang_bij_vroege_afbreking(monkeypatch):
+    """Na ALLEEN de eerste groep moet de aaneengesloten prefix al opschuiven."""
+    m = _load_module(monkeypatch)
+    next_offset = 0
+    groups = {"z_page": [0, 2], "a_page": [1, 3]}
+
+    def reached(done):
+        r = next_offset
+        while r in done:
+            r += 1
+        return r
+
+    order = m.page_order(groups)
+    done = set(groups[order[0]])          # run breekt af na de eerste groep
+    assert reached(done) > next_offset, "geen voortgang -> de run zou zichzelf herhalen"
+
+    # Met de foute volgorde (op sleutel) staat de offset wél stil:
+    done_fout = set(groups[sorted(groups)[0]])
+    assert reached(done_fout) == next_offset
+
+
+def test_page_order_is_deterministisch(monkeypatch):
+    m = _load_module(monkeypatch)
+    g = {"b": [3], "a": [1], "c": [2]}
+    assert m.page_order(g) == m.page_order(dict(reversed(list(g.items()))))
+
+
+def test_offset_en_marker_na_een_nette_run(monkeypatch):
+    """AC3 — offset gecheckpoint, run-marker opgeruimd."""
+    res = _Harness(monkeypatch).run(
+        [_page("111", _region(sim=0.9)), _page("222", _region(sim=0.9))],
+        {"AISE_1": ["111", "222"]},
+    )
+    st = _state_of(res)
+    assert res.result["status"] == "ok"
+    assert st["next_offset"] == res.result["to_offset"] == 2
+    assert "in_progress" not in st, "run-marker moet bij nette afsluiting weg zijn"
+    assert "run_started_at" not in st
+
+
+def test_flush_gaat_vooraf_aan_checkpoint(monkeypatch):
+    """AC3 — de offset mag nooit voorlopen op de ingevoegde rijen."""
+    res = _Harness(monkeypatch).run(
+        [_page("111", _region(sim=0.9)), _page("222", _region(sim=0.9))],
+        {"AISE_1": ["111", "222"]},
+    )
+    assert res.result["inserted"] == 2
+    assert _state_of(res)["next_offset"] == 2
+
+
+def test_dry_run_raakt_de_state_niet(monkeypatch):
+    """AC3 — DRY_RUN schrijft geen offset en geen marker."""
+    res = _Harness(monkeypatch).run(
+        [_page("111", _region(sim=0.9))], {"AISE_1": ["111"]}, dry_run=True
+    )
+    assert res.result["dry_run"] is True
+    assert _state_of(res) == {}
+
+
+def test_per_code_cap_blijft_run_breed_ondanks_tussentijds_legen(monkeypatch):
+    """AC5 — de cap telt per RUN, niet per flush.
+
+    De queue wordt tussentijds geleegd; tellen op `len(queue[code])` zou de cap
+    daardoor per flush laten resetten. Dat zou een stille gedragswijziging zijn.
+    """
+    res = _Harness(monkeypatch).run(
+        [_page(str(100 + n), _region(sim=0.9)) for n in range(5)],
+        {"AISE_1": [str(100 + n) for n in range(5)]},
+        per_code_cap=2,
+    )
+    assert res.result["inserted"] == 2
+    assert res.result["skipped_cap"] == 3

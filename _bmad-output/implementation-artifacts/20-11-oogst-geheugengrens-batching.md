@@ -99,7 +99,22 @@ De eerste versie noemde alleen de page-cache. Dat is **de helft**:
 - **RED-bewijs**: `.copy()` terugdraaien maakt exact `test_crop_is_losgekoppeld_van_de_pagina` rood (`crop.base` wijst dan naar de pagina); daarna hersteld.
 - **Volledige ml-suite: 188 passed / 0 failed** (14 skipped; 4 omgevings-only bestanden genegeerd zoals gebruikelijk).
 
+### Code-review-remediatie (2026-07-27, `review-20-11-code.md` → FAIL: 2 high)
+De geheugenfix zelf hield stand (beide retainers echt weg, 20.2-beslissingen byte-gelijk). Maar het groeperen introduceerde een **ergere** fout dan de OOM:
+
+- **H1 — livelock.** Ik sorteerde de pagina-groepen op **paginasleutel**, terwijl de offset een aaneengesloten prefix over de **oorspronkelijke** parenlijst is. Brak de run vroeg af, dan bleef `to_offset == from_offset` en deed de volgende run exact hetzelfde werk opnieuw — **stil**, want dedup blokkeert dubbele rijen. Op ACC is de timebox het NORMALE pad (173 paren, ~28 s/paar tegen `MAX_SECONDS=1000`), dus dit zou in productie zijn opgetreden. De oude sequentiële `i += 1` kon dit niet. Zelf gereproduceerd met een simulatie vóór de fix.
+  **Opgelost:** sorteren op de kleinste oorspronkelijke index, geëxtraheerd als pure `page_order()` zodat de invariant direct getest kan worden.
+- **H2 — geen enkele test raakte `run_batch`.** De 9 eerste tests dekten alleen `_crop_bgr` en de cgroup-helpers; juist de logica waar H1 in zat was ongedekt. **Opgelost:** tests op `page_order` (volgorde, voortgangsgarantie bij vroege afbreking, determinisme) plus run-niveau-tests op offset, run-marker, flush-volgorde, DRY_RUN en de run-brede `PER_CODE_CAP`.
+- **Medium:** het "compleet"-pad ruimt nu een achtergebleven `in_progress`-marker op (`stale_marker_cleared` in het resultaat) — anders bleef die eeuwig staan en suggereerde hij een lopende run.
+
+**Eigen testfout onderweg, vermeldenswaard:** mijn eerste volgorde-test toetste de verwerkingsvolgorde *indirect* via de insert-volgorde en faalde, terwijl de code klopte — `_scoped_pairs` bepaalt de paar-volgorde, niet de map-volgorde. In plaats van de test op te rekken heb ik de sorteerlogica als pure functie geëxtraheerd en die rechtstreeks getoetst. Een proxy-test die het verkeerde meet is erger dan geen test.
+
+### Verificatie na remediatie
+- **41 tests groen** in de raakvlak-suites (16 nieuw + 25 bestaande 20.2 ongewijzigd).
+- **RED-bewijs, twee keer**: `.copy()` terugdraaien → crop-invariant rood; terug naar `sorted(groups)` → exact de twee `page_order`-tests rood. Beide daarna hersteld.
+- **Volledige ml-suite: 195 passed / 0 failed** (14 skipped).
+
 ## Change Log
 - 2026-07-27: Story aangemaakt na OOM-kill tijdens de oogstronde.
-- 2026-07-27: Geïmplementeerd; status → review.
+- 2026-07-27: Geïmplementeerd; adversariële code-review FAIL (2 high: livelock + ongedekte run_batch) → geremedieerd; status → review.
 - 2026-07-27: Herzien na adversariële review (FAIL: 3 high, 5 medium). H1: tweede retainer toegevoegd (crops zijn numpy-views op de volledige pagina — alleen de cache begrenzen lost de OOM níét op). H2: AC5 herschreven, `PER_CODE_CAP` expliciet buiten scope (AC1 en "zelfde 25" spraken elkaar tegen). H3: AC3 omgedraaid naar flush-dan-checkpoint (de v1-formulering "checkpoint vóór de batch" zou paren stil overslaan) + run-marker toegevoegd; de onderliggende premisse ("meldt compleet") was feitelijk onjuist. Verder: AC4 krijgt een actie i.p.v. alleen een waarschuwing en meet cgroup i.p.v. eigen RSS; AC1 ondergeschikt gemaakt aan AC2; oplossingsrichting gestuurd naar groeperen-per-pagina zodat de 20.2-prestatiewinst intact blijft; Task 7 op het juiste zoekcriterium gezet.

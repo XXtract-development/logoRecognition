@@ -238,6 +238,24 @@ def _scoped_pairs(declared_map: dict) -> list:
     return pairs
 
 
+def page_order(groups: dict) -> list:
+    """
+    Story 20.11 — volgorde van de pagina-groepen: op de KLEINSTE oorspronkelijke
+    paar-index, NIET op de paginasleutel.
+
+    Dat is geen cosmetiek. De offset is een aaneengesloten prefix over de
+    OORSPRONKELIJKE parenlijst, dus de groep die `next_offset` bevat moet als
+    eerste verwerkt worden. Sorteren op paginasleutel gaf een LIVELOCK: brak de
+    run vroeg af (timebox of geheugenstop), dan bleef `to_offset == from_offset`
+    en deed de volgende run exact hetzelfde werk opnieuw — stil, want dedup
+    blokkeert dubbele rijen. Op ACC is de timebox het NORMALE pad (173 paren,
+    ~28 s/paar tegen MAX_SECONDS=1000), geen randgeval.
+
+    Deterministisch: paar-indices zijn uniek, dus de sleutel is een totale orde.
+    """
+    return sorted(groups, key=lambda src: min(groups[src]))
+
+
 async def _flush(queue: dict, db_service, storage_service) -> int:
     """
     Story 20.11 (AC3) — schrijf de opgebouwde kandidaten weg en LEEG de queue.
@@ -339,12 +357,23 @@ async def run_batch() -> dict:
             "Declaratie-oogst compleet — alle scoped (code, GTIN)-paren gedekt",
             extra={"total": total},
         )
+        # Story 20.11 — een achtergebleven run-marker van een hard afgebroken run
+        # hoort hier ook opgeruimd te worden; anders blijft hij eeuwig staan en
+        # suggereert hij ten onrechte een lopende run.
+        had_marker = bool(state.get("in_progress"))
+        if had_marker and not DRY_RUN:
+            state.pop("in_progress", None)
+            state.pop("run_started_at", None)
+            storage_service.put_training_image(
+                STATE_KEY, json.dumps(state).encode("utf-8"), "application/json"
+            )
         result = {
             "status": "complete",
             "total_pairs": total,
             "next_offset": next_offset,
             "candidates": 0,
             "inserted": 0,
+            "stale_marker_cleared": had_marker,
         }
         print(json.dumps(result))
         return result
@@ -385,8 +414,8 @@ async def run_batch() -> dict:
         src = _pick_page(by_gtin[gtin])
         if src:
             groups[src].append(idx)
-    # Deterministische volgorde van de groepen (pagina-sleutel).
-    ordered_pages = sorted(groups)
+    # Zie `page_order` — de volgorde is bepalend voor de offset-voortgang.
+    ordered_pages = page_order(groups)
 
     # De offset slaat op de OORSPRONKELIJKE parenlijst, niet op de hergroepeerde
     # volgorde: we schuiven alleen op tot waar het aaneengesloten voorste deel af is.
@@ -417,7 +446,7 @@ async def run_batch() -> dict:
                 "Declaratie-oogst stopt op geheugendruk",
                 extra={"cgroup": cgroup_memory(), "fraction": MEM_STOP_FRACTION},
             )
-            break
+            break  # de slot-flush + checkpoint hieronder bewaren het werk
 
         img = boxes = None
         is_keyline = False
