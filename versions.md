@@ -1,5 +1,13 @@
 # Versiegeschiedenis
 
+## 27 juli 2026
+
+**Oogstrondes lopen niet meer stil vast**
+
+Bij het zoeken naar keurmerken op etiketten kon een grote ronde halverwege afgebroken worden doordat het werkgeheugen volliep. Vervelend detail: dat gebeurde geruisloos — de ronde leverde niets op, zonder melding, waardoor het leek alsof er simpelweg niets te vinden was.
+
+Opgelost. Het geheugengebruik hangt niet langer af van hoe groot de ronde is, tussentijdse resultaten worden nu direct bewaard in plaats van pas aan het eind, en als het geheugen tóch krap wordt stopt de ronde netjes met een duidelijke melding.
+
 ## 26 juli 2026 (later)
 
 **Afwijzen werkt weer op producten zonder voorgesteld kader**

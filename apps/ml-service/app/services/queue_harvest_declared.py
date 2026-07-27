@@ -118,12 +118,75 @@ def _cross_code_rejected(declared_code, declared_sim, open_matches, margin) -> b
     return False
 
 
+# ---------------------------------------------------------------------------
+# Story 20.11 — geheugenbewaking (AC4)
+# ---------------------------------------------------------------------------
+
+# Stop gecontroleerd zodra het cgroup-geheugen boven deze fractie van de limiet
+# komt. Bewust de CGROUP meten en niet de eigen RSS: de limiet wordt gedeeld met
+# de draaiende ml-service, dus "mijn eigen RSS is nog laag" zegt niets over de
+# ruimte die er nog is. 0 of leeg schakelt de bewaking uit.
+MEM_STOP_FRACTION = float(os.environ.get("DECLARED_HARVEST_MEM_STOP_FRACTION", "0.75"))
+
+# Elke N verwerkte paren: eerst flushen (crops + rijen), dan pas checkpointen.
+FLUSH_EVERY = int(os.environ.get("DECLARED_HARVEST_FLUSH_EVERY", "25"))
+
+
+def _read_int(path: str):
+    try:
+        with open(path) as fh:
+            v = fh.read().strip()
+        return None if v in ("max", "") else int(v)
+    except Exception:
+        return None
+
+
+def cgroup_memory() -> tuple:
+    """
+    (gebruik, limiet) in bytes uit de cgroup, of (None, None) als het niet leesbaar
+    is. Ondersteunt cgroup v2 (memory.current/memory.max) én v1
+    (memory.usage_in_bytes/memory.limit_in_bytes). Geen extra dependency.
+    """
+    use = _read_int("/sys/fs/cgroup/memory.current")
+    lim = _read_int("/sys/fs/cgroup/memory.max")
+    if use is None:
+        use = _read_int("/sys/fs/cgroup/memory/memory.usage_in_bytes")
+        lim = _read_int("/sys/fs/cgroup/memory/memory.limit_in_bytes")
+    # v1 zonder limiet zet een absurd hoog getal; behandel dat als "geen limiet".
+    if lim is not None and lim > (1 << 62):
+        lim = None
+    return use, lim
+
+
+def memory_pressure(fraction: float = None) -> bool:
+    """True zodra het cgroup-gebruik boven de drempel komt (AC4)."""
+    frac = MEM_STOP_FRACTION if fraction is None else fraction
+    if frac <= 0:
+        return False
+    use, lim = cgroup_memory()
+    if not use or not lim:
+        return False
+    return (use / lim) >= frac
+
+
 def _crop_bgr(img, b):
-    """Identiek aan queue_harvest*(.py)'s helper (bewust lokaal)."""
+    """
+    Identiek aan queue_harvest*(.py)'s helper (bewust lokaal).
+
+    Story 20.11 — geeft een LOSGEKOPPELDE kopie terug, geen numpy-view. Een view
+    houdt de VOLLEDIGE pagina-array in leven zolang de crop bestaat; omdat crops tot
+    de insert in `queue` blijven staan, hield één batch daardoor tot ~105 hele
+    artworks tegelijk vast (OOM-kill op ACC, 7,03 GB bij een limiet van 8 GiB die
+    gedeeld wordt met de draaiende service). Een crop is enkele KB's, de pagina vele
+    MB's — de kopie is dus verwaarloosbaar en snijdt de koppeling door.
+    Invariant: `crop.base is None`.
+    """
     x, y, w, h = b
     x, y = max(0, x), max(0, y)
     c = img[y : y + h, x : x + w]
-    return c if c.size and c.shape[0] >= 4 and c.shape[1] >= 4 else None
+    if not (c.size and c.shape[0] >= 4 and c.shape[1] >= 4):
+        return None
+    return c.copy()
 
 
 def _pick_page(keys):
@@ -173,6 +236,66 @@ def _scoped_pairs(declared_map: dict) -> list:
         for gtin in declared_map[code]:
             pairs.append((code, gtin))
     return pairs
+
+
+async def _flush(queue: dict, db_service, storage_service) -> int:
+    """
+    Story 20.11 (AC3) — schrijf de opgebouwde kandidaten weg en LEEG de queue.
+
+    Wordt tussentijds aangeroepen (elke FLUSH_EVERY paren) én aan het eind. Het
+    legen is essentieel: de queue houdt crop-arrays vast, en zonder legen zou het
+    geheugen alsnog met de batch meegroeien. Retourneert het aantal ingevoegde rijen.
+    In DRY_RUN wordt niets geschreven en blijft de queue staan (de telling moet de
+    echte run blijven voorspellen).
+    """
+    if DRY_RUN:
+        return 0
+    n = 0
+    async with db_service.pool.acquire() as conn:
+        for code, items in queue.items():
+            for r in items:
+                ok, buf = cv2.imencode(".png", r["crop"])
+                if not ok:
+                    continue
+                crop_key = f"artwork-crops/{r['gtin']}/20_2_{r['cid']}.png"
+                storage_service.put_training_image(crop_key, buf.tobytes())
+                await conn.execute(
+                    """
+                    INSERT INTO artwork_review_items
+                      (gtin, t3777_code, crop_path, bbox, confidence, method, reason, source_file, status, updated_at)
+                    VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7, $8, 'open', now())
+                    """,
+                    r["gtin"],
+                    code,
+                    crop_key,
+                    json.dumps(r["bbox"]),
+                    r["confidence"],
+                    "embedding-declared",
+                    _marker(code),
+                    r["sourceFile"],
+                )
+                n += 1
+    queue.clear()
+    return n
+
+
+def _checkpoint(state: dict, storage_service, reached: int, total: int, done: bool = False) -> None:
+    """
+    Story 20.11 (AC3) — offset wegschrijven. ALTIJD ná een flush aanroepen, nooit
+    ervoor: de offset mag nooit voorlopen op de daadwerkelijk ingevoegde rijen.
+    `done=True` ruimt de run-marker op — blijft die staan, dan is de vorige run hard
+    afgebroken.
+    """
+    if DRY_RUN:
+        return
+    state["next_offset"] = reached
+    state["total_pairs"] = total
+    if done:
+        state.pop("in_progress", None)
+        state.pop("run_started_at", None)
+    storage_service.put_training_image(
+        STATE_KEY, json.dumps(state).encode("utf-8"), "application/json"
+    )
 
 
 async def run_batch() -> dict:
@@ -233,147 +356,206 @@ async def run_batch() -> dict:
     skipped_cap = 0
     skipped_cross_code = 0  # Story 20.7 — buur-icoon tegengehouden
     skipped_keyline = 0  # Story 20.9 — technische snijlijn-/cutter-pagina tegengehouden
+    # Story 20.11 — tellen over ALLE flushes heen; `queue` wordt tussentijds geleegd.
+    inserted_total = 0
+    candidate_total = 0
+    per_code_counts: dict = defaultdict(int)
     t0 = time.perf_counter()
-    i = next_offset
-    # Per-pagina-cache binnen de batch: een multi-code-GTIN (alcohol) leest en
-    # localiseert zijn pagina maar één keer; de per-code pool-match verschilt.
-    page_cache: dict = {}
-    while i < end:
-        if time.perf_counter() - t0 > MAX_SECONDS:
-            break
-        code, gtin = pairs[i]
-        src = _pick_page(by_gtin[gtin])
-        i += 1
-        if not src:
-            continue
 
-        if src in page_cache:
-            img, boxes, is_keyline = page_cache[src]
-        else:
-            try:
-                data = storage_service.get_training_image(src)
-                img = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
-            except Exception:
-                continue
-            if img is None:
-                continue
-            boxes, _ = propose_regions(img)
-            # Story 20.9 — beslis eenmaal per pagina of het een technische
-            # keyline-/cutter-sheet is (gecachet, ook voor multi-code-GTINs).
-            is_keyline = _is_keyline(_page_detail_bpp(img), KEYLINE_MAX_BPP)
-            page_cache[src] = (img, boxes, is_keyline)
-        if img is None:
-            continue
-
-        # Story 20.9 — keyline-pagina levert geen bruikbare crops (lege panelen).
-        if is_keyline:
-            skipped_keyline += 1
-            continue
-
-        # AC3: alleen de BESTE regio per paar; de declaratie garandeert de CODE,
-        # niet de locatie — geen enkele regio >= floor betekent: overslaan.
-        best = None  # (similarity, crop, bbox, embedding)
-        for b in boxes:
-            c = _crop_bgr(img, b)
-            if c is None:
-                continue
-            emb = np.asarray(await model_manager.generate_embedding(_to_pil(c)), np.float32)
-            kp = keurmerk_probability(emb)
-            if kp is not None and kp < GATE_THRESHOLD:
-                continue
-            matches = await db_service.find_similar_references_by_codes(
-                embedding=emb,
-                t3777_codes=[code],
-                limit=1,
-                threshold=FLOOR,
-            )
-            if not matches:
-                continue
-            sim = float(matches[0]["similarity"])
-            if best is None or sim > best[0]:
-                best = (sim, c, b, emb)
-
-        if best is None:
-            skipped_below_floor += 1
-            continue
-
-        sim, crop, bbox, best_emb = best
-
-        # Story 20.7 — cross-code-guard: matcht de gekozen regio ONgescopet op een
-        # ANDERE code duidelijk beter, dan is het een buur-icoon → verwerpen.
-        open_matches = await db_service.find_similar_references(
-            embedding=best_emb, limit=3, threshold=0.0
-        )
-        if _cross_code_rejected(code, sim, open_matches, CROSS_CODE_MARGIN):
-            skipped_cross_code += 1
-            continue
-
-        if len(queue[code]) >= PER_CODE_CAP:
-            skipped_cap += 1
-            continue
-
-        # AC2/AC4 — idempotentie per code: READ, draait ook in DRY_RUN mee.
-        exists = await db_service.review_item_exists(
-            gtin=gtin, reason=_marker(code), source_file=src
-        )
-        if exists:
-            skipped_duplicate += 1
-            continue
-
-        queue[code].append(
-            {
-                "gtin": gtin,
-                "bbox": {
-                    "x": int(bbox[0]),
-                    "y": int(bbox[1]),
-                    "width": int(bbox[2]),
-                    "height": int(bbox[3]),
-                },
-                "confidence": round(sim, 3),
-                "sourceFile": src,
-                "crop": crop,
-                "cid": f"{code}__{i}_{bbox[0]}_{bbox[1]}",
-            }
-        )
-    reached = i
-
-    candidate_count = sum(len(v) for v in queue.values())
-
-    inserted = 0
+    # Story 20.11 (AC3) — run-marker: blijft staan als de run hard wordt afgebroken
+    # (SIGKILL kent geen handler), en wordt bij een nette afsluiting opgeruimd. Een
+    # offset alleen is niet te onderscheiden van "er is nooit een run geweest".
     if not DRY_RUN:
-        async with db_service.pool.acquire() as conn:
-            for code, items in queue.items():
-                for r in items:
-                    ok, buf = cv2.imencode(".png", r["crop"])
-                    if not ok:
-                        continue
-                    crop_key = f"artwork-crops/{r['gtin']}/20_2_{r['cid']}.png"
-                    storage_service.put_training_image(crop_key, buf.tobytes())
-                    await conn.execute(
-                        """
-                        INSERT INTO artwork_review_items
-                          (gtin, t3777_code, crop_path, bbox, confidence, method, reason, source_file, status, updated_at)
-                        VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7, $8, 'open', now())
-                        """,
-                        r["gtin"],
-                        code,
-                        crop_key,
-                        json.dumps(r["bbox"]),
-                        r["confidence"],
-                        "embedding-declared",
-                        _marker(code),
-                        r["sourceFile"],
-                    )
-                    inserted += 1
-
-        state["next_offset"] = reached
-        state["total_pairs"] = total
+        state["in_progress"] = True
+        state["run_started_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
         storage_service.put_training_image(
             STATE_KEY, json.dumps(state).encode("utf-8"), "application/json"
         )
 
+    # Story 20.11 (AC2) — GROEPEREN PER BRONPAGINA. Voorheen liep de lus de paren in
+    # volgorde af met een onbegrensde page-cache: die groeide met het aantal unieke
+    # pagina's in de batch (7 GB bij 173 paren -> OOM). Door alle codes van dezelfde
+    # pagina achter elkaar te doen is er nooit meer dan ÉÉN pagina tegelijk nodig, en
+    # blijft de 20.2-winst (niet herhaald decoderen/MSER/PNG-encoden voor
+    # multi-code-GTINs) volledig intact. Geheugen wordt zo batch-ONafhankelijk.
+    window = list(range(next_offset, end))
+    groups: dict = defaultdict(list)
+    for idx in window:
+        code, gtin = pairs[idx]
+        src = _pick_page(by_gtin[gtin])
+        if src:
+            groups[src].append(idx)
+    # Deterministische volgorde van de groepen (pagina-sleutel).
+    ordered_pages = sorted(groups)
+
+    # De offset slaat op de OORSPRONKELIJKE parenlijst, niet op de hergroepeerde
+    # volgorde: we schuiven alleen op tot waar het aaneengesloten voorste deel af is.
+    done_idx: set = set()
+    # Paren zonder bruikbare pagina tellen als afgehandeld (ze werden ook voorheen
+    # overgeslagen met i += 1).
+    for idx in window:
+        if not _pick_page(by_gtin[pairs[idx][1]]):
+            done_idx.add(idx)
+
+    def _reached() -> int:
+        r = next_offset
+        while r in done_idx:
+            r += 1
+        return r
+
+    stopped_reason = None
+    processed_since_flush = 0
+
+    for src in ordered_pages:
+        if time.perf_counter() - t0 > MAX_SECONDS:
+            stopped_reason = "timebox"
+            break
+        # AC4 — gecontroleerd stoppen vóór de OOM-killer toeslaat.
+        if memory_pressure():
+            stopped_reason = "stopped_memory"
+            logger.warning(
+                "Declaratie-oogst stopt op geheugendruk",
+                extra={"cgroup": cgroup_memory(), "fraction": MEM_STOP_FRACTION},
+            )
+            break
+
+        img = boxes = None
+        is_keyline = False
+        page_loaded = False
+
+        for i in groups[src]:
+            code, gtin = pairs[i]
+
+            # De pagina wordt per GROEP één keer geladen en gelokaliseerd — dat is
+            # exact de 20.2-winst, nu zonder onbegrensde cache.
+            if not page_loaded:
+                page_loaded = True
+                try:
+                    data = storage_service.get_training_image(src)
+                    img = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
+                except Exception:
+                    img = None
+                if img is not None:
+                    boxes, _ = propose_regions(img)
+                    # Story 20.9 — beslis eenmaal per pagina of het een technische
+                    # keyline-/cutter-sheet is (geldt voor alle codes van deze pagina).
+                    is_keyline = _is_keyline(_page_detail_bpp(img), KEYLINE_MAX_BPP)
+
+            if img is None:
+                done_idx.add(i)
+                continue
+
+            # Het paar is vanaf hier hoe dan ook afgehandeld — elk vervolgpad is
+            # ofwel een kandidaat, ofwel een bewuste overslag (floor/dedup/cap/
+            # cross-code/keyline). Aan het EIND markeren zou fout zijn: de meeste
+            # paden verlaten de iteratie met `continue`, en die paren zouden dan
+            # nooit meetellen voor de offset — de run zou ze eindeloos herhalen.
+            done_idx.add(i)
+            processed_since_flush += 1
+
+            # Story 20.9 — keyline-pagina levert geen bruikbare crops (lege panelen).
+            if is_keyline:
+                skipped_keyline += 1
+                continue
+
+            # AC3: alleen de BESTE regio per paar; de declaratie garandeert de CODE,
+            # niet de locatie — geen enkele regio >= floor betekent: overslaan.
+            best = None  # (similarity, crop, bbox, embedding)
+            for b in boxes:
+                c = _crop_bgr(img, b)
+                if c is None:
+                    continue
+                emb = np.asarray(await model_manager.generate_embedding(_to_pil(c)), np.float32)
+                kp = keurmerk_probability(emb)
+                if kp is not None and kp < GATE_THRESHOLD:
+                    continue
+                matches = await db_service.find_similar_references_by_codes(
+                    embedding=emb,
+                    t3777_codes=[code],
+                    limit=1,
+                    threshold=FLOOR,
+                )
+                if not matches:
+                    continue
+                sim = float(matches[0]["similarity"])
+                if best is None or sim > best[0]:
+                    best = (sim, c, b, emb)
+
+            if best is None:
+                skipped_below_floor += 1
+                continue
+
+            sim, crop, bbox, best_emb = best
+
+            # Story 20.7 — cross-code-guard: matcht de gekozen regio ONgescopet op een
+            # ANDERE code duidelijk beter, dan is het een buur-icoon → verwerpen.
+            open_matches = await db_service.find_similar_references(
+                embedding=best_emb, limit=3, threshold=0.0
+            )
+            if _cross_code_rejected(code, sim, open_matches, CROSS_CODE_MARGIN):
+                skipped_cross_code += 1
+                continue
+
+            # Story 20.11 — tel op `per_code_counts`, NIET op `len(queue[code])`:
+            # de queue wordt tussentijds geleegd door de flush, dus daarop tellen zou
+            # de cap per flush laten resetten i.p.v. per run. PER_CODE_CAP houdt
+            # daarmee exact zijn oude, run-brede betekenis.
+            if per_code_counts[code] >= PER_CODE_CAP:
+                skipped_cap += 1
+                continue
+
+            # AC2/AC4 — idempotentie per code: READ, draait ook in DRY_RUN mee.
+            exists = await db_service.review_item_exists(
+                gtin=gtin, reason=_marker(code), source_file=src
+            )
+            if exists:
+                skipped_duplicate += 1
+                continue
+
+            queue[code].append(
+                {
+                    "gtin": gtin,
+                    "bbox": {
+                        "x": int(bbox[0]),
+                        "y": int(bbox[1]),
+                        "width": int(bbox[2]),
+                        "height": int(bbox[3]),
+                    },
+                    "confidence": round(sim, 3),
+                    "sourceFile": src,
+                    "crop": crop,
+                    "cid": f"{code}__{i}_{bbox[0]}_{bbox[1]}",
+                }
+            )
+            candidate_total += 1
+            per_code_counts[code] += 1
+        # Story 20.11 (AC2) — pagina expliciet loslaten zodra de groep klaar is.
+        # Zonder dit bleef hij in de (voorheen onbegrensde) cache staan.
+        img = boxes = None
+
+        # Story 20.11 (AC3) — FLUSH-DAN-CHECKPOINT. Eerst het werk wegschrijven,
+        # daarna pas de offset. Andersom (checkpointen vóór de flush) zou paren
+        # stilzwijgend overslaan als de run daarna sneuvelt.
+        if processed_since_flush >= FLUSH_EVERY:
+            n = await _flush(queue, db_service, storage_service)
+            inserted_total += n
+            _checkpoint(state, storage_service, _reached(), total)
+            processed_since_flush = 0
+
+    reached = _reached()
+
+    # Slot-flush + checkpoint voor de rest van de queue.
+    inserted_total += await _flush(queue, db_service, storage_service)
+    _checkpoint(state, storage_service, reached, total, done=True)
+
+    candidate_count = candidate_total
+    inserted = inserted_total
+
+    # `queue` is door de flushes geleegd; tel per code apart mee.
     result = {
         "dry_run": DRY_RUN,
+        # Story 20.11 (AC4) — expliciete status i.p.v. stil ophouden.
+        "status": stopped_reason or "ok",
         "candidates": candidate_count,
         "inserted": inserted,
         "skipped_below_floor": skipped_below_floor,
@@ -385,7 +567,7 @@ async def run_batch() -> dict:
         "from_offset": next_offset,
         "to_offset": reached,
         "remaining": max(0, total - reached),
-        "per_code": {c: len(v) for c, v in queue.items()},
+        "per_code": dict(per_code_counts),
         "seconds": round(time.perf_counter() - t0, 1),
     }
     logger.info("Declaratie-oogst batch klaar", extra=result)
