@@ -7,6 +7,12 @@
  * logo hij zoekt. Bestaat ook dat niet -> 404. Het voorbeeld is UITSLUITEND
  * voor weergave (geen reference_logos-rij, geen embedding) — dit endpoint
  * raakt de herkenning niet.
+ *
+ * NB (Story 20.13): de mock is verplaatst van `findFirst` naar `findMany` omdat de
+ * selectie nu op HERKOMST rangschikt i.p.v. op variantLabel-alfabet. Dat is een
+ * implementatiedetail — ALLE asserties hieronder (statuscodes, X-Reference-Source,
+ * downloadTrainingObject-aanroepen, geen writes) zijn ONGEWIJZIGD, zodat deze suite
+ * zijn functie als regressiepoort voor 20.8 volledig behoudt.
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -43,13 +49,13 @@ describe('Story 20.8 — voorbeeld-logo gids-fallback', () => {
   });
 
   it('AC1: actieve referentie aanwezig -> serveert de referentie (source=reference)', async () => {
-    (mockPrisma.referenceLogo.findFirst as vi.Mock).mockResolvedValue({
+    (mockPrisma.referenceLogo.findMany as vi.Mock).mockResolvedValue([{
       id: 'ref-1',
       t3777Code: 'EU_ORGANIC_FARMING',
       variantLabel: 'kleur-nl',
       storagePath: 'reference-logos/EU_ORGANIC_FARMING/kleur-nl.png',
       active: true,
-    });
+    }]);
     (downloadTrainingObject as vi.Mock).mockResolvedValue(PNG);
 
     const res = await app.inject({
@@ -65,7 +71,7 @@ describe('Story 20.8 — voorbeeld-logo gids-fallback', () => {
   });
 
   it('AC1: geen actieve referentie maar gids-voorbeeld bestaat -> serveert het voorbeeld (source=guide-example)', async () => {
-    (mockPrisma.referenceLogo.findFirst as vi.Mock).mockResolvedValue(null);
+    (mockPrisma.referenceLogo.findMany as vi.Mock).mockResolvedValue([]);
     (downloadTrainingObject as vi.Mock).mockImplementation(async (key: string) =>
       key === 'reference-examples/SOCIETY_PLASTICS_INDUSTRY.png' ? PNG : null,
     );
@@ -83,7 +89,7 @@ describe('Story 20.8 — voorbeeld-logo gids-fallback', () => {
   });
 
   it('AC1: geen referentie én geen gids-voorbeeld -> 404', async () => {
-    (mockPrisma.referenceLogo.findFirst as vi.Mock).mockResolvedValue(null);
+    (mockPrisma.referenceLogo.findMany as vi.Mock).mockResolvedValue([]);
     (downloadTrainingObject as vi.Mock).mockResolvedValue(null);
 
     const res = await app.inject({
@@ -95,7 +101,7 @@ describe('Story 20.8 — voorbeeld-logo gids-fallback', () => {
   });
 
   it('AC2: het fallback-pad raakt reference_logos NIET (alleen een lees-download)', async () => {
-    (mockPrisma.referenceLogo.findFirst as vi.Mock).mockResolvedValue(null);
+    (mockPrisma.referenceLogo.findMany as vi.Mock).mockResolvedValue([]);
     (downloadTrainingObject as vi.Mock).mockImplementation(async (key: string) =>
       key === 'reference-examples/BDIH_LOGO.png' ? PNG : null,
     );
@@ -111,7 +117,7 @@ describe('Story 20.8 — voorbeeld-logo gids-fallback', () => {
   });
 
   it('review-F2: een code met traversal-tekens -> 404 zonder storage-toegang', async () => {
-    (mockPrisma.referenceLogo.findFirst as vi.Mock).mockResolvedValue(null);
+    (mockPrisma.referenceLogo.findMany as vi.Mock).mockResolvedValue([]);
     (downloadTrainingObject as vi.Mock).mockResolvedValue(PNG);
 
     const res = await app.inject({

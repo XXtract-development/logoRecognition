@@ -1,5 +1,13 @@
 # Versiegeschiedenis
 
+## 27 juli 2026 (later)
+
+**Het voorbeeldlogo in de review toont weer het officiële keurmerk**
+
+Naast "Zoek dit keurmerk op de verpakking" stond bij sommige keurmerken een leeg vakje of een korrelig uitsnedje in plaats van het echte logo. Bij negen keurmerken was dat het geval — waaronder het recycling-symbool, EU-biologisch en Green Dot.
+
+De oorzaak was een willekeurige keuze: van alle beschikbare afbeeldingen werd de alfabetisch eerste getoond. Nu wordt bewust het officiële logo gekozen, en pas als dat er niet is een door een collega goedgekeurde uitsnede.
+
 ## 27 juli 2026
 
 **Oogstrondes lopen niet meer stil vast**

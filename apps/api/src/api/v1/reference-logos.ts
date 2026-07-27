@@ -22,6 +22,7 @@ import { KEURMERK_CATEGORY } from '../../services/provenance';
 import { mlClient } from '../../services/ml-client';
 import { markBaselineStale } from '../../services/flywheel/baseline';
 import { resolveFieldType } from '../../services/field-type-mapping';
+import { REAL_CROP_SOURCES } from '../../services/flywheel/bootstrap-run';
 
 /** Allowed reference-logo file extensions. */
 const ALLOWED_EXTENSIONS = ['png', 'svg'] as const;
@@ -45,6 +46,57 @@ const LIST_MAX_LIMIT = 500;
 function extensionOf(filename: string): string {
   const idx = filename.lastIndexOf('.');
   return idx >= 0 ? filename.slice(idx + 1).toLowerCase() : '';
+}
+
+/**
+ * Story 20.13 — kies het VOORBEELDlogo op HERKOMST, niet op alfabet.
+ *
+ * Voorheen: `findFirst({ orderBy: { variantLabel: 'asc' } })`. Dat is willekeurig
+ * ten opzichte van wat een reviewer moet zien. Gemeten op ACC (2026-07-27) toonden
+ * 9 van de 53 codes met een gidslogo iets anders, langs twee patronen:
+ *   - `auto-…` (vliegwiel-promotie) sorteert vóór `gs1-guide` → RECYCLABLE_GENERAL_CLAIM
+ *     liet een nagenoeg witte auto-crop zien, dus een leeg vakje;
+ *   - `default` (oude wikimedia-rijen) sorteert vóór `gs1-guide` → o.a. EU_ORGANIC_FARMING
+ *     en GREEN_DOT toonden het wikimedia-plaatje i.p.v. het op 2026-07-26 geseede
+ *     officiële GS1-logo.
+ *
+ * Het voorbeeld vertelt de reviewer WAAR hij naar zoekt; een willekeurige uitsnede
+ * kan hem juist op het verkeerde been zetten. Vandaar een expliciete rangorde:
+ *   1. officieel zaadlogo (GS1-gids; voor Nutri-Score het synthetische zaad)
+ *   2. door een mens bevestigde crop
+ *   3. overige echte crops (POC / vliegwiel-promotie)
+ *   4. de rest (o.a. de historische wikimedia-`default`-rijen, en `source: null`)
+ *
+ * Binnen een categorie `variantLabel asc` → deterministisch (AC5).
+ * Weergave-only: raakt `reference_logos`/embeddings en dus de herkenning niet.
+ */
+const SEED_SOURCES = ['gs1-packaging-label-guide', 'synthetic-nutriscore-bootstrap'];
+const HUMAN_SOURCE = 'review-confirmed';
+/** De overige ECHTE-crop-bronnen (REAL_CROP_SOURCES minus de mens-bevestigde). */
+const OTHER_REAL_SOURCES = REAL_CROP_SOURCES.filter((s) => s !== HUMAN_SOURCE);
+
+export function exampleSourceRank(source: string | null | undefined): number {
+  if (source && SEED_SOURCES.includes(source)) return 0;
+  if (source === HUMAN_SOURCE) return 1;
+  if (source && (OTHER_REAL_SOURCES as readonly string[]).includes(source)) return 2;
+  // Ook `null` valt hier: de curatie-upload laat `source` leeg (zie 19.15). Die
+  // rijen horen onderaan, niet bovenaan — en een `notIn`-filter zou ze juist
+  // stilzwijgend WEGgooien (NULL NOT IN (...) = UNKNOWN), vandaar sorteren i.p.v.
+  // filteren.
+  return 3;
+}
+
+async function pickExampleReference(code: string) {
+  const refs = await prisma.referenceLogo.findMany({
+    where: { t3777Code: code, active: true },
+    orderBy: { variantLabel: 'asc' },
+  });
+  if (refs.length === 0) return null;
+  // Stabiele sort: `findMany` levert al op variantLabel, dus binnen dezelfde
+  // herkomst-rang blijft die volgorde staan.
+  return refs.reduce((best, r) =>
+    exampleSourceRank(r.source) < exampleSourceRank(best.source) ? r : best
+  );
 }
 
 export async function referenceLogosRoutes(fastify: FastifyInstance) {
@@ -317,10 +369,7 @@ export async function referenceLogosRoutes(fastify: FastifyInstance) {
       if (code.includes('/') || code.includes('\\') || code.includes('..')) {
         return reply.status(404).send({ error: 'Ongeldige code' });
       }
-      const ref = await prisma.referenceLogo.findFirst({
-        where: { t3777Code: code, active: true },
-        orderBy: { variantLabel: 'asc' },
-      });
+      const ref = await pickExampleReference(code);
 
       // Story 20.8 — een reviewer moet ALTIJD zien naar welk logo hij zoekt.
       // Zonder actieve referentie vallen we terug op het opgeslagen GS1-gids-

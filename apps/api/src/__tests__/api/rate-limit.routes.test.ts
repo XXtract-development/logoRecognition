@@ -76,13 +76,19 @@ describe('Rate limiting — 429 mapping + thumbnail-flood exclusion (Story 12.13
   let app: FastifyInstance;
 
   beforeEach(async () => {
-    (mockPrisma.referenceLogo.findFirst as vi.Mock).mockResolvedValue({
-      id: 'ref-1',
-      t3777Code: 'EU_ORGANIC_FARMING',
-      variantLabel: 'kleur-nl',
-      storagePath: 'reference-logos/EU_ORGANIC_FARMING/kleur-nl.png',
-      active: true,
-    });
+    // Story 20.13 — de voorbeeld-selectie rangschikt op HERKOMST en haalt daarom
+    // `findMany` op i.p.v. `findFirst`. Alleen de mock verandert; de rate-limit-
+    // asserties hieronder zijn ongewijzigd.
+    (mockPrisma.referenceLogo.findMany as vi.Mock).mockResolvedValue([
+      {
+        id: 'ref-1',
+        t3777Code: 'EU_ORGANIC_FARMING',
+        variantLabel: 'kleur-nl',
+        storagePath: 'reference-logos/EU_ORGANIC_FARMING/kleur-nl.png',
+        source: 'gs1-packaging-label-guide',
+        active: true,
+      },
+    ]);
     (downloadTrainingObject as vi.Mock).mockResolvedValue(
       Buffer.from(
         '89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c489',
