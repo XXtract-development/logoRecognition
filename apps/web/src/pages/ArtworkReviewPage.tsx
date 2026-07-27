@@ -141,12 +141,18 @@ const ArtworkReviewPage: React.FC = () => {
           >
             {t('review.title', { defaultValue: 'Artwork-review' })}
           </Title>
-          <Paragraph type="secondary" style={{ maxWidth: 640 }}>
-            {t('review.description', {
-              defaultValue:
-                'Beoordeel keurmerk-detecties die niet automatisch konden worden bevestigd. Per item zie je de herkomst (bronbestand en coördinaten) en de reden van de discrepantie.',
-            })}
-          </Paragraph>
+          {/* Story 20.14 — introductietekst kost ~110px hoogte die het artwork beter
+              kan gebruiken. Een reviewer met een gevulde wachtrij weet waar hij is;
+              bij een LEGE wachtrij blijft de uitleg staan (dan is er ruimte zat en
+              is het wél de tekst die iemand zoekt). Mobiel ongewijzigd. */}
+          {(isMobile || items.length === 0) && (
+            <Paragraph type="secondary" style={{ maxWidth: 640 }} data-testid="review-description">
+              {t('review.description', {
+                defaultValue:
+                  'Beoordeel keurmerk-detecties die niet automatisch konden worden bevestigd. Per item zie je de herkomst (bronbestand en coördinaten) en de reden van de discrepantie.',
+              })}
+            </Paragraph>
+          )}
         </div>
         <Space wrap>
           <Segmented
@@ -263,6 +269,7 @@ const ArtworkReviewPage: React.FC = () => {
                   key={`deck-${filter}-${items[0]?.id ?? 'none'}`}
                   items={items}
                   canMutate={isAdmin}
+                  fillViewport={!isMobile}
                 />
               </div>
             )}

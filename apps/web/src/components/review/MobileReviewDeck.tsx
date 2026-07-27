@@ -13,7 +13,7 @@
  *   - "Overzicht" shows everything decided this session with thumbnails; tap one
  *     to jump back to it.
  */
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Button, Tag, Typography, Spin, Empty, Drawer, Input, message, Modal } from 'antd';
 import {
   CheckOutlined,
@@ -62,6 +62,15 @@ import { EXTRA_SPOOR_CODES, spoorLabelForCode, fieldTypeForCode } from '@/data/s
  */
 const DECK_MAX_IMAGE_HEIGHT = 'calc(100vh - 260px)';
 
+/**
+ * Story 20.14 — marge onder de kaart zodat de rand niet tegen de vensterrand plakt.
+ * Dit is de ENIGE vaste maat in de fill-stand; de rest wordt gemeten. Story 20.12
+ * strandde juist op vaste maten (`maxHeight: 440` knipte het beeld af).
+ */
+const FILL_BOTTOM_GAP = 16;
+/** Ondergrens: bij een heel lage viewport liever scrollen dan een onbruikbaar beeld. */
+const FILL_MIN_CARD_HEIGHT = 320;
+
 const BeneluxTag: React.FC<{ small?: boolean }> = ({ small }) => (
   <Tag
     color="#2F5A7A"
@@ -77,6 +86,13 @@ type Label = 'ECHT' | 'VALS';
 interface MobileReviewDeckProps {
   items: ArtworkReviewItem[];
   canMutate: boolean;
+  /**
+   * Story 20.14 — laat de kaart de resterende schermhoogte vullen (desktop).
+   * Uit (default) = het oude mobiele gedrag: wrapper 48vh / maxHeight 440.
+   * Bewust een expliciete prop en NIET `isCoarsePointer()`: dat zegt iets over
+   * het aanwijsapparaat, niet over de schermgrootte (touchscreen-laptops).
+   */
+  fillViewport?: boolean;
 }
 
 function confidenceColor(c: number | null): string {
@@ -112,7 +128,7 @@ function isCoarsePointer(): boolean {
   return typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)').matches;
 }
 
-const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate }) => {
+const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate, fillViewport }) => {
   const { t } = useTranslation();
   const [queue] = useState<ArtworkReviewItem[]>(items);
   const [idx, setIdx] = useState(0);
@@ -128,6 +144,30 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
   const [busy, setBusy] = useState(false);
   const [drag, setDrag] = useState(0);
   const [overview, setOverview] = useState(false);
+  // Story 20.14 — de kaart vult de ruimte tot onder aan het venster. We MÉTEN
+  // waar de kaart begint in plaats van de opmaak erboven te schatten: elke
+  // geschatte aftrekking veroudert zodra er een regel bijkomt (zo ontstond de
+  // 440 die het beeld afknipte).
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  const [cardHeight, setCardHeight] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    if (!fillViewport) {
+      setCardHeight(null);
+      return;
+    }
+    const measure = () => {
+      const el = cardRef.current;
+      if (!el) return;
+      // rect.top is VENSTER-relatief; `window.innerHeight` ook. Niet corrigeren
+      // met scrollY — dat mengt document- en venstercoördinaten en levert bij een
+      // gescrollde pagina een te kleine kaart op.
+      const avail = window.innerHeight - el.getBoundingClientRect().top - FILL_BOTTOM_GAP;
+      setCardHeight(Math.max(FILL_MIN_CARD_HEIGHT, Math.round(avail)));
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [fillViewport]);
   // Story 14.1 — reviewstation reason-choice at reject, ONLY when the flywheel
   // main flag is on (runtime-switchable via server). Default false = legacy.
   const [flywheelOn, setFlywheelOn] = useState(false);
@@ -988,6 +1028,7 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
       </Text>
 
       <div
+        ref={cardRef}
         data-testid="deck-swipe-card"
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
@@ -1002,6 +1043,12 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
           boxShadow: '0 6px 24px #0002',
           touchAction: 'pan-y',
           position: 'relative',
+          // Story 20.14 — kolom met gemeten hoogte: de kop- en knoprijen houden hun
+          // eigen hoogte, het beeldvenster (flex: 1) krijgt exact wat overblijft.
+          // Daardoor blijven de knoppen per definitie in beeld (AC4).
+          ...(cardHeight
+            ? { display: 'flex', flexDirection: 'column' as const, height: cardHeight }
+            : {}),
         }}
       >
         {decision && (
@@ -1142,10 +1189,16 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
           </div>
         )}
         <div
+          data-testid="deck-stage-frame"
           style={{
             width: '100%',
-            height: '48vh',
-            maxHeight: 440,
+            // Story 20.14 — in de fill-stand géén vaste hoogte: `flex: 1` pakt de
+            // restruimte van de kaart, `minHeight: 0` is nodig omdat een flex-item
+            // anders niet kleiner wordt dan zijn inhoud en de knoppen wegduwt.
+            // Mobiel (cardHeight === null) blijft exact op 48vh / 440 (AC6).
+            ...(cardHeight
+              ? { flex: 1, minHeight: 0 }
+              : { height: '48vh', maxHeight: 440 }),
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -1166,7 +1219,7 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
               // annotating (applyContextAnnotation via the X-Context-Window map).
               <ImageStage
                 data-testid="deck-context"
-                maxHeight={DECK_MAX_IMAGE_HEIGHT}
+                maxHeight={cardHeight ? '100%' : DECK_MAX_IMAGE_HEIGHT}
                 hideConfirm
                 src={srcUrl}
                 alt={`${cur!.t3777Code} context`}
@@ -1200,7 +1253,7 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
           ) : markedSrc || cropUrl ? (
             <ImageStage
               data-testid="deck-stage"
-              maxHeight={DECK_MAX_IMAGE_HEIGHT}
+              maxHeight={cardHeight ? '100%' : DECK_MAX_IMAGE_HEIGHT}
               hideConfirm
               src={(markedSrc ?? cropUrl) as string}
               alt={cur!.t3777Code}

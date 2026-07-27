@@ -1,5 +1,19 @@
 # Versiegeschiedenis
 
+## 27 juli 2026 (avond, 2)
+
+**Het beoordeelscherm gebruikt nu ook de volle hoogte**
+
+Het artwork werd nog steeds afgekapt: de vorige aanpassing maakte het beeld alleen
+breder, niet hoger. Er zat een vaste hoogtegrens omheen die de onderkant van het
+etiket wegknipte. Die grens is weg — het beeld groeit nu mee met je scherm en past
+zich aan als je het venster van formaat verandert. De knoppen "Wijs af" en
+"Accepteer" blijven altijd in beeld.
+
+De uitlegtekst boven aan het beoordeelscherm verdwijnt zodra er items klaarstaan;
+die ruimte gaat naar het artwork. Bij een lege wachtrij blijft de uitleg staan.
+Op telefoon verandert er niets.
+
 ## 27 juli 2026 (avond)
 
 **Het beoordeelscherm gebruikt nu de volle breedte**
