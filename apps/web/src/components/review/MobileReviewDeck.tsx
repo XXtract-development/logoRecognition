@@ -46,6 +46,22 @@ import { isLetterlessNutriscore } from '@/data/nutriscore';
 import { EXTRA_SPOOR_CODES, spoorLabelForCode, fieldTypeForCode } from '@/data/spoor-codes';
 
 /** Small flag tag marking a Benelux-relevant keurmerk. */
+/**
+ * Story 20.12 — beeldhoogte in het review-deck.
+ *
+ * Was `64vh` (de ImageStage-default). Bij een wachtrij van honderden kandidaten
+ * dwong dat tot inzoomen per item om te zien óf het kader om het juiste logo zit —
+ * precies het oordeel dat de reviewer moet vellen.
+ *
+ * Bewust `calc(100vh - …)` en géén vh-breuk: de ruimte die de koptekst en de
+ * knoppen "Wijs af"/"Accepteer" nodig hebben is een VAST aantal pixels, geen
+ * percentage. Met `80vh` zou het beeld op een laag scherm de knoppen wegduwen en
+ * op een hoog scherm juist ruimte laten liggen. Deze vorm reserveert altijd
+ * evenveel chrome en schaalt de rest mee. De knoppen blijven zo zonder scrollen
+ * bereikbaar, ook op ~900px hoog (AC2).
+ */
+const DECK_MAX_IMAGE_HEIGHT = 'calc(100vh - 260px)';
+
 const BeneluxTag: React.FC<{ small?: boolean }> = ({ small }) => (
   <Tag
     color="#2F5A7A"
@@ -1150,6 +1166,7 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
               // annotating (applyContextAnnotation via the X-Context-Window map).
               <ImageStage
                 data-testid="deck-context"
+                maxHeight={DECK_MAX_IMAGE_HEIGHT}
                 hideConfirm
                 src={srcUrl}
                 alt={`${cur!.t3777Code} context`}
@@ -1183,6 +1200,7 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate })
           ) : markedSrc || cropUrl ? (
             <ImageStage
               data-testid="deck-stage"
+              maxHeight={DECK_MAX_IMAGE_HEIGHT}
               hideConfirm
               src={(markedSrc ?? cropUrl) as string}
               alt={cur!.t3777Code}

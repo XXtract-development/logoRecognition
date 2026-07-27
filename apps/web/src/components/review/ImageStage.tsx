@@ -39,6 +39,13 @@ interface ImageStageProps {
    *  primary action is the only way to submit a drawn box (the host confirms
    *  via `confirmToken`). Default false: other consumers keep the button. */
   hideConfirm?: boolean;
+  /**
+   * Story 20.12 — maximale beeldhoogte (CSS-waarde). Default `64vh`: dat is de
+   * historische waarde, zodat ANDERE gebruikers van deze component ongemoeid
+   * blijven. Het review-deck geeft een ruimere waarde mee zodat een reviewer het
+   * keurmerk in één oogopslag ziet i.p.v. per item te moeten inzoomen.
+   */
+  maxHeight?: string;
   'data-testid'?: string;
 }
 
@@ -66,6 +73,7 @@ const ImageStage: React.FC<ImageStageProps> = ({
   confirmToken,
   resetKey,
   hideConfirm,
+  maxHeight = '64vh',
   'data-testid': testId,
 }) => {
   const { t } = useTranslation();
@@ -271,7 +279,7 @@ const ImageStage: React.FC<ImageStageProps> = ({
           position: 'relative',
           overflow: 'hidden',
           maxWidth: '100%',
-          maxHeight: '64vh',
+          maxHeight,
           borderRadius: 6,
           touchAction: 'none',
           cursor,
@@ -285,7 +293,7 @@ const ImageStage: React.FC<ImageStageProps> = ({
           style={{
             display: 'block',
             maxWidth: '100%',
-            maxHeight: '64vh',
+            maxHeight,
             objectFit: 'contain',
             userSelect: 'none',
             transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})`,

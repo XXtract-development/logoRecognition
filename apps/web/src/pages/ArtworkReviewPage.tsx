@@ -258,7 +258,7 @@ const ArtworkReviewPage: React.FC = () => {
               // Focused review station — one item at a time, full-focus, keyboard
               // shortcuts + auto-advance. Same component on desktop and mobile;
               // centred and capped on desktop so it reads as a workstation.
-              <div style={{ maxWidth: isMobile ? '100%' : 880, margin: '0 auto' }}>
+              <div style={{ maxWidth: isMobile ? '100%' : 1600, margin: '0 auto' }}>
                 <MobileReviewDeck
                   key={`deck-${filter}-${items[0]?.id ?? 'none'}`}
                   items={items}

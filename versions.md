@@ -1,5 +1,13 @@
 # Versiegeschiedenis
 
+## 27 juli 2026 (avond)
+
+**Het beoordeelscherm gebruikt nu de volle breedte**
+
+Het etiket werd getoond in een smal vak van hooguit twee derde schermhoogte, waardoor je bij elk item moest inzoomen om te zien of het kader om het juiste keurmerk zat. Bij honderden items per sessie telt dat flink op.
+
+Het beeld benut nu de volledige paginabreedte en vrijwel de hele schermhoogte. De knoppen "Wijs af" en "Accepteer" blijven daarbij altijd zichtbaar zonder te scrollen.
+
 ## 27 juli 2026 (later)
 
 **Het voorbeeldlogo in de review toont weer het officiële keurmerk**
