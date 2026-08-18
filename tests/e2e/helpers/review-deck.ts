@@ -289,15 +289,14 @@ export interface DeckMeasurement {
 /**
  * Meet net zo lang tot twee opeenvolgende metingen gelijk zijn.
  *
- * WAAROM DIT NODIG IS — dit is geen testhygiëne maar een echte eigenschap van het scherm.
- * De kaart meet zijn hoogte in een effect bij het monteren en daarna alleen nog bij een
- * `resize` (`MobileReviewDeck.tsx:158-168`). Laadt het beeld ná die meting, dan verschuift de
- * lay-out zonder dat er opnieuw gemeten wordt. Gevolg: dezelfde test gaf bij de eerste twee
- * runs een ándere uitkomst voor "staat de Accepteer-knop in beeld".
+ * GESCHIEDENIS, want die verklaart de vorm. Vóór story 20.16 mat de kaart zijn hoogte één keer
+ * bij het monteren en daarna alleen nog bij een `resize`. Kwam de wachtrij ná dat moment binnen,
+ * dan bleef de kolom te klein en pakte hij dat nooit terug. Deze functie vuurde toen standaard
+ * zelf een `resize` af om de meting reproduceerbaar te maken — en poetste daarmee precies het
+ * gebrek weg dat ze moest aantonen (400 gemeten waar de app op 368 stond).
  *
- * Deze functie maakt de meting reproduceerbaar; ze maakt het scherm niet beter. Story 20.16
- * (AC7) moet de hermeting zelf repareren — tot die tijd legt `stabielNa` vast hoeveel rondes
- * er nodig waren, zodat de instabiliteit zichtbaar blijft in plaats van weggepoetst.
+ * Sinds 20.16 hermeet het scherm zichzelf en staat `forceerHermeting` standaard UIT. Alleen de
+ * wedloop-test zet hem nog bewust aan, om te tonen dat een duwtje niets meer oplevert.
  */
 export async function measureDeckStable(
   page: Page,

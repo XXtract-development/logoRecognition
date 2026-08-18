@@ -180,6 +180,47 @@ test.describe("beoordeelscherm — gemeten opmaak", () => {
     ).toBeGreaterThan(100);
   });
 
+  test("een sleep buiten het beeld levert geen kader op (20.16 H2)", async ({ page }) => {
+    // De code-review van 20.16 vond dat de tekenzone groter was geworden dan het beeld: een
+    // sleep die in de grijze band begon werd stil bijgeknipt en zou als scheef kader in de
+    // database landen. De zone omsluit nu het beeld, en deze test bewaakt dat gedrag — niet
+    // alleen de afmeting, maar het gevolg ervan.
+    await openDeck(page, { width: 1440, height: 1000 }, { image: { width: 240, height: 180 } });
+    const m = await measureDeckStable(page);
+
+    const beeld = await page.locator('[data-testid="deck-stage"] img').boundingBox();
+    const kader = await page.getByTestId("deck-stage-frame").boundingBox();
+    if (!beeld || !kader) throw new Error("beeld of kader niet gevonden");
+
+    // Grijze ruimte kan boven OF onder het beeld zitten, afhankelijk van hoe het beeld in het
+    // kader hangt. Neem de grootste band; daar is de kans op een ongewenst kader het hoogst.
+    const bandBoven = beeld.y - kader.y;
+    const bandOnder = kader.y + kader.height - (beeld.y + beeld.height);
+    const band = Math.max(bandBoven, bandOnder);
+    expect(
+      band,
+      `bij een kleine bron (${m.imageHeight} px) in een kader van ${m.stageFrameHeight} px ` +
+        `hoort grijze ruimte te zijn (boven ${Math.round(bandBoven)}, onder ${Math.round(bandOnder)})`,
+    ).toBeGreaterThan(20);
+
+    // Sleep midden in die band, ruim buiten het beeld.
+    const y =
+      bandBoven >= bandOnder
+        ? kader.y + bandBoven / 2
+        : beeld.y + beeld.height + bandOnder / 2;
+    await page.mouse.move(kader.x + kader.width / 2 - 60, y);
+    await page.mouse.down();
+    await page.mouse.move(kader.x + kader.width / 2 + 60, y + 10, { steps: 8 });
+    await page.mouse.up();
+
+    // Geen kader: de zone reageert daar niet, dus er valt niets bij te knippen.
+    await expect(
+      page.getByTestId("stage-box-clear"),
+      `een sleep ${Math.round(band / 2)} px boven het beeld mag geen kader opleveren ` +
+        `(zone ${m.drawZoneHeight} px, beeld ${m.imageHeight} px)`,
+    ).toHaveCount(0);
+  });
+
   test("wedloop — het scherm hermeet zichzelf na een trage rolcheck", async ({
     page,
   }) => {

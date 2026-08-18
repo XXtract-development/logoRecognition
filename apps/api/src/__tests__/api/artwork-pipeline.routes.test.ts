@@ -755,6 +755,55 @@ describe('Artwork Pipeline Routes (ATDD — Epic 8)', () => {
       expect({ r, g, b }).toEqual({ r: 255, g: 255, b: 255 });
     });
 
+    it('20.17 (her-review N5): een te lage instelling wordt op de ondergrens geklemd', async () => {
+      // De bovengrens was getest, de ondergrens niet: `Math.max(min, ...)` kon eruit zonder dat
+      // er iets rood werd. Met MAX_PX=50 zou het fragment 50 px worden in plaats van 300.
+      const orig = process.env.CONTEXT_FRAGMENT_MAX_PX;
+      try {
+        process.env.CONTEXT_FRAGMENT_MAX_PX = '50';
+        const { meta } = await haalContextFragment({ x: 2000, y: 1500, width: 400, height: 400 });
+        // Venster 2000 px, grens geklemd op 300 -> 300 px, niet 50.
+        expect(Math.max(meta.width ?? 0, meta.height ?? 0)).toBe(300);
+      } finally {
+        process.env.CONTEXT_FRAGMENT_MAX_PX = orig;
+      }
+    });
+
+    it('20.17 (her-review N4): ook /marked maakt doorzichtig artwork wit', async () => {
+      // Het alfa-gat zat niet alleen in /source. Zonder deze fix werd hetzelfde etiket op de
+      // ene weergave wit en op de andere zwart.
+      //
+      // /artwork krijgt dezelfde fix maar is hier NIET getest: dat endpoint zoekt zijn beeld
+      // op via de GTIN (`resolveArtworkKeyForGtin`) en die opzoeking levert in deze
+      // testopstelling niets, dus het antwoord is 404 ongeacht de beeldbewerking.
+      const sharp = (await import('sharp')).default;
+      const rgba = await sharp({
+        create: { width: 800, height: 600, channels: 4, background: { r: 255, g: 0, b: 0, alpha: 0 } },
+      })
+        .png()
+        .toBuffer();
+      const storage = await import('../../services/storage');
+      (storage.downloadTrainingObject as vi.Mock).mockResolvedValue(rgba);
+      (mockPrisma.artworkReviewItem.findUnique as vi.Mock).mockResolvedValue({
+        id: 'ri-m',
+        sourceFile: 'artwork/g/p0.png',
+        cropPath: 'artwork-crops/g/c.png',
+        bbox: { x: 100, y: 100, width: 80, height: 60 },
+        updatedAt: new Date('2026-08-18T09:00:00.000Z'),
+      });
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/v1/artwork/review-items/ri-m/marked',
+      });
+      expect(response.statusCode).toBe(200);
+      const { data } = await sharp(response.rawPayload)
+        .extract({ left: 5, top: 5, width: 4, height: 4 })
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+      expect({ r: data[0], g: data[1], b: data[2] }).toEqual({ r: 255, g: 255, b: 255 });
+    });
+
     it('20.17 AC4: de ETag van /source draagt de instellingen, zodat 304 geen oud fragment vasthoudt', async () => {
       const { response } = await haalContextFragment({ x: 2000, y: 1500, width: 100, height: 100 });
       const etag = response.headers['etag'] as string;

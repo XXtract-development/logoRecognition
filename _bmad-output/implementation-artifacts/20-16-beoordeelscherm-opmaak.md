@@ -69,10 +69,11 @@ melding en contextknop blijven staan.
 
 4. **Het beeldvenster is bij vensterhoogte 1000 minstens 400 px.** Gemeten uitgangspunt is 490 px;
    met 145 px erbij en 77 px terug uit AC1 komt het uit rond 415 px. De ondergrens van 400 px is
-   dus haalbaar én bewijst dat de compacte balk gewerkt heeft. Deze grens landt op
-   `deck-stage-frame` (`minHeight`), niet op de kaart — een `flex: 1`-kind groeit anders niet
-   (review-20-16, M4). `FILL_MIN_CARD_HEIGHT = 320` wordt daarmee overbodig en gaat weg of
-   verhuist mee; niet allebei laten staan.
+   dus haalbaar én bewijst dat de compacte balk gewerkt heeft.
+   *Bijgesteld tijdens het bouwen:* deze grens landt NIET als `minHeight` op het beeldvenster —
+   dat steekt bij een lage viewport door de kaartrand heen. Hij zit in de meting: de kolom wordt
+   zo nodig hoger dan het venster gemaakt, waarna de pagina scrollt. `FILL_MIN_CARD_HEIGHT = 320`
+   is vervangen door een ondergrens op het beeldvenster in diezelfde berekening.
 
 5. **Bij een lage viewport scrollt de pagina; de kaart loopt niet over.** De gemeten hoogte wordt
    een **ondergrens** (`minHeight`) op de kolom in plaats van een vaste `height`, zodat de inhoud
@@ -293,9 +294,17 @@ beeldvenster ging van 490 naar 422. Herschreven naar wat er werkelijk gebeurt.
 | Berekende ondergrens | beeldvenster zakt onder 400 bij venster 700 | rood |
 | Pixelgrens in `ImageStage` | beeld past niet meer in het kader | rood |
 
-De tekenzone-grens kreeg géén sluitend faalbewijs: mijn poging om hem terug te draaien liet de
-zone alsnog het beeld omsluiten, dus de test bleef groen. De bewering staat er wel en is gemeten;
-het bewijs dát hij kan falen ontbreekt. Eerlijk gemeld in plaats van weggelaten.
+Voor de tekenzone-grens is er geen faalbewijs via terugdraaien, en dat is na de her-review
+anders opgeschreven dan eerst. Drie pogingen om de fout te herintroduceren leverden alle drie
+groene tests op, en de reden is een eigenschap van het ontwerp: de tekenzone wordt nu
+gecentreerd in plaats van uitgerekt, en kan daardoor niet meer verticaal meegroeien. De fout die
+de code-review vond, bestond in een opzet die met één regel niet meer terug te halen is.
+
+Dat is dus geen gat in de test maar een gevolg van de constructie. De bewaking zelf is er wél,
+en in twee vormen: de zone wordt gemeten tegenover de beeldhoogte (396/396, 374/374, 180/180),
+en een aparte test sleept midden in de grijze rand naast het beeld en eist dat er **geen** kader
+ontstaat. Die tweede test is toegevoegd na de her-review; de bbox-regressietest die bevinding H2
+eiste ontbrak nog.
 
 ### Verificatie na verwerking
 
@@ -303,6 +312,31 @@ het bewijs dát hij kan falen ontbreekt. Eerlijk gemeld in plaats van weggelaten
 - Vitest web (review-componenten + reviewpagina): **71 passed / 0 failed**.
 - Volledige api-suite: **1033 passed / 0 failed**.
 - `tsc --noEmit`: schoon.
+
+### Her-review verwerkt (review-20-16-code-v2.md)
+
+De her-beoordeling bevestigde beide zware bevindingen als écht opgelost en mat dat zelf na: de
+vloer houdt 400 px bij vensterhoogte 700 (ook met een extra rij van 60 px in de kaart, waar het
+vóór de fix naar 340 zakte), en de tekenzone valt in alle drie de bronformaten samen met het
+beeld. Een sleep 20 px boven het beeld levert nul kaders op.
+
+Wat er nog aan mankeerde was papierwerk, plus één ontbrekende test:
+
+- **De bbox-regressietest die bevinding H2 eiste bestond niet.** Toegevoegd: een sleep in de
+  grijze rand naast het beeld moet nul kaders opleveren.
+- **AC4 en taak 3 beschreven nog de verlaten oplossing** (`minHeight` op het beeldvenster) terwijl
+  de vloer in de meting zit. Rechtgezet, met de reden erbij.
+- **Drie commentaren beweerden nog iets onwaars**: dat beide helften van de beeldbegrenzing nodig
+  zijn (de her-review mat dat terugdraaien niets verandert — de werkende grens is de gemeten
+  pixelwaarde), dat de kaart de gemeten hoogte krijgt (dat is de kolom), en de beschrijving van de
+  meetopzet ging nog over de kapotte situatie van vóór deze story. Alle drie herschreven.
+- **"Mediums, alle verwerkt" was te mooi opgeschreven.** Drie van de zes waren deels verwerkt.
+
+Twee kleine punten uit de her-review blijven bewust staan: elke melding van de ResizeObserver zet
+de narekenteller op nul (alleen de 1-px-drempel remt, en er is in de proef geen lus opgetreden),
+en als de gemeten hoogte 0 is valt de begrenzing terug op de oude `64vh`. Beide zijn vangnetten
+die alleen in randgevallen aan bod komen.
+
 
 ## Bronverwijzingen
 

@@ -150,10 +150,11 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate, f
   const [busy, setBusy] = useState(false);
   const [drag, setDrag] = useState(0);
   const [overview, setOverview] = useState(false);
-  // Story 20.14 — de kaart vult de ruimte tot onder aan het venster. We MÉTEN
-  // waar de kaart begint in plaats van de opmaak erboven te schatten: elke
-  // geschatte aftrekking veroudert zodra er een regel bijkomt (zo ontstond de
-  // 440 die het beeld afknipte).
+  // Story 20.16 — de KOLOM (kaart + bediening samen) krijgt de gemeten hoogte, niet de kaart:
+  // stond de bediening ernaast, dan viel ze per definitie onder de vouw. We MÉTEN waar de
+  // kolom begint in plaats van de opmaak erboven te schatten — elke geschatte aftrekking
+  // veroudert zodra er een regel bijkomt (zo ontstonden de 260 px van 20.12 en de 440 die het
+  // beeld afknipte).
   const cardRef = useRef<HTMLDivElement | null>(null);
   const columnRef = useRef<HTMLDivElement | null>(null);
   const [columnHeight, setColumnHeight] = useState<number | null>(null);

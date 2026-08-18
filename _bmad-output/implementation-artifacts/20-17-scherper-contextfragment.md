@@ -144,7 +144,8 @@ Twee dingen vallen op:
    1,8x zoveel pixels — het JPEG-effect uit AC3. LET OP: dat cijfer draagt niet ver. De
    spec-review mat voor dezelfde configuratie 1,0-1,5 MB op zijn eigen fixture. De
    PNG/JPEG-verhouding hangt sterk af van het beeld; over productie-artwork doet deze meting
-   geen uitspraak.
+   geen uitspraak — ook niet over de verhouding tussen oud en nieuw. Wie wil weten wat dit in
+   bandbreedte kost, moet meten op echte artwork; dat is hier niet gedaan.
 
 `INFERENCE, geen bewijs` — het testartwork is synthetisch en grotendeels effen. Echte
 verpakkingsbeelden comprimeren slechter, dus de absolute kB's liggen in productie hoger. De
@@ -242,6 +243,34 @@ dan vóór deze story.
 - Route-suite: **63 passed / 0 failed** (9 nieuwe tests).
 - **Volledige api-suite: 1037 passed / 0 failed.**
 - `tsc --noEmit`: schoon.
+
+### Her-review verwerkt (review-20-17-code-v2.md)
+
+De her-beoordeling bevestigde alle vier de oorspronkelijke bevindingen als verwerkt, en toetste
+dat door de fixes één voor één te slopen: elke mutatie leverde rode tests op. H1 is gecontroleerd
+met twaalf soorten onbruikbare invoer (`" "`, `""`, `abc`, `0`, `-5`, `2,5`, `1600px`, tab,
+`Infinity`, `NaN`) — allemaal terug naar de standaard. `"1e9"` klemt terecht op 2400 en valt niet
+terug; `"  1600  "` blijft gewoon 1600.
+
+Drie nieuwe punten, alle drie verwerkt:
+
+- **De ondergrens was ongetest** (de bovengrens wel): `Math.max(min, …)` kon eruit zonder dat er
+  iets rood werd. Test toegevoegd — met grens 50 hoort er 300 px uit te komen, niet 50.
+- **Het alfa-gat zat niet alleen in `/source`.** `/marked` en `/artwork` doen dezelfde
+  JPEG-conversie zonder platslaan, dus hetzelfde doorzichtige etiket werd op de ene weergave wit
+  en op de andere zwart. Beide gerepareerd. `/marked` heeft een test; `/artwork` niet, omdat dat
+  endpoint zijn beeld via de GTIN opzoekt en die opzoeking in de testopstelling niets levert —
+  het antwoord is daar 404 ongeacht de beeldbewerking. Dat staat als zodanig in de test.
+- **De kostenconclusie sprak zichzelf nog tegen** ("de verhouding is wel indicatief" naast een
+  alinea die zegt dat de meting niets over productie zegt). Zin geschrapt.
+
+**Over de testsuite:** de her-review meldde dat de volledige api-suite op standaard-timeouts niet
+betrouwbaar groen was (5 respectievelijk 17 rode tests, telkens andere bestanden, uitsluitend
+time-outs). Nagemeten in vier runs verspreid over de dag: **steeds 0 gefaald** (nu 1039 tests).
+Het verschil is vrijwel zeker machinebelasting — die runs liepen tegelijk met browsertests en een
+tweede beoordeling. Geen enkele rode test zat in deze story. Wel iets om te weten: deze suite is
+gevoelig voor belasting, dus een rode uitslag onder zware gelijktijdige belasting zegt weinig.
+
 
 ## Bronverwijzingen
 

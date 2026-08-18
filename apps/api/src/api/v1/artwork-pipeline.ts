@@ -918,6 +918,10 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
         // Downscale so the multi-MB high-DPI page loads fast in the review card.
         const out = await sharp(buffer)
           .resize({ width: 1600, withoutEnlargement: true })
+          // Zelfde reden als bij het contextfragment: `sharp` flattet alfa bij JPEG naar
+          // ZWART. Zonder dit wordt doorzichtig bron-artwork hier een zwart vlak, terwijl
+          // /source het inmiddels wit maakt — en dan verschilt hetzelfde etiket per weergave.
+          .flatten({ background: '#ffffff' })
           .jpeg({ quality: 82 })
           .toBuffer();
         return reply.type('image/jpeg').send(out);
@@ -1017,7 +1021,11 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
           );
           pipeline = pipeline.composite([{ input: overlay, top: 0, left: 0 }]);
         }
-        const out = await pipeline.jpeg({ quality: 82 }).toBuffer();
+        // Alfa naar wit, gelijk aan /source en /artwork (zie daar).
+        const out = await pipeline
+          .flatten({ background: '#ffffff' })
+          .jpeg({ quality: 82 })
+          .toBuffer();
         return reply.type('image/jpeg').send(out);
       } catch (err) {
         logger.warn('Marked artwork render failed; serving raw', { reviewItemId: id });

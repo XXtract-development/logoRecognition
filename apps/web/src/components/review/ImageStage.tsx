@@ -41,9 +41,13 @@ interface ImageStageProps {
    * Zonder dit heeft deze component GEEN bepaalde hoogte, en dan betekent een
    * `maxHeight: '100%'` niets: een procentuele hoogte tegen een ouder met automatische
    * hoogte valt weg. Gemeten gevolg vóór 20.16: het beeld rendert 1019 px in een venster van
-   * 490 px en de rest wordt door `overflow: hidden` weggesneden. Alleen de begrenzing
-   * repareren is niet genoeg — de ouder moet de root óók laten uitrekken
-   * (`alignItems: 'stretch'`), anders verandert er nog steeds niets.
+   * 490 px en de rest wordt door `overflow: hidden` weggesneden.
+   *
+   * De werkende begrenzing is de GEMETEN pixelwaarde hieronder (`availableHeight`). De
+   * `alignItems: 'stretch'` en `height: '100%'` in de keten eromheen dragen daar nu niet meer
+   * aan bij — nagemeten in de her-review: terugdraaien verandert niets aan het resultaat. Ze
+   * blijven staan als vangnet voor de tak waarin niets gemeten kan worden (dan geldt de
+   * `maxHeight`-prop), niet omdat de begrenzing ervan afhangt.
    */
   fill?: boolean;
   /** Story 20.4 — hide the internal "Bevestig kader" button so the HOST's
