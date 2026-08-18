@@ -53,23 +53,29 @@ import { EXTRA_SPOOR_CODES, spoorLabelForCode, fieldTypeForCode } from '@/data/s
  * dwong dat tot inzoomen per item om te zien óf het kader om het juiste logo zit —
  * precies het oordeel dat de reviewer moet vellen.
  *
- * Bewust `calc(100vh - …)` en géén vh-breuk: de ruimte die de koptekst en de
- * knoppen "Wijs af"/"Accepteer" nodig hebben is een VAST aantal pixels, geen
- * percentage. Met `80vh` zou het beeld op een laag scherm de knoppen wegduwen en
- * op een hoog scherm juist ruimte laten liggen. Deze vorm reserveert altijd
- * evenveel chrome en schaalt de rest mee. De knoppen blijven zo zonder scrollen
- * bereikbaar, ook op ~900px hoog (AC2).
+ * Deze waarde geldt ALLEEN nog in de niet-vullende stand (mobiel). Story 20.16 heeft de
+ * eerdere claim hier geschrapt: de bewering dat 260 px chrome reserveren de knoppen zonder
+ * scrollen bereikbaar hield, was aantoonbaar onwaar — gemeten hing er 145 px bediening onder
+ * de kaart, en op een venster van 1000 px eindigde de laagste knop op 1129.
  */
 const DECK_MAX_IMAGE_HEIGHT = 'calc(100vh - 260px)';
 
 /**
- * Story 20.14 — marge onder de kaart zodat de rand niet tegen de vensterrand plakt.
- * Dit is de ENIGE vaste maat in de fill-stand; de rest wordt gemeten. Story 20.12
- * strandde juist op vaste maten (`maxHeight: 440` knipte het beeld af).
+ * Story 20.14/20.16 — marge onder de kolom zodat de rand niet tegen de vensterrand plakt.
+ * Dit is de enige vaste maat in de vul-stand; de rest wordt gemeten.
  */
 const FILL_BOTTOM_GAP = 16;
-/** Ondergrens: bij een heel lage viewport liever scrollen dan een onbruikbaar beeld. */
-const FILL_MIN_CARD_HEIGHT = 320;
+
+/**
+ * Story 20.16 — ondergrens op het BEELDVENSTER, niet op de kaart.
+ *
+ * De vorige vloer (`FILL_MIN_CARD_HEIGHT = 320`) zat op de kaart en hielp daardoor niet: bij
+ * een lage viewport bleef er 7 px over voor 218 px aan vaste rijen en liep de kaartinhoud
+ * buiten zijn eigen rand. Een vloer hoort op het element dat de ruimte moet houden.
+ * 400 px is haalbaar gemeten: 490 px vandaag, min 145 px bediening die de kolom in komt,
+ * plus ~77 px die de compacte bedieningsbalk teruggeeft.
+ */
+const FILL_MIN_STAGE_HEIGHT = 400;
 
 const BeneluxTag: React.FC<{ small?: boolean }> = ({ small }) => (
   <Tag
@@ -149,25 +155,104 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate, f
   // geschatte aftrekking veroudert zodra er een regel bijkomt (zo ontstond de
   // 440 die het beeld afknipte).
   const cardRef = useRef<HTMLDivElement | null>(null);
-  const [cardHeight, setCardHeight] = useState<number | null>(null);
+  const columnRef = useRef<HTMLDivElement | null>(null);
+  const [columnHeight, setColumnHeight] = useState<number | null>(null);
+  /** Teller voor het narekenen hieronder; begrensd zodat meten nooit een lus kan worden. */
+  const passesRef = useRef(0);
+  /** Laatst toegepaste kolomhoogte; voorkomt heen-en-weer tussen twee bijna gelijke waarden. */
+  const lastAppliedRef = useRef<number | null>(null);
   useLayoutEffect(() => {
     if (!fillViewport) {
-      setCardHeight(null);
+      setColumnHeight(null);
       return;
     }
+    passesRef.current = 0;
+    lastAppliedRef.current = null;
     const measure = () => {
-      const el = cardRef.current;
+      const el = columnRef.current;
       if (!el) return;
-      // rect.top is VENSTER-relatief; `window.innerHeight` ook. Niet corrigeren
-      // met scrollY — dat mengt document- en venstercoördinaten en levert bij een
-      // gescrollde pagina een te kleine kaart op.
-      const avail = window.innerHeight - el.getBoundingClientRect().top - FILL_BOTTOM_GAP;
-      setCardHeight(Math.max(FILL_MIN_CARD_HEIGHT, Math.round(avail)));
+      // Story 20.16 — DOCUMENT-relatief meten, niet venster-relatief.
+      //
+      // De vorige vorm gebruikte `rect.top` (venster-relatief). Dat gaf twee fouten: na
+      // scrollen klopte de uitkomst niet meer, en samen met de `minHeight` hieronder ontstond
+      // een groeispiraal — scrollen verlaagt `rect.top`, dus groeit de kolom, dus groeit de
+      // pagina, dus kun je verder scrollen. `rect.top + scrollY` is de positie in het
+      // document en verandert niet door te scrollen.
+      const docTop = el.getBoundingClientRect().top + window.scrollY;
+      const avail = window.innerHeight - docTop - FILL_BOTTOM_GAP;
+      // Hoeveel hoogte hebben de VASTE rijen nodig (kop, referentierij, prior-tag, GTIN,
+      // bedieningsbalk)? Dat is de kolomhoogte min het beeldvenster, en die verhouding is
+      // stabiel ongeacht hoe hoog de kolom staat. Past `avail` niet om het beeldvenster op
+      // zijn ondergrens te houden, dan wordt de kolom hoger dan het venster en scrollt de
+      // pagina — bewust, want een beeldvenster van 190 px is onbruikbaar.
+      const frameEl = el.querySelector('[data-testid="deck-stage-frame"]') as HTMLElement | null;
+      const rows = frameEl ? el.offsetHeight - frameEl.offsetHeight : 0;
+      const needed = rows + FILL_MIN_STAGE_HEIGHT;
+      const gewenst = Math.round(Math.max(avail, needed));
+
+      // Verandert er niets noemenswaardigs, dan stoppen we — anders blijven meting en lay-out
+      // elkaar aanstoten.
+      if (
+        lastAppliedRef.current !== null &&
+        Math.abs(gewenst - lastAppliedRef.current) <= 1
+      ) {
+        return;
+      }
+      lastAppliedRef.current = gewenst;
+      setColumnHeight(gewenst);
+
+      // Eén meting is niet genoeg. `rows` is een MOMENTOPNAME, en die verschilt tussen de
+      // stand vóór en ná het toepassen van de kolomhoogte (de bedieningsbalk is in de
+      // vul-stand compacter). Ook een rij die later verschijnt — een tag, een langere titel —
+      // verschuift hem. Zonder narekenen eindigde de app bij vensterhoogte 700 op 368 px
+      // terwijl de ondergrens 400 is; dat kwam pas aan het licht toen de meetopzet stopte met
+      // zelf een `resize` af te vuren (code-review 20.16, H1).
+      //
+      // Daarom: narekenen tot het klopt, met een harde limiet zodat er nooit een lus ontstaat.
+      if (passesRef.current < 4) {
+        passesRef.current += 1;
+        requestAnimationFrame(() => measure());
+      }
     };
     measure();
     window.addEventListener('resize', measure);
-    return () => window.removeEventListener('resize', measure);
-  }, [fillViewport]);
+    // Story 20.16 (AC8) — óók hermeten als de opmaak BOVEN het deck verandert zonder resize.
+    // Gemeten oorzaak: zolang de rolcheck `/auth/me` loopt staat de melding over
+    // beheerdersrechten boven het deck; meet de kolom op dat moment, dan houdt hij die ~58 px
+    // permanent aan zichzelf af. Een ResizeObserver op de voorganger vangt dat af.
+    const observer =
+      typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(() => {
+            // Verse aanleiding → opnieuw mogen narekenen. `lastAppliedRef` blijft staan, zodat
+            // een observer-melding die niets verandert niet alsnog een ronde start.
+            passesRef.current = 0;
+            measure();
+          })
+        : null;
+    if (observer && columnRef.current) {
+      const parent = columnRef.current.parentElement;
+      if (parent) observer.observe(parent);
+      // Óók de kaart zelf: verschijnt er later een rij BINNEN de kolom, dan beweegt de ouder
+      // niet mee (de kolom heeft een vaste hoogte) en zou de meting het missen.
+      const kaart = columnRef.current.querySelector('[data-testid="deck-swipe-card"]');
+      if (kaart) observer.observe(kaart);
+      // En het beeldvenster zelf. Verschijnt er ná de meting een rij binnen de kaart — de
+      // gedeclareerd-melding komt asynchroon binnen en is 32 px — dan krimpt alléén het
+      // beeldvenster; de kaart houdt zijn hoogte en zou dit dus missen. Gemeten gevolg: bij
+      // vensterhoogte 700 kwam de app soms op 368 px uit in plaats van op de ondergrens 400.
+      const venster = columnRef.current.querySelector('[data-testid="deck-stage-frame"]');
+      if (venster) observer.observe(venster);
+      if (document.body) observer.observe(document.body);
+    }
+    return () => {
+      window.removeEventListener('resize', measure);
+      observer?.disconnect();
+    };
+    // `canMutate` staat bewust in de lijst: dat is precies het moment waarop de rolcheck
+    // binnenkomt en de melding over beheerdersrechten boven het deck verdwijnt. Zonder deze
+    // afhankelijkheid meet de kolom zich één keer te klein en corrigeert dat nooit — gemeten
+    // 58 px verlies bij een trage verbinding.
+  }, [fillViewport, canMutate]);
   // Story 14.1 — reviewstation reason-choice at reject, ONLY when the flywheel
   // main flag is on (runtime-switchable via server). Default false = legacy.
   const [flywheelOn, setFlywheelOn] = useState(false);
@@ -1027,6 +1112,30 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate, f
         </span>
       </Text>
 
+      {/* Story 20.16 — de gemeten kolom omvat de kaart ÉN de bediening.
+          Tot 20.14 stond de knoppenrij als zusje NAAST de kaart, terwijl de kaart werd
+          uitgerekt tot vlak boven de vensterrand; de knoppen vielen daardoor per definitie
+          onder de vouw (gemeten: laagste bediening op 1129 bij een venster van 1000).
+          Nu is de hoogte een ONDERGRENS (`minHeight`, niet `height`): past alles, dan past
+          alles; past het niet, dan groeit de kolom en scrollt de pagina — in plaats van dat
+          de kaartinhoud buiten zijn eigen rand loopt. */}
+      <div
+        ref={columnRef}
+        data-testid="deck-column"
+        style={
+          columnHeight
+            ? {
+                display: 'flex',
+                flexDirection: 'column' as const,
+                // BEPAALDE hoogte, zodat `flex: 1` op het beeldvenster een echte restruimte
+                // oplevert en `maxHeight: '100%'` op het beeld werkelijk begrenst. Alleen een
+                // `minHeight` hier is niet genoeg: dan groeit de kolom mee met het beeld en
+                // wordt er niets begrensd (gemeten: beeldvenster 1045 bij een venster van 1000).
+                height: Math.max(columnHeight, 0),
+              }
+            : undefined
+        }
+      >
       <div
         ref={cardRef}
         data-testid="deck-swipe-card"
@@ -1043,11 +1152,20 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate, f
           boxShadow: '0 6px 24px #0002',
           touchAction: 'pan-y',
           position: 'relative',
-          // Story 20.14 — kolom met gemeten hoogte: de kop- en knoprijen houden hun
-          // eigen hoogte, het beeldvenster (flex: 1) krijgt exact wat overblijft.
-          // Daardoor blijven de knoppen per definitie in beeld (AC4).
-          ...(cardHeight
-            ? { display: 'flex', flexDirection: 'column' as const, height: cardHeight }
+          // In de vul-stand is de kaart het meegroeiende deel van de kolom; de bedieningsrij
+          // eronder houdt zijn eigen hoogte. `minHeight: 0` is nodig omdat een flex-kind
+          // anders niet kleiner wordt dan zijn inhoud.
+          ...(columnHeight
+            ? {
+                display: 'flex',
+                flexDirection: 'column' as const,
+                flex: 1,
+                // 0 en NIET `min-content`: min-content trekt de NATUURLIJKE hoogte van het
+                // beeld mee (gemeten 1019 px), waardoor de kaart weer opzwelt en er niets
+                // begrensd wordt. De ondergrens van het beeldvenster wordt daarom in de
+                // meting hierboven verrekend, niet aan de opmaakmotor overgelaten.
+                minHeight: 0,
+              }
             : {}),
         }}
       >
@@ -1195,12 +1313,19 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate, f
             // Story 20.14 — in de fill-stand géén vaste hoogte: `flex: 1` pakt de
             // restruimte van de kaart, `minHeight: 0` is nodig omdat een flex-item
             // anders niet kleiner wordt dan zijn inhoud en de knoppen wegduwt.
-            // Mobiel (cardHeight === null) blijft exact op 48vh / 440 (AC6).
-            ...(cardHeight
+            // Mobiel (columnHeight === null) blijft exact op 48vh / 440.
+            // Story 20.16 — hier staat GEEN vloer in CSS, en dat is bewust: een `minHeight`
+            // op dit element zou door de kaart heen steken bij een lage viewport. De vloer
+            // van 400 px zit in de meting hierboven, die de kolom zo nodig hoger maakt dan
+            // het venster zodat de pagina scrollt.
+            ...(columnHeight
               ? { flex: 1, minHeight: 0 }
               : { height: '48vh', maxHeight: 440 }),
             display: 'flex',
-            alignItems: 'center',
+            // Story 20.16 — in de vul-stand 'stretch': anders krijgt de ImageStage-root zijn
+            // eigen inhoudshoogte en heeft de centreerlaag daarbinnen niets om tegen af te
+            // meten. De begrenzing van het beeld zelf gebeurt in ImageStage, in pixels.
+            alignItems: columnHeight ? 'stretch' : 'center',
             justifyContent: 'center',
             background: '#F8FAFC',
             border: '1px solid #E2E8F0',
@@ -1219,7 +1344,8 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate, f
               // annotating (applyContextAnnotation via the X-Context-Window map).
               <ImageStage
                 data-testid="deck-context"
-                maxHeight={cardHeight ? '100%' : DECK_MAX_IMAGE_HEIGHT}
+                maxHeight={columnHeight ? '100%' : DECK_MAX_IMAGE_HEIGHT}
+                fill={!!columnHeight}
                 hideConfirm
                 src={srcUrl}
                 alt={`${cur!.t3777Code} context`}
@@ -1253,7 +1379,8 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate, f
           ) : markedSrc || cropUrl ? (
             <ImageStage
               data-testid="deck-stage"
-              maxHeight={cardHeight ? '100%' : DECK_MAX_IMAGE_HEIGHT}
+              maxHeight={columnHeight ? '100%' : DECK_MAX_IMAGE_HEIGHT}
+              fill={!!columnHeight}
               hideConfirm
               src={(markedSrc ?? cropUrl) as string}
               alt={cur!.t3777Code}
@@ -1365,28 +1492,55 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate, f
           style={{ height: 56, flex: '0 0 48px' }}
           aria-label={t('review.next', { defaultValue: 'Volgende' })}
         />
+        {/* Story 20.16 — in de vul-stand staat "Ander keurmerk koppelen" hier, als icoonknop
+            met een toegankelijke naam, in plaats van als volle regel eronder. */}
+        {columnHeight ? (
+          <Button
+            icon={<TagsOutlined />}
+            onClick={() => {
+              setSearch('');
+              setPicker(true);
+            }}
+            disabled={!canMutate}
+            data-testid="deck-relabel-open"
+            style={{ height: 56, flex: '0 0 48px', color: '#2F5A7A', borderColor: '#54949E' }}
+            title={t('review.relabel', { defaultValue: 'Ander keurmerk koppelen' })}
+            aria-label={t('review.relabel', { defaultValue: 'Ander keurmerk koppelen' })}
+          />
+        ) : null}
       </div>
 
-      {/* Marking is now direct: drag a box on the image above (no button). */}
-      <Button
-        block
-        icon={<TagsOutlined />}
-        onClick={() => {
-          setSearch('');
-          setPicker(true);
-        }}
-        disabled={!canMutate}
-        data-testid="deck-relabel-open"
-        style={{ marginTop: 8, height: 44, color: '#2F5A7A', borderColor: '#54949E' }}
-      >
-        {t('review.relabel', { defaultValue: 'Ander keurmerk koppelen' })}
-      </Button>
+      {/* Story 20.16 — compacte bedieningsbalk.
+          In de vul-stand staat de relabel-knop OP DEZELFDE REGEL als de beslisknoppen en
+          verdwijnt de veeg-hint; samen scheelt dat ~77 px, en precies die ruimte gaat naar het
+          beeld. Zonder deze inkorting botsten twee eisen: alles in beeld én een beeldvenster
+          dat niet kleiner wordt dan vóór 20.12 (gemeten tekort 95 px).
+          Op touch blijft alles staan zoals het was — de veeg-hint slaat daar op een gebaar dat
+          op desktop niet bestaat. */}
+      {!columnHeight && (
+        <Button
+          block
+          icon={<TagsOutlined />}
+          onClick={() => {
+            setSearch('');
+            setPicker(true);
+          }}
+          disabled={!canMutate}
+          data-testid="deck-relabel-open"
+          style={{ marginTop: 8, height: 44, color: '#2F5A7A', borderColor: '#54949E' }}
+        >
+          {t('review.relabel', { defaultValue: 'Ander keurmerk koppelen' })}
+        </Button>
+      )}
 
-      <Text type="secondary" style={{ fontSize: 11, textAlign: 'center', display: 'block', marginTop: 8 }}>
-        {decision
-          ? t('review.changeHint', { defaultValue: 'Tik de gekozen knop nogmaals om ongedaan te maken' })
-          : t('review.swipeHint', { defaultValue: 'swipe → Accepteer · ← Wijs af · ‹ › navigeren' })}
-      </Text>
+      {!columnHeight && (
+        <Text type="secondary" style={{ fontSize: 11, textAlign: 'center', display: 'block', marginTop: 8 }}>
+          {decision
+            ? t('review.changeHint', { defaultValue: 'Tik de gekozen knop nogmaals om ongedaan te maken' })
+            : t('review.swipeHint', { defaultValue: 'swipe → Accepteer · ← Wijs af · ‹ › navigeren' })}
+        </Text>
+      )}
+      </div>
 
       <Drawer
         title={t('review.relabelTitle', { defaultValue: 'Koppel het juiste keurmerk' })}

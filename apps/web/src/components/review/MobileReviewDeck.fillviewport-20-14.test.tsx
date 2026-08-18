@@ -82,13 +82,19 @@ const item: ArtworkReviewItem = {
   updatedAt: '2026-07-27T00:00:00Z',
 };
 
-/** Doe alsof de kaart op `top` px onder de vensterrand begint. */
+/**
+ * Doe alsof het deck op `top` px onder de vensterrand begint.
+ *
+ * Story 20.16 — de meting hangt nu aan de KOLOM (kaart + bediening samen), niet meer aan de
+ * kaart. De naam `stubCardTop` is behouden zodat de bestaande aanroepen blijven kloppen; de
+ * gemeten positie is die van `deck-column`.
+ */
 function stubCardTop(top: number) {
   Object.defineProperty(HTMLElement.prototype, 'getBoundingClientRect', {
     configurable: true,
     value(this: HTMLElement) {
-      const isCard = this.getAttribute('data-testid') === 'deck-swipe-card';
-      return { top: isCard ? top : 0, left: 0, right: 0, bottom: 0, width: 0, height: 0, x: 0, y: 0, toJSON: () => ({}) };
+      const isColumn = this.getAttribute('data-testid') === 'deck-column';
+      return { top: isColumn ? top : 0, left: 0, right: 0, bottom: 0, width: 0, height: 0, x: 0, y: 0, toJSON: () => ({}) };
     },
   });
 }
@@ -108,13 +114,23 @@ beforeEach(() => {
 });
 
 describe('AC1/AC2 — fill-stand: gemeten hoogte, geen vast dak', () => {
-  it('kaarthoogte = venster − bovenkant − marge; beeldvenster pakt de rest', async () => {
+  // Story 20.16 — de gemeten hoogte staat nu op de KOLOM (kaart + bediening samen); de kaart
+  // is daarbinnen het meegroeiende deel. Reden: tot 20.14 stond de knoppenrij als zusje NAAST
+  // de kaart, waardoor de bediening per definitie onder de vouw viel (gemeten 1129 px bij een
+  // venster van 1000).
+  it('kolomhoogte = venster − bovenkant − marge; kaart pakt de rest', async () => {
     setViewportHeight(1000);
     stubCardTop(200);
     render(<MobileReviewDeck items={[item]} canMutate fillViewport />);
 
     const card = await screen.findByTestId('deck-swipe-card');
-    await waitFor(() => expect(card.style.height).toBe('784px')); // 1000 − 200 − 16
+    const column = await screen.findByTestId('deck-column');
+    await waitFor(() => expect(column.style.height).toBe('784px')); // 1000 − 200 − 16
+    expect(column.style.display).toBe('flex');
+    expect(column.style.flexDirection).toBe('column');
+    // De kaart heeft zelf geen vaste hoogte meer maar groeit mee binnen de kolom.
+    expect(card.style.height).toBe('');
+    expect(card.style.flex).toContain('1');
 
     // De kaart is een kolom: koprij en knoppen houden hun hoogte, het beeld de rest.
     expect(card.style.display).toBe('flex');
@@ -136,35 +152,42 @@ describe('AC1/AC2 — fill-stand: gemeten hoogte, geen vast dak', () => {
     await waitFor(() => expect(stageProps.at(-1)?.maxHeight).toBe('100%'));
   });
 
-  it('AC3 — bij een venster van 1000px blijft er ruim meer over dan de oude 440', async () => {
+  it('bij een venster van 1000px blijft er ruim meer over dan de oude 440', async () => {
     setViewportHeight(1000);
     stubCardTop(200);
     render(<MobileReviewDeck items={[item]} canMutate fillViewport />);
-    const card = await screen.findByTestId('deck-swipe-card');
-    await waitFor(() => expect(parseInt(card.style.height, 10)).toBeGreaterThanOrEqual(600));
+    const column = await screen.findByTestId('deck-column');
+    await waitFor(() =>
+      expect(parseInt(column.style.height, 10)).toBeGreaterThanOrEqual(600),
+    );
   });
 
   it('AC2 — herberekent bij het wijzigen van de venstergrootte', async () => {
     setViewportHeight(1000);
     stubCardTop(200);
     render(<MobileReviewDeck items={[item]} canMutate fillViewport />);
-    const card = await screen.findByTestId('deck-swipe-card');
-    await waitFor(() => expect(card.style.height).toBe('784px'));
+    const column = await screen.findByTestId('deck-column');
+    await waitFor(() => expect(column.style.height).toBe('784px'));
 
     setViewportHeight(700);
     act(() => {
       window.dispatchEvent(new Event('resize'));
     });
-    await waitFor(() => expect(card.style.height).toBe('484px')); // 700 − 200 − 16
+    await waitFor(() => expect(column.style.height).toBe('484px')); // 700 − 200 − 16
   });
 
+  // Story 20.16 — de ondergrens verhuisde van de KAART naar het BEELDVENSTER, en wordt in de
+  // meting verrekend in plaats van via CSS opgelegd. Reden: een vloer op de kaart hielp niet —
+  // bij een lage viewport bleef er 7 px over voor 218 px aan vaste rijen en liep de inhoud
+  // buiten de kaartrand. In jsdom (geen layout) is `offsetHeight` 0, dus de verrekening levert
+  // hier exact de ondergrens op; de echte hoogtes worden gemeten in tests/e2e.
   it('ondergrens: een extreem laag venster levert geen onbruikbaar beeld op', async () => {
     setViewportHeight(400);
     stubCardTop(300);
     render(<MobileReviewDeck items={[item]} canMutate fillViewport />);
-    const card = await screen.findByTestId('deck-swipe-card');
-    // 400 − 300 − 16 = 84 → afgevangen op de ondergrens van 320.
-    await waitFor(() => expect(card.style.height).toBe('320px'));
+    // 400 − 300 − 16 = 84 → afgevangen op de ondergrens van het beeldvenster (400).
+    const column = await screen.findByTestId('deck-column');
+    await waitFor(() => expect(column.style.height).toBe('400px'));
   });
 });
 
@@ -182,6 +205,8 @@ describe('AC6 — mobiel ongewijzigd', () => {
     const card = screen.getByTestId('deck-swipe-card');
     expect(card.style.height).toBe('');
     expect(card.style.display).not.toBe('flex');
+    // Zonder fillViewport krijgt de kolom geen enkele stijl mee.
+    expect(screen.getByTestId('deck-column').getAttribute('style')).toBeNull();
 
     await waitFor(() => expect(stageProps.at(-1)?.maxHeight).toBe('calc(100vh - 260px)'));
   });

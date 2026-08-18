@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Button } from 'antd';
 import { CloseOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
@@ -35,6 +35,17 @@ interface ImageStageProps {
   confirmToken?: number;
   /** Changing this resets zoom/pan/box (use the item id). */
   resetKey?: string | number;
+  /**
+   * Story 20.16 — vul de hoogte van de ouder.
+   *
+   * Zonder dit heeft deze component GEEN bepaalde hoogte, en dan betekent een
+   * `maxHeight: '100%'` niets: een procentuele hoogte tegen een ouder met automatische
+   * hoogte valt weg. Gemeten gevolg vóór 20.16: het beeld rendert 1019 px in een venster van
+   * 490 px en de rest wordt door `overflow: hidden` weggesneden. Alleen de begrenzing
+   * repareren is niet genoeg — de ouder moet de root óók laten uitrekken
+   * (`alignItems: 'stretch'`), anders verandert er nog steeds niets.
+   */
+  fill?: boolean;
   /** Story 20.4 — hide the internal "Bevestig kader" button so the HOST's
    *  primary action is the only way to submit a drawn box (the host confirms
    *  via `confirmToken`). Default false: other consumers keep the button. */
@@ -74,6 +85,7 @@ const ImageStage: React.FC<ImageStageProps> = ({
   resetKey,
   hideConfirm,
   maxHeight = '64vh',
+  fill = false,
   'data-testid': testId,
 }) => {
   const { t } = useTranslation();
@@ -244,6 +256,38 @@ const ImageStage: React.FC<ImageStageProps> = ({
     confirmRef.current();
   }, [confirmToken]);
 
+  /**
+   * Story 20.16 — beschikbare hoogte in PIXELS, gemeten door de component zelf.
+   *
+   * Een percentage werkt hier niet: `maxHeight: '100%'` op het beeld zoekt een ouder met een
+   * BEPAALDE hoogte, en de laag eromheen mag die niet hebben — dat is precies de tekenzone, en
+   * die moet het beeld omsluiten en niet de hele restruimte (anders kun je slepen in een grijze
+   * band en wordt het kader stil bijgeknipt). De centreerlaag héér heeft wél een bepaalde
+   * hoogte; die meten en als pixelgrens doorgeven lost allebei op.
+   */
+  const centerRef = useRef<HTMLDivElement | null>(null);
+  const [availableHeight, setAvailableHeight] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    if (!fill) {
+      setAvailableHeight(null);
+      return;
+    }
+    const el = centerRef.current;
+    if (!el) return;
+    const meet = () => setAvailableHeight(Math.round(el.getBoundingClientRect().height));
+    meet();
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(meet) : null;
+    observer?.observe(el);
+    window.addEventListener('resize', meet);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', meet);
+    };
+  }, [fill]);
+
+  /** De grens die het beeld werkelijk begrenst: pixels in de vul-stand, anders de prop. */
+  const effectiveMaxHeight = fill && availableHeight ? availableHeight : maxHeight;
+
   const cursor = space ? 'grab' : canDraw ? 'crosshair' : 'zoom-in';
 
   return (
@@ -252,94 +296,135 @@ const ImageStage: React.FC<ImageStageProps> = ({
       // hint-tekst en de bevestig-knop ONDER de afbeelding binnen de
       // uitgesloten zone vallen (een tap haalt de swipe-drempel toch nooit).
       data-image-stage=""
-      style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'center' }}
+      style={{
+        width: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 6,
+        alignItems: 'center',
+        // Story 20.16 — in de vul-stand een BEPAALDE hoogte, zodat `maxHeight: '100%'` op het
+        // beeldvenster hieronder werkelijk iets begrenst. `minHeight: 0` hoort erbij: zonder
+        // dat weigert een flex-kind kleiner te worden dan zijn inhoud en duwt het beeld de
+        // hint eruit.
+        ...(fill ? { height: '100%', minHeight: 0 } : {}),
+      }}
     >
+      {/*
+        Story 20.16 (code-review H2) — deze centreerlaag pakt de restruimte, NIET het
+        beeldvenster zelf. Dat onderscheid is niet cosmetisch: de laag eronder (`wrapRef`) is de
+        TEKENZONE. Liet je die uitgroeien tot de volle hoogte, dan ontstond er een grijze band om
+        het beeld waarin je wél kon slepen — en een kader dat daar begint werd stil bijgeknipt
+        (`clamp01` in `confirm`) en belandde scheef in de database. Gemeten: een zone van 396 px
+        om een beeld van 180 px. Nu omsluit de tekenzone het beeld weer precies.
+      */}
       <div
-        ref={wrapRef}
-        data-testid={testId}
-        // Story 20.3 — stabiele zone-marker: touch-gebaren die hier starten zijn
-        // teken-/zoom-gebaren en mogen NOOIT als kaart-swipe (ECHT/VALS) van de
-        // review-deck geïnterpreteerd worden (de deck sluit deze zone uit).
+        ref={centerRef}
+        // Story 20.3 — de marker MOET ook hier staan. De uitsluitingszone voor kaart-swipes
+        // wordt bepaald met de dichtstbijzijnde voorouder die dit attribuut draagt, en deze
+        // centreerlaag zit sinds 20.16 tussen de root en het beeldvenster in. Zonder de marker
+        // telt een tik op de hint- of bevestigzone weer als swipe over de kaart.
         data-image-stage=""
-        onPointerDown={down}
-        onPointerMove={move}
-        onPointerUp={up}
-        onPointerCancel={up}
-        onDoubleClick={dbl}
-        title={
-          space
-            ? t('review.panHint', { defaultValue: 'Sleep om te verschuiven' })
-            : canDraw
-              ? t('review.drawHint', {
-                  defaultValue: 'Sleep om een kader te tekenen · dubbelklik = zoom · spatie + sleep = verschuiven',
-                })
-              : t('review.zoomDblHint', { defaultValue: 'Dubbelklik om in/uit te zoomen' })
+        style={
+          fill
+            ? {
+                flex: 1,
+                minHeight: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '100%',
+              }
+            : { display: 'contents' }
         }
-        style={{
-          position: 'relative',
-          overflow: 'hidden',
-          maxWidth: '100%',
-          maxHeight,
-          borderRadius: 6,
-          touchAction: 'none',
-          cursor,
-        }}
       >
-        <img
-          ref={imgRef}
-          src={src}
-          alt={alt}
-          draggable={false}
+        <div
+          ref={wrapRef}
+          data-testid={testId}
+          // Story 20.3 — stabiele zone-marker: touch-gebaren die hier starten zijn
+          // teken-/zoom-gebaren en mogen NOOIT als kaart-swipe (ECHT/VALS) van de
+          // review-deck geïnterpreteerd worden (de deck sluit deze zone uit).
+          data-image-stage=""
+          onPointerDown={down}
+          onPointerMove={move}
+          onPointerUp={up}
+          onPointerCancel={up}
+          onDoubleClick={dbl}
+          title={
+            space
+              ? t('review.panHint', { defaultValue: 'Sleep om te verschuiven' })
+              : canDraw
+                ? t('review.drawHint', {
+                    defaultValue:
+                      'Sleep om een kader te tekenen · dubbelklik = zoom · spatie + sleep = verschuiven',
+                  })
+                : t('review.zoomDblHint', { defaultValue: 'Dubbelklik om in/uit te zoomen' })
+          }
           style={{
-            display: 'block',
+            position: 'relative',
+            overflow: 'hidden',
             maxWidth: '100%',
-            maxHeight,
-            objectFit: 'contain',
-            userSelect: 'none',
-            transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})`,
-            transformOrigin: 'center center',
-            transition: mode.current === 'pan' ? 'none' : 'transform .15s ease',
+            maxHeight: effectiveMaxHeight,
+            borderRadius: 6,
+            touchAction: 'none',
+            cursor,
           }}
-        />
-        {box && (
-          <div
+        >
+          <img
+            ref={imgRef}
+            src={src}
+            alt={alt}
+            draggable={false}
             style={{
-              position: 'absolute',
-              left: box.x,
-              top: box.y,
-              width: box.w,
-              height: box.h,
-              border: '2px solid #D64545',
-              background: 'rgba(214,69,69,0.15)',
-              boxShadow: '0 0 0 1px #ffffff',
-              pointerEvents: 'none',
+              display: 'block',
+              maxWidth: '100%',
+              maxHeight: effectiveMaxHeight,
+              objectFit: 'contain',
+              userSelect: 'none',
+              transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})`,
+              transformOrigin: 'center center',
+              transition: mode.current === 'pan' ? 'none' : 'transform .15s ease',
             }}
-          >
-            <Button
-              size="small"
-              danger
-              type="primary"
-              shape="circle"
-              icon={<CloseOutlined />}
-              data-testid="stage-box-clear"
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={(e) => {
-                e.stopPropagation();
-                setBox(null);
-              }}
+          />
+          {box && (
+            <div
               style={{
                 position: 'absolute',
-                top: -12,
-                right: -12,
-                width: 24,
-                height: 24,
-                minWidth: 24,
-                padding: 0,
-                pointerEvents: 'auto',
+                left: box.x,
+                top: box.y,
+                width: box.w,
+                height: box.h,
+                border: '2px solid #D64545',
+                background: 'rgba(214,69,69,0.15)',
+                boxShadow: '0 0 0 1px #ffffff',
+                pointerEvents: 'none',
               }}
-            />
-          </div>
-        )}
+            >
+              <Button
+                size="small"
+                danger
+                type="primary"
+                shape="circle"
+                icon={<CloseOutlined />}
+                data-testid="stage-box-clear"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setBox(null);
+                }}
+                style={{
+                  position: 'absolute',
+                  top: -12,
+                  right: -12,
+                  width: 24,
+                  height: 24,
+                  minWidth: 24,
+                  padding: 0,
+                  pointerEvents: 'auto',
+                }}
+              />
+            </div>
+          )}
+        </div>
       </div>
       {hint}
       {box && onConfirmBox && !hideConfirm && (

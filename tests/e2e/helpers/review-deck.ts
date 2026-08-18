@@ -278,6 +278,12 @@ export interface DeckMeasurement {
   acceptVisible: boolean;
   /** Staat ALLE bediening binnen het venster? Dit is de eis van 20.16 AC1/AC2. */
   allControlsVisible: boolean;
+  /** Blijft de kaartinhoud binnen de kaartrand? False = de kaart loopt over (20.16 AC5). */
+  contentWithinCard: boolean;
+  /** Hoogte van de zone waarin je een kader kunt slepen. Moet gelijk zijn aan het beeld. */
+  drawZoneHeight: number;
+  /** Afstand tussen de onderkant van de kaart en de laagste bediening (20.16 AC1: <= 70). */
+  controlsBelowCard: number;
 }
 
 /**
@@ -297,7 +303,7 @@ export async function measureDeckStable(
   page: Page,
   opts: { rondes?: number; wachtMs?: number; forceerHermeting?: boolean } = {},
 ): Promise<DeckMeasurement & { stabielNa: number }> {
-  const { rondes = 20, wachtMs = 100, forceerHermeting = true } = opts;
+  const { rondes = 20, wachtMs = 100, forceerHermeting = false } = opts;
 
   // Zonder deze duw meet je een WEDLOOP, geen scherm. De kaart meet zijn hoogte één keer bij
   // het monteren en daarna alleen nog bij een `resize` (MobileReviewDeck.tsx:158-168).
@@ -309,9 +315,10 @@ export async function measureDeckStable(
   // houdt hij die ~58 px permanent aan zichzelf af. Gemeten gevolg bij vensterhoogte 700:
   // 222 px in de ene run en 164 px in de volgende. Zie de optie `authDelayMs` om het
   // reproduceerbaar op te roepen.
-  // Een `resize` afvuren dwingt één verse meting af en maakt de nulmeting reproduceerbaar.
-  // Dit MASKEERT de fout niet: story 20.16 (AC7) moet de hermeting zelf repareren, en de
-  // test `hermeting` legt het verschil expliciet vast.
+  // STANDAARD UIT sinds de code-review van 20.16 (H1). Hij stond aan, en dat POETSTE het
+  // gebrek weg dat deze opzet moest aantonen: bij vensterhoogte 700 mat de test 400 px terwijl
+  // de app zelf op 368 px eindigde. Een meetlat die het onderwerp aanraakt, meet niet meer.
+  // Alleen de wedloop-test zet hem nog bewust aan, om het verschil zichtbaar te maken.
   if (forceerHermeting) {
     await page.evaluate(() => window.dispatchEvent(new Event("resize")));
     await page.waitForTimeout(50);
@@ -353,10 +360,20 @@ export async function measureDeck(page: Page): Promise<DeckMeasurement> {
     const deckRoot = cardEl?.parentElement ?? null;
     const deck = deckRoot?.getBoundingClientRect();
     const vh = window.innerHeight;
+    // De onderkant van de KOLOM volstaat niet meer: die heeft sinds 20.16 een vaste hoogte,
+    // dus iets dat eronder terugkomt (de veeg-hint bijvoorbeeld) zou de meting niet raken en
+    // de test onterecht groen laten. Daarom de laagste onderkant over álle afstammelingen.
+    const alleOnderkanten = deckRoot
+      ? Array.from(deckRoot.querySelectorAll('*'))
+          .map((el) => el.getBoundingClientRect())
+          .filter((r) => r.height > 0 || r.width > 0)
+          .map((r) => r.bottom)
+      : [];
     const laagste = Math.max(
       accept?.bottom ?? -1,
       relabel?.bottom ?? -1,
       deck?.bottom ?? -1,
+      ...alleOnderkanten,
     );
     return {
       viewportHeight: vh,
@@ -369,6 +386,15 @@ export async function measureDeck(page: Page): Promise<DeckMeasurement> {
       cardBottom: Math.round(card?.bottom ?? -1),
       acceptVisible: (accept?.bottom ?? Infinity) <= vh,
       allControlsVisible: laagste > 0 && laagste <= vh,
+      // 1 px speling voor afrondingen in de lay-outmotor.
+      contentWithinCard: !!frame && !!card && frame.bottom <= card.bottom + 1,
+      controlsBelowCard: card ? Math.round(laagste - card.bottom) : -1,
+      // De tekenzone is de laag met de pointer-handlers (`deck-stage`). Is die hoger dan het
+      // beeld, dan kun je slepen in een grijze band en wordt het kader stil bijgeknipt.
+      drawZoneHeight: Math.round(
+        (document.querySelector('[data-testid="deck-stage"]') as HTMLElement | null)
+          ?.getBoundingClientRect().height ?? -1,
+      ),
     };
   });
 }

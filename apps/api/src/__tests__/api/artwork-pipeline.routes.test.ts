@@ -561,7 +561,10 @@ describe('Artwork Pipeline Routes (ATDD — Epic 8)', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      expect(response.headers['content-type']).toContain('image/png');
+      // Story 20.17 — het contextfragment gaat als JPEG de deur uit i.p.v. PNG: met
+      // server-side vergroten erbij loopt een PNG op tot vele megabytes, en /marked gebruikt
+      // op dezelfde afmeting al JPEG q82.
+      expect(response.headers['content-type']).toContain('image/jpeg');
       const header = response.headers['x-context-window'] as string;
       expect(header).toBeDefined();
       const [left, top, rw, rh, W, H] = header.split(',').map(Number);
@@ -573,6 +576,193 @@ describe('Artwork Pipeline Routes (ATDD — Epic 8)', () => {
       expect(top + rh).toBeLessThanOrEqual(H);
       // The box (400,300,80,60) centres a 250px-margin window → 190,80,500,500.
       expect([left, top, rw, rh]).toEqual([190, 80, 500, 500]);
+    });
+
+    // --- Story 20.17: het contextfragment mag vergroten ---
+
+    /** Zet een artwork + reviewitem klaar en geeft het fragment terug. */
+    async function haalContextFragment(bbox: {
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    }) {
+      const sharp = (await import('sharp')).default;
+      const png = await sharp({
+        create: { width: 4000, height: 3000, channels: 3, background: { r: 240, g: 240, b: 240 } },
+      })
+        .png()
+        .toBuffer();
+      const storage = await import('../../services/storage');
+      (storage.downloadTrainingObject as vi.Mock).mockResolvedValue(png);
+      (mockPrisma.artworkReviewItem.findUnique as vi.Mock).mockResolvedValue({
+        id: 'ri-20-17',
+        sourceFile: 'artwork/08718989912451/page-0.png',
+        bbox,
+        updatedAt: new Date('2026-08-18T09:00:00.000Z'),
+      });
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/v1/artwork/review-items/ri-20-17/source',
+      });
+      const meta = await sharp(response.rawPayload).metadata();
+      return { response, meta };
+    }
+
+    it('20.17 AC1: een KLEIN kader levert nu een vergroot fragment (was byte-identiek)', async () => {
+      // Kader 100 px → venster 5 x 100 = 500 px. Vóór 20.17 was de schaal geklemd op 1, dus
+      // bleef het fragment 500 px, ongeacht de grens. Nu mag het 3x omhoog: 1500 px.
+      const { response, meta } = await haalContextFragment({
+        x: 2000,
+        y: 1500,
+        width: 100,
+        height: 100,
+      });
+      expect(response.statusCode).toBe(200);
+      expect(Math.max(meta.width ?? 0, meta.height ?? 0)).toBe(1500);
+    });
+
+    it('20.17 AC2: de opblaasfactor begrenst, niet de pixelgrens — ook bij een piepklein kader', async () => {
+      // Kader 40 px. Het uitgeknipte gebied wordt NOOIT kleiner dan 500 px: de marge is
+      // `max(2,5 x kader, 250)` per zijde, dus minimaal 250 + 250. Zonder factorgrens zou dat
+      // venster naar 1600 gaan (3,2x); de grens van 3x houdt het op 1500. Dat de uitkomst
+      // 1500 is en niet 1600 IS het bewijs dat de factor bindt.
+      const { meta } = await haalContextFragment({ x: 2000, y: 1500, width: 40, height: 40 });
+      expect(Math.max(meta.width ?? 0, meta.height ?? 0)).toBe(1500);
+    });
+
+    it('20.17 AC2: een GROOT kader wordt nog steeds verkleind tot de pixelgrens', async () => {
+      // Kader 400 px → venster 2000 px → terug naar 1600.
+      const { meta } = await haalContextFragment({ x: 2000, y: 1500, width: 400, height: 400 });
+      expect(Math.max(meta.width ?? 0, meta.height ?? 0)).toBe(1600);
+    });
+
+    it('20.17 AC5: de context-window-header blijft schaal-ONAFHANKELIJK', async () => {
+      // De header staat in artwork-pixels en wordt berekend vóór het schalen; de client rekent
+      // met fracties. Daardoor levert hetzelfde relatieve kader dezelfde artwork-fracties, of
+      // het fragment nu verkleind of vergroot is. Dit is de invariant die NIET mag verschuiven.
+      const klein = await haalContextFragment({ x: 2000, y: 1500, width: 100, height: 100 });
+      const groot = await haalContextFragment({ x: 2000, y: 1500, width: 400, height: 400 });
+
+      const parse = (r: { headers: Record<string, unknown> }) =>
+        (r.headers['x-context-window'] as string).split(',').map(Number);
+      const [kl, kt, krw, krh, kW, kH] = parse(klein.response);
+      const [, , , , gW, gH] = parse(groot.response);
+
+      // Venster van het kleine kader: 2,5 x 100 = 250 px marge per zijde → 500 x 500.
+      expect([kl, kt, krw, krh]).toEqual([1800, 1300, 500, 500]);
+      // De artwork-afmetingen zijn in beide gevallen dezelfde en zijn niet meegeschaald.
+      expect([kW, kH]).toEqual([4000, 3000]);
+      expect([gW, gH]).toEqual([4000, 3000]);
+      // Een kader op 10% van het fragment mapt op dezelfde artwork-fractie, ongeacht de schaal.
+      const fractieUitVenster = (rel: number) => (kl + rel * krw) / kW;
+      expect(fractieUitVenster(0.1)).toBeCloseTo((1800 + 50) / 4000, 10);
+    });
+
+    it('20.17 AC2: onbruikbare instellingen vallen terug op de STANDAARD, niet op de ondergrens', async () => {
+      // Code-review 20.17 (H1): de eerste versie klemde het geparste getal, en `Number(' ')` en
+      // `Number('')` zijn 0 — die kwamen dus op de ONDERGRENS uit. Gemeten gevolg: een spatie in
+      // de omgeving leverde een fragment van 300 px, slechter dan vóór deze story, en
+      // MAX_UPSCALE=0 zette het vergroten stil helemaal uit.
+      const origPx = process.env.CONTEXT_FRAGMENT_MAX_PX;
+      const origUp = process.env.CONTEXT_FRAGMENT_MAX_UPSCALE;
+      try {
+        for (const rommel of [' ', '', 'abc', '0', '-5']) {
+          process.env.CONTEXT_FRAGMENT_MAX_PX = rommel;
+          process.env.CONTEXT_FRAGMENT_MAX_UPSCALE = rommel;
+          const { meta } = await haalContextFragment({ x: 2000, y: 1500, width: 100, height: 100 });
+          // Standaard = 1600 px en 3x → venster 500 wordt 1500.
+          expect(Math.max(meta.width ?? 0, meta.height ?? 0), `waarde ${JSON.stringify(rommel)}`).toBe(1500);
+        }
+      } finally {
+        process.env.CONTEXT_FRAGMENT_MAX_PX = origPx;
+        process.env.CONTEXT_FRAGMENT_MAX_UPSCALE = origUp;
+      }
+    });
+
+    it('20.17 AC2: de harde bovengrenzen klemmen werkelijk (2400 px en 4x)', async () => {
+      const origPx = process.env.CONTEXT_FRAGMENT_MAX_PX;
+      const origUp = process.env.CONTEXT_FRAGMENT_MAX_UPSCALE;
+      try {
+        // Absurd hoge waarden: geklemd op 2400 px en 4x. Venster 500 x 4 = 2000 (< 2400).
+        process.env.CONTEXT_FRAGMENT_MAX_PX = '99999';
+        process.env.CONTEXT_FRAGMENT_MAX_UPSCALE = '50';
+        const klein = await haalContextFragment({ x: 2000, y: 1500, width: 100, height: 100 });
+        expect(Math.max(klein.meta.width ?? 0, klein.meta.height ?? 0)).toBe(2000);
+        // Een groot venster (2000 px) loopt tegen de pixelgrens van 2400 aan, niet tegen 99999.
+        const groot = await haalContextFragment({ x: 2000, y: 1500, width: 400, height: 400 });
+        expect(Math.max(groot.meta.width ?? 0, groot.meta.height ?? 0)).toBe(2400);
+      } finally {
+        process.env.CONTEXT_FRAGMENT_MAX_PX = origPx;
+        process.env.CONTEXT_FRAGMENT_MAX_UPSCALE = origUp;
+      }
+    });
+
+    it('20.17 AC5: dezelfde uitsnede levert dezelfde artwork-fracties bij 900 én bij 1600', async () => {
+      // Dit is de echte schaal-onafhankelijkheidstoets: HETZELFDE kader, twee verschillende
+      // instellingen, en de header moet identiek zijn. De vorige versie van deze test vergeleek
+      // twee verschillende kaders en bewees daarmee niets (code-review 20.17, M3).
+      const orig = process.env.CONTEXT_FRAGMENT_MAX_PX;
+      try {
+        process.env.CONTEXT_FRAGMENT_MAX_PX = '900';
+        const bij900 = await haalContextFragment({ x: 2000, y: 1500, width: 400, height: 400 });
+        process.env.CONTEXT_FRAGMENT_MAX_PX = '1600';
+        const bij1600 = await haalContextFragment({ x: 2000, y: 1500, width: 400, height: 400 });
+
+        const kop = (r: { headers: Record<string, unknown> }) => r.headers['x-context-window'] as string;
+        // De fragmenten verschillen aantoonbaar in grootte...
+        expect(Math.max(bij900.meta.width ?? 0, bij900.meta.height ?? 0)).toBe(900);
+        expect(Math.max(bij1600.meta.width ?? 0, bij1600.meta.height ?? 0)).toBe(1600);
+        // ...maar de terugrekening is identiek. Dat is de invariant die nooit mag verschuiven.
+        expect(kop(bij900.response)).toBe(kop(bij1600.response));
+      } finally {
+        process.env.CONTEXT_FRAGMENT_MAX_PX = orig;
+      }
+    });
+
+    it('20.17: doorzichtig bron-artwork wordt WIT, niet zwart', async () => {
+      // Code-review 20.17 (M2): `sharp` flattet alfa bij JPEG naar ZWART. Bron-artwork kan een
+      // alfakanaal hebben — /annotate in ditzelfde bestand rekent daar expliciet op. Zonder
+      // `.flatten({background:'#ffffff'})` zou een etiket op doorzichtige achtergrond als een
+      // zwart vlak in de review verschijnen.
+      const sharp = (await import('sharp')).default;
+      const rgba = await sharp({
+        create: { width: 4000, height: 3000, channels: 4, background: { r: 255, g: 0, b: 0, alpha: 0 } },
+      })
+        .png()
+        .toBuffer();
+      const storage = await import('../../services/storage');
+      (storage.downloadTrainingObject as vi.Mock).mockResolvedValue(rgba);
+      (mockPrisma.artworkReviewItem.findUnique as vi.Mock).mockResolvedValue({
+        id: 'ri-alpha',
+        sourceFile: 'artwork/g/page-0.png',
+        bbox: { x: 2000, y: 1500, width: 100, height: 100 },
+        updatedAt: new Date('2026-08-18T09:00:00.000Z'),
+      });
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/v1/artwork/review-items/ri-alpha/source',
+      });
+      expect(response.statusCode).toBe(200);
+
+      // Kijk naar een hoekpixel, ver van de rode kaderlijn.
+      const { data } = await sharp(response.rawPayload)
+        .extract({ left: 5, top: 5, width: 4, height: 4 })
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+      const [r, g, b] = [data[0], data[1], data[2]];
+      expect({ r, g, b }).toEqual({ r: 255, g: 255, b: 255 });
+    });
+
+    it('20.17 AC4: de ETag van /source draagt de instellingen, zodat 304 geen oud fragment vasthoudt', async () => {
+      const { response } = await haalContextFragment({ x: 2000, y: 1500, width: 100, height: 100 });
+      const etag = response.headers['etag'] as string;
+      // Zonder deze vingerafdruk blijft de ETag gelijk als de instellingen wijzigen, en houdt
+      // de browser via 304 het oude 900-px-fragment — juist bij al bezochte items.
+      expect(etag).toMatch(/cf\d+x\d+(\.\d+)?j\d+/);
+      // En hij revalideert nog steeds (Story 20.6).
+      expect(response.headers['cache-control']).toBe('private, no-cache');
     });
 
     // --- Story 20.6: per-item beeld-endpoints revalideren i.p.v. 5-min blind cachen ---

@@ -65,7 +65,7 @@ async function openDeck(
 
 test.describe("beoordeelscherm — gemeten opmaak", () => {
   for (const vp of VIEWPORTS) {
-    test(`NULMETING ${vp.naam} (${vp.width}x${vp.height}) — kapotte stand`, async ({
+    test(`opmaak ${vp.naam} (${vp.width}x${vp.height}) — alles in beeld, beeld past`, async ({
       page,
     }) => {
       await openDeck(page, vp);
@@ -83,29 +83,72 @@ test.describe("beoordeelscherm — gemeten opmaak", () => {
       expect(m.relabelBottom, "relabel-knop gevonden").toBeGreaterThan(0);
       expect(m.viewportHeight, "vensterhoogte klopt").toBe(vp.height);
 
-      // NULMETING 1 — het beeld wordt afgekapt: het rendert hoger dan zijn kader.
-      // Oorzaak: `maxHeight: '100%'` tegen een ouder zonder bepaalde hoogte
-      // (ImageStage.tsx:255) — bevinding H2 van review-20-14-code.
+      // 20.16 AC6 — het beeld past binnen zijn kader; niets wordt weggesneden.
+      // Vóór 20.16: 1019 px beeld in een kader van 490 (venster 1000) resp. 190 (700).
       expect(
         m.imageHeight,
-        `NULMETING (${vp.naam}): het beeld rendert hoger dan zijn kader en wordt dus ` +
-          `afgekapt. Wordt dit rood, dan past het beeld — dat is de winst van 20.16 AC6; ` +
-          `vervang deze nulmeting.`,
-      ).toBeGreaterThan(m.stageFrameHeight);
+        `(${vp.naam}) het beeld moet binnen het beeldvenster passen; groter betekent dat ` +
+          `overflow: hidden het afsnijdt`,
+      ).toBeLessThanOrEqual(m.stageFrameHeight);
 
-      // NULMETING 2 — bediening onder de vouw. Let op: de LAAGSTE bediening, niet alleen
-      // Accepteer; daaronder staan nog de relabel-knop en de swipe-hint.
+      // 20.16 AC2 — ALLE bediening in beeld bij vensterhoogte 1000, dus ook de relabel-knop.
+      // Vóór 20.16: laagste bediening op 1129. Bij 700 geldt deze eis BEWUST NIET: daar wint
+      // een bruikbaar beeld (ondergrens 400) van alles-in-beeld, en scrollt de pagina (AC5).
+      // Dat is de ruil die Friso op 2026-08-17 heeft gekozen.
+      if (vp.height >= 1000) {
+        expect(
+          m.allControlsVisible,
+          `(${vp.naam}) alle bediening moet binnen het venster vallen; laagste onderkant ` +
+            `${m.lowestControlBottom} bij vensterhoogte ${vp.height}`,
+        ).toBe(true);
+      } else {
+        // De pagina moet dan wél echt kunnen scrollen, anders is de bediening onbereikbaar.
+        const scrollbaar = await page.evaluate(
+          () => document.documentElement.scrollHeight > window.innerHeight,
+        );
+        expect(
+          scrollbaar,
+          `(${vp.naam}) valt de bediening buiten beeld, dan MOET de pagina scrollen`,
+        ).toBe(true);
+      }
+
+      // 20.16 AC4 — het beeldvenster houdt zijn ondergrens.
       expect(
-        m.allControlsVisible,
-        `NULMETING (${vp.naam}): niet alle bediening staat in beeld (laagste onderkant ` +
-          `${m.lowestControlBottom} bij vensterhoogte ${vp.height}). Wordt dit rood, dan ` +
-          `is de opmaak gerepareerd — controleer of dat 20.16 AC1/AC2 is en vervang deze ` +
-          `nulmeting.`,
-      ).toBe(false);
+        m.stageFrameHeight,
+        `(${vp.naam}) het beeldvenster mag niet onder de ondergrens van 400 px zakken`,
+      ).toBeGreaterThanOrEqual(400);
+
+      // 20.16 AC1 — de compacte bedieningsbalk: onder de kaart hangt nog hooguit 70 px.
+      // Vóór 20.16 was dat 145 px (knoprij + relabel-knop op een eigen regel + veeg-hint).
+      expect(
+        m.controlsBelowCard,
+        `(${vp.naam}) onder de kaart mag hooguit 70 px bediening hangen`,
+      ).toBeLessThanOrEqual(70);
+
+      // 20.16 AC3 — de bediening zit IN de gemeten kolom, niet als zusje ernaast.
+      const bedieningInKolom = await page.evaluate(() => {
+        const kolom = document.querySelector('[data-testid="deck-column"]');
+        const accept = document.querySelector('[data-testid="deck-accept"]');
+        const relabel = document.querySelector('[data-testid="deck-relabel-open"]');
+        return (
+          !!kolom && !!accept && !!relabel && kolom.contains(accept) && kolom.contains(relabel)
+        );
+      });
+      expect(
+        bedieningInKolom,
+        `(${vp.naam}) de beslis- en relabel-knop moeten afstammelingen van de gemeten kolom zijn`,
+      ).toBe(true);
+
+      // 20.16 AC5 — de kaart loopt niet over: de vaste hoogte van 20.14 duwde inhoud
+      // buiten de kaartrand bij een lage viewport.
+      expect(
+        m.contentWithinCard,
+        `(${vp.naam}) de kaartinhoud moet binnen de kaartrand blijven`,
+      ).toBe(true);
     });
   }
 
-  test("NULMETING kleine bron — het beeld benut de ruimte niet", async ({
+  test("NULMETING (voor 20.17) — een kleine bron laat ruimte onbenut", async ({
     page,
   }) => {
     // Het <img> heeft alleen maxWidth/maxHeight en schaalt daardoor nooit óp
@@ -119,14 +162,25 @@ test.describe("beoordeelscherm — gemeten opmaak", () => {
     bewaar("kleine-bron", m);
 
     expect(m.imageHeight, "het beeld rendert op zijn bronhoogte").toBe(180);
+
+    // 20.16 (code-review H2) — de tekenzone mag niet groter zijn dan het beeld. Was hij dat
+    // wel, dan levert een sleep die in de grijze band begint een stil bijgeknipt kader op.
+    expect(
+      m.drawZoneHeight,
+      `de tekenzone (${m.drawZoneHeight} px) moet het beeld (${m.imageHeight} px) omsluiten, ` +
+        `niet het hele beeldvenster (${m.stageFrameHeight} px)`,
+    ).toBeLessThanOrEqual(m.imageHeight + 2);
+    // NULMETING VOOR 20.17, niet voor 20.16. Client-side opschalen is bewust GESCHRAPT:
+    // het zou de terugrekening van een getekend kader breken (scheve kaders in de database,
+    // review-20-16 H3). De winst moet van de serverkant komen — story 20.17.
     expect(
       m.stageFrameHeight - m.imageHeight,
-      "NULMETING: er blijft ruimte onbenut onder een kleine bron. Wordt dit klein, dan " +
-        "vult het beeld de ruimte — dat is de winst van 20.16 AC5; vervang deze nulmeting.",
+      "NULMETING (20.17): een kleine bron laat ruimte onbenut. Wordt dit klein, dan levert " +
+        "de server een groter fragment — dat is de winst van 20.17; vervang deze nulmeting.",
     ).toBeGreaterThan(100);
   });
 
-  test("NULMETING wedloop — een trage rolcheck kost blijvend hoogte", async ({
+  test("wedloop — het scherm hermeet zichzelf na een trage rolcheck", async ({
     page,
   }) => {
     // Reproduceert bevinding H3 van review-20-15-code DETERMINISTISCH: zolang `/auth/me`
@@ -134,30 +188,33 @@ test.describe("beoordeelscherm — gemeten opmaak", () => {
     // moment, dan houdt hij die hoogte permanent af — er wordt alleen bij `resize` hermeten.
     await openDeck(page, { width: 1440, height: 700 }, { authDelayMs: 1500 });
 
-    // Meten TERWIJL de rolcheck nog loopt: de melding staat er dan nog en drukt het deck omlaag.
-    const bijMontage = await measureDeckStable(page, {
+    // Meten TERWIJL de rolcheck nog loopt. Dit getal is informatief: op dat moment staat de
+    // melding over beheerdersrechten er nog en is een kleinere kolom juist CORRECT.
+    const tijdensLaden = await measureDeckStable(page, {
       forceerHermeting: false,
     });
 
-    // Wachten tot de rolcheck klaar is. De relabel-knop is `disabled={!canMutate}`
-    // (MobileReviewDeck.tsx:1378), dus zodra hij bedienbaar wordt is de beheerdersrol binnen
-    // en is de melding boven het deck verdwenen.
+    // Wachten tot de rolcheck klaar is. De relabel-knop is `disabled={!canMutate}`, dus zodra
+    // hij bedienbaar wordt is de beheerdersrol binnen en is de melding verdwenen.
     await expect(page.getByTestId("deck-relabel-open")).toBeEnabled({
       timeout: 10000,
     });
 
-    // Pas nu een hermeting afdwingen: het verschil is de hoogte die de kaart nooit terugpakt.
-    const naHermeting = await measureDeckStable(page, {
-      forceerHermeting: true,
-    });
-    bewaar("wedloop", { bijMontage, naHermeting });
+    // DIT is de eigenlijke vraag: corrigeert het scherm zichzelf, zónder duwtje?
+    const naLaden = await measureDeckStable(page, { forceerHermeting: false });
+    // ...en wat zou een afgedwongen hermeting nog opleveren? Niets, als het goed is.
+    const naDuwtje = await measureDeckStable(page, { forceerHermeting: true });
+    bewaar("wedloop", { tijdensLaden, naLaden, naDuwtje });
 
+    // 20.16 AC8 — het scherm hermeet zichzelf zodra de melding boven het deck verdwijnt.
+    // Vóór 20.16 was er alleen een meting bij montage plus een listener op `resize`: de
+    // kolom bleef 58 px te klein en pakte die nooit terug. De vergelijking hieronder is
+    // bewust NIET "tijdens laden" tegenover "erna" — dat verschil hoort er te zijn — maar
+    // "vanzelf" tegenover "met een duwtje".
     expect(
-      naHermeting.stageFrameHeight - bijMontage.stageFrameHeight,
-      "NULMETING: met een trage rolcheck meet de kaart zich te klein en corrigeert dat " +
-        "nooit; alleen een afgedwongen hermeting geeft de ruimte terug. Wordt dit rood " +
-        "(verschil 0), dan hermeet het scherm zelf — dat is de winst van 20.16 AC7; " +
-        "vervang deze nulmeting.",
-    ).toBeGreaterThan(0);
+      naDuwtje.stageFrameHeight - naLaden.stageFrameHeight,
+      `een afgedwongen hermeting mag niets meer opleveren; vanzelf ` +
+        `${naLaden.stageFrameHeight} px tegen ${naDuwtje.stageFrameHeight} px na een duwtje`,
+    ).toBe(0);
   });
 });

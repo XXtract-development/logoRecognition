@@ -111,6 +111,49 @@ describe('ArtworkReviewPage', () => {
   });
 
 
+  // --- Story 20.16 AC11: de uitlegalinea, die 20.14 wél wijzigde maar nooit testte ---
+
+  it('20.16 AC11: de uitlegalinea verdwijnt op desktop zodra er items klaarstaan', async () => {
+    asAdmin(true);
+    vi.mocked(fetchReviewQueue).mockResolvedValue([
+      {
+        id: 'ri-1',
+        gtin: '08718989912451',
+        t3777Code: 'EU_ORGANIC_FARMING',
+        cropPath: 'artwork-crops/g/ri-1.png',
+        bbox: { x: 10, y: 10, width: 40, height: 40 },
+        confidence: 0.8,
+        method: 'embedding',
+        reason: 'declared-not-found',
+        sourceFile: 'artwork/g/page-0.png',
+        status: 'open',
+        createdAt: '2026-08-01T10:00:00.000Z',
+        updatedAt: '2026-08-01T10:00:00.000Z',
+      },
+    ] as never);
+
+    renderPage();
+
+    // Zodra het deck er staat, hoort de alinea weg te zijn: die ~110 px gaat naar het artwork.
+    await waitFor(() => {
+      expect(screen.getByTestId('deck-swipe-card')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('review-description')).not.toBeInTheDocument();
+  });
+
+  it('20.16 AC11: bij een lege wachtrij blijft de uitleg juist staan', async () => {
+    asAdmin(true);
+    vi.mocked(fetchReviewQueue).mockResolvedValue([]);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('review-empty')).toBeInTheDocument();
+    });
+    // Dan is er ruimte zat, en is het wél de tekst die iemand zoekt.
+    expect(screen.getByTestId('review-description')).toBeInTheDocument();
+  });
+
   it('shows an empty state when the queue is empty', async () => {
     asAdmin(true);
     vi.mocked(fetchReviewQueue).mockResolvedValue([]);

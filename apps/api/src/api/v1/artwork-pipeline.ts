@@ -79,13 +79,16 @@ const REQUIRE_ADMIN = requireRole('ADMIN');
 function sendRevalidatingImageHeaders(
   request: FastifyRequest,
   reply: FastifyReply,
-  item: { id: string; updatedAt: Date | string }
+  item: { id: string; updatedAt: Date | string },
+  variant?: string
 ): boolean {
   const stamp =
     item.updatedAt instanceof Date
       ? item.updatedAt.getTime()
       : new Date(item.updatedAt).getTime();
-  const etag = `W/"${item.id}-${stamp}"`;
+  // `variant` wordt ALLEEN door /source meegegeven (Story 20.17). De andere drie endpoints
+  // die deze helper delen houden hun ETag exact zoals hij was; die staat in tests vastgepind.
+  const etag = variant ? `W/"${item.id}-${stamp}-${variant}"` : `W/"${item.id}-${stamp}"`;
   reply.header('Cache-Control', 'private, no-cache');
   reply.header('ETag', etag);
   if (request.headers['if-none-match'] === etag) {
@@ -100,6 +103,69 @@ const DEFAULT_CONCURRENCY = parseInt(
   process.env.ARTWORK_IMPORT_CONCURRENCY || '3',
   10
 );
+
+/**
+ * Story 20.17 — het contextfragment ("Bekijk in context").
+ *
+ * WAAROM DIT BESTAAT. Het uitgeknipte gebied is 5 x de kadergrootte, en de schaal was geklemd
+ * op 1 (alleen verkleinen). De werkelijke begrenzing was daardoor `min(5 x kader, 900)` en niet
+ * 900: bij een kader tot 180 px leverde een hogere grens een BYTE-IDENTIEK fragment. Precies
+ * voor kleine keurmerken — het geval waar de reviewer op zit te turen — veranderde er dus
+ * niets. Nu mag de server ook vergroten.
+ *
+ * Twee grenzen, want vergroten is niet gratis: pixels worden bijgemaakt, en vier keer opblazen
+ * levert alleen nog matige brij.
+ */
+function readClampedNumber(
+  raw: string | undefined,
+  fallback: number,
+  min: number,
+  max: number
+): number {
+  // Bewust NIET het patroon van DEFAULT_CONCURRENCY hierboven: dat klemt niet en vangt NaN niet
+  // af, waardoor een typefout in de omgeving stil doorwerkt tot in de uitvoer.
+  //
+  // En bewust géén simpele klem op het geparste getal: `Number(' ')` en `Number('')` zijn 0, en
+  // een klem zou daar de ONDERGRENS van maken. Gemeten gevolg van die fout (code-review 20.17,
+  // H1): `CONTEXT_FRAGMENT_MAX_PX=" "` leverde een fragment van 300 px — slechter dan vóór deze
+  // story — en `CONTEXT_FRAGMENT_MAX_UPSCALE=0` zette het vergroten stil helemaal uit.
+  // Onbruikbare invoer valt daarom terug op de STANDAARD, niet op de ondergrens.
+  if (raw === undefined || raw.trim() === '') return fallback;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+  return Math.min(max, Math.max(min, parsed));
+}
+
+/** Kwaliteit van de JPEG-uitvoer; gelijk aan wat /marked al gebruikt. */
+const CONTEXT_FRAGMENT_JPEG_QUALITY = 82;
+
+/**
+ * De instellingen worden PER VERZOEK gelezen, niet één keer bij het laden van de module.
+ * Reden: zo is de klem uit AC2 werkelijk toetsbaar — een test kan de omgeving zetten en het
+ * gedrag meten. De kosten zijn verwaarloosbaar (twee `Number()`-aanroepen per beeldverzoek).
+ */
+function contextFragmentSettings(): {
+  maxPx: number;
+  maxUpscale: number;
+  variant: string;
+} {
+  const maxPx = Math.round(
+    readClampedNumber(process.env.CONTEXT_FRAGMENT_MAX_PX, 1600, 300, 2400)
+  );
+  const maxUpscale = readClampedNumber(
+    process.env.CONTEXT_FRAGMENT_MAX_UPSCALE,
+    3,
+    1,
+    4
+  );
+  return {
+    maxPx,
+    maxUpscale,
+    // Vingerafdruk voor de ETag van /source: zonder dit houdt de browser voor een onveranderd
+    // item het OUDE fragment via 304 — juist bij de items waarmee iemand controleert.
+    variant: `cf${maxPx}x${maxUpscale}j${CONTEXT_FRAGMENT_JPEG_QUALITY}`,
+  };
+}
 
 /**
  * Minutes after which a run without a heartbeat is considered stale.
@@ -978,7 +1044,7 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
       if (!item || !item.sourceFile) {
         return reply.status(404).send({ error: 'Geen bronafbeelding voor dit reviewitem' });
       }
-      if (sendRevalidatingImageHeaders(request, reply, item)) return;
+      if (sendRevalidatingImageHeaders(request, reply, item, contextFragmentSettings().variant)) return;
 
       const buffer = await downloadTrainingObject(item.sourceFile);
       if (!buffer) {
@@ -1014,8 +1080,12 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
         const rw = Math.round(halfW * 2);
         const rh = Math.round(halfH * 2);
 
-        const TARGET = 900;
-        const scale = Math.min(1, TARGET / Math.max(rw, rh));
+        // Story 20.17 — GEEN klem op 1 meer: een venster kleiner dan de doelmaat wordt
+        // vergroot, begrensd door de opblaasfactor. Een venster van 200 px wordt dus 600 en
+        // niet 1600.
+        const longestSide = Math.max(rw, rh);
+        const { maxPx, maxUpscale } = contextFragmentSettings();
+        const scale = Math.min(maxPx / longestSide, maxUpscale);
         const dispW = Math.round(rw * scale);
         const dispH = Math.round(rh * scale);
 
@@ -1024,20 +1094,36 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
         const ry = Math.round((by - top) * scale);
         const rbw = Math.round(bw * scale);
         const rbh = Math.round(bh * scale);
+        // Story 20.17 — lijndikte en de witte halo schalen mee met de fragmentgrootte.
+        // IJkpunt is de OUDE situatie: 3 px op een fragment van 900 px. Zonder meeschalen
+        // wordt de rode lijn op een groter fragment relatief dunner, terwijl juist die lijn
+        // het doel dient ("zit het kader om het juiste logo?").
+        const lineScale = Math.max(dispW, dispH) / 900;
+        const stroke = Math.max(3, Math.round(3 * lineScale)); // nooit dunner dan vóór 20.17
+        const halo = Math.max(1, Math.round(1 * lineScale));
+        const haloGap = Math.max(1, Math.round(2 * lineScale));
         const overlay = Buffer.from(
           `<svg width="${dispW}" height="${dispH}">` +
             `<rect x="${rx}" y="${ry}" width="${rbw}" height="${rbh}" ` +
-            `fill="none" stroke="#D64545" stroke-width="3"/>` +
-            `<rect x="${rx - 2}" y="${ry - 2}" width="${rbw + 4}" height="${rbh + 4}" ` +
-            `fill="none" stroke="#ffffff" stroke-width="1"/>` +
+            `fill="none" stroke="#D64545" stroke-width="${stroke}"/>` +
+            `<rect x="${rx - haloGap}" y="${ry - haloGap}" width="${rbw + haloGap * 2}" height="${rbh + haloGap * 2}" ` +
+            `fill="none" stroke="#ffffff" stroke-width="${halo}"/>` +
           `</svg>`
         );
 
+        // JPEG en niet PNG (Story 20.17): met vergroten erbij loopt een PNG-fragment op tot
+        // vele megabytes, en /marked levert op dezelfde afmeting al JPEG q82. De reviewer
+        // betaalt de vergroting anders in laadtijd.
         const out = await sharp(buffer)
           .extract({ left, top, width: rw, height: rh })
           .resize(dispW, dispH)
           .composite([{ input: overlay, top: 0, left: 0 }])
-          .png()
+          // Bron-artwork kan een alfakanaal hebben (zie de RGBA-opmerking bij /annotate).
+          // `sharp` flattet alfa bij JPEG naar ZWART, niet naar wit — gemeten: een volledig
+          // doorzichtige rode pixel werd (0,0,0). Voor een etiket op witte achtergrond zou het
+          // fragment daardoor grotendeels zwart worden.
+          .flatten({ background: '#ffffff' })
+          .jpeg({ quality: CONTEXT_FRAGMENT_JPEG_QUALITY })
           .toBuffer();
         // Story 12.19 — expose the extract window (in full-artwork pixels) + the
         // full artwork size so the client can convert a box drawn ON this
@@ -1045,7 +1131,7 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
         // Absent header = the response is the whole artwork (identity mapping).
         reply.header('X-Context-Window', `${left},${top},${rw},${rh},${W},${H}`);
         reply.header('Access-Control-Expose-Headers', 'X-Context-Window');
-        return reply.type('image/png').send(out);
+        return reply.type('image/jpeg').send(out);
       } catch (err) {
         // Any image-processing failure → fall back to the raw bytes (still works).
         logger.warn('Context fragment render failed; serving raw source', {

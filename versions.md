@@ -1,8 +1,39 @@
 # Versiegeschiedenis
 
+## 18 augustus 2026
+
+**Het beoordeelscherm klopt nu wél: knoppen in beeld en het etiket niet meer afgekapt**
+
+Op een gewoon laptopscherm stonden "Wijs af", "Accepteer" en "Ander keurmerk koppelen"
+onder de onderrand van je scherm — je moest scrollen om te kunnen beslissen. En het etiket
+werd fors afgesneden: van een beeld van ruim duizend pixels hoog was er nog geen vijfhonderd
+zichtbaar.
+
+Beide zijn opgelost. De knoppenbalk is compacter geworden: "Ander keurmerk koppelen" staat
+nu naast de andere knoppen in plaats van eronder, en de veegtekst is op desktop weggelaten
+(die hoort bij telefoon). Daardoor past de bediening binnen het scherm zonder dat het vak voor
+het etiket veel kleiner wordt — en het etiket past nu volledig binnen dat vak in plaats van
+eruit te steken.
+
+Op een klein scherm krijgt het beeld voorrang: het houdt een bruikbare hoogte en de pagina
+scrollt in plaats van het beeld onleesbaar klein te maken.
+
+Ook opgelost: op een trage verbinding hield het scherm blijvend een strook hoogte over aan
+zichzelf, doordat het zijn afmetingen één keer bepaalde en daarna niet meer corrigeerde. Dat
+gebeurt nu wel.
+
+Het voorbeeldlogo, de melding "gedeclareerd op verpakking" en de knop "Bekijk in context"
+blijven allemaal staan. Op telefoon verandert er niets.
+
 ## 27 juli 2026 (avond, 2)
 
 **Het beoordeelscherm gebruikt nu ook de volle hoogte**
+
+> **Rechtzetting, 18 augustus 2026.** Deze tekst klopte niet. Het beeld werd na deze
+> aanpassing nóg meer afgekapt dan ervoor (gemeten: 1019 pixels beeld in een vak van 490),
+> en de knoppen "Wijs af" en "Accepteer" kwamen juist ónder de schermrand terecht — 129
+> pixels bediening viel buiten beeld. Wat hieronder staat, is dus niet geleverd. De
+> reparatie staat bij 18 augustus 2026.
 
 Het artwork werd nog steeds afgekapt: de vorige aanpassing maakte het beeld alleen
 breder, niet hoger. Er zat een vaste hoogtegrens omheen die de onderkant van het
@@ -21,6 +52,10 @@ Op telefoon verandert er niets.
 Het etiket werd getoond in een smal vak van hooguit twee derde schermhoogte, waardoor je bij elk item moest inzoomen om te zien of het kader om het juiste keurmerk zat. Bij honderden items per sessie telt dat flink op.
 
 Het beeld benut nu de volledige paginabreedte en vrijwel de hele schermhoogte. De knoppen "Wijs af" en "Accepteer" blijven daarbij altijd zichtbaar zonder te scrollen.
+
+> **Rechtzetting, 18 augustus 2026.** Alleen de breedte is toen veranderd. De hoogte bleef
+> gelijk en het beeld werd nog steeds afgekapt; de knoppen bleven zichtbaar door een vaste
+> hoogtegrens die daarna is weggehaald, niet door het ontwerp. Zie de rechtzetting hierboven.
 
 ## 27 juli 2026 (later)
 
