@@ -1,3 +1,14 @@
+# Opmaak-instellingen voor de ml-service.
+#
+# WAAROM DIT BESTAND ER IS: de pijplijn draait `ruff`, `black --check` en `isort --check-only`
+# achter elkaar. Zonder afstemming spreken black en isort elkaar tegen over lege regels rond
+# imports — isort wil er een weg waar black er een neerzet, dus wisselen ze elkaar af en is de
+# controle nooit tegelijk groen. De `black`-stijl van isort lost dat op; dat is de standaard
+# oplossing die beide projecten aanbevelen.
+#
+# De versies staan vast in requirements.txt (ruff 0.1.14, black 24.1.1, isort 5.13.2). De
+# pijplijn installeert die eerst en `pip install ruff black isort` daarna upgradet niets wat er
+# al staat — lokaal dus met dezelfde vastgezette versies draaien, anders meet je iets anders.
 [tool.isort]
 profile = "black"
 line_length = 88

@@ -89,7 +89,11 @@ FLOOR = float(os.environ.get("NUTRISCORE_HARVEST_FLOOR", "0.60"))
 BATCH = int(os.environ.get("NUTRISCORE_HARVEST_BATCH", "400"))
 PER_CODE_CAP = int(os.environ.get("NUTRISCORE_HARVEST_PER_CODE_CAP", "15"))
 MAX_SECONDS = float(os.environ.get("NUTRISCORE_HARVEST_MAX_SECONDS", "1000"))
-DRY_RUN = os.environ.get("NUTRISCORE_HARVEST_DRY_RUN", "").lower() in ("1", "true", "yes")
+DRY_RUN = os.environ.get("NUTRISCORE_HARVEST_DRY_RUN", "").lower() in (
+    "1",
+    "true",
+    "yes",
+)
 
 
 def _crop_bgr(img, b):

@@ -64,8 +64,10 @@ def min_conf() -> float:
         try:
             return max(0.2, float(raw))
         except ValueError:
-            logger.warning("Ongeldige NUTRISCORE_A2_MIN_CONF — default gebruikt",
-                           extra={"raw": raw, "default": DEFAULT_MIN_CONF})
+            logger.warning(
+                "Ongeldige NUTRISCORE_A2_MIN_CONF — default gebruikt",
+                extra={"raw": raw, "default": DEFAULT_MIN_CONF},
+            )
     return DEFAULT_MIN_CONF
 
 
@@ -78,6 +80,7 @@ def _load():
     if _model is not None:
         return
     import time as _time
+
     if _time.monotonic() < _fail_until:
         raise RuntimeError("A2-model eerder niet laadbaar (cooldown actief)")
     with _lock:
@@ -86,16 +89,23 @@ def _load():
         import torch
         import torch.nn as nn
         from torchvision import models
+
         from app.services.storage import storage_service
 
         try:
             model_key = os.environ.get("NUTRISCORE_A2_MODEL_KEY", _MODEL_KEY_DEFAULT)
             meta_key = os.environ.get("NUTRISCORE_A2_META_KEY", _META_KEY_DEFAULT)
             meta_raw = storage_service.get_training_image(meta_key)
-            meta = json.loads(meta_raw.decode("utf-8") if isinstance(meta_raw, (bytes, bytearray)) else meta_raw)
+            meta = json.loads(
+                meta_raw.decode("utf-8")
+                if isinstance(meta_raw, (bytes, bytearray))
+                else meta_raw
+            )
             classes = list(meta["classes"])
             state_raw = storage_service.get_training_image(model_key)
-            state = torch.load(io.BytesIO(bytes(state_raw)), map_location="cpu", weights_only=True)
+            state = torch.load(
+                io.BytesIO(bytes(state_raw)), map_location="cpu", weights_only=True
+            )
             m = models.mobilenet_v3_small()
             m.classifier[-1] = nn.Linear(m.classifier[-1].in_features, len(classes))
             m.load_state_dict(state)
@@ -103,8 +113,10 @@ def _load():
             # review L1: classes vóór model zetten (fast-path-check kijkt naar _model)
             _classes = classes
             _model = m
-            logger.info("Nutri-Score A2-vangnetmodel geladen",
-                        extra={"model_key": model_key, "classes": classes})
+            logger.info(
+                "Nutri-Score A2-vangnetmodel geladen",
+                extra={"model_key": model_key, "classes": classes},
+            )
         except Exception:
             _fail_until = _time.monotonic() + _FAIL_COOLDOWN_S
             raise
@@ -118,10 +130,14 @@ def predict_letter(img_bgr: np.ndarray) -> Tuple[Optional[str], float, Dict[str,
     Fouten propageren (router = fail-open).
     """
     _load()
+    # Beide zwaar, daarom pas hier geladen. De onderlinge volgorde maakt niets uit: `cv2`
+    # staat al op bestandsniveau in vijf andere services (o.a. nutriscore_reader.py), dus
+    # tegen de tijd dat deze functie draait staat hij allang in sys.modules en is dit enkel
+    # nog een opzoekactie.
+    import cv2
     import torch
 
     # BGR ndarray -> RGB float32 [0,1] -> 224x224 -> genormaliseerd NCHW
-    import cv2
     rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
     rgb = cv2.resize(rgb, (224, 224), interpolation=cv2.INTER_AREA)
     x = (rgb.astype(np.float32) / 255.0 - _MEAN) / _STD
@@ -130,8 +146,11 @@ def predict_letter(img_bgr: np.ndarray) -> Tuple[Optional[str], float, Dict[str,
         prob = torch.softmax(_model(tensor), 1)[0].numpy()
     idx = int(prob.argmax())
     pred, conf = _classes[idx], float(prob[idx])
-    info = {"pred": pred, "conf": round(conf, 3),
-            "probs": {c: round(float(p), 3) for c, p in zip(_classes, prob)}}
+    info = {
+        "pred": pred,
+        "conf": round(conf, 3),
+        "probs": {c: round(float(p), 3) for c, p in zip(_classes, prob)},
+    }
     if pred not in {"A", "B", "C", "D", "E"}:
         return None, conf, info
     return pred, conf, info

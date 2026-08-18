@@ -71,9 +71,7 @@ CLASSIFY_UNKNOWN_CODE: str = os.environ.get("CLASSIFY_UNKNOWN_CODE", "UNKNOWN")
 # het CLASSIFY-herkenningspad bleef op 0,5. Default 0,2 (patroon
 # `FLYWHEEL_BOOTSTRAP_GATE_THRESHOLD`); raakt de gedeelde 0,5-gate elders NIET.
 # Meet-gedreven tegen de gold-set kalibreerbaar via `CLASSIFY_GATE_THRESHOLD`.
-CLASSIFY_GATE_THRESHOLD: float = float(
-    os.environ.get("CLASSIFY_GATE_THRESHOLD", "0.2")
-)
+CLASSIFY_GATE_THRESHOLD: float = float(os.environ.get("CLASSIFY_GATE_THRESHOLD", "0.2"))
 
 
 # ---------------------------------------------------------------------------
@@ -394,7 +392,10 @@ async def classify_crop(
             else:
                 logger.info(
                     "Nutri-Score-A2-vangnet: poort open maar geen claim",
-                    extra={"a2": a2_info, "gate_nearest": embedding_result.get("t3777_code")},
+                    extra={
+                        "a2": a2_info,
+                        "gate_nearest": embedding_result.get("t3777_code"),
+                    },
                 )
         except Exception as exc:
             logger.warning(

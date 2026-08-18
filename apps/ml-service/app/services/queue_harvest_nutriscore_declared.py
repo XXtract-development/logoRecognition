@@ -108,7 +108,9 @@ DRY_RUN = os.environ.get("NUTRISCORE_DECLARED_HARVEST_DRY_RUN", "").lower() in (
 _DEFAULT_LETTERS = "C,D"
 HARVEST_LETTERS = {
     c.strip().upper()
-    for c in os.environ.get("NUTRISCORE_DECLARED_HARVEST_LETTERS", _DEFAULT_LETTERS).split(",")
+    for c in os.environ.get(
+        "NUTRISCORE_DECLARED_HARVEST_LETTERS", _DEFAULT_LETTERS
+    ).split(",")
     if c.strip()
 }
 # Story-scope: C/D bedienen we altijd eerst binnen één batch (AC2), ongeacht
@@ -145,7 +147,9 @@ def _load_declared_map(storage_service) -> dict:
     """
     try:
         raw = storage_service.get_training_image(DECLARED_MAP_KEY)
-        data = json.loads(raw.decode("utf-8") if isinstance(raw, (bytes, bytearray)) else raw)
+        data = json.loads(
+            raw.decode("utf-8") if isinstance(raw, (bytes, bytearray)) else raw
+        )
     except Exception:
         logger.warning(
             "Nutri-Score-declaratie-map niet leesbaar — 0 kandidaten",
@@ -166,7 +170,9 @@ def _load_declared_map(storage_service) -> dict:
 def _scoped_gtins(declared_map: dict) -> list:
     """GTINs binnen de letter-scope (``HARVEST_LETTERS``), C/D eerst, dan
     alfabetisch op GTIN binnen elke groep (deterministisch)."""
-    scoped = [gtin for gtin, letter in declared_map.items() if letter in HARVEST_LETTERS]
+    scoped = [
+        gtin for gtin, letter in declared_map.items() if letter in HARVEST_LETTERS
+    ]
 
     def sort_key(gtin: str):
         letter = declared_map[gtin]
@@ -192,7 +198,9 @@ async def run_batch() -> dict:
     declared_map = _load_declared_map(storage_service)
 
     try:
-        state = json.loads(storage_service.get_training_image(STATE_KEY).decode("utf-8"))
+        state = json.loads(
+            storage_service.get_training_image(STATE_KEY).decode("utf-8")
+        )
     except Exception:
         state = {"next_offset": 0}
     next_offset = int(state.get("next_offset", 0))
@@ -218,7 +226,11 @@ async def run_batch() -> dict:
             "Nutri-Score-declaratie-oogst compleet — alle scoped GTINs gedekt",
             extra={"total": total},
         )
-        result = {"status": "complete", "total_gtins": total, "next_offset": next_offset}
+        result = {
+            "status": "complete",
+            "total_gtins": total,
+            "next_offset": next_offset,
+        }
         print(json.dumps(result))
         return result
 
@@ -257,7 +269,9 @@ async def run_batch() -> dict:
             c = _crop_bgr(img, b)
             if c is None:
                 continue
-            emb = np.asarray(await model_manager.generate_embedding(_to_pil(c)), np.float32)
+            emb = np.asarray(
+                await model_manager.generate_embedding(_to_pil(c)), np.float32
+            )
             kp = keurmerk_probability(emb)
             if kp is not None and kp < GATE_THRESHOLD:
                 continue
@@ -303,7 +317,9 @@ async def run_batch() -> dict:
         # en draait ook in DRY_RUN mee (AC4 = read-only METING, patroon 12.12's
         # test_ac5c_dry_run_meet_wel_de_kandidaten) — zodat de kandidatentelling
         # de echte run al voorspelt.
-        exists = await db_service.review_item_exists(gtin=gtin, reason=MARKER, source_file=src)
+        exists = await db_service.review_item_exists(
+            gtin=gtin, reason=MARKER, source_file=src
+        )
         if exists:
             skipped_duplicate += 1
             continue

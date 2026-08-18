@@ -113,7 +113,10 @@ def _cross_code_rejected(declared_code, declared_sim, open_matches, margin) -> b
     (o.a. cold-start van andere codes) -> False (behouden).
     """
     for m in open_matches:
-        if m.get("t3777_code") != declared_code and float(m.get("similarity", 0.0)) >= declared_sim + margin:
+        if (
+            m.get("t3777_code") != declared_code
+            and float(m.get("similarity", 0.0)) >= declared_sim + margin
+        ):
             return True
     return False
 
@@ -206,7 +209,9 @@ def _load_declared_map(storage_service) -> dict:
     dict (0 kandidaten, gerapporteerd; nooit een crash of een gok)."""
     try:
         raw = storage_service.get_training_image(DECLARED_MAP_KEY)
-        data = json.loads(raw.decode("utf-8") if isinstance(raw, (bytes, bytearray)) else raw)
+        data = json.loads(
+            raw.decode("utf-8") if isinstance(raw, (bytes, bytearray)) else raw
+        )
     except Exception:
         logger.warning(
             "Declaratie-oogst-map niet leesbaar — 0 kandidaten",
@@ -297,7 +302,9 @@ async def _flush(queue: dict, db_service, storage_service) -> int:
     return n
 
 
-def _checkpoint(state: dict, storage_service, reached: int, total: int, done: bool = False) -> None:
+def _checkpoint(
+    state: dict, storage_service, reached: int, total: int, done: bool = False
+) -> None:
     """
     Story 20.11 (AC3) — offset wegschrijven. ALTIJD ná een flush aanroepen, nooit
     ervoor: de offset mag nooit voorlopen op de daadwerkelijk ingevoegde rijen.
@@ -332,7 +339,9 @@ async def run_batch() -> dict:
     declared_map = _load_declared_map(storage_service)
 
     try:
-        state = json.loads(storage_service.get_training_image(STATE_KEY).decode("utf-8"))
+        state = json.loads(
+            storage_service.get_training_image(STATE_KEY).decode("utf-8")
+        )
     except Exception:
         state = {"next_offset": 0}
     next_offset = int(state.get("next_offset", 0))
@@ -494,7 +503,9 @@ async def run_batch() -> dict:
                 c = _crop_bgr(img, b)
                 if c is None:
                     continue
-                emb = np.asarray(await model_manager.generate_embedding(_to_pil(c)), np.float32)
+                emb = np.asarray(
+                    await model_manager.generate_embedding(_to_pil(c)), np.float32
+                )
                 kp = keurmerk_probability(emb)
                 if kp is not None and kp < GATE_THRESHOLD:
                     continue

@@ -106,7 +106,9 @@ def _load_volume_index(storage_service) -> dict:
     """
     try:
         raw = storage_service.get_training_image(VOLUME_INDEX_KEY)
-        data = json.loads(raw.decode("utf-8") if isinstance(raw, (bytes, bytearray)) else raw)
+        data = json.loads(
+            raw.decode("utf-8") if isinstance(raw, (bytes, bytearray)) else raw
+        )
     except Exception:
         return {}
     if not isinstance(data, dict):

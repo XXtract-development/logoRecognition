@@ -328,7 +328,9 @@ async def search_with_seed(
                         "height": int(b[3]),
                     },
                     "seed_cosine": round(float(sim), 4),
-                    "ranking_cosine": round(float(ref_sim), 4) if ref_sim is not None else None,
+                    "ranking_cosine": (
+                        round(float(ref_sim), 4) if ref_sim is not None else None
+                    ),
                     "crop_path": crop_key,
                     "source_file": page_key,
                 }

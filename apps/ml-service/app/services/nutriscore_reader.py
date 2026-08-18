@@ -87,16 +87,28 @@ def _components(mask: np.ndarray, min_area: float) -> List[Dict[str, Any]]:
     for i in range(1, n):
         x, y, w, h, a = stats[i]
         if a >= min_area:
-            out.append({"x": int(x), "y": int(y), "w": int(w), "h": int(h), "a": int(a),
-                        "cx": float(cent[i][0]), "cy": float(cent[i][1])})
+            out.append(
+                {
+                    "x": int(x),
+                    "y": int(y),
+                    "w": int(w),
+                    "h": int(h),
+                    "a": int(a),
+                    "cx": float(cent[i][0]),
+                    "cy": float(cent[i][1]),
+                }
+            )
     return out
 
 
 def _mask(hsv: np.ndarray, ranges, s_min: int, v_min: int, close: bool) -> np.ndarray:
     m = np.zeros(hsv.shape[:2], np.uint8)
     for h_lo, h_hi in ranges:
-        m |= cv2.inRange(hsv, np.array([h_lo, s_min, v_min], np.uint8),
-                         np.array([h_hi, 255, 255], np.uint8))
+        m |= cv2.inRange(
+            hsv,
+            np.array([h_lo, s_min, v_min], np.uint8),
+            np.array([h_hi, 255, 255], np.uint8),
+        )
     if close:
         m = cv2.morphologyEx(m, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8))
     return m
@@ -109,7 +121,7 @@ def _y_overlap(comps) -> bool:
 def _split_warm(warm_mask: np.ndarray, comp: Dict[str, Any]) -> Tuple[float, float]:
     """Splits een samengesmolten D+E-blok via het kolomprofiel → (h_D, h_E)."""
     x0, y0, w, h = comp["x"], comp["y"], comp["w"], comp["h"]
-    sub = warm_mask[y0:y0 + h, x0:x0 + w]
+    sub = warm_mask[y0 : y0 + h, x0 : x0 + w]
     col = (sub > 0).sum(axis=0).astype(np.float32)
     if w >= 9:
         k = max(3, w // 15) | 1
@@ -136,8 +148,10 @@ def _read_oriented(img_bgr: np.ndarray, full_page: bool, min_ratio: float):
         mx = max(img_bgr.shape[:2])
         if mx > 3000:
             s = 3000.0 / mx
-            img = cv2.resize(img_bgr, (max(1, int(img_bgr.shape[1] * s)),
-                                       max(1, int(img_bgr.shape[0] * s))))
+            img = cv2.resize(
+                img_bgr,
+                (max(1, int(img_bgr.shape[1] * s)), max(1, int(img_bgr.shape[0] * s))),
+            )
         else:
             img = img_bgr
         area_min: float = 100.0
@@ -150,11 +164,13 @@ def _read_oriented(img_bgr: np.ndarray, full_page: bool, min_ratio: float):
 
     per: Dict[str, List[Dict[str, Any]]] = {}
     for letter, ranges, s_min, v_min in _ANCHORS:
-        per[letter] = _components(_mask(hsv, ranges, s_min, v_min, close=not full_page), area_min)
+        per[letter] = _components(
+            _mask(hsv, ranges, s_min, v_min, close=not full_page), area_min
+        )
     warm_mask = _mask(hsv, *_WARM, close=not full_page)
     per["W"] = _components(warm_mask, area_min)
 
-    missing = [l for l in ("A", "B", "C", "W") if not per[l]]
+    missing = [letter for letter in ("A", "B", "C", "W") if not per[letter]]
     if missing:
         return None, {"reason": f"segment(en) niet gevonden: {missing}"}
 
@@ -185,26 +201,39 @@ def _read_oriented(img_bgr: np.ndarray, full_page: bool, min_ratio: float):
                 abc_score = a["a"] + b["a"] + c["a"]
 
                 def _seg(comp):
-                    return {"h": float(comp["h"]), "top": float(comp["y"]),
-                            "bot": float(comp["y"] + comp["h"]),
-                            "fill": comp["a"] / max(1.0, comp["w"] * comp["h"])}
+                    return {
+                        "h": float(comp["h"]),
+                        "top": float(comp["y"]),
+                        "bot": float(comp["y"] + comp["h"]),
+                        "fill": comp["a"] / max(1.0, comp["w"] * comp["h"]),
+                    }
 
                 abc_seg = {"A": _seg(a), "B": _seg(b), "C": _seg(c)}
-                right = sorted((w for w in per["W"]
-                                if w["cx"] > c["cx"] and _y_overlap([a, b, c, w])
-                                and w["x"] - (c["x"] + c["w"]) < 2.0 * med_w),
-                               key=lambda w: w["cx"])[:6]
+                right = sorted(
+                    (
+                        w
+                        for w in per["W"]
+                        if w["cx"] > c["cx"]
+                        and _y_overlap([a, b, c, w])
+                        and w["x"] - (c["x"] + c["w"]) < 2.0 * med_w
+                    ),
+                    key=lambda w: w["cx"],
+                )[:6]
                 # (a) twee losse warme blokken: D=links, E=rechts (alle paren —
                 # ring-fragmentjes kunnen er qua cx tussen zitten).
                 for i in range(len(right)):
                     for j in range(i + 1, len(right)):
                         w1, w2 = right[i], right[j]
-                        if not (0.6 * med_w <= w1["w"] <= 2.4 * med_w
-                                and 0.6 * med_w <= w2["w"] <= 2.4 * med_w):
+                        if not (
+                            0.6 * med_w <= w1["w"] <= 2.4 * med_w
+                            and 0.6 * med_w <= w2["w"] <= 2.4 * med_w
+                        ):
                             continue
                         if w1["x"] - (c["x"] + c["w"]) > 1.0 * med_w:
                             continue
-                        if not (-0.5 * med_w <= w2["x"] - (w1["x"] + w1["w"]) <= 0.8 * med_w):
+                        if not (
+                            -0.5 * med_w <= w2["x"] - (w1["x"] + w1["w"]) <= 0.8 * med_w
+                        ):
                             continue
                         score = abc_score + w1["a"] + w2["a"]
                         if best is None or score > best[0]:
@@ -220,9 +249,24 @@ def _read_oriented(img_bgr: np.ndarray, full_page: bool, min_ratio: float):
                     blk = _seg(w1)
                     score = abc_score + w1["a"]
                     if best is None or score > best[0]:
-                        best = (score, {**abc_seg,
-                                        "D": {"h": h_d, "top": blk["top"], "bot": blk["bot"], "fill": None},
-                                        "E": {"h": h_e, "top": blk["top"], "bot": blk["bot"], "fill": None}})
+                        best = (
+                            score,
+                            {
+                                **abc_seg,
+                                "D": {
+                                    "h": h_d,
+                                    "top": blk["top"],
+                                    "bot": blk["bot"],
+                                    "fill": None,
+                                },
+                                "E": {
+                                    "h": h_e,
+                                    "top": blk["top"],
+                                    "bot": blk["bot"],
+                                    "fill": None,
+                                },
+                            },
+                        )
     if best is None:
         return None, {"reason": "geen geldige 5-op-een-rij (volgorde/band/gaten)"}
 
@@ -233,11 +277,15 @@ def _read_oriented(img_bgr: np.ndarray, full_page: bool, min_ratio: float):
     ratio = heights[letter] / max(1.0, med)
     rest = sorted(v for k, v in heights.items() if k != letter)
     if ratio < min_ratio:
-        return None, {"reason": f"geen duidelijk uitvergroot vakje (ratio {ratio:.2f})",
-                      "heights": heights}
+        return None, {
+            "reason": f"geen duidelijk uitvergroot vakje (ratio {ratio:.2f})",
+            "heights": heights,
+        }
     if ratio > MAX_RATIO:
-        return None, {"reason": f"onwaarschijnlijke ratio {ratio:.2f} (achtergrond-match?)",
-                      "heights": heights}
+        return None, {
+            "reason": f"onwaarschijnlijke ratio {ratio:.2f} (achtergrond-match?)",
+            "heights": heights,
+        }
     # Adversarial-review M1: de niet-vergrote vakjes van het echte logo zijn
     # GELIJK van hoogte (was 1.6 — liet oplopende staafdiagrammen door).
     if rest and rest[0] > 0 and rest[-1] / max(1.0, rest[0]) > 1.3:
@@ -250,11 +298,15 @@ def _read_oriented(img_bgr: np.ndarray, full_page: bool, min_ratio: float):
     # duidelijk < 1), een massieve staaf niet.
     win_fill = segs[letter].get("fill")
     if win_fill is not None and win_fill > 0.96:
-        return None, {"reason": f"massief vlak zonder letter-glyph (vul {win_fill:.2f})",
-                      "heights": heights}
-    return letter, {"ratio": round(ratio, 2),
-                    "heights": {k: round(v, 1) for k, v in heights.items()},
-                    "combo_area": int(best[0])}
+        return None, {
+            "reason": f"massief vlak zonder letter-glyph (vul {win_fill:.2f})",
+            "heights": heights,
+        }
+    return letter, {
+        "ratio": round(ratio, 2),
+        "heights": {k: round(v, 1) for k, v in heights.items()},
+        "combo_area": int(best[0]),
+    }
 
 
 def read_nutriscore(
@@ -284,8 +336,12 @@ def read_nutriscore(
         return None, {"reason": f"implausibele beeldverhouding ({aspect:.0f}:1)"}
     best = None
     fail: Dict[str, Any] = {"reason": "geen geldige lezing in enige oriëntatie"}
-    for rot, code in [(0, None), (90, cv2.ROTATE_90_CLOCKWISE),
-                      (180, cv2.ROTATE_180), (270, cv2.ROTATE_90_COUNTERCLOCKWISE)]:
+    for rot, code in [
+        (0, None),
+        (90, cv2.ROTATE_90_CLOCKWISE),
+        (180, cv2.ROTATE_180),
+        (270, cv2.ROTATE_90_COUNTERCLOCKWISE),
+    ]:
         img = img_bgr if code is None else cv2.rotate(img_bgr, code)
         letter, info = _read_oriented(img, full_page=full_page, min_ratio=floor)
         if letter is not None:
