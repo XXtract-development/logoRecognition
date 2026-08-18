@@ -640,7 +640,8 @@
     "uncertainItems": "onzekere voorspellingen",
     "noArtworkItems": "Geen openstaande artwork-reviewitems",
     "authRequired": "Je bent niet (meer) ingelogd",
-    "authRequiredBody": "Log opnieuw in om de reviewqueue te bekijken."
+    "authRequiredBody": "Log opnieuw in om de reviewqueue te bekijken.",
+    "relabelShort": "Ander keurmerk"
   },
   "auth": {
     "login": "Inloggen",

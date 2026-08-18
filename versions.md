@@ -9,9 +9,9 @@ onder de onderrand van je scherm — je moest scrollen om te kunnen beslissen. E
 werd fors afgesneden: van een beeld van ruim duizend pixels hoog was er nog geen vijfhonderd
 zichtbaar.
 
-Beide zijn opgelost. De knoppenbalk is compacter geworden: "Ander keurmerk koppelen" staat
-nu naast de andere knoppen in plaats van eronder, en de veegtekst is op desktop weggelaten
-(die hoort bij telefoon). Daardoor past de bediening binnen het scherm zonder dat het vak voor
+Beide zijn opgelost. De knoppenbalk is compacter geworden: "Ander keurmerk" staat nu naast de
+andere knoppen in plaats van op een eigen regel eronder, en de veegtekst is op desktop
+weggelaten (die hoort bij telefoon). Daardoor past de bediening binnen het scherm zonder dat het vak voor
 het etiket veel kleiner wordt — en het etiket past nu volledig binnen dat vak in plaats van
 eruit te steken.
 

@@ -338,6 +338,25 @@ en als de gemeten hoogte 0 is valt de begrenzing terug op de oude `64vh`. Beide 
 die alleen in randgevallen aan bod komen.
 
 
+### Live-controle door Friso (2026-08-18)
+
+Gecontroleerd op ACC met één teruggezet item (zwangerschapswaarschuwing, kader 72 x 72):
+
+| | |
+|---|---|
+| Alle bediening in beeld | ja |
+| Beeld niet meer afgekapt | ja, geen afsnijding |
+| Scherper contextbeeld (20.17) | correct |
+| Klein venster: beeld houdt hoogte, pagina scrollt | werkt goed |
+
+**Eén bevinding, verwerkt:** de relabel-knop was in de compacte balk een kále icoonknop geworden.
+Friso: *"aan icon alleen is het niet duidelijk dat het gaat om Ander keurmerk koppelen."* Terecht —
+de hoogtewinst van deze story zat in het verplaatsen naar de knoppenregel, niet in het weglaten van
+de tekst; die kost daar alleen breedte, en die is er. De knop toont nu "Ander keurmerk" naast het
+icoon. Nagemeten: onder de kaart nog steeds 68 px en het beeldvenster onveranderd 422 / 400 px, dus
+de compacte balk levert precies evenveel op als daarvoor.
+
+
 ## Bronverwijzingen
 
 - [Source: review-20-16.md — H1 (botsing), H2 (ontsnappingsluik), H3 (scheve kaders), M1-M8]

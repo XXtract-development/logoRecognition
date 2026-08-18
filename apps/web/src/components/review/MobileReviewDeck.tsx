@@ -1493,8 +1493,8 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate, f
           style={{ height: 56, flex: '0 0 48px' }}
           aria-label={t('review.next', { defaultValue: 'Volgende' })}
         />
-        {/* Story 20.16 — in de vul-stand staat "Ander keurmerk koppelen" hier, als icoonknop
-            met een toegankelijke naam, in plaats van als volle regel eronder. */}
+        {/* Story 20.16 — in de vul-stand staat "Ander keurmerk" hier op dezelfde regel als de
+            beslisknoppen, in plaats van als volle regel eronder. */}
         {columnHeight ? (
           <Button
             icon={<TagsOutlined />}
@@ -1504,10 +1504,21 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate, f
             }}
             disabled={!canMutate}
             data-testid="deck-relabel-open"
-            style={{ height: 56, flex: '0 0 48px', color: '#2F5A7A', borderColor: '#54949E' }}
+            // Mét tekst, niet alleen het icoon. In de eerste versie van 20.16 stond hier een
+            // kale icoonknop; Friso's live-controle: "aan icon alleen is het niet duidelijk dat
+            // het gaat om Ander keurmerk koppelen". De hoogtewinst van deze story zat in het
+            // verplaatsen naar deze regel, niet in het weglaten van de tekst — die kost hier
+            // alleen breedte, en die is er.
+            style={{
+              height: 56,
+              flex: '0 0 auto',
+              color: '#2F5A7A',
+              borderColor: '#54949E',
+            }}
             title={t('review.relabel', { defaultValue: 'Ander keurmerk koppelen' })}
-            aria-label={t('review.relabel', { defaultValue: 'Ander keurmerk koppelen' })}
-          />
+          >
+            {t('review.relabelShort', { defaultValue: 'Ander keurmerk' })}
+          </Button>
         ) : null}
       </div>
 
