@@ -4,7 +4,7 @@ baseline_commit: b2b291f578abdb44b89fbc21a37221a511cce5af
 
 # Story 19.11: Herkenning ontstoppen — classify-gate, match-drempel & bevestigde crop → actieve referentie
 
-Status: review
+Status: done
 
 <!-- Fix-story uit de investigate `classify-gate-blocks-recognition-investigation.md` (2026-07-07, confidence HIGH). Door mensen bevestigde keurmerk-crops (19.8) worden NIET herkend: de gedeelde keurmerk-gate (0,5) in het CLASSIFY-pad dropt ze vóór de referentie-zoektocht — hetzelfde gate-v2-defect als 19.6, maar de 19.6-fix (gate 0,2) is alléén op het bootstrap-ontdekpad toegepast, niet op het herkenningspad. PRIORITEIT boven 19.9. -->
 
@@ -50,10 +50,10 @@ zodat **het vullen van keurmerk-vakken (19.8) de herkenning écht verbetert — 
 - [x] 1. **Classify-gate herstellen (AC: 1, 4)** — GEKOZEN: classify-gescopede drempel `CLASSIFY_GATE_THRESHOLD` (default 0,2, patroon `FLYWHEEL_BOOTSTRAP_GATE_THRESHOLD`) in `classification.py`; `_classify_via_embedding` gebruikt die i.p.v. de gedeelde `keurmerk_gate.GATE_THRESHOLD` (0,5). De 0,5-gate blijft elders ongewijzigd. Env-configureerbaar (gold-set-kalibratie in Task 4/live).
 - [~] 2. **Match-drempel kalibreren — INGETROKKEN na code-review.** De 0,75→0,65-wijziging was op de verkeerde knop: verify-flow negeert de classify-`uncertain`-vlag; de bindende drempel is de crosscheck-vloer 0,80. Teruggedraaid naar 0,75. De crosscheck-vloer-beslissing is apart (precisie, gold-set).
 - [x] 3. **Accept → actieve referentie borgen (AC: 3)** — AD-conforme route: herkomst `review` omzeilt de promotie-DREMPELfase (`runThresholdPhase`, `guardrails.ts`) — net als bij de nominatie-drempel (mens = dubbele check). Een review-accept-crop (0,60–0,74) wordt zo bij de eerstvolgende promotielus een ACTIEVE referentie i.p.v. eeuwig vrijgegeven onder 0,90. `GuardrailCandidate` + `loadBatchCandidates` dragen nu `origin`. Cap/dedup/outlier/regressie blijven gelden.
-- [ ] 4. **Gold-set-eval (AC: 4)** — LIVE, wacht op deploy-toestemming: reproduceerbare precisie-meting vóór/na (ECHT-herkenning ↑, VALS niet omhoog).
+- [x] 4. **Gold-set-eval (AC: 4) — GESLAAGD** (2026-07-07, read-only op ACC, deploy `0aab6e2`). Per gold-set-crop de gate-score (kp) + beste referentie-match gemeten (oude gate 0,5 vs nieuwe 0,2). **ECHT (n=85): kp≥0,5 = 23 (27%) → kp≥0,2 = 85 (100%)** — de oude gate dropte 73% van de echte keurmerken; de fix herstelt alles. **VALS (n=16): kp≥0,5 = 1 → kp≥0,2 = 15** (gate laat ze door) MAAR **0 matchen ≥0,80** → géén valse auto-bevestiging; de 0,80-crosscheck-vloer buffert de precisie volledig. Netto: recall ↑↑ zonder precisie-verlies in de database (prijs = wat extra review-werk). Kanttekening: VALS-set klein (16).
 - [x] 5. **Tests (AC: 5)** — ml-pytest `test_classify_gate_19_11.py` (5 tests: kp-0,39-keurmerk door de gate; kp-0,10 nog gedropt; drempel-kalibratie; zwakke match uncertain) — 5/5 groen, 45 passed geen regressie. api-vitest: guardrails review-bypass-test — 30 passed. Faalt op het oude gedrag.
 - [x] 6. **Gates** — `tsc --noEmit` 0; api-vitest 885 passed/0 failed; ml-pytest 45 passed (4 pre-existing collection-errors = image-mismatch `phash`-module, niet deze wijziging).
-- [ ] 7. **Live-verificatie (AC: 1, 3)** — LIVE, wacht op deploy-toestemming: RAINFOREST/TRIMAN opnieuw door `/ml/artwork/classify` → verwacht de juiste codes; een RECYCLABLE-accept → actieve referentie na promotielus. Gold-set als vangnet.
+- [x] 7. **Live-verificatie (AC: 1) — GESLAAGD** (2026-07-07, deploy `0aab6e2` live op ACC, akkoord Friso). `/ml/artwork/classify` op de bevestigde crops: **RAINFOREST → RAINFOREST_ALLIANCE @ 0,70** en **TRIMAN → TRIMAN @ 0,71** (beide waren UNKNOWN vóór de fix) — de gate-fix herkent ze nu correct (`uncertain:true` → review, exact zoals de crosscheck-vloer-analyse voorspelde). RECYCLABLE matcht nog FAIRTRADE (0,40): die klasse mist nog een actieve echte-crop-referentie — Task 3 lost dat op bij de eerstvolgende nachtelijke promotielus (mechanisme getest, niet instant live-verifieerbaar).
 
 ## Dev Notes — Developer Context
 

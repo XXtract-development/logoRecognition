@@ -258,3 +258,20 @@ tests/fixtures/*.page-*.png
 
 # Meetuitvoer van de opmaaktest (story 20.15) — verse getallen per run, geen bronbestand
 test-results/review-deck-metingen/
+
+# --- Gegenereerde uitvoer, toegevoegd 2026-08-19 ---------------------------
+# Deze stonden als 91 openstaande bestanden in de weg bij het starten van de
+# bouwlus. Het gaat om uitvoer die per meting opnieuw ontstaat; de inhoudelijke
+# bestanden uit diezelfde stapel zijn wel vastgelegd.
+playwright-report/
+test-results/
+coverage/
+docs/project-scan-report.json
+.playwright-mcp/
+.tokensave/
+_bmad-output/labelronde-*.html
+
+# Lege claude-mem-stubs (23 stuks, alle exact 43 bytes, inhoud is een leeg
+# context-blok). claude-mem staat uit; deze bestanden dragen niets.
+CLAUDE.md
+!/.claude/skills/**/CLAUDE.md

@@ -80,8 +80,14 @@ Lege klasse → 19.8 (bootstrap vindt crops → review → mens bevestigt → ee
 - [Source: apps/ml-service/app/services/bootstrap_search.py#96-265] — het te wisselen matchsignaal.
 - Geheugen: `project_flywheel_recall_research`, `project_123_realref_pivot`, `project_124_detector_spike`.
 
-### Open ontwerpvraag (voor dev-story)
-- Referentie-transport (Task 1): API-levert-mee vs ml-laadt-zelf. Aanbeveling: API levert de crop-keys/embeddings mee (ml-service heeft geen Postgres-toegang; consistent met hoe `seed_path` al wordt meegegeven). Bevestig of de nearest-reference-vergelijking op embeddings (goedkoop, geen re-embed) of op crop-beelden gebeurt.
+### Open ontwerpvraag (voor dev-story) — BESLIST 2026-07-12 (voorwerk)
+- **Referentie-transport (Task 1): BESLIST → de API levert de crop-PADEN mee** (`realRefPaths: string[]`, MinIO-keys van de actieve echte-crop-refs van de klasse), en de **ml-service laadt+embedt ze** — exact het bestaande `seedPath`-patroon (de ml-service embedt óók het zaad uit een pad). Rationale: consistent met `seed_path`; vermijdt dat de API pgvector-vectoren moet uitpakken/serialiseren; re-embed-kosten triviaal (k≈3 crops/klasse). De nearest-reference-vergelijking gebeurt op **embeddings** (ml-service embedt de crop-paden één keer per run).
+- **4 raakpunten (bevestigd bij voorwerk, git-geverifieerd tegen HEAD `7b9e2a7`):**
+  1. `apps/ml-service/app/services/bootstrap_search.py` — `search_with_seed` (sig + conditie C op regel 219-221: `ref_sim = max(cosine(emb, r) for r in real_ref_embs); match als ref_sim ≥ ranking_threshold`; gate-voorfilter `:215-217` + NFR-6-guard `:226` blijven ervóór/erna). Plus de bootstrap-endpoint die `real_ref_paths` aanneemt en embedt (bij ≥ k).
+  2. `apps/api/src/services/ml-client.ts` — `bootstrapSearch`-request (regel 648) uitbreiden met `realRefPaths?: string[]`.
+  3. `apps/api/src/services/flywheel/bootstrap-run.ts` — `searchAndQueueClassForReview` (regel 322): per klasse de actieve ECHTE-crop-refs ophalen (reference_logos active=true, t3777_code=klasse, source ≠ gids/wikimedia — d.w.z. review-confirmed/realref-live-poc/flywheel-promotion) en bij ≥ k als `realRefPaths` meegeven; anders kaal (gids-only).
+  4. `apps/api/src/services/flywheel/config.ts` — `FLYWHEEL_RANKING_MIN_REFS` (k, default 3) + `FLYWHEEL_RANKING_THRESHOLD` (env-patroon `getBootstrapThreshold`).
+- **NB bij het "echte crop"-filter (raakpunt 3):** RECYCLABLE heeft nu (na 19.13) 26 actieve `realref-live-poc`-refs → RECYCLABLE komt boven k=3 en wordt een kandidaat voor conditie C. Valideer die klasse expliciet (de 22 near-dups uit één GTIN kunnen de nearest-reference-drempel beïnvloeden).
 
 ## Dev Agent Record
 

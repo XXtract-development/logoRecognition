@@ -1,13 +1,13 @@
 import { test, expect } from '@playwright/test';
 
 test('homepage loads successfully', async ({ page }) => {
-  await page.goto('http://localhost:3000');
+  await page.goto('/');
   await page.waitForLoadState('networkidle');
 
   const title = await page.title();
   console.log('Page title:', title);
 
-  expect(title).toContain('XXtract');
+  expect(title).toMatch(/Logo Recognition/);
 });
 
 test('API health check works', async ({ request }) => {

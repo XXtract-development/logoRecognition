@@ -1,0 +1,88 @@
+---
+# TEA Academy Progress Tracking
+user: Friso
+role: Lead
+experience_level: Beginner
+learning_goals: TEA methodologie en workflows begrijpen
+pain_points: Bestaande codebases met nauwelijks tests, onvoldoende inzicht in complexe processen, behoefte aan geautomatiseerd testplatform per codebase om regressie te detecteren na wijzigingen
+
+started_date: 2026-04-03
+last_session_date: 2026-04-03
+
+sessions:
+  - id: session-01-quickstart
+    name: 'Quick Start'
+    duration: '30 min'
+    status: in-progress
+    started_date: 2026-04-03
+    completed_date: null
+    score: null
+    notes_artifact: null
+
+  - id: session-02-concepts
+    name: 'Core Concepts'
+    duration: '45 min'
+    status: not-started
+    started_date: null
+    completed_date: null
+    score: null
+    notes_artifact: null
+
+  - id: session-03-architecture
+    name: 'Architecture & Patterns'
+    duration: '60 min'
+    status: not-started
+    started_date: null
+    completed_date: null
+    score: null
+    notes_artifact: null
+
+  - id: session-04-test-design
+    name: 'Test Design'
+    duration: '60 min'
+    status: not-started
+    started_date: null
+    completed_date: null
+    score: null
+    notes_artifact: null
+
+  - id: session-05-atdd-automate
+    name: 'ATDD & Automate'
+    duration: '60 min'
+    status: not-started
+    started_date: null
+    completed_date: null
+    score: null
+    notes_artifact: null
+
+  - id: session-06-quality-trace
+    name: 'Quality & Trace'
+    duration: '45 min'
+    status: not-started
+    started_date: null
+    completed_date: null
+    score: null
+    notes_artifact: null
+
+  - id: session-07-advanced
+    name: 'Advanced Patterns'
+    duration: 'ongoing'
+    status: not-started
+    started_date: null
+    completed_date: null
+    score: null
+    notes_artifact: null
+
+sessions_completed: 0
+total_sessions: 7
+completion_percentage: 0
+next_recommended: session-01-quickstart
+
+stepsCompleted: ['step-01-init', 'step-02-assess']
+lastStep: 'step-02-assess'
+lastContinued: 2026-04-03
+
+certificate_generated: false
+certificate_path: null
+completion_date: null
+---

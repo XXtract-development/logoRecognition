@@ -1,0 +1,106 @@
+# generated: 2025-12-05
+# project: logoRecognition
+# project_key: logo-recognition
+# tracking_system: file-system
+# story_location: docs/sprint-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic exists in epic file but not contexted
+#   - contexted or in-progress
+#   - done: Epic completed
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - drafted: Story file created in stories folder by *create-story
+#   - ready-for-dev: Draft approved and story context created by *story-ready
+#   - in-progress: Developer actively working on implementation by *dev-story
+#   - review: Implementation complete, ready for review by *code-review
+#   - done: Story completed by *story-done
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - completed: Retrospective has been done by *retrospective
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epics should be marked `in-progress` before stories can be marked beyond `backlog`
+# - SM typically drafts next story ONLY after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', dev reviews, then Dev moves to 'done'
+
+generated: 2025-12-05
+project: logoRecognition
+project_key: logo-recognition
+tracking_system: file-system
+story_location: docs/sprint-artifacts
+
+development_status:
+  # ============================================
+  # Epic 1: Foundation & Infrastructure
+  # ============================================
+  epic-1: done
+  1-1-development-environment-setup: done
+  1-2-database-schema-migrations: done
+  1-3-ml-service-skeleton: done
+  1-4-api-gateway-ml-service-integration: done
+  1-5-ci-cd-pipeline-setup: done
+  1-6-authentication-foundation: done
+  epic-1-retrospective: optional
+
+  # ============================================
+  # Epic 2: Image Upload & Management
+  # ============================================
+  epic-2: done
+  2-1-single-image-upload: done
+  2-2-batch-image-upload: done
+  2-3-image-library-view: done
+  2-4-category-management: done
+  2-5-bulk-image-assignment: done
+  epic-2-retrospective: optional
+
+  # ============================================
+  # Epic 3: Logo Recognition
+  # ============================================
+  epic-3: done
+  3-1-image-recognition-upload: done
+  3-2-ml-detection-pipeline: done
+  3-3-recognition-results-display: done
+  3-4-recognition-api-endpoint: done
+  3-5-batch-recognition: done
+  epic-3-retrospective: optional
+
+  # ============================================
+  # Epic 4: Training Annotation
+  # ============================================
+  epic-4: done
+  4-1-annotation-canvas: done
+  4-2-manual-bounding-box-drawing: done
+  4-3-smart-click-detection: done
+  4-4-annotation-keyboard-shortcuts: done
+  4-5-annotation-review-validation: done
+  epic-4-retrospective: optional
+
+  # ============================================
+  # Epic 5: Model Training Pipeline
+  # ============================================
+  epic-5: done
+  5-1-training-job-creation: done
+  5-2-training-progress-tracking: done
+  5-3-training-metrics-evaluation: done
+  5-4-model-version-management: done
+  5-5-model-activation-deployment: done
+  5-6-websocket-real-time-updates: done
+  epic-5-retrospective: optional
+
+  # ============================================
+  # Epic 6: Self-Learning System
+  # ============================================
+  epic-6: done
+  6-1-recognition-feedback-loop: done
+  6-2-uncertainty-sampling: done
+  6-3-automatic-retraining-triggers: done
+  6-4-incremental-model-updates: done
+  6-5-model-version-comparison: done
+  6-6-model-rollback: done
+  epic-6-retrospective: optional

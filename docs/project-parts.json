@@ -1,0 +1,114 @@
+{
+  "repository_type": "monorepo",
+  "workspace_manager": "pnpm",
+  "generated": "2026-03-31",
+  "scan_level": "exhaustive",
+  "parts": [
+    {
+      "part_id": "web",
+      "display_name": "Web Frontend",
+      "project_type_id": "web",
+      "root_path": "apps/web/",
+      "primary_technology": "React 18.3 + Vite 6 + TypeScript 5.7",
+      "entry_points": ["src/main.tsx", "src/App.tsx"]
+    },
+    {
+      "part_id": "api",
+      "display_name": "API Backend",
+      "project_type_id": "backend",
+      "root_path": "apps/api/",
+      "primary_technology": "Fastify 4 + Prisma 5 + TypeScript",
+      "entry_points": ["src/main.ts", "src/main-simple.ts"]
+    },
+    {
+      "part_id": "ml-service",
+      "display_name": "ML Microservice",
+      "project_type_id": "backend",
+      "root_path": "apps/ml-service/",
+      "primary_technology": "FastAPI + PyTorch + ONNX Runtime + Python 3.11",
+      "entry_points": ["app/main.py"]
+    },
+    {
+      "part_id": "shared",
+      "display_name": "Shared TypeScript Library",
+      "project_type_id": "library",
+      "root_path": "packages/shared/",
+      "primary_technology": "TypeScript",
+      "entry_points": ["src/index.ts"]
+    },
+    {
+      "part_id": "ui",
+      "display_name": "UI Component Library",
+      "project_type_id": "library",
+      "root_path": "packages/ui/",
+      "primary_technology": "React + Ant Design",
+      "entry_points": [],
+      "note": "Structure defined, source files empty"
+    },
+    {
+      "part_id": "ml",
+      "display_name": "ML Utilities",
+      "project_type_id": "library",
+      "root_path": "packages/ml/",
+      "primary_technology": "ONNX Runtime + TensorFlow.js",
+      "entry_points": ["src/optimization/onnxOptimizer.ts"]
+    },
+    {
+      "part_id": "infrastructure",
+      "display_name": "Infrastructure",
+      "project_type_id": "infra",
+      "root_path": "infrastructure/",
+      "primary_technology": "Docker + Kubernetes + Terraform"
+    }
+  ],
+  "integration_points": [
+    {
+      "from": "web",
+      "to": "api",
+      "type": "REST API",
+      "details": "Axios HTTP client, base URL /api/v1, timeout 30s"
+    },
+    {
+      "from": "web",
+      "to": "api",
+      "type": "WebSocket",
+      "details": "Socket.IO (polling→websocket), events: training/recognition/feedback"
+    },
+    {
+      "from": "api",
+      "to": "ml-service",
+      "type": "REST API",
+      "details": "Axios HTTP client, base URL http://localhost:8001, timeout 120s"
+    },
+    {
+      "from": "api",
+      "to": "postgresql",
+      "type": "Database",
+      "details": "Prisma ORM, 20 models, pgvector extension"
+    },
+    {
+      "from": "api",
+      "to": "redis",
+      "type": "Cache/Queue",
+      "details": "ioredis + BullMQ for caching and job queues"
+    },
+    {
+      "from": "api",
+      "to": "minio",
+      "type": "Object Storage",
+      "details": "MinIO S3-compatible, buckets: training/recognition/thumbnails/models"
+    },
+    {
+      "from": "ml-service",
+      "to": "postgresql",
+      "type": "Database",
+      "details": "asyncpg, pgvector for vector similarity search"
+    },
+    {
+      "from": "ml-service",
+      "to": "minio",
+      "type": "Object Storage",
+      "details": "Model storage and training image retrieval"
+    }
+  ]
+}

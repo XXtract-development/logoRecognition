@@ -70,6 +70,8 @@ so that de review-queue en trainingsdata zich vullen zonder ad-hoc scripts en de
 2. **Classificatie-mislabel:** localize vond op beide Theunisse-koffie-artworks de (vermoedelijk echte) Rainforest-regio, maar de embedding-classify labelde de crop **EUROPEAN_V_LABEL_VEGAN** → reviewitems met het verkeerde voorgestelde label. Lokalisatie ✓, classificatie-kwaliteit op kleine echte crops = nieuw kalibratiepunt (8.4-route; meenemen in de 8-3P-labelronde/8-3D-fase).
 3. **Dedup-breedte-gevoeligheid bevestigd:** de FSC-plant op 00008500002456 werd opnieuw aangeboden (detectie-bbox ~100px-variant vs opgeslagen 110px → andere gequantiseerde sleutel) — gedocumenteerde O3-beperking, gedrag conform spec ("herdraai ná drempelwijziging kan bewust nieuwe items geven").
 
+**Eindrun ná kalibratie-env + rerun-fix (4f36230, 2026-06-07):** herhaal-run herverwerkt écht (evictie-fix), jobstatus via `?queue=artwork-detection` werkt (O6 end-to-end), composiet-plants komen door de keten bij min_score 0,55. Review-queue 12 → 20: de herdetecties van de 9 plants kregen deels nieuwe items (bbox-variantmaat ≠ opgeslagen maat → andere dedup-sleutel) — exact de gedocumenteerde O3-beperking; opruimen kan via reject in de review-UI of een eenmalige opruimactie (besluit PO). Volledige kalibratie-env live: LOCALIZE_MIN_SCORE=0.55 · LOCALIZE_SCALE_STEP=1.10 · LOCALIZE_CLASS_THRESHOLDS={"RAINFOREST_ALLIANCE":0.65}.
+
 ## Dev Agent Record
 
 ### Agent Model Used

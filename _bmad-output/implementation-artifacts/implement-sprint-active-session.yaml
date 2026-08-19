@@ -1,24 +1,108 @@
-started_at: 2026-07-12
+started_at: 2026-07-21
 protocol_version: 2026-07-06
 sprint_status: _bmad-output/implementation-artifacts/sprint-status.yaml
-story_files: _bmad-output/implementation-artifacts/19-13-recyclable-referenties-herstellen.md
+story_files: [_bmad-output/implementation-artifacts/13-7-uuid-cast-promotielus-guardrail-queries.md]
 source_epics: _bmad-output/planning-artifacts/epics-vliegwiel.md
 worktree_root: /private/tmp/logoRecognition-implement-sprint
 base_branch: acc
-scope: [19-13]
-active_epics: [epic-19]
-current_phase: DONE
-status: >
-  done — 19.13 geïmplementeerd (herstelscript + 6 unit-tests + 2-laags adversariële
-  review, 6 patches). ACC-run met expliciete toestemming Friso: 26 RECYCLABLE-refs
-  hersteld; AC3 (held-out crop FAIRTRADE 0,40 → RECYCLABLE 0,70) + AC4 (precisie
-  spot-check, 0 valse RECYCLABLE) bewezen. 19.14 post-deploy read-only geverifieerd
-  (find_similar_references geeft 10 buren, was ~1).
+scope: [13-7]
+active_epics: [epic-13]
+current_phase: DEPLOYED-DRAINED   # 13.7 live op ACC (0db627e); uuid-crash weg; batch gedraind -> quarantined op NIEUW blocker (RGBA gold-set-crop)
+acc_deploy_drain:
+  deployed_commit: 0db627e   # rebased op origin/acc(672edcf); Coolify auto-deploy finished 20:36:42; image-tag == commit-sha; compiled dist bevat = ANY(::uuid[]), oude IN-vorm weg
+  drain_job: "flywheel-promotion jobId=572 -> state=completed, GEEN 42883 (uuid-fix bewezen live)"
+  batch_12e27fbc: "pending -> quarantined (closed_at 2026-07-21T20:43:41); 9 in_batch -> 4 rejected (guardrails) + 5 in_batch"
+  quarantine_reason: "systeem-fout (fail-closed, AD-11) — NIET regressie; regression-eval faalde op RGBA gold-set-crop artwork-crops/03059946164960/annot_7d6b6c2c...png (tensor 4 vs 3 kanalen)"
+  new_blocker: "2e, losstaande bug: ml-service embedding kan 4-kanaals (RGBA) gold-set-crop niet embedden -> elke regression-eval fail-closed -> promotie blijft geblokkeerd. VIA BMAD (investigate->story), NIET ad-hoc."
+epic_result_13_7:
+  story_status: done
+  epic_status: in-progress   # blijft in-progress tot ACC-deploy+drain + epic-close
+  epic_head: 507e0df   # docs/retro/status
+  code_commit: df5ba5b   # fix + pg-integratietest + bookkeeping
+  review_verdict: PASS   # review-13-7.md, reviewed_commit df5ba5b == HEAD-code (507e0df voegt geen code toe)
+  ac_trace: "AC1-4 door tests; AC5 gated-waiver (ACC-deploy + drain batch 12e27fbc pending user go)"
+  orchestrator_verified:
+    clean_diff: true   # alleen guardrails.ts (2 casts) + nieuwe pg-integratielaag + artefacten; geen junk
+    core_code: "IN(Prisma.join) -> = ANY(${ids}::uuid[]) op guardrails.ts:432 + :538; querybetekenis byte-identiek; sweep bevestigt geen 3e plek"
+    pg_integration_selfrun: "3/3 groen (pre-fix gooit 42883, post-fix slaagt) tegen echte pgvector-Postgres, alle 20 migraties applied"
+    full_vitest_selfrun: "907 passed / 0 fail tegen epic-HEAD 507e0df"
+    review_low_accepted: "1 LOW (pre-fix-subtest reconstrueert de uncast vorm inline) — juiste keuze, geen fix"
+  branch: epic/vliegwiel-13-7-uuid-fix   # NIET gemerged naar acc (merge=ACC-deploy, gated)
+  gated_next: "met Friso's go: merge branch->acc (auto-deploy ACC) + enqueue flywheel-promotion om batch 12e27fbc te legen + read-only verificatie"
+current_story: 13-7-uuid-cast-promotielus-guardrail-queries
+story_worktree: /private/tmp/logoRecognition-implement-sprint/epic-13-7
+epic_branch: epic/vliegwiel-13-7-uuid-fix
 dry_run_triggers:
-  a_new_sprint_status: false
-  b_large_selection: false
-  c_changed_protocol: false
+  a_new_sprint_status: false   # prior session-state exists for this exact sprint_status path
+  b_large_selection: false     # 1 story / 1 epic (<=8 stories, <=2 epics)
+  c_changed_protocol: false    # protocol_version 2026-07-06 matches last session-state
 notes: >
-  Geen formele trigger; bewuste pauze bij de ACC-schrijf-gate (Task 3), door Friso
-  goedgekeurd. Direct in de hoofdworktree (branch acc) gewerkt, niet in een aparte
-  worktree — proportioneel voor één ACC-data-story die al op ACC is gevalideerd.
+  Single-story reopening. ACC deploy + promotielus-drain (story task 5 / AC5-deploydeel) is
+  GATED op expliciete go van Friso — epic-agent bouwt fix + Postgres-test + review + retro +
+  volledige suite en STOPT vóór ACC-deploy. Base branch acc @ 81c1012. Root cause al
+  gelokaliseerd (guardrails.ts:432 hasCosineDuplicate survivor-arm + :538 loadCandidateEmbeddings,
+  beide IN(Prisma.join) zonder ::uuid). Testgat: vitest aliast @prisma/client naar mock ->
+  aparte pg-integratielaag nodig (docker pgvector).
+story_13_8:
+  status: done-on-branch   # code+test+review compleet & orkestrator-geverifieerd; NIET gemerged (deploy gated)
+  branch: epic/vliegwiel-13-8-rgba-embedding
+  epic_head: b013797   # docs/review/retro/status
+  code_commit: d11d8f1   # generate_embedding RGB-cast + ATDD
+  review_verdict: PASS   # review-13-8.md, reviewed_commit d11d8f1 == HEAD-code
+  orchestrator_verified:
+    core_fix: "1 centrale RGB-cast bovenaan generate_embedding (model_manager.py) -> dekt alle 14 callsites; no-op op RGB"
+    atdd_red_green: "echte torch-preprocessing in ml-image: pre-fix RGBA/P/L faalt (tensor N!=3), post-fix 3/3 groen"
+    full_ml_suite_diff: "orig 184 passed/1 fail -> fixed+test 187 passed/1 fail (+3, 0 regressie); die 1 fail + 3 collection-errors pre-existent/omgevings-only (bewezen in baseline)"
+    clean_diff: true   # alleen 13.8-bestanden, geen junk
+  deploy_status: "GEDEPLOYED+GEVERIFIEERD 2026-07-21: merge->acc b013797, Coolify ml-service-deploy (image b013797 healthy), live code RGB-guard bevestigd. Live proof: RGBA-crop 03059946164960/annot_7d6b6c2c embedt tot len=512. Blocker weg. Volledige batch-run niet uitgeoefend (geen pending/candidate-pool nu)."
+  open_followups: "(a) review-UI slaat RGBA op (upstream RGB?); (b) 5 in_batch-kandidaten in gesloten quarantined batch 12e27fbc; (c) cv2 sys.modules-pollutie in ml-suite (test-hygiene)"
+nazorg_13_9_13_10:
+  status: done-on-branch   # review PASS; NIET gemerged (merge=apps/api-deploy, gated)
+  branch: epic/vliegwiel-13-9-10-nazorg
+  head: e189252
+  reviewed_commit: ab45ab3   # verdict PASS, 0 critical/high/medium, 4 low -> alle 4 geremedieerd in e189252
+  review_history: "1e review d4b0b7a = FAIL (2 medium): spiegel-test bood 0 regressiebescherming + AC3-claim zonder bewijs. Beide structureel geremedieerd, daarna PASS."
+  orchestrator_verified:
+    red_check_13_9: "removeAlpha() weghalen -> route-test rood op channels===3 (test heeft aantoonbaar tanden); daarna hersteld, diff schoon"
+    api_suite: "961 passed / 0 failed (eigen run)"
+    ml_suite: "179 passed / 0 failed (eigen run, b013797-image); 4 uitvallers pre-existent/omgevings-only"
+    reviewer_error_corrected: "bevinding 'Co-Authored-By ontbreekt' was fout (trailer aanwezig); reviewer trok 'm in na verificatie"
+  deploy_status: "GEDEPLOYED+GEVERIFIEERD 2026-07-22 07:50: merge->acc e189252, ghcr-build success, Coolify recreate (containers -075013*), image-tag == commit, .removeAlpha() bevestigd op r.997 van /app/dist/api/v1/artwork-pipeline.js. Alle 4 containers healthy."
+  bookkeeping_nit: "sprint-status-comment bij 13-9 zegt nog 'Deploy gated op go Friso' — inmiddels achterhaald. BEWUST niet apart gecommit: een YAML-comment-commit triggert een volledige image-build + container-restart op ACC. Meenemen bij de eerstvolgende echte commit."
+nazorg_1_leftovers:
+  status: DONE   # 5 kandidaten her-genomineerd -> batch 788eeea6 regression 'passed' -> 5 PROMOTED; end-to-end bewijs vliegwiel
+story_19_16:
+  status: GEDEPLOYED+LIVE-GEVERIFIEERD
+  commit: a999dbf   # 3 commits: 46ddb93 bouw -> da53484 code-review-fixes -> a999dbf N1-fix
+  branch_merged_to: acc   # auto-deploy; alle 4 containers healthy op a999dbf
+  reviews: "story 4x (review-19-16*.md, laatste PASS) + code 2x (review-19-16-code.md FAIL 3H -> -code-v2.md deploy PASS/story-done FAIL op N1 -> geremedieerd)"
+  live_bewijs_acc: |
+    Droge run limiet 5 (schrijft niets): 'Start: 5/1862 · bron=stage · transport-retries=2'
+    -> limiet-afkap nu ZICHTBAAR (was het gat H2). Voortgangsregels + volledige reden-verdeling.
+    Poort BLOKKEERT met 3 redenen (1857 buiten de limiet + 2x krimp). exitcode=1.
+    Proces sluit ZELF af (geen 137 bij timeout -s KILL) -> AC3 live bewezen.
+  belangrijkste_vondsten: |
+    H2 (code-review): KEURMERK_INDEX_LIMIT kapte het universum stil af; universeSize WAS de
+      afgekapte omvang -> run over 500/1862 meldde zich als volledig, 7d zweeg, 7c zweeg
+      (500 GTINs > 32 bestaande sleutels) -> goede index overschreven met exit 0.
+    N1 (her-review): backoff was in productie een no-op. AC4 (cache api-fout 300s) en AC9
+      (retry) vochten elkaar: de herkansing kreeg de zojuist gecachete fout terug en bereikte
+      de bron nooit. Opgelost door retry ONDER de cache (transportlaag) -> lost ook N2/N3 op.
+    Eigen fout: Task 3 was afgevinkt met "+ backoff" terwijl die niet bestond.
+  index_herbouw: "UITGEVOERD 2026-07-26 10:52 met go Friso. Resultaat: 32->78 sleutels, 70->815 GTINs met data, bron=stage, 687 kB. Poort DOORGANG (0,0% technische fouten). Verificatie uit MinIO bevestigd."
+  index_herbouw_vondst: |
+    De 1e volledige run BLOKKEERDE terecht op 26,2% 'technische fouten'. Hypothese rate-limiting was
+    FOUT: herhaling bij concurrency 2 gaf byte-identieke cijfers -> deterministisch. Directe probe:
+    catalog geeft HTTP 500 met body 'File not found at path: tradeItems/...' als het trade-item-bestand
+    ontbreekt (129/129 van de 500-responses, 0 echte serverfouten). Nieuwe reden geen-tradeitem-bestand
+    (commit 71babde): telt als normaal beeld, geen retry, lange TTL. Daarna 0,0% -> poort open.
+    Zie geheugen reference_catalog_500_file_not_found.
+  oude_gated_next: "index-herbouw op ACC = APARTE toestemming. LET OP: met de default limiet 500 van 1862 blokkeert de poort nu BEWUST (onvolledige run). Voor een echte herbouw moet KEURMERK_INDEX_LIMIT >= 1862, of expliciet --allow-partial."
+sprint_scope_bevinding: |
+  Epic 12 staat op de BRANCH correct op dropped/deferred (12.3 fine-tuning weerlegd, 12.4 detector
+  haalde AC1 niet). De LOKALE werkkopie van sprint-status.yaml bevat niet-gecommitte wijzigingen die
+  die afsluiting van 2026-07-16 TERUGDRAAIEN naar 'ready' — niet committen, dat herleeft afgeschoten werk.
+  Epic 20 (8 stories) staat op 'review': GEBOUWD + gereviewd; resteert Friso's beoordeelsessies +
+  ACC-verificatie, geen codewerk. 19.16 was de enige echte implementatietaak in de sprint.
+status: running
+

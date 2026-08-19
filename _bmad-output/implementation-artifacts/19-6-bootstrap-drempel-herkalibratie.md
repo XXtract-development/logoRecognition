@@ -101,7 +101,7 @@ Root cause is bevestigd via sweep (15 klassen, 29 GTINs) + **visuele verificatie
 - **Wijziging 1 (Task 2/4, optie A):** `config.ts` `getBootstrapThreshold` default 0,93 → 0,60; env-override `FLYWHEEL_BOOTSTRAP_THRESHOLD` blijft.
 - **Wijziging 2 (Task 3, optie 2c bootstrap-gescoped):** `bootstrap_search.py` `search_with_seed(gate_threshold=…)` (default env `FLYWHEEL_BOOTSTRAP_GATE_THRESHOLD` of 0,20) i.p.v. de gedeelde `GATE_THRESHOLD`. **De live `classification.py`-gate (0,5) is ongemoeid** — regressietest borgt dat.
 - **Niet aangeraakt:** guard (19.5), nominatie/poort, dedup, cap, embedding, de gedeelde `keurmerk_gate.GATE_THRESHOLD`-default.
-- Task 6 (live-verificatie op ACC): open — met expliciete toestemming (deploy + ACC-DB-schrijf).
+- **Task 6 (live-verificatie ACC, 2026-07-07, commit ecf7fad live, rev geverifieerd):** 19.6 WERKT op zoekniveau — de sampler-run (3/keurmerk) leverde **6 crops die de nominatie bereikten** (skipped:6), waar het vóór **0** was. AC2 op zoekniveau gehaald (0→6 gevonden). MAAR end-to-end nog 0 nominaties: de 6 vielen af op een DERDE, buiten-19.6-scope-klep — de **promotie-drempel 0,90** (`nomination.ts:136-138`, reden `onder-drempel`); bootstrap-crops matchen tegen het gids-logo op 0,60–0,74 en halen die 0,90 nooit. **Sleutelvondst:** `nomination.ts:129-140` — herkomst `review` OMZEILT de 0,90 (mens = dubbele check). Dus twee-traps-fase-1 (bootstrap-crops → review-wachtrij, lage bar) is architectuur-ondersteund; dat is de twee-traps-implementatie-story, niet 19.6. 0 vervuiling (reference_candidates=0).
 
 ### File List
 - `apps/api/src/services/flywheel/config.ts` (M) — `getBootstrapThreshold` default 0,93 → 0,60 + doc.
