@@ -26,6 +26,7 @@ export interface SnapshotMark {
 export const TRADEITEM_SNAPSHOT_META = {
   harvestedAt: '2026-08-19',
   source: 'application.tradeItems (productie), opgezocht op _id = {gln}-{gtin}-{targetMarket}',
+  targetMarket: '528',
   keys: 442,
   keysWithMarks: 238,
   markInstances: 475,

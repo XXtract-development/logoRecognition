@@ -21,9 +21,32 @@ import {
   type TradeItemDocument,
 } from '../../../scripts/harvest-tradeitem-snapshot';
 import {
+  CONSUMER_USAGE_FIELD_TYPE,
+  MARK_FIELDS,
+  nutriscoreDeclaredCodes,
+} from '../../services/t3777-declarations';
+import {
   TRADEITEM_SNAPSHOT,
   TRADEITEM_SNAPSHOT_META,
 } from '../../services/tradeitem-declaration-snapshot';
+
+/**
+ * De gemeten werkelijkheid van 19 augustus 2026, vier keer onafhankelijk geteld
+ * (twee keer in de database, twee keer in de client). Deze getallen staan hier
+ * LETTERLIJK en niet afgeleid uit de meta van het bestand: anders toetst de meta
+ * zichzelf en haalt een oogst die de helft van de sleutels verliest deze toetsen
+ * glansrijk.
+ */
+const GEMETEN = {
+  keys: 442,
+  withMarks: 238,
+  empty: 204,
+  markInstances: 475,
+  uniquePairs: 52,
+  packagingInstances: 292,
+  packagingProducts: 177,
+  targetMarket: '528',
+} as const;
 
 /** Bouwt een knoop in de vorm die de echte documenten hebben. */
 function node(gdsn: string, xpath: string, value: string, oldValue = ''): Record<string, unknown> {
@@ -52,14 +75,12 @@ describe('extractMarks — uitlezen uit de werkelijke documentstructuur', () => 
         node('packagingMarkedLabelAccreditationCode', PM_XPATH, 'GREEN_DOT')
       ),
       dietInformationModule: moduleWith(node('dietTypeCode', DIET_XPATH, 'VEGAN')),
-      healthRelatedInformationModule: moduleWith(
-        node('nutritionalScore', SCORE_XPATH, 'NUTRISCORE_A')
-      ),
+      healthRelatedInformationModule: moduleWith(node('nutritionalScore', SCORE_XPATH, 'A')),
     };
 
     expect(extractMarks(doc)).toEqual([
       { fieldType: 'DietTypeCode', code: 'VEGAN' },
-      { fieldType: 'NutritionalScore', code: 'NUTRISCORE_A' },
+      { fieldType: 'NutritionalScore', code: 'A' },
       { fieldType: 'PackagingMarkedLabelAccreditationCode', code: 'GREEN_DOT' },
     ]);
   });
@@ -161,35 +182,80 @@ describe('extractMarks — uitlezen uit de werkelijke documentstructuur', () => 
   });
 });
 
-describe('de gecommitte momentopname is intern consistent', () => {
+describe('de veldtabel van de generator is vastgepind op de XML-route', () => {
+  // Het oogstscript waarschuwt hier zelf voor: wijkt deze map af van MARK_FIELDS,
+  // dan koppelen geoogste marks niet aan een logo. Zonder deze toets drijft die
+  // afwijking mee in plaats van dat hij gevangen wordt.
+  it('kent exact dezelfde gdsn-naam -> fieldType-paren als de XML-route', () => {
+    const uitDeXmlRoute: Record<string, string> = {};
+    for (const field of MARK_FIELDS) uitDeXmlRoute[field.tag] = field.fieldType;
+    uitDeXmlRoute.enumerationValue = CONSUMER_USAGE_FIELD_TYPE;
+
+    expect(GDSN_TO_FIELD_TYPE).toEqual(uitDeXmlRoute);
+  });
+});
+
+describe('de gecommitte momentopname klopt met de meting', () => {
   const entries = Object.entries(TRADEITEM_SNAPSHOT);
   const knownFieldTypes = new Set(Object.values(GDSN_TO_FIELD_TYPE));
 
-  it('bevat het aantal sleutels dat de meta belooft', () => {
-    expect(entries).toHaveLength(TRADEITEM_SNAPSHOT_META.keys);
-  });
-
-  it('telt evenveel sleutels met keurmerk als de meta belooft', () => {
+  it('draagt de gemeten aantallen, niet slechts zijn eigen meta', () => {
     const withMarks = entries.filter(([, marks]) => marks.length > 0);
-    expect(withMarks).toHaveLength(TRADEITEM_SNAPSHOT_META.keysWithMarks);
-  });
-
-  it('telt evenveel code-instanties als de meta belooft, ook per veldsoort', () => {
     const perFieldType: Record<string, number> = {};
+    const pairs = new Set<string>();
     let total = 0;
     for (const [, marks] of entries) {
       for (const mark of marks) {
         total += 1;
         perFieldType[mark.fieldType] = (perFieldType[mark.fieldType] ?? 0) + 1;
+        pairs.add(`${mark.fieldType}|${mark.code}`);
       }
     }
+    const packagingProducts = entries.filter(([, marks]) =>
+      marks.some((m) => m.fieldType === 'PackagingMarkedLabelAccreditationCode')
+    );
 
-    expect(total).toBe(TRADEITEM_SNAPSHOT_META.markInstances);
-    for (const [fieldType, expected] of Object.entries(
-      TRADEITEM_SNAPSHOT_META.instancesByFieldType
-    )) {
-      expect(perFieldType[fieldType] ?? 0).toBe(expected);
+    expect(entries).toHaveLength(GEMETEN.keys);
+    expect(withMarks).toHaveLength(GEMETEN.withMarks);
+    expect(entries.length - withMarks.length).toBe(GEMETEN.empty);
+    expect(total).toBe(GEMETEN.markInstances);
+    expect(pairs.size).toBe(GEMETEN.uniquePairs);
+    expect(perFieldType.PackagingMarkedLabelAccreditationCode).toBe(GEMETEN.packagingInstances);
+    // De opbrengst die AC4 aan de automatische bevestiging belooft.
+    expect(packagingProducts).toHaveLength(GEMETEN.packagingProducts);
+  });
+
+  it('heeft een meta die de inhoud eerlijk beschrijft', () => {
+    // De meta blijft nuttig — hij wordt gelezen door de indexbouwer — maar hij
+    // wordt hier tegen de GEMETEN waarheid gehouden, niet tegen zichzelf.
+    expect(TRADEITEM_SNAPSHOT_META.keys).toBe(GEMETEN.keys);
+    expect(TRADEITEM_SNAPSHOT_META.keysWithMarks).toBe(GEMETEN.withMarks);
+    expect(TRADEITEM_SNAPSHOT_META.markInstances).toBe(GEMETEN.markInstances);
+    expect(TRADEITEM_SNAPSHOT_META.targetMarket).toBe(GEMETEN.targetMarket);
+    expect(TRADEITEM_SNAPSHOT_META.instancesByFieldType.PackagingMarkedLabelAccreditationCode).toBe(
+      GEMETEN.packagingInstances
+    );
+  });
+
+  it('gaat over een doelmarkt, en elke sleutel eindigt erop', () => {
+    // Staat T3777_TARGET_MARKET ooit op iets anders, dan mist elke opzoeking
+    // stilzwijgend. De momentopname is dus doelmarkt-gebonden en zegt dat ook.
+    for (const id of Object.keys(TRADEITEM_SNAPSHOT)) {
+      expect(
+        id.endsWith(`-${TRADEITEM_SNAPSHOT_META.targetMarket}`),
+        `andere doelmarkt: ${id}`
+      ).toBe(true);
     }
+  });
+
+  it('levert Nutri-Score-codes in de vorm waar de kruischeck op rekent', () => {
+    // nutriscoreDeclaredCodes accepteert uitsluitend een kale letter A-E.
+    const scores = entries.flatMap(([, marks]) =>
+      marks.filter((m) => m.fieldType === 'NutritionalScore')
+    );
+    expect(scores.length).toBeGreaterThan(0);
+    for (const score of scores) expect(score.code).toMatch(/^[A-E]$/);
+    expect(nutriscoreDeclaredCodes([...scores])).not.toHaveLength(0);
   });
 
   it('kent geen lege codes en geen onbekende fieldTypes', () => {

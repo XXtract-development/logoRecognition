@@ -79,7 +79,7 @@ kandidaten dat in de wachtrij zet. Verwachting op basis van de telling: 238 prod
 
 **Akkoord ontvangen** ("Alles is akkoord", Friso, 19 augustus 2026).
 
-Drie zaken die ná het akkoord gemeten zijn en het besluit raken:
+Drie zaken die ná het akkoord gemeten zijn en het besluit raken (zie ook de tweede aanvulling hieronder — de route in punt 1 is inmiddels verlaten):
 
 1. **Het account waarmee tot nu toe gemeten is, is géén leesaccount.** `xxtract` draagt `dbOwner` +
    `readWrite` op `application` en `userAdminAnyDatabase` op `admin`. Die verbindingsreeks mag dus
@@ -95,3 +95,39 @@ Drie zaken die ná het akkoord gemeten zijn en het besluit raken:
 3. **Twee alternatieve bronnen zijn nu volledig geteld en definitief dicht.** Van de 429 producten
    met een lege declaratie declareren er op productie **3**; van de 144 met een 404 heeft er
    **0** een document op de sleutel. Beide groepen zijn geen weg meer.
+
+---
+
+## Tweede aanvulling, 19 augustus 2026 — de gevraagde route is verlaten
+
+> [!warning]
+> De aanvulling hierboven beschrijft nog een **vaste leesverbinding** vanuit de acceptatie-omgeving.
+> Die route is dezelfde dag verlaten. Lees dit blok als de geldende stand.
+
+**Wat er in plaats daarvan gebeurt.** De uitlezing is **één keer met de hand** uitgevoerd, binnen
+het akkoord, en het resultaat is als momentopname in de code vastgelegd
+(`apps/api/src/services/tradeitem-declaration-snapshot.ts`, 442 sleutels). De acceptatie-omgeving
+krijgt **geen** verbinding met productie, **geen** leesgebruiker en **geen** verbindingsreeks.
+
+**Wat daarmee vervalt, en wat niet:**
+
+| | draaiende applicatie | handmatige regeneratie |
+|---|---|---|
+| leesrechten-gebruiker | niet nodig | **blijft nodig** |
+| verbindingsreeks | niet nodig | **blijft nodig** |
+| databasedriver | niet nodig | **blijft nodig** |
+
+De leesgebruiker uit het oorspronkelijke verzoek is dus **niet** van tafel — hij is alleen niet
+meer nodig om de story te bouwen of uit te rollen, alleen om de momentopname later te verversen.
+Zolang dat niet gebeurt, is er geen enkele verbinding tussen acceptatie en productie.
+
+**Tweede besluit, dezelfde dag.** De geoogste gegevens gaan **uitsluitend naar de
+beoordeelwachtrij** — niet naar de automatische goedkeuring en niet naar het aanmaken van
+referentievoorbeelden. Reden: ze zijn bevroren, en voor deze 442 producten is er geen bestand om ze
+tegen af te zetten, terwijl bij een eerdere vergelijking 2 van de 100 producten afweken. De
+opbrengst blijft **238 producten**, precies het getal waarop dit akkoord berust; ze passeren alleen
+eerst een beoordelaar.
+
+**Correctie op de eerste aanvulling:** die verwijst naar "story 20.19, AC5" voor de versmalling.
+Sinds versie 5 bestaat die versmalling niet meer — de automatische bevestiging wordt in het geheel
+niet gevoed. De verwijzing is vervallen.

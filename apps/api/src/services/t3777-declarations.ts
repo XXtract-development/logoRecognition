@@ -417,7 +417,7 @@ export interface DeclaredMarksResult {
  * (`enumerationValue`, Logo-gebruiksinformatie) is te generiek voor platte matching
  * en wordt apart, gescopet binnen `consumerUsageLabelCode`, geparsed (zie hieronder).
  */
-const MARK_FIELDS: Array<{ tag: string; fieldType: string }> = [
+export const MARK_FIELDS: Array<{ tag: string; fieldType: string }> = [
   { tag: 'packagingMarkedLabelAccreditationCode', fieldType: 'PackagingMarkedLabelAccreditationCode' },
   { tag: 'localPackagingMarkedLabelAccreditationCodeReference', fieldType: 'AdditionalPackagingMarkingsCode' },
   { tag: 'dietTypeCode', fieldType: 'DietTypeCode' },
@@ -431,7 +431,7 @@ const MARK_FIELDS: Array<{ tag: string; fieldType: string }> = [
  * (`apps/web/src/data/spoor-codes.ts`, `fieldTypeForCode`) gebruikt hiervoor
  * `EU_consumerUsageLabelCodeList` (AISE/NIX18-pictogrammen).
  */
-const CONSUMER_USAGE_FIELD_TYPE = 'EU_consumerUsageLabelCodeList';
+export const CONSUMER_USAGE_FIELD_TYPE = 'EU_consumerUsageLabelCodeList';
 
 /**
  * Namespace-agnostic parse on local-name for every recognised mark element.

@@ -41,6 +41,7 @@
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { catalogEnvTag } from '../src/services/t3777-declarations';
 import { createLogger } from '../src/core/logger';
 
 const logger = createLogger('harvest-tradeitem-snapshot');
@@ -57,6 +58,9 @@ export const GDSN_TO_FIELD_TYPE: Readonly<Record<string, string>> = {
   nutritionalScore: 'NutritionalScore',
   enumerationValue: 'EU_consumerUsageLabelCodeList',
 };
+
+/** Tekens die veilig als string-literal gerenderd kunnen worden. Zie L5 in extractMarks. */
+const SAFE_CODE = /^[A-Z0-9_.-]+$/;
 
 export interface HarvestedMark {
   fieldType: string;
@@ -105,6 +109,16 @@ export function extractMarks(doc: TradeItemDocument): HarvestedMark[] {
     if (typeof raw !== 'string') continue;
     const code = raw.trim().toUpperCase();
     if (!code) continue;
+    // L5: de renderer zet codes in enkele aanhalingstekens zonder ontsnapping. Een
+    // code met een apostrof of backslash zou een bestand opleveren dat niet
+    // compileert. Vandaag is elke code [A-Z0-9_], maar dat afdwingen is goedkoper
+    // dan erop hopen.
+    if (!SAFE_CODE.test(code)) {
+      throw new Error(
+        `Code met een onveilig teken in ${doc._id}: ${JSON.stringify(code)}. ` +
+          'Pas de renderer aan voordat je dit oogst.'
+      );
+    }
     const fieldType = GDSN_TO_FIELD_TYPE[gdsn];
     const pair = `${fieldType} ${code}`;
     if (seen.has(pair)) continue;
@@ -130,10 +144,20 @@ export interface HarvestResult {
   withMarks: number;
   markInstances: number;
   instancesByFieldType: Record<string, number>;
+  /**
+   * De doelmarkt waar deze oogst over gaat. De sleutel eindigt erop, dus staat
+   * `T3777_TARGET_MARKET` ooit op iets anders, dan mist ELKE opzoeking — zonder
+   * foutmelding en zonder verschil met "niet gemeten". Daarom hoort hij in de meta.
+   */
+  targetMarket: string;
 }
 
 export async function harvest(deps: HarvestDeps): Promise<HarvestResult> {
-  const ids = await deps.listMissingFileIds();
+  // Redis `SCAN` garandeert alleen dat elke sleutel MINSTENS een keer terugkomt.
+  // Zonder ontdubbelen telt een dubbele sleutel twee keer mee in `withMarks` en
+  // `markInstances`, terwijl `snapshot[id]` overschreven wordt — het bestand zou
+  // dan zijn eigen consistentietoets laten vallen.
+  const ids = [...new Set(await deps.listMissingFileIds())];
   const docs = await deps.fetchDocuments(ids);
   const byId = new Map(docs.map((d) => [d._id, d]));
 
@@ -156,6 +180,14 @@ export async function harvest(deps: HarvestDeps): Promise<HarvestResult> {
     }
   }
 
+  const targetMarkets = new Set(Object.keys(snapshot).map((id) => id.split('-')[2]));
+  if (targetMarkets.size > 1) {
+    throw new Error(
+      `Oogst bevat meer dan een doelmarkt (${[...targetMarkets].join(', ')}). ` +
+        'De momentopname is doelmarkt-gebonden; oogst er een per keer.'
+    );
+  }
+
   return {
     snapshot,
     requested: ids.length,
@@ -163,6 +195,7 @@ export async function harvest(deps: HarvestDeps): Promise<HarvestResult> {
     withMarks,
     markInstances,
     instancesByFieldType,
+    targetMarket: [...targetMarkets][0] ?? '',
   };
 }
 
@@ -212,6 +245,7 @@ export interface SnapshotMark {
 export const TRADEITEM_SNAPSHOT_META = {
   harvestedAt: '${harvestedAt}',
   source: 'application.tradeItems (productie), opgezocht op _id = {gln}-{gtin}-{targetMarket}',
+  targetMarket: '${result.targetMarket}',
   keys: ${Object.keys(result.snapshot).length},
   keysWithMarks: ${result.withMarks},
   markInstances: ${result.markInstances},
@@ -225,6 +259,24 @@ export const TRADEITEM_SNAPSHOT: Readonly<Record<string, readonly SnapshotMark[]
 ${entries}
 };
 `;
+}
+
+/**
+ * Haalt de gegenereerde tekst door prettier met de projectinstellingen, zodat het
+ * bestand op schijf byte-voor-byte is wat de generator maakt. Zonder deze stap
+ * herschrijft de opmaakstap het bestand alsnog en botst dat met de kopregel
+ * "GEGENEREERD BESTAND — niet met de hand bewerken".
+ */
+export async function formatGenerated(source: string): Promise<string> {
+  const prettier = await import('prettier');
+  const config = (await prettier.resolveConfig(OUT_PATH)) ?? {};
+  return prettier.format(source, {
+    ...config,
+    parser: 'typescript',
+    singleQuote: true,
+    printWidth: 100,
+    trailingComma: 'es5',
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -261,11 +313,24 @@ async function main(): Promise<void> {
 
     const deps: HarvestDeps = {
       listMissingFileIds: async () => {
+        // M11: `marks:{env}:{gln}:{gtin}:{tm}` draagt een omgevingssegment. Delen twee
+        // omgevingen ooit een Redis, dan oogst een blinde `marks:*`-scan ze door
+        // elkaar. Filter dus op de omgeving die bij deze catalogus-basis hoort.
+        const envTag = catalogEnvTag(
+          (process.env.CATALOG_API_BASE || 'https://catalog.acc.xxtract.com').replace(/\/+$/, '')
+        );
+        logger.info(`Oogst uitsluitend cachesleutels van omgeving '${envTag}'.`);
         const ids: string[] = [];
         let cursor = '0';
         const keys: string[] = [];
         do {
-          const [next, batch] = await redis.scan(cursor, 'MATCH', 'marks:*', 'COUNT', 1000);
+          const [next, batch] = await redis.scan(
+            cursor,
+            'MATCH',
+            `marks:${envTag}:*`,
+            'COUNT',
+            1000
+          );
           cursor = next;
           keys.push(...batch);
         } while (cursor !== '0');
@@ -284,7 +349,7 @@ async function main(): Promise<void> {
             if (parsed.reason !== 'geen-tradeitem-bestand') return;
             // marks:{env}:{gln}:{gtin}:{tm} -> {gln}-{gtin}-{tm}
             const parts = key.split(':');
-            if (parts.length < 5) return;
+            if (parts.length < 5 || parts[1] !== envTag) return;
             ids.push(`${parts[2]}-${parts[3]}-${parts[4]}`);
           });
         }
@@ -308,7 +373,11 @@ async function main(): Promise<void> {
     }
 
     const harvestedAt = new Date().toISOString().slice(0, 10);
-    writeFileSync(OUT_PATH, renderSnapshotModule(result, harvestedAt), 'utf8');
+    // M2: door de uitvoer door dezelfde opmaakstap te halen die de repository ook
+    // op de hand gebruikt, levert een tweede oogst hetzelfde bestand op in plaats
+    // van een diff over alle 442 regels.
+    const rendered = await formatGenerated(renderSnapshotModule(result, harvestedAt));
+    writeFileSync(OUT_PATH, rendered, 'utf8');
     logger.info(`Geschreven: ${OUT_PATH}`);
   } finally {
     await client.close().catch(() => undefined);
