@@ -474,8 +474,30 @@ opzoekingen. Bij een tweede droogloop met een warme cache (1862 hits / 0 misses)
 nul terwijl de reden-verdeling wél 238 laat zien. De eerste run gaf 442 misses. Dat is geen fout,
 maar het leest verwarrend — een volgende story kan die teller uit de cache-hits afleiden.
 
-**Nog steeds permission-gated en NIET uitgevoerd:** het herbouwen van de live index (een
-schrijfactie) en het opruimen van cachesleutels.
+**De live index is herbouwd op 19 augustus 2026**, met toestemming van Friso, ná de droogloop.
+
+Reservekopie van de vorige index vóór de schrijfactie:
+`scratchpad/index-backup-voor-2019.json` (687.559 bytes, gebouwd 2026-07-26T10:52:35Z).
+
+`VERIFIED` — bron ná de schrijfactie opnieuw uitgelezen, niet op de retourwaarde vertrouwd:
+
+| | vóór | ná |
+|---|---|---|
+| omvang | 687.559 bytes | **852.747 bytes** |
+| unieke `(fieldType, code)`-sleutels | 78 | **90** |
+| producten met gegevens | 815 | **1082** |
+| gebouwd op | 2026-07-26 | **2026-08-19T17:09:38Z** |
+
+De reden-verdeling van de echte bouw is identiek aan die van de droogloop: `momentopname=238`,
+`geen-bestand=0`, technische fouten 0,0%, poort DOORGANG.
+
+*Terzijde, geen bevinding: het indexbestand noteert `declarationSource: "stage"`. Dat klopt met de
+bekende opzet — de catalogus draait als één dienst op de productieserver, en acceptatie en stage
+wijzen naar diezelfde dienst.*
+
+**Nog steeds permission-gated en NIET uitgevoerd:** het opruimen van de 442 bestaande cachesleutels
+op de acceptatie-Redis. Dat is niet nodig gebleken — de maatregelen uit AC8 lopen eromheen, en de
+meting bewijst dat.
 
 ## Change Log
 
