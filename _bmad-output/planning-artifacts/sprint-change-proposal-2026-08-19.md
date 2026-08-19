@@ -217,6 +217,10 @@ plus ontwikkelaar; geen architect nodig, want er verandert niets aan de bouwsten
 epic heeft, elk epic een doel, en elke afwijking een reden. Concreet toetsbaar: geen enkele regel in
 `sprint-status.yaml` verwijst nog naar een epic dat niet in een planningsdocument staat.
 
+`VERIFIED, 2026-08-19` — het criterium is gehaald. Alle veertien epics in het volgbestand (7 t/m 20)
+hebben nu een sectie in `epics.md` of `epics-vliegwiel.md`. De toets bracht epic 12 aan het licht,
+dat dezelfde omissie had als epic 20; ook dat is vastgelegd.
+
 **Randvoorwaarden:** geen code- of uitrolwijziging in dit spoor; de negentien stories blijven staan
 zoals ze zijn.
 
@@ -246,6 +250,7 @@ Alle drie de punten zijn beslist; er staat niets meer open.
 | `sprint-status.yaml` epic-19 | uitzondering benoemd: 19.16 staat nog open onder een gesloten epic | **gedaan** |
 | `sprint-status.yaml` 20-2 | ontbrekend story-bestand benoemd, met de actie erbij | **gedaan** |
 | `sprint-status.yaml` epic-13, 20-18, 20-19 | drift gecorrigeerd | **gedaan** (commit `2e72194`) |
+| `epics-vliegwiel.md` | **Epic 12 alsnog vastgelegd** — bij het toetsen van het succescriterium bleek epic 12 (28 items, afgerond 2026-07-16 mét retrospectief) dezelfde omissie te hebben als epic 20: wél in het volgbestand, in geen enkel epic-overzicht. Korte registratie-entry met verwijzing naar het retrospectief | **gedaan** |
 | Dubbel nummer 20.15 | **geen actie nodig** — het vervallen bestand draagt "(VERVALLEN)", status `superseded`, en verwijst naar zijn drie opvolgers | gecontroleerd |
 
 **Wat hierna komt, in volgorde:** 20.19 afbouwen (bouwen plus code review) → de afsluitveeg over de

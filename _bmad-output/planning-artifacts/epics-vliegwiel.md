@@ -104,6 +104,11 @@ FR-22: Epic 19 — gerichte brandstofselectie via declaraties (5/5-velddekking r
 
 ## Epic List
 
+### Epic 12: Keurmerk-dekking en Nutri-Score
+*Afgerond 2026-07-16; hier vastgelegd op 2026-08-19 via correct-course, want dit epic stond wél in het volgbestand maar in geen enkel epic-overzicht — dezelfde omissie als bij Epic 20.* Ging vooraf aan de vliegwiel-epics en verbreedde de keurmerkdekking van een handvol codes naar het gedeclareerde universum, met Nutri-Score als moeilijkste geval (vijf letters, waarvan C en D helemaal leeg stonden). Sleutelbesluit: gerichte kruischeck op de GS1-declaratie in plaats van open detectie, na een spike die aantoonde dat synthetische augmentatie voor Nutri-Score niet werkt.
+**Uitkomst:** 24 stories done (inclusief 3 spikes en 2 meetstories), 2 vervallen met onderbouwing (12.3 embedding-fine-tuning, 12.4 getrainde detector — beide opgelost of achterhaald door een goedkopere route), 2 uitgesteld naar fase 2 (12.5 open detectie-endpoint, 12.6 acceptatieset). Volledig uitgerold op ACC, 0 productie-incidenten.
+**Volledig verslag:** `_bmad-output/implementation-artifacts/epic-12-retro-2026-07-16.md` — dat is de inhoudelijke bron; deze regel bestaat alleen zodat elk epic in het volgbestand een vindbaar thuis heeft.
+
 ### Epic 13: Zelfvullende referentiebibliotheek (promotielus met kwaliteitspoort)
 Dubbel bevestigde detecties worden zonder menselijke review veilige referenties: nominatie → batch → kwaliteitspoort (guardrails + gold-set-regressietest) → atomaire promotie, met quarantaine, rollback en hard-negative-geheugen. Na deze epic groeit de referentiebibliotheek automatisch en aantoonbaar veilig — ook zonder dashboard (notificaties via bestaand patroon; quarantaines blijven veilig staan tot Epic 15 de afhandel-UI levert).
 **FRs covered:** FR-1, FR-2, FR-3, FR-4, FR-5, FR-6, FR-7, FR-9, FR-19 (backend), FR-20
