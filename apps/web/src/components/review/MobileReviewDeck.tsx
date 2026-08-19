@@ -80,7 +80,13 @@ const FILL_MIN_STAGE_HEIGHT = 400;
 const BeneluxTag: React.FC<{ small?: boolean }> = ({ small }) => (
   <Tag
     color="#2F5A7A"
-    style={{ marginLeft: 6, marginRight: 0, fontSize: small ? 10 : 11, lineHeight: '16px', padding: '0 6px' }}
+    style={{
+      marginLeft: 6,
+      marginRight: 0,
+      fontSize: small ? 10 : 11,
+      lineHeight: '16px',
+      padding: '0 6px',
+    }}
   >
     🇧🇪🇳🇱 Benelux
   </Tag>
@@ -193,10 +199,7 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate, f
 
       // Verandert er niets noemenswaardigs, dan stoppen we — anders blijven meting en lay-out
       // elkaar aanstoten.
-      if (
-        lastAppliedRef.current !== null &&
-        Math.abs(gewenst - lastAppliedRef.current) <= 1
-      ) {
+      if (lastAppliedRef.current !== null && Math.abs(gewenst - lastAppliedRef.current) <= 1) {
         return;
       }
       lastAppliedRef.current = gewenst;
@@ -298,11 +301,18 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate, f
   // Story 12.7 — declared GS1 marks of the current GTIN as a label-prior.
   // `has` = a real declaration exists (reason 'ok'); without it we show nothing
   // (graceful fallback). Cached per GTIN (queue repeats GTINs heavily).
-  const [declared, setDeclared] = useState<{ codes: Set<string>; has: boolean }>({
+  const [declared, setDeclared] = useState<{
+    codes: Set<string>;
+    has: boolean;
+    /** Story 20.19 — gezet als de declaratie uit de bevroren momentopname komt. */
+    snapshotHarvestedAt?: string;
+  }>({
     codes: new Set(),
     has: false,
   });
-  const declaredCache = useRef<Record<string, { codes: string[]; has: boolean }>>({});
+  const declaredCache = useRef<
+    Record<string, { codes: string[]; has: boolean; snapshotHarvestedAt?: string }>
+  >({});
   // "Bekijk in context": show the full source artwork with the bbox highlighted,
   // so partial/tight crops (cut exactly on the proposed box) stay interpretable.
   const [context, setContext] = useState(false);
@@ -376,7 +386,11 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate, f
     // fall back to the full artwork by GTIN so the reviewer can hunt for the
     // declared keurmerk instead of seeing an empty "Crop niet beschikbaar".
     fetchReviewItemCropBlob(id)
-      .then((url) => (url ? { url, isArtwork: false } : fetchReviewItemArtworkBlob(id).then((a) => (a ? { url: a, isArtwork: true } : null))))
+      .then((url) =>
+        url
+          ? { url, isArtwork: false }
+          : fetchReviewItemArtworkBlob(id).then((a) => (a ? { url: a, isArtwork: true } : null))
+      )
       .then((res) => {
         if (res) {
           cache.current[id] = res.url;
@@ -409,18 +423,29 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate, f
     }
     const cached = declaredCache.current[gtin];
     if (cached) {
-      setDeclared({ codes: new Set(cached.codes), has: cached.has });
+      setDeclared({
+        codes: new Set(cached.codes),
+        has: cached.has,
+        snapshotHarvestedAt: cached.snapshotHarvestedAt,
+      });
       return;
     }
     let active = true;
     fetchDeclaredMarks(gtin).then((res) => {
-      const has = res.reason === 'ok' && res.marks.length > 0;
+      // Story 20.19 (AC6) — de zesde plek waar de nieuwe reden landt, en de enige
+      // buiten apps/api. Stond hier alleen `=== 'ok'`, dan zou de deck voor precies
+      // de 238 producten van die story NIETS tonen: ze komen wél in de wachtrij,
+      // maar zonder de declaratie waar ze voor bestaan.
+      const has =
+        (res.reason === 'ok' || res.reason === 'uit-momentopname') && res.marks.length > 0;
       // Story 12.18 — canonicalise so Nutri-Score letters (bare 'D') match the
       // review item's full code ('NUTRISCORE_D'); otherwise the prior always reads
       // as "niet gedeclareerd" for Nutri-Score.
       const codes = res.marks.map(canonicalDeclaredCode);
-      declaredCache.current[gtin] = { codes, has };
-      if (active) setDeclared({ codes: new Set(codes), has });
+      const snapshotHarvestedAt =
+        res.reason === 'uit-momentopname' ? res.snapshotHarvestedAt : undefined;
+      declaredCache.current[gtin] = { codes, has, snapshotHarvestedAt };
+      if (active) setDeclared({ codes: new Set(codes), has, snapshotHarvestedAt });
     });
     return () => {
       active = false;
@@ -672,7 +697,19 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate, f
         setBusy(false);
       }
     },
-    [cur, busy, canMutate, decisions, idx, goto, t, flywheelOn, hasDraftBox, stagedCode, assignedCode]
+    [
+      cur,
+      busy,
+      canMutate,
+      decisions,
+      idx,
+      goto,
+      t,
+      flywheelOn,
+      hasDraftBox,
+      stagedCode,
+      assignedCode,
+    ]
   );
 
   const applyAnnotation = useCallback(
@@ -956,7 +993,14 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate, f
                 background: '#fff',
               }}
             >
-              <div style={{ height: 84, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div
+                style={{
+                  height: 84,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
                 {cache.current[it.id] ? (
                   <img
                     src={cache.current[it.id]}
@@ -970,13 +1014,28 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate, f
                 )}
               </div>
               <Text
-                style={{ fontSize: 9, color: '#64748b', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                style={{
+                  fontSize: 9,
+                  color: '#64748b',
+                  display: 'block',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
               >
                 {labelForCode(assignedCode[it.id] ?? it.t3777Code)}
               </Text>
-              <Text style={{ fontSize: 10, color: label === 'ECHT' ? '#5a8a00' : '#D64545', fontWeight: 700 }}>
+              <Text
+                style={{
+                  fontSize: 10,
+                  color: label === 'ECHT' ? '#5a8a00' : '#D64545',
+                  fontWeight: 700,
+                }}
+              >
                 {label}
-                {assignedCode[it.id] ? ` · ${t('review.corrected', { defaultValue: '(gecorrigeerd)' })}` : ''}
+                {assignedCode[it.id]
+                  ? ` · ${t('review.corrected', { defaultValue: '(gecorrigeerd)' })}`
+                  : ''}
               </Text>
             </div>
           ))}
@@ -1087,11 +1146,27 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate, f
           Number(isBeneluxCode(b)) - Number(isBeneluxCode(a))
       ),
   ].slice(0, 80);
-  const tint = drag > 40 ? '#B7D945' : drag < -40 ? '#D64545' : decision === 'ECHT' ? '#B7D945' : decision === 'VALS' ? '#D64545' : '#E2E8F0';
+  const tint =
+    drag > 40
+      ? '#B7D945'
+      : drag < -40
+        ? '#D64545'
+        : decision === 'ECHT'
+          ? '#B7D945'
+          : decision === 'VALS'
+            ? '#D64545'
+            : '#E2E8F0';
 
   return (
     <div data-testid="mobile-review-deck">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 4,
+        }}
+      >
         <Text type="secondary" style={{ fontSize: 13 }}>
           {idx + 1} / {queue.length} &nbsp;·&nbsp;
           <span style={{ color: '#5a8a00', fontWeight: 700 }}>{echt}</span> ✓ &nbsp;
@@ -1137,366 +1212,437 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate, f
             : undefined
         }
       >
-      <div
-        ref={cardRef}
-        data-testid="deck-swipe-card"
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
-        style={{
-          border: `4px solid ${tint}`,
-          borderRadius: 16,
-          background: '#fff',
-          padding: 12,
-          transform: `translateX(${drag * 0.4}px) rotate(${drag * 0.02}deg)`,
-          transition: touchStart.current ? 'none' : 'transform .15s, border-color .15s',
-          boxShadow: '0 6px 24px #0002',
-          touchAction: 'pan-y',
-          position: 'relative',
-          // In de vul-stand is de kaart het meegroeiende deel van de kolom; de bedieningsrij
-          // eronder houdt zijn eigen hoogte. `minHeight: 0` is nodig omdat een flex-kind
-          // anders niet kleiner wordt dan zijn inhoud.
-          ...(columnHeight
-            ? {
-                display: 'flex',
-                flexDirection: 'column' as const,
-                flex: 1,
-                // 0 en NIET `min-content`: min-content trekt de NATUURLIJKE hoogte van het
-                // beeld mee (gemeten 1019 px), waardoor de kaart weer opzwelt en er niets
-                // begrensd wordt. De ondergrens van het beeldvenster wordt daarom in de
-                // meting hierboven verrekend, niet aan de opmaakmotor overgelaten.
-                minHeight: 0,
-              }
-            : {}),
-        }}
-      >
-        {decision && (
-          <Tag
-            color={decision === 'ECHT' ? '#B7D945' : '#D64545'}
-            style={{ position: 'absolute', top: 16, right: 16, zIndex: 2, fontWeight: 700, color: decision === 'ECHT' ? '#1E293B' : '#fff' }}
-          >
-            {decision}
-          </Tag>
-        )}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, gap: 8 }}>
-          <Text strong style={{ color: relabeled ? '#2F5A7A' : '#1E293B', fontSize: 16 }}>
-            {codeLabel}
-            {!letterless && isBeneluxCode(shownCode) && <BeneluxTag />}
-            {relabeled && (
-              <Text type="secondary" style={{ fontSize: 11, fontWeight: 400, marginLeft: 6 }}>
-                {t('review.corrected', { defaultValue: '(gecorrigeerd)' })}
-              </Text>
-            )}
-          </Text>
-          <Tag color={confidenceColor(cur!.confidence)} style={{ marginRight: 0 }}>
-            {typeof cur!.confidence === 'number' ? `${Math.round(cur!.confidence * 100)}%` : '—'}
-          </Tag>
-        </div>
-        {/* Story 12.20 — the shape harvest found a Nutri-Score logo but not its
-            letter; tell the reviewer to assign the grade (or reject if it's an
-            already-covered letter) instead of leaving the raw placeholder. */}
-        {letterless && (
+        <div
+          ref={cardRef}
+          data-testid="deck-swipe-card"
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+          style={{
+            border: `4px solid ${tint}`,
+            borderRadius: 16,
+            background: '#fff',
+            padding: 12,
+            transform: `translateX(${drag * 0.4}px) rotate(${drag * 0.02}deg)`,
+            transition: touchStart.current ? 'none' : 'transform .15s, border-color .15s',
+            boxShadow: '0 6px 24px #0002',
+            touchAction: 'pan-y',
+            position: 'relative',
+            // In de vul-stand is de kaart het meegroeiende deel van de kolom; de bedieningsrij
+            // eronder houdt zijn eigen hoogte. `minHeight: 0` is nodig omdat een flex-kind
+            // anders niet kleiner wordt dan zijn inhoud.
+            ...(columnHeight
+              ? {
+                  display: 'flex',
+                  flexDirection: 'column' as const,
+                  flex: 1,
+                  // 0 en NIET `min-content`: min-content trekt de NATUURLIJKE hoogte van het
+                  // beeld mee (gemeten 1019 px), waardoor de kaart weer opzwelt en er niets
+                  // begrensd wordt. De ondergrens van het beeldvenster wordt daarom in de
+                  // meting hierboven verrekend, niet aan de opmaakmotor overgelaten.
+                  minHeight: 0,
+                }
+              : {}),
+          }}
+        >
+          {decision && (
+            <Tag
+              color={decision === 'ECHT' ? '#B7D945' : '#D64545'}
+              style={{
+                position: 'absolute',
+                top: 16,
+                right: 16,
+                zIndex: 2,
+                fontWeight: 700,
+                color: decision === 'ECHT' ? '#1E293B' : '#fff',
+              }}
+            >
+              {decision}
+            </Tag>
+          )}
           <div
-            data-testid="deck-letterless-hint"
             style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
               marginBottom: 8,
-              padding: '6px 10px',
-              background: '#FEF6E7',
-              border: '1px solid #E8A33D',
-              borderRadius: 6,
-              fontSize: 12,
-              color: '#1E293B',
+              gap: 8,
             }}
           >
-            {t('review.nutriscoreLetterlessHint', {
-              defaultValue:
-                'Nutri-Score-vorm herkend, maar de letter is nog niet bepaald. Kies de juiste letter (A–E) via "Ander keurmerk koppelen" — of wijs af als die letter al gedekt is.',
-            })}
+            <Text strong style={{ color: relabeled ? '#2F5A7A' : '#1E293B', fontSize: 16 }}>
+              {codeLabel}
+              {!letterless && isBeneluxCode(shownCode) && <BeneluxTag />}
+              {relabeled && (
+                <Text type="secondary" style={{ fontSize: 11, fontWeight: 400, marginLeft: 6 }}>
+                  {t('review.corrected', { defaultValue: '(gecorrigeerd)' })}
+                </Text>
+              )}
+            </Text>
+            <Tag color={confidenceColor(cur!.confidence)} style={{ marginRight: 0 }}>
+              {typeof cur!.confidence === 'number' ? `${Math.round(cur!.confidence * 100)}%` : '—'}
+            </Tag>
           </div>
-        )}
-        {/* Reference image of the keurmerk to look for — so the reviewer never
+          {/* Story 12.20 — the shape harvest found a Nutri-Score logo but not its
+            letter; tell the reviewer to assign the grade (or reject if it's an
+            already-covered letter) instead of leaving the raw placeholder. */}
+          {letterless && (
+            <div
+              data-testid="deck-letterless-hint"
+              style={{
+                marginBottom: 8,
+                padding: '6px 10px',
+                background: '#FEF6E7',
+                border: '1px solid #E8A33D',
+                borderRadius: 6,
+                fontSize: 12,
+                color: '#1E293B',
+              }}
+            >
+              {t('review.nutriscoreLetterlessHint', {
+                defaultValue:
+                  'Nutri-Score-vorm herkend, maar de letter is nog niet bepaald. Kies de juiste letter (A–E) via "Ander keurmerk koppelen" — of wijs af als die letter al gedekt is.',
+              })}
+            </div>
+          )}
+          {/* Reference image of the keurmerk to look for — so the reviewer never
             has to guess what {code} looks like. Story 20.8: ALTIJD getoond voor
             een echte code (endpoint valt terug op een GS1-gids-voorbeeld); alleen
             als óók dat 404't tonen we een placeholder i.p.v. de rij te verbergen.
             Letterloze Nutri-Score-placeholder heeft geen zinvol voorbeeld. */}
-        {!letterless && (
-          <div
-            data-testid="deck-reference-row"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              marginBottom: 8,
-              padding: 6,
-              background: '#F8FAFC',
-              border: '1px solid #E2E8F0',
-              borderRadius: 6,
-            }}
-          >
-            {refError ? (
-              <>
-                <div
-                  data-testid="deck-reference-placeholder"
-                  style={{
-                    height: 44,
-                    width: 44,
-                    flex: '0 0 auto',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    border: '1px dashed #94A3B8',
-                    borderRadius: 6,
-                    color: '#94A3B8',
-                    fontSize: 20,
-                  }}
-                >
-                  ?
-                </div>
-                <Text type="secondary" style={{ fontSize: 12 }}>
-                  {t('review.noReferenceImage', {
-                    defaultValue: 'Geen voorbeeld beschikbaar — zoek op de naam hierboven',
-                  })}
-                </Text>
-              </>
-            ) : (
-              <>
-                <img
-                  data-testid="deck-reference"
-                  src={refSrc}
-                  onError={() => setRefError(true)}
-                  alt={`${shownCode} referentie`}
-                  style={{ height: 44, width: 44, objectFit: 'contain', flex: '0 0 auto' }}
-                />
-                <Text type="secondary" style={{ fontSize: 12 }}>
-                  {t('review.lookForThis', { defaultValue: 'Zoek dit keurmerk op de verpakking' })}
-                </Text>
-              </>
-            )}
-          </div>
-        )}
-        {/* Story 12.7 — label-prior: only shown when the GTIN has a declaration.
+          {!letterless && (
+            <div
+              data-testid="deck-reference-row"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                marginBottom: 8,
+                padding: 6,
+                background: '#F8FAFC',
+                border: '1px solid #E2E8F0',
+                borderRadius: 6,
+              }}
+            >
+              {refError ? (
+                <>
+                  <div
+                    data-testid="deck-reference-placeholder"
+                    style={{
+                      height: 44,
+                      width: 44,
+                      flex: '0 0 auto',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      border: '1px dashed #94A3B8',
+                      borderRadius: 6,
+                      color: '#94A3B8',
+                      fontSize: 20,
+                    }}
+                  >
+                    ?
+                  </div>
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    {t('review.noReferenceImage', {
+                      defaultValue: 'Geen voorbeeld beschikbaar — zoek op de naam hierboven',
+                    })}
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <img
+                    data-testid="deck-reference"
+                    src={refSrc}
+                    onError={() => setRefError(true)}
+                    alt={`${shownCode} referentie`}
+                    style={{ height: 44, width: 44, objectFit: 'contain', flex: '0 0 auto' }}
+                  />
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    {t('review.lookForThis', {
+                      defaultValue: 'Zoek dit keurmerk op de verpakking',
+                    })}
+                  </Text>
+                </>
+              )}
+            </div>
+          )}
+          {/* Story 12.7 — label-prior: only shown when the GTIN has a declaration.
             Story 12.20 — suppressed for the letterless placeholder: `declared.codes`
             holds NUTRISCORE_<letter>, never the bare 'NUTRISCORE', so it would
             always read "niet gedeclareerd" — a misleading signal next to the
             "pick the letter" hint. */}
-        {declared.has && !letterless && (
-          <div style={{ marginBottom: 8 }} data-testid="deck-prior">
-            {declared.codes.has(shownCode) ? (
-              <Tag color="#B7D945" style={{ color: '#1E293B' }}>
-                {t('review.priorDeclared', { defaultValue: '✓ gedeclareerd op verpakking' })}
-              </Tag>
-            ) : (
-              <Tag color="#E8A33D" style={{ color: '#1E293B' }}>
-                {t('review.priorNotDeclared', { defaultValue: '⚠ niet gedeclareerd op deze GTIN' })}
-              </Tag>
-            )}
-          </div>
-        )}
-        {/* "Bekijk in context": only when the item carries a usable bbox. */}
-        {cur!.bbox && typeof cur!.bbox.width === 'number' && (cur!.bbox.width ?? 0) > 0 && (
-          <div style={{ textAlign: 'right', marginBottom: 6 }}>
-            <Button
-              size="small"
-              type={context ? 'primary' : 'default'}
-              onClick={() => setContext((v) => !v)}
-              data-testid="deck-context-toggle"
-            >
-              {context
-                ? t('review.showCrop', { defaultValue: 'Toon uitsnede' })
-                : t('review.showContext', { defaultValue: '🔍 Bekijk in context' })}
-            </Button>
-          </div>
-        )}
-        <div
-          data-testid="deck-stage-frame"
-          style={{
-            width: '100%',
-            // Story 20.14 — in de fill-stand géén vaste hoogte: `flex: 1` pakt de
-            // restruimte van de kaart, `minHeight: 0` is nodig omdat een flex-item
-            // anders niet kleiner wordt dan zijn inhoud en de knoppen wegduwt.
-            // Mobiel (columnHeight === null) blijft exact op 48vh / 440.
-            // Story 20.16 — hier staat GEEN vloer in CSS, en dat is bewust: een `minHeight`
-            // op dit element zou door de kaart heen steken bij een lage viewport. De vloer
-            // van 400 px zit in de meting hierboven, die de kolom zo nodig hoger maakt dan
-            // het venster zodat de pagina scrollt.
-            ...(columnHeight
-              ? { flex: 1, minHeight: 0 }
-              : { height: '48vh', maxHeight: 440 }),
-            display: 'flex',
-            // Story 20.16 — in de vul-stand 'stretch': anders krijgt de ImageStage-root zijn
-            // eigen inhoudshoogte en heeft de centreerlaag daarbinnen niets om tegen af te
-            // meten. De begrenzing van het beeld zelf gebeurt in ImageStage, in pixels.
-            alignItems: columnHeight ? 'stretch' : 'center',
-            justifyContent: 'center',
-            background: '#F8FAFC',
-            border: '1px solid #E2E8F0',
-            borderRadius: 10,
-            overflow: 'hidden',
-          }}
-        >
-          {context ? (
-            srcLoading ? (
+          {declared.has && !letterless && (
+            <div style={{ marginBottom: 8 }} data-testid="deck-prior">
+              {declared.codes.has(shownCode) ? (
+                <Tag color="#B7D945" style={{ color: '#1E293B' }}>
+                  {t('review.priorDeclared', { defaultValue: '✓ gedeclareerd op verpakking' })}
+                </Tag>
+              ) : (
+                <Tag color="#E8A33D" style={{ color: '#1E293B' }}>
+                  {t('review.priorNotDeclared', {
+                    defaultValue: '⚠ niet gedeclareerd op deze GTIN',
+                  })}
+                </Tag>
+              )}
+              {/* Story 20.19 — herkomst tonen. De beoordelaar hoort te weten dat deze
+                declaratie uit een bevroren momentopname komt en niet uit de actuele
+                catalogus: de gegevens zijn niet meer te controleren tegen een bestand,
+                en bij een eerdere vergelijking week 2% af. */}
+              {declared.snapshotHarvestedAt && (
+                <Tag color="#54949E" style={{ color: '#FFFFFF', marginLeft: 6 }}>
+                  {t('review.priorFromSnapshot', {
+                    defaultValue: 'uit momentopname van {{datum}}',
+                    datum: declared.snapshotHarvestedAt,
+                  })}
+                </Tag>
+              )}
+            </div>
+          )}
+          {/* "Bekijk in context": only when the item carries a usable bbox. */}
+          {cur!.bbox && typeof cur!.bbox.width === 'number' && (cur!.bbox.width ?? 0) > 0 && (
+            <div style={{ textAlign: 'right', marginBottom: 6 }}>
+              <Button
+                size="small"
+                type={context ? 'primary' : 'default'}
+                onClick={() => setContext((v) => !v)}
+                data-testid="deck-context-toggle"
+              >
+                {context
+                  ? t('review.showCrop', { defaultValue: 'Toon uitsnede' })
+                  : t('review.showContext', { defaultValue: '🔍 Bekijk in context' })}
+              </Button>
+            </div>
+          )}
+          <div
+            data-testid="deck-stage-frame"
+            style={{
+              width: '100%',
+              // Story 20.14 — in de fill-stand géén vaste hoogte: `flex: 1` pakt de
+              // restruimte van de kaart, `minHeight: 0` is nodig omdat een flex-item
+              // anders niet kleiner wordt dan zijn inhoud en de knoppen wegduwt.
+              // Mobiel (columnHeight === null) blijft exact op 48vh / 440.
+              // Story 20.16 — hier staat GEEN vloer in CSS, en dat is bewust: een `minHeight`
+              // op dit element zou door de kaart heen steken bij een lage viewport. De vloer
+              // van 400 px zit in de meting hierboven, die de kolom zo nodig hoger maakt dan
+              // het venster zodat de pagina scrollt.
+              ...(columnHeight ? { flex: 1, minHeight: 0 } : { height: '48vh', maxHeight: 440 }),
+              display: 'flex',
+              // Story 20.16 — in de vul-stand 'stretch': anders krijgt de ImageStage-root zijn
+              // eigen inhoudshoogte en heeft de centreerlaag daarbinnen niets om tegen af te
+              // meten. De begrenzing van het beeld zelf gebeurt in ImageStage, in pixels.
+              alignItems: columnHeight ? 'stretch' : 'center',
+              justifyContent: 'center',
+              background: '#F8FAFC',
+              border: '1px solid #E2E8F0',
+              borderRadius: 10,
+              overflow: 'hidden',
+            }}
+          >
+            {context ? (
+              srcLoading ? (
+                <Spin />
+              ) : srcUrl ? (
+                // Story 12.19 — the server returns a downscaled context fragment
+                // with the proposed box drawn (red). Render it in a drawable stage
+                // so the reviewer can box the logo directly here; a box drawn on the
+                // fragment is converted back to full-artwork fractions before
+                // annotating (applyContextAnnotation via the X-Context-Window map).
+                <ImageStage
+                  data-testid="deck-context"
+                  maxHeight={columnHeight ? '100%' : DECK_MAX_IMAGE_HEIGHT}
+                  fill={!!columnHeight}
+                  hideConfirm
+                  src={srcUrl}
+                  alt={`${cur!.t3777Code} context`}
+                  canDraw={canMutate}
+                  busy={busy}
+                  resetKey={`ctx:${cur!.id}`}
+                  onConfirmBox={applyContextAnnotation}
+                  onDraftChange={onDraftChange}
+                  confirmToken={confirmBoxToken}
+                  hint={
+                    <Text type="secondary" style={{ fontSize: 12, textAlign: 'center' }}>
+                      {isCoarsePointer()
+                        ? t('review.contextDrawHintTouch', {
+                            defaultValue:
+                              'Rood kader = voorgestelde plek. Sleep met je vinger een kader om het keurmerk te markeren · dubbeltik = zoom.',
+                          })
+                        : t('review.contextDrawHint', {
+                            defaultValue:
+                              'Rood kader = voorgestelde plek. Sleep hier een kader om het keurmerk te markeren · dubbelklik = zoom.',
+                          })}
+                    </Text>
+                  }
+                />
+              ) : (
+                <Text type="secondary">
+                  {t('review.sourceError', { defaultValue: 'Bronafbeelding niet beschikbaar' })}
+                </Text>
+              )
+            ) : cropLoading && !markedSrc ? (
               <Spin />
-            ) : srcUrl ? (
-              // Story 12.19 — the server returns a downscaled context fragment
-              // with the proposed box drawn (red). Render it in a drawable stage
-              // so the reviewer can box the logo directly here; a box drawn on the
-              // fragment is converted back to full-artwork fractions before
-              // annotating (applyContextAnnotation via the X-Context-Window map).
+            ) : markedSrc || cropUrl ? (
               <ImageStage
-                data-testid="deck-context"
+                data-testid="deck-stage"
                 maxHeight={columnHeight ? '100%' : DECK_MAX_IMAGE_HEIGHT}
                 fill={!!columnHeight}
                 hideConfirm
-                src={srcUrl}
-                alt={`${cur!.t3777Code} context`}
-                canDraw={canMutate}
+                src={(markedSrc ?? cropUrl) as string}
+                alt={cur!.t3777Code}
+                canDraw={canMutate && (!!markedSrc || cropIsArtwork)}
                 busy={busy}
-                resetKey={`ctx:${cur!.id}`}
-                onConfirmBox={applyContextAnnotation}
+                resetKey={cur!.id}
+                onConfirmBox={applyAnnotation}
                 onDraftChange={onDraftChange}
                 confirmToken={confirmBoxToken}
                 hint={
-                  <Text type="secondary" style={{ fontSize: 12, textAlign: 'center' }}>
-                    {isCoarsePointer()
-                      ? t('review.contextDrawHintTouch', {
-                          defaultValue:
-                            'Rood kader = voorgestelde plek. Sleep met je vinger een kader om het keurmerk te markeren · dubbeltik = zoom.',
-                        })
-                      : t('review.contextDrawHint', {
-                          defaultValue:
-                            'Rood kader = voorgestelde plek. Sleep hier een kader om het keurmerk te markeren · dubbelklik = zoom.',
-                        })}
-                  </Text>
+                  markedSrc ? (
+                    <Text type="secondary" style={{ fontSize: 12, textAlign: 'center' }}>
+                      {t('review.markedHint', {
+                        defaultValue:
+                          'Rood kader = voorgestelde plek. Sleep een nieuw kader om te corrigeren · dubbelklik = zoom.',
+                      })}
+                    </Text>
+                  ) : cropIsArtwork ? (
+                    <Text type="secondary" style={{ fontSize: 12, textAlign: 'center' }}>
+                      {t('review.artworkFallback', {
+                        defaultValue:
+                          'Niet gedetecteerd — sleep een kader om het keurmerk · dubbelklik = zoom.',
+                      })}
+                    </Text>
+                  ) : null
                 }
               />
             ) : (
               <Text type="secondary">
-                {t('review.sourceError', { defaultValue: 'Bronafbeelding niet beschikbaar' })}
+                {t('review.cropError', { defaultValue: 'Crop niet beschikbaar' })}
               </Text>
-            )
-          ) : cropLoading && !markedSrc ? (
-            <Spin />
-          ) : markedSrc || cropUrl ? (
-            <ImageStage
-              data-testid="deck-stage"
-              maxHeight={columnHeight ? '100%' : DECK_MAX_IMAGE_HEIGHT}
-              fill={!!columnHeight}
-              hideConfirm
-              src={(markedSrc ?? cropUrl) as string}
-              alt={cur!.t3777Code}
-              canDraw={canMutate && (!!markedSrc || cropIsArtwork)}
-              busy={busy}
-              resetKey={cur!.id}
-              onConfirmBox={applyAnnotation}
-              onDraftChange={onDraftChange}
-              confirmToken={confirmBoxToken}
-              hint={
-                markedSrc ? (
-                  <Text type="secondary" style={{ fontSize: 12, textAlign: 'center' }}>
-                    {t('review.markedHint', {
-                      defaultValue:
-                        'Rood kader = voorgestelde plek. Sleep een nieuw kader om te corrigeren · dubbelklik = zoom.',
-                    })}
-                  </Text>
-                ) : cropIsArtwork ? (
-                  <Text type="secondary" style={{ fontSize: 12, textAlign: 'center' }}>
-                    {t('review.artworkFallback', {
-                      defaultValue:
-                        'Niet gedetecteerd — sleep een kader om het keurmerk · dubbelklik = zoom.',
-                    })}
-                  </Text>
-                ) : null
-              }
-            />
-          ) : (
-            <Text type="secondary">{t('review.cropError', { defaultValue: 'Crop niet beschikbaar' })}</Text>
-          )}
+            )}
+          </div>
+          <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 8 }}>
+            GTIN {cur!.gtin}
+          </Text>
         </div>
-        <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 8 }}>
-          GTIN {cur!.gtin}
-        </Text>
-      </div>
 
-      <div style={{ display: 'flex', gap: 8, marginTop: 12, alignItems: 'stretch' }}>
-        <Button
-          icon={<LeftOutlined />}
-          disabled={idx === 0}
-          onClick={() => goto(idx - 1)}
-          data-testid="deck-back"
-          style={{ height: 56, flex: '0 0 48px' }}
-          aria-label={t('review.back', { defaultValue: 'Terug' })}
-        />
-        <Button
-          danger={decision !== 'VALS'}
-          type={decision === 'VALS' ? 'primary' : 'default'}
-          size="large"
-          block
-          icon={<CloseOutlined />}
-          loading={busy}
-          disabled={!canMutate}
-          onClick={() => applyDecision('VALS')}
-          data-testid="deck-reject"
-          style={{ height: 56, fontSize: 16, fontWeight: 600, ...(decision === 'VALS' ? { background: '#D64545', borderColor: '#D64545' } : {}) }}
-        >
-          {t('review.reject', { defaultValue: 'Wijs af' })}
-        </Button>
-        <Button
-          type="primary"
-          size="large"
-          block
-          icon={<CheckOutlined />}
-          loading={busy}
-          disabled={!canMutate}
-          // Story 12.17 — a single accept path (applyDecision) decides button vs
-          // swipe vs keyboard uniformly: while an unconfirmed drawn box exists it
-          // confirms THAT box (→ annotate) instead of the auto-crop. The label
-          // switches so it is unambiguous which crop is saved.
-          onClick={() => applyDecision('ECHT')}
-          data-testid="deck-accept"
-          style={{
-            height: 56,
-            fontSize: 16,
-            fontWeight: 700,
-            background: canMutate ? (decision === 'ECHT' ? '#5a8a00' : '#7BA428') : undefined,
-            borderColor: canMutate ? (decision === 'ECHT' ? '#5a8a00' : '#7BA428') : undefined,
-          }}
-        >
-          {hasDraftBox
-            ? cur && stagedCode[cur.id]
-              ? t('review.acceptDrawnBoxAs', {
-                  defaultValue: 'Bevestig kader als {{code}}',
-                  code: stagedCode[cur.id],
-                })
-              : letterless
-                ? t('review.acceptDrawnBoxPickLetter', {
-                    defaultValue: 'Bevestig kader — kies de letter',
-                  })
-                : // Story 20.5 — toon de code die wordt opgeslagen (de voorspelde/
-                  // effectieve code), zodat niets stilzwijgend onder een verkeerd
-                  // keurmerk belandt; de picker ernaast wijzigt hem.
-                  t('review.acceptDrawnBoxAs', {
-                    defaultValue: 'Bevestig kader als {{code}}',
-                    code: shownCode,
-                  })
-            : cur && stagedCode[cur.id]
-              ? t('review.acceptAs', {
-                  defaultValue: 'Accepteer als {{code}}',
-                  code: stagedCode[cur.id],
-                })
-              : t('review.accept', { defaultValue: 'Accepteer' })}
-        </Button>
-        <Button
-          icon={<RightOutlined />}
-          onClick={() => goto(idx + 1)}
-          data-testid="deck-next"
-          style={{ height: 56, flex: '0 0 48px' }}
-          aria-label={t('review.next', { defaultValue: 'Volgende' })}
-        />
-        {/* Story 20.16 — in de vul-stand staat "Ander keurmerk" hier op dezelfde regel als de
-            beslisknoppen, in plaats van als volle regel eronder. */}
-        {columnHeight ? (
+        <div style={{ display: 'flex', gap: 8, marginTop: 12, alignItems: 'stretch' }}>
           <Button
+            icon={<LeftOutlined />}
+            disabled={idx === 0}
+            onClick={() => goto(idx - 1)}
+            data-testid="deck-back"
+            style={{ height: 56, flex: '0 0 48px' }}
+            aria-label={t('review.back', { defaultValue: 'Terug' })}
+          />
+          <Button
+            danger={decision !== 'VALS'}
+            type={decision === 'VALS' ? 'primary' : 'default'}
+            size="large"
+            block
+            icon={<CloseOutlined />}
+            loading={busy}
+            disabled={!canMutate}
+            onClick={() => applyDecision('VALS')}
+            data-testid="deck-reject"
+            style={{
+              height: 56,
+              fontSize: 16,
+              fontWeight: 600,
+              ...(decision === 'VALS' ? { background: '#D64545', borderColor: '#D64545' } : {}),
+            }}
+          >
+            {t('review.reject', { defaultValue: 'Wijs af' })}
+          </Button>
+          <Button
+            type="primary"
+            size="large"
+            block
+            icon={<CheckOutlined />}
+            loading={busy}
+            disabled={!canMutate}
+            // Story 12.17 — a single accept path (applyDecision) decides button vs
+            // swipe vs keyboard uniformly: while an unconfirmed drawn box exists it
+            // confirms THAT box (→ annotate) instead of the auto-crop. The label
+            // switches so it is unambiguous which crop is saved.
+            onClick={() => applyDecision('ECHT')}
+            data-testid="deck-accept"
+            style={{
+              height: 56,
+              fontSize: 16,
+              fontWeight: 700,
+              background: canMutate ? (decision === 'ECHT' ? '#5a8a00' : '#7BA428') : undefined,
+              borderColor: canMutate ? (decision === 'ECHT' ? '#5a8a00' : '#7BA428') : undefined,
+            }}
+          >
+            {hasDraftBox
+              ? cur && stagedCode[cur.id]
+                ? t('review.acceptDrawnBoxAs', {
+                    defaultValue: 'Bevestig kader als {{code}}',
+                    code: stagedCode[cur.id],
+                  })
+                : letterless
+                  ? t('review.acceptDrawnBoxPickLetter', {
+                      defaultValue: 'Bevestig kader — kies de letter',
+                    })
+                  : // Story 20.5 — toon de code die wordt opgeslagen (de voorspelde/
+                    // effectieve code), zodat niets stilzwijgend onder een verkeerd
+                    // keurmerk belandt; de picker ernaast wijzigt hem.
+                    t('review.acceptDrawnBoxAs', {
+                      defaultValue: 'Bevestig kader als {{code}}',
+                      code: shownCode,
+                    })
+              : cur && stagedCode[cur.id]
+                ? t('review.acceptAs', {
+                    defaultValue: 'Accepteer als {{code}}',
+                    code: stagedCode[cur.id],
+                  })
+                : t('review.accept', { defaultValue: 'Accepteer' })}
+          </Button>
+          <Button
+            icon={<RightOutlined />}
+            onClick={() => goto(idx + 1)}
+            data-testid="deck-next"
+            style={{ height: 56, flex: '0 0 48px' }}
+            aria-label={t('review.next', { defaultValue: 'Volgende' })}
+          />
+          {/* Story 20.16 — in de vul-stand staat "Ander keurmerk" hier op dezelfde regel als de
+            beslisknoppen, in plaats van als volle regel eronder. */}
+          {columnHeight ? (
+            <Button
+              icon={<TagsOutlined />}
+              onClick={() => {
+                setSearch('');
+                setPicker(true);
+              }}
+              disabled={!canMutate}
+              data-testid="deck-relabel-open"
+              // Mét tekst, niet alleen het icoon. In de eerste versie van 20.16 stond hier een
+              // kale icoonknop; Friso's live-controle: "aan icon alleen is het niet duidelijk dat
+              // het gaat om Ander keurmerk koppelen". De hoogtewinst van deze story zat in het
+              // verplaatsen naar deze regel, niet in het weglaten van de tekst — die kost hier
+              // alleen breedte, en die is er.
+              style={{
+                height: 56,
+                flex: '0 0 auto',
+                color: '#2F5A7A',
+                borderColor: '#54949E',
+              }}
+              title={t('review.relabel', { defaultValue: 'Ander keurmerk koppelen' })}
+            >
+              {t('review.relabelShort', { defaultValue: 'Ander keurmerk' })}
+            </Button>
+          ) : null}
+        </div>
+
+        {/* Story 20.16 — compacte bedieningsbalk.
+          In de vul-stand staat de relabel-knop OP DEZELFDE REGEL als de beslisknoppen en
+          verdwijnt de veeg-hint; samen scheelt dat ~77 px, en precies die ruimte gaat naar het
+          beeld. Zonder deze inkorting botsten twee eisen: alles in beeld én een beeldvenster
+          dat niet kleiner wordt dan vóór 20.12 (gemeten tekort 95 px).
+          Op touch blijft alles staan zoals het was — de veeg-hint slaat daar op een gebaar dat
+          op desktop niet bestaat. */}
+        {!columnHeight && (
+          <Button
+            block
             icon={<TagsOutlined />}
             onClick={() => {
               setSearch('');
@@ -1504,54 +1650,26 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate, f
             }}
             disabled={!canMutate}
             data-testid="deck-relabel-open"
-            // Mét tekst, niet alleen het icoon. In de eerste versie van 20.16 stond hier een
-            // kale icoonknop; Friso's live-controle: "aan icon alleen is het niet duidelijk dat
-            // het gaat om Ander keurmerk koppelen". De hoogtewinst van deze story zat in het
-            // verplaatsen naar deze regel, niet in het weglaten van de tekst — die kost hier
-            // alleen breedte, en die is er.
-            style={{
-              height: 56,
-              flex: '0 0 auto',
-              color: '#2F5A7A',
-              borderColor: '#54949E',
-            }}
-            title={t('review.relabel', { defaultValue: 'Ander keurmerk koppelen' })}
+            style={{ marginTop: 8, height: 44, color: '#2F5A7A', borderColor: '#54949E' }}
           >
-            {t('review.relabelShort', { defaultValue: 'Ander keurmerk' })}
+            {t('review.relabel', { defaultValue: 'Ander keurmerk koppelen' })}
           </Button>
-        ) : null}
-      </div>
+        )}
 
-      {/* Story 20.16 — compacte bedieningsbalk.
-          In de vul-stand staat de relabel-knop OP DEZELFDE REGEL als de beslisknoppen en
-          verdwijnt de veeg-hint; samen scheelt dat ~77 px, en precies die ruimte gaat naar het
-          beeld. Zonder deze inkorting botsten twee eisen: alles in beeld én een beeldvenster
-          dat niet kleiner wordt dan vóór 20.12 (gemeten tekort 95 px).
-          Op touch blijft alles staan zoals het was — de veeg-hint slaat daar op een gebaar dat
-          op desktop niet bestaat. */}
-      {!columnHeight && (
-        <Button
-          block
-          icon={<TagsOutlined />}
-          onClick={() => {
-            setSearch('');
-            setPicker(true);
-          }}
-          disabled={!canMutate}
-          data-testid="deck-relabel-open"
-          style={{ marginTop: 8, height: 44, color: '#2F5A7A', borderColor: '#54949E' }}
-        >
-          {t('review.relabel', { defaultValue: 'Ander keurmerk koppelen' })}
-        </Button>
-      )}
-
-      {!columnHeight && (
-        <Text type="secondary" style={{ fontSize: 11, textAlign: 'center', display: 'block', marginTop: 8 }}>
-          {decision
-            ? t('review.changeHint', { defaultValue: 'Tik de gekozen knop nogmaals om ongedaan te maken' })
-            : t('review.swipeHint', { defaultValue: 'swipe → Accepteer · ← Wijs af · ‹ › navigeren' })}
-        </Text>
-      )}
+        {!columnHeight && (
+          <Text
+            type="secondary"
+            style={{ fontSize: 11, textAlign: 'center', display: 'block', marginTop: 8 }}
+          >
+            {decision
+              ? t('review.changeHint', {
+                  defaultValue: 'Tik de gekozen knop nogmaals om ongedaan te maken',
+                })
+              : t('review.swipeHint', {
+                  defaultValue: 'swipe → Accepteer · ← Wijs af · ‹ › navigeren',
+                })}
+          </Text>
+        )}
       </div>
 
       <Drawer
@@ -1573,7 +1691,10 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate, f
         <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>
           {pickQuery
             ? t('review.relabelCount', { defaultValue: '{{n}} resultaten', n: pickFiltered.length })
-            : t('review.relabelTotal', { defaultValue: '{{n}} keurmerken — typ om te zoeken', n: codes.length })}
+            : t('review.relabelTotal', {
+                defaultValue: '{{n}} keurmerken — typ om te zoeken',
+                n: codes.length,
+              })}
         </Text>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {pickList.map((c) => (
@@ -1597,14 +1718,35 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate, f
               <RefThumb code={c} />
               {c}
               <Tag
-                color={fieldTypeForCode(c) === 'PackagingMarkedLabelAccreditationCode' ? 'default' : '#54949E'}
+                color={
+                  fieldTypeForCode(c) === 'PackagingMarkedLabelAccreditationCode'
+                    ? 'default'
+                    : '#54949E'
+                }
                 style={{ marginLeft: 8, fontSize: 10, lineHeight: '16px', padding: '0 6px' }}
               >
                 {spoorLabelForCode(c)}
               </Tag>
               {declared.codes.has(c) && (
-                <Tag color="#B7D945" style={{ marginLeft: 4, fontSize: 10, lineHeight: '16px', padding: '0 6px', color: '#1E293B' }}>
-                  {t('review.declared', { defaultValue: 'gedeclareerd' })}
+                /* Story 20.19 — dezelfde herkomst-aanduiding als bij de prior hierboven.
+                   Zonder dit leest "gedeclareerd" in deze lijst als een harde actuele
+                   bevestiging, terwijl het bij deze producten om bevroren gegevens gaat
+                   die niet meer tegen een bestand te controleren zijn. */
+                <Tag
+                  color={declared.snapshotHarvestedAt ? '#54949E' : '#B7D945'}
+                  style={{
+                    marginLeft: 4,
+                    fontSize: 10,
+                    lineHeight: '16px',
+                    padding: '0 6px',
+                    color: declared.snapshotHarvestedAt ? '#FFFFFF' : '#1E293B',
+                  }}
+                >
+                  {declared.snapshotHarvestedAt
+                    ? t('review.declaredFromSnapshot', {
+                        defaultValue: 'gedeclareerd (momentopname)',
+                      })
+                    : t('review.declared', { defaultValue: 'gedeclareerd' })}
                 </Tag>
               )}
               {isBeneluxCode(c) && <BeneluxTag small />}

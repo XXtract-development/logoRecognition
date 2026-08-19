@@ -49,8 +49,13 @@ import {
   catalogEnvTag,
   catalogFetchRetries,
   marksCacheStats,
+  snapshotStats,
+  resetSnapshotStats,
+  snapshotAgeDays,
+  SNAPSHOT_MAX_AGE_DAYS,
   type DeclaredMark,
 } from '../services/t3777-declarations';
+import { TRADEITEM_SNAPSHOT_META } from '../services/tradeitem-declaration-snapshot';
 import { mediaServerClient } from '../services/mediaserver-client';
 import { getStorageAdapter, BUCKETS, downloadTrainingObject } from '../services/storage';
 import { closeRedisConnection } from '../services/pipeline/queue';
@@ -331,7 +336,10 @@ export type CollectReason =
   | 'timeout'
   | 'api-key-ontbreekt'
   | 'gln-ontbreekt'
-  | 'niet-verwerkt';
+  | 'niet-verwerkt'
+  // Story 20.19 (AC2/AC7): declaratie uit de bevroren momentopname. Hoort bij het
+  // NORMALE beeld en valt buiten `technical` (AC7b), net als 404 en lege-declaratie.
+  | 'uit-momentopname';
 
 export type ReasonCounts = Record<CollectReason, number>;
 
@@ -346,6 +354,7 @@ export function emptyReasonCounts(): ReasonCounts {
     'api-key-ontbreekt': 0,
     'gln-ontbreekt': 0,
     'niet-verwerkt': 0,
+    'uit-momentopname': 0,
   };
 }
 
@@ -369,6 +378,11 @@ function mapDeclarationReason(reason: string): CollectReason {
       return 'geen-tradeitem-bestand';
     case 'lege-declaratie':
       return 'lege-declaratie';
+    case 'uit-momentopname':
+      // Story 20.19 (AC7): EXPLICIET, niet via `default`. Die geeft `api-fout`, en
+      // met 442 van 1870 producten (23,7%) tegen een drempel van 5% zou de
+      // kwaliteitspoort van deze bouwer omvallen op een normale uitkomst.
+      return 'uit-momentopname';
     case 'api-key-ontbreekt':
       return 'api-key-ontbreekt';
     case 'gln-ontbreekt':
@@ -419,6 +433,11 @@ export async function collectGtinData(
     onProgress?: (line: string) => void;
   } = {}
 ): Promise<CollectOutcome> {
+  // Punt 6 uit de code review: de tellers zijn procesbreed. Zonder deze reset telt een
+  // tweede run in hetzelfde proces (tests, of twee runs achter elkaar) door op de
+  // eerste, en klopt het afgedrukte getal niet meer.
+  resetSnapshotStats();
+
   const concurrency = opts.concurrency ?? getConcurrency();
   const gtinTimeoutMs = opts.gtinTimeoutMs ?? getGtinTimeoutMs();
   const maxRuntimeMs = opts.maxRuntimeMs ?? getMaxRuntimeMs();
@@ -455,7 +474,9 @@ export async function collectGtinData(
         withBudget(
           (async (): Promise<{ entry: GtinData; reason: CollectReason }> => {
             const [marksResult, mediaItems] = await Promise.all([
-              resolveDeclaredMarks(gtin, gln),
+              // Story 20.19 (AC1): deelnemer aan de momentopname — dit is de ingang
+              // die de beoordeelwachtrij vult, het doel van die story.
+              resolveDeclaredMarks(gtin, gln, { useSnapshot: true }),
               mediaServerClient.discoverArtwork(gtin).catch(() => []),
             ]);
             const labels = mediaItems.map((m) => m.previewUrl).filter((u): u is string => !!u);
@@ -483,7 +504,8 @@ export async function collectGtinData(
       emit(
         `[voortgang] ${processed}/${universe.length} · ${Math.round(elapsed / 1000)}s verstreken · ` +
           `ETA ~${etaS}s · ok=${reasons.ok} 404=${reasons['404']} leeg=${reasons['lege-declaratie']} ` +
-          `geen-bestand=${reasons['geen-tradeitem-bestand']} api-fout=${reasons['api-fout']} timeout=${reasons.timeout}`
+          `geen-bestand=${reasons['geen-tradeitem-bestand']} momentopname=${reasons['uit-momentopname']} ` +
+          `api-fout=${reasons['api-fout']} timeout=${reasons.timeout}`
       );
     }
   }
@@ -630,9 +652,39 @@ function printPlan(
     console.log(
       `  Reden-verdeling    : ok=${reasons.ok} 404=${reasons['404']} leeg=${reasons['lege-declaratie']} ` +
         `geen-bestand=${reasons['geen-tradeitem-bestand']} ` +
+        `momentopname=${reasons['uit-momentopname']} ` +
         `api-fout=${reasons['api-fout']} timeout=${reasons.timeout} ` +
         `niet-verwerkt=${reasons['niet-verwerkt']} api-key-ontbreekt=${reasons['api-key-ontbreekt']} ` +
         `gln-ontbreekt=${reasons['gln-ontbreekt']}`
+    );
+  }
+  // Story 20.19 (AC9) — de momentopname is bevroren en veroudert. Dat moet bij elke
+  // run afleesbaar zijn, met een EIGEN telregel: `lege-declaratie` bevat al de
+  // producten uit de XML-route, dus die twee bronnen zijn daar niet te scheiden.
+  const leeftijd = snapshotAgeDays();
+  console.log(
+    `  Momentopname       : geoogst ${TRADEITEM_SNAPSHOT_META.harvestedAt} ` +
+      `(${Number.isFinite(leeftijd) ? `${leeftijd} dagen oud` : 'ouderdom onbekend'}, ` +
+      `doelmarkt ${TRADEITEM_SNAPSHOT_META.targetMarket}, ${TRADEITEM_SNAPSHOT_META.keys} sleutels)`
+  );
+  console.log(
+    `  Momentopname-inzet : met keurmerk=${snapshotStats.withMarks} leeg=${snapshotStats.empty} ` +
+      `niet-geoogst=${snapshotStats.notInSnapshot} verouderde-cache=${snapshotStats.staleCacheDropped}`
+  );
+  if (snapshotStats.notInSnapshot > 0) {
+    console.log(
+      `  LET OP             : ${snapshotStats.notInSnapshot} GTIN(s) liepen op 'geen bestand' ` +
+        'en zijn niet in de momentopname gevonden. Dat is een BOVENGRENS voor een verse ' +
+        'oogst: een GTIN met meerdere gln\'s kan hier ook staan omdat de gekozen gln ' +
+        'afwijkt van de gln waarmee geoogst is, niet omdat hij nooit geoogst is.'
+    );
+  }
+  if (Number.isFinite(leeftijd) && leeftijd > SNAPSHOT_MAX_AGE_DAYS) {
+    console.log(
+      `  WAARSCHUWING       : de momentopname is ${leeftijd} dagen oud (grens ${SNAPSHOT_MAX_AGE_DAYS}). ` +
+        'Een bevroren sleutel schaduwt zijn product voor onbepaalde tijd, ook als de declaratie ' +
+        'op productie verandert — de XML-route komt er immers nooit aan toe. Opnieuw oogsten met ' +
+        'apps/api/scripts/harvest-tradeitem-snapshot.ts.'
     );
   }
   console.log(`  GTINs met data     : ${summary.gtinsWithData}`);

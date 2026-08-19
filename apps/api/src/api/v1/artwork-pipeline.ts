@@ -846,8 +846,16 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
     { preHandler: authMiddleware },
     async (request: FastifyRequest<{ Params: { gtin: string } }>, reply: FastifyReply) => {
       const { gtin } = request.params;
-      const { marks, reason } = await resolveDeclaredMarks(gtin);
-      return reply.status(200).send({ gtin, marks, reason });
+      // Story 20.19 (AC1): deelnemer aan de momentopname. Deze endpoint LEEST alleen
+      // en voedt de declaratie-prior van het beoordeelscherm; zonder deelname ziet de
+      // beoordelaar bij precies de 238 producten van die story geen declaratie.
+      const { marks, reason, snapshotHarvestedAt } = await resolveDeclaredMarks(gtin, undefined, {
+        useSnapshot: true,
+      });
+      // Story 20.19 (AC6): de oogstdatum gaat mee zodat het beoordeelscherm kan
+      // TONEN dat deze declaratie uit een bevroren momentopname komt. De beoordelaar
+      // hoort te weten dat hij niet naar de actuele catalogus kijkt.
+      return reply.status(200).send({ gtin, marks, reason, snapshotHarvestedAt });
     }
   );
 

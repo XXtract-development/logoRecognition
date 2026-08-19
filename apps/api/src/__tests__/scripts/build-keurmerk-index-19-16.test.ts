@@ -20,6 +20,14 @@ const discoverArtwork = vi.fn();
 vi.mock('../../services/t3777-declarations', () => ({
   resolveDeclaredMarks: (...args: unknown[]) => resolveDeclaredMarks(...args),
   catalogEnvTag: (base: string) => (base.includes('stage') ? 'stage' : 'acc'),
+  // Story 20.19 — de indexbouwer drukt de stand van de momentopname af en zet de
+  // procesbrede tellers terug aan het begin van een run.
+  catalogFetchRetries: () => 0,
+  marksCacheStats: { hits: 0, misses: 0 },
+  snapshotStats: { withMarks: 0, empty: 0, notInSnapshot: 0, staleCacheDropped: 0 },
+  resetSnapshotStats: vi.fn(),
+  snapshotAgeDays: () => 0,
+  SNAPSHOT_MAX_AGE_DAYS: 180,
 }));
 vi.mock('../../services/mediaserver-client', () => ({
   mediaServerClient: { discoverArtwork: (...a: unknown[]) => discoverArtwork(...a) },
@@ -30,7 +38,9 @@ vi.mock('../../services/storage', () => ({
   downloadTrainingObject: vi.fn().mockResolvedValue(null),
 }));
 vi.mock('../../services/pipeline/queue', () => ({ closeRedisConnection: vi.fn() }));
-vi.mock('../../core/db', () => ({ default: { artworkImport: { findMany: vi.fn() }, $disconnect: vi.fn() } }));
+vi.mock('../../core/db', () => ({
+  default: { artworkImport: { findMany: vi.fn() }, $disconnect: vi.fn() },
+}));
 
 import {
   collectGtinData,
@@ -48,7 +58,10 @@ const universe = (n: number): GtinUniverseEntry[] =>
 
 beforeEach(() => {
   vi.clearAllMocks();
-  resolveDeclaredMarks.mockResolvedValue({ marks: [{ code: 'GREEN_DOT', fieldType: 'X' }], reason: 'ok' });
+  resolveDeclaredMarks.mockResolvedValue({
+    marks: [{ code: 'GREEN_DOT', fieldType: 'X' }],
+    reason: 'ok',
+  });
   discoverArtwork.mockResolvedValue([{ previewUrl: '/a.pdf' }]);
 });
 
@@ -104,7 +117,22 @@ describe('AC6 — parallellisatie verandert de uitkomst niet', () => {
 
   it('de bekende gln gaat mee naar de declaratielaag (spaart de DB-lookup)', async () => {
     await collectGtinData(universe(1), { concurrency: 1, onProgress: () => {} });
-    expect(resolveDeclaredMarks).toHaveBeenCalledWith('00000000000001', '8712345000000');
+    // Story 20.19 gaf deze aanroep een DERDE argument (`{ useSnapshot: true }`).
+    // De bedoeling van deze toets is ongewijzigd — de bekende gln moet meegaan, want
+    // anders doet de declaratielaag per GTIN een eigen DB-lookup — dus toetsen we de
+    // eerste twee argumenten expliciet in plaats van de hele aanroep te bevriezen.
+    expect(resolveDeclaredMarks).toHaveBeenCalled();
+    const [gtin, gln] = (resolveDeclaredMarks as unknown as { mock: { calls: unknown[][] } }).mock
+      .calls[0];
+    expect(gtin).toBe('00000000000001');
+    expect(gln).toBe('8712345000000');
+  });
+
+  it('de indexbouwer zet de momentopname-terugval bewust AAN (20.19 AC1)', async () => {
+    await collectGtinData(universe(1), { concurrency: 1, onProgress: () => {} });
+    const [, , options] = (resolveDeclaredMarks as unknown as { mock: { calls: unknown[][] } }).mock
+      .calls[0];
+    expect(options).toEqual({ useSnapshot: true });
   });
 });
 
@@ -194,9 +222,12 @@ describe('AC7 — kwaliteitspoort', () => {
 
   it('7c — krimp t.o.v. de bestaande index blokkeert, tenzij toegestaan', () => {
     const shrink = { ...base, fresh: { distinctKeys: 20, gtinsWithData: 40 } };
-    expect(evaluateGate({ ...shrink, reasons: { ...emptyReasonCounts(), ok: 100 } }).ok).toBe(false);
+    expect(evaluateGate({ ...shrink, reasons: { ...emptyReasonCounts(), ok: 100 } }).ok).toBe(
+      false
+    );
     expect(
-      evaluateGate({ ...shrink, allowShrink: true, reasons: { ...emptyReasonCounts(), ok: 100 } }).ok
+      evaluateGate({ ...shrink, allowShrink: true, reasons: { ...emptyReasonCounts(), ok: 100 } })
+        .ok
     ).toBe(true);
   });
 
@@ -247,7 +278,14 @@ describe('AC7 — kwaliteitspoort', () => {
 describe('Besluit 2026-07-25 — bronvermelding in de index', () => {
   it('legt de declaratiebron vast', () => {
     const idx = buildIndex(
-      [{ gtin: '1', gln: '2', marks: [{ code: 'X', fieldType: 'F' } as never], labels: ['/a.pdf'] }],
+      [
+        {
+          gtin: '1',
+          gln: '2',
+          marks: [{ code: 'X', fieldType: 'F' } as never],
+          labels: ['/a.pdf'],
+        },
+      ],
       new Date('2026-07-26T00:00:00Z'),
       'stage'
     );
@@ -315,7 +353,13 @@ describe('geen-tradeitem-bestand telt niet mee als technische fout (7b)', () => 
     // Exact het live-scenario: 487 van 1862 GTINs hebben geen trade-item-bestand.
     // Als api-fout geteld = 26,2% → poort dicht. Als normaal beeld = 0% → open.
     const v = evaluateGate({
-      reasons: { ...emptyReasonCounts(), ok: 820, '404': 143, 'lege-declaratie': 412, 'geen-tradeitem-bestand': 487 },
+      reasons: {
+        ...emptyReasonCounts(),
+        ok: 820,
+        '404': 143,
+        'lege-declaratie': 412,
+        'geen-tradeitem-bestand': 487,
+      },
       universeSize: 1862,
       universeTotal: 1862,
       deadlineHit: false,

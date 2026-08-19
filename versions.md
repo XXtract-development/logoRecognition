@@ -1,5 +1,25 @@
 # Versiegeschiedenis
 
+## 19 augustus 2026
+
+**Producten waarvan het gegevensbestand ontbreekt komen weer in de beoordeelwachtrij**
+
+Van 442 producten is het bestand met de productgegevens uit de catalogus verdwenen. Daardoor
+was niet te zien welke keurmerken erop zitten, en kwamen ze nergens meer terug om te
+beoordelen — de wachtrij liep leeg.
+
+Die gegevens bleken nog wel te bestaan, ergens anders. Ze zijn één keer opgehaald en
+vastgelegd. Daarmee komen er **238 producten** terug in de wachtrij, met in totaal 475
+keurmerkvermeldingen.
+
+Wat je op het beoordeelscherm ziet veranderen: bij deze producten staat er voortaan bij dat
+de keurmerkvermelding uit een momentopname komt, met de datum erbij. Dat is met opzet. De
+gegevens zijn bevroren op het moment van ophalen en niet meer te vergelijken met het
+originele bestand, dus je hoort te weten dat je niet naar de actuele stand kijkt.
+
+Deze producten worden ook nooit automatisch goedgekeurd. Ze gaan altijd langs een mens.
+
+
 ## 18 augustus 2026
 
 **Het beoordeelscherm klopt nu wél: knoppen in beeld en het etiket niet meer afgekapt**
