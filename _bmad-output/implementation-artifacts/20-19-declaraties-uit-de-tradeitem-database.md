@@ -1,6 +1,6 @@
 # Story 20.19: Declaraties uit een momentopname van de trade-item-database
 
-Status: **ready for dev** — spec versie 6.
+Status: **done** — gebouwd, gereviewd, uitgerold en gemeten op 19 augustus 2026.
 
 > **Waarom niet nog een reviewronde (besluit 2026-08-19).** De spec is door vier adversariële
 > ronden gegaan (`review-20-19.md` t/m `-v5.md`), alle vier met verdict FAIL, en elke bevinding is
@@ -443,18 +443,39 @@ sleutels — dat bewijst dat de `scripts/`-val vermeden is.
 
 ### Wat nog moet, en waar de meting landt
 
-AC12 (de voor/na-droogloop) is **permission-gated** en dus niet uitgevoerd. Hetzelfde geldt voor de
-containerverificatie, het herbouwen van de index en het opruimen van cachesleutels. Zodra daar
-toestemming voor is, komt de meting in deze sectie te staan, met de verwachting ernaast:
+**Uitgerold en gemeten op 19 augustus 2026**, met toestemming van Friso.
+
+`VERIFIED` — de gecompileerde momentopname draait in de acceptatiecontainer
+(`app-qsookwow8koko0kwg00g0cwk-165822722086`): 442 sleutels, oogstdatum 2026-08-19, 238 met
+keurmerk. Daarmee is AC13's containerpunt afgedekt: een lokaal groene suite bewijst dit niet, dit
+wel.
+
+`VERIFIED` — droogloop van de indexbouwer op acceptatie, `KEURMERK_INDEX_LIMIT=2000`, universum
+1862:
 
 | wat | verwacht | gemeten |
 |---|---|---|
-| producten met reden `uit-momentopname` | 238 | *nog te meten* |
-| GTINs op `geen-tradeitem-bestand` die niet in de momentopname staan | 0 bij de eerste run | *nog te meten* |
-| groei van de index (producten en unieke `(fieldType, code)`-sleutels) | te meten | *nog te meten* |
+| producten met reden `uit-momentopname` | **238** | **238** |
+| producten die blijven hangen op `geen-tradeitem-bestand` | 0 | **0** |
+| producten met gegevens in de index | — | **815 → 1082** |
+| unieke `(fieldType, code)`-sleutels | — | **78 → 90** |
+| technische fouten | onder de 5%-drempel | **0,0%** |
+| kwaliteitspoort | doorgang | **DOORGANG** |
 
-Randvoorwaarde bij die droogloop: `KEURMERK_INDEX_LIMIT` op minstens 1870, anders blokkeert
-poortregel 7d de run en meet je een kwart van de populatie.
+Exact op de belofte, geen afwijking. De 204 sleutels die aantoonbaar niets declareren komen correct
+bij de lege declaraties terecht: die teller gaat van 429 naar 633 (429 + 204).
+
+De groei van 815 naar 1082 is 267 en niet 238; het verschil van 29 is de al eerder gemeten winst van
+een volledige herbouw (+29 producten, +1 code), die losstaat van deze story en hier meekomt omdat de
+droogloop het hele universum meeneemt.
+
+**Aandachtspunt voor een volgende run:** de regel "Momentopname-inzet" telt alleen daadwerkelijke
+opzoekingen. Bij een tweede droogloop met een warme cache (1862 hits / 0 misses) staat hij dus op
+nul terwijl de reden-verdeling wél 238 laat zien. De eerste run gaf 442 misses. Dat is geen fout,
+maar het leest verwarrend — een volgende story kan die teller uit de cache-hits afleiden.
+
+**Nog steeds permission-gated en NIET uitgevoerd:** het herbouwen van de live index (een
+schrijfactie) en het opruimen van cachesleutels.
 
 ## Change Log
 
