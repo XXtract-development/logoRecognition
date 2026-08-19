@@ -1,6 +1,25 @@
 # Story 20.2: De beoordeelwachtrij vult zich weer, en blijft dat doen
 
-Status: **spec versie 1 — wacht op tegenlezen.**
+Status: **superseded — NIET BOUWEN.** Opgevolgd door
+`20-20-declaratie-oogst-weer-aan-de-gang.md`.
+
+> **Afgekeurd op 19 augustus 2026** door `review-20-2.md` (FAIL, 4 hoog / 9 middel / 3 laag). De
+> diagnose in deze spec klopt — niets bouwt de kaart — maar de oplossing was te smal en het nummer
+> was al bezet.
+>
+> - **Een meegroeiende kaart lost niets op zolang niets de oogst aandrijft.** De enige planning op
+>   acceptatie start de vólume-oogst, niet de declaratie-oogst. Deze spec had daar geen criterium
+>   voor en zou het handwerk dus verplaatst hebben in plaats van weggenomen.
+> - **Bijna een kwart van het rekenwerk is kansloos:** 209 paren Nutri-Score (de sleutel geeft
+>   `A`..`E`, de referenties heten `NUTRISCORE_A`..`E`) en 281 paren op 43 codes zonder ook maar
+>   één actieve referentie.
+> - **De echte kostenpost stond er niet in.** De ontdubbeling onthoudt alleen paren die een item
+>   opléverden (312); de ruim 1200 die zijn nagekeken en niets opleverden worden elke ronde opnieuw
+>   doorgerekend. En de controle staat ná de dure regio-analyse.
+> - **Het nummer 20.2 is bezet** door de oogster zelf, inclusief zijn toetsen en het crop-voorvoegsel.
+>
+> Wat overeind blijft: de diagnose, de gemeten getallen en de bouwer-uit-de-index. Die zijn
+> overgenomen in story 20.20.
 
 > **Aanleiding, gemeten op 19 augustus 2026.** Story 20.19 maakte de declaraties van 442 producten
 > weer leesbaar en liet de keurmerkindex groeien van 815 naar 1082 producten. Maar de
