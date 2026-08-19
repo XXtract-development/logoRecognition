@@ -391,6 +391,71 @@ eerder de region proposer een deploy.
 - [Source: apps/web/src/components/review/MobileReviewDeck.tsx:417 — de zesde plek, buiten apps/api]
 - [Source: Dockerfile:57-58 — `src/` en `prisma/` worden gekopieerd, `scripts/` niet]
 
+## Bouwaantekening — 19 augustus 2026
+
+**Gebouwd op tak `story/20-19-momentopname`**, twee commits: de implementatie en de verwerking van
+de code review (`review-20-19-code.md`, verdict FAIL, 2 hoog / 4 midden / 6 laag — alle punten
+verwerkt, geen waivers).
+
+**De bouwlus (`bmad-loop`) heeft het niet gedaan.** Drie sessies, elk met tien herkansingen, vielen
+alle drie om op `API Error: Connection refused` na ruim drie minuten denken. Kleine en middelgrote
+opdrachtregel-sessies in exact dezelfde map en omgeving slaagden wél, dus het zit in de lange, zware
+sessies die de lus opstart — niet in de story en niet in de opzet. Daarna met de hand gebouwd, met
+dezelfde poorten.
+
+**De fout die de code review vond, en die de story bijna stilzwijgend brak.** De vlag `useSnapshot`
+beschermde de **aanroep**, maar niet de **cachesleutel**. Een aanroep mét de terugval schreef
+`uit-momentopname` inclusief marks naar de gedeelde Redis-sleutel, en de eerstvolgende aanroep
+zónder terugval kreeg dat gewoon terug. `verify-flow.ts` kijkt alleen naar de marks en niet naar de
+reden, dus de bevroren Nutri-Score-letters liepen alsnog naar `nominateFromKruischeck` — precies wat
+besluit 2 uitsluit. Zelf gereproduceerd vóór de reparatie. Opgelost met twee elkaar afdekkende
+maatregelen: een eigen cachesleutel (`:snap`) én een weigering van een momentopname-uitkomst zodra
+de aanroeper er niet om vraagt.
+
+**Waarom de eerste AC1-toets dat niet zag.** Die las brontekst en toetste dat de drie
+niet-deelnemers het woord `useSnapshot` niet opschrijven. Dat bleef waar terwijl de gegevens er via
+de cache omheen liepen. Er staat nu een gedragstoets naast: vullen met de vlag, lezen zonder.
+
+### RED-bewijs
+
+Elke grendel teruggedraaid, met de toets die dan omvalt:
+
+| grendel | toets die rood wordt |
+|---|---|
+| terugval standaard uit (AC1) | "zonder opties blijft de uitkomst `geen-tradeitem-bestand`" |
+| nooit reden `ok` (AC3) | "geeft nooit reden `ok` terug" |
+| hit-als-miss op `geen-tradeitem-bestand` (AC8) | "een gecachete `geen-tradeitem-bestand` blokkeert een verse oogst niet" |
+| oogstdatum vergelijken (AC8) | "een hit uit een OUDERE oogst telt als miss" |
+| doelmarktcontrole (AC10) | "een andere doelmarkt levert niets" |
+| poort van het beoordeelscherm (AC6) | "toont de declaratie ook als hij uit de momentopname komt" |
+| vastpin op de aanroepers (AC1) | "verify-flow.ts zet de momentopname NIET aan" |
+| eigen cachesleutel (het lek) | "de twee paden gebruiken gescheiden cachesleutels" |
+| tweede grendel (het lek) | rechtstreeks getoetst — de twee maatregelen dekken elkaar af, dus geen enkele gedragstoets betrapt hem alleen |
+
+Beide lek-maatregelen tegelijk weghalen laat de gedragstoets omvallen; dat is het bewijs dat die
+toets het lek bewaakt en niet de implementatie.
+
+### Poorten
+
+`VERIFIED`: api 1084 toetsen groen, web 200 groen, `tsc` schoon in beide, `eslint` 0 fouten (86
+bestaande waarschuwingen, ongewijzigd). De gecompileerde momentopname staat in `dist/` met alle 442
+sleutels — dat bewijst dat de `scripts/`-val vermeden is.
+
+### Wat nog moet, en waar de meting landt
+
+AC12 (de voor/na-droogloop) is **permission-gated** en dus niet uitgevoerd. Hetzelfde geldt voor de
+containerverificatie, het herbouwen van de index en het opruimen van cachesleutels. Zodra daar
+toestemming voor is, komt de meting in deze sectie te staan, met de verwachting ernaast:
+
+| wat | verwacht | gemeten |
+|---|---|---|
+| producten met reden `uit-momentopname` | 238 | *nog te meten* |
+| GTINs op `geen-tradeitem-bestand` die niet in de momentopname staan | 0 bij de eerste run | *nog te meten* |
+| groei van de index (producten en unieke `(fieldType, code)`-sleutels) | te meten | *nog te meten* |
+
+Randvoorwaarde bij die droogloop: `KEURMERK_INDEX_LIMIT` op minstens 1870, anders blokkeert
+poortregel 7d de run en meet je een kwart van de populatie.
+
 ## Change Log
 
 - 2026-08-19: **Versie 6** na `review-20-19-v5.md` (FAIL, 3 high / 10 medium / 5 low). De drie highs

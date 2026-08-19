@@ -539,6 +539,7 @@ export const marksCacheStats = { hits: 0, misses: 0 };
 export const snapshotStats = { withMarks: 0, empty: 0, notInSnapshot: 0, staleCacheDropped: 0 };
 
 export function resetSnapshotStats(): void {
+  doelmarktGewaarschuwd = false;
   snapshotStats.withMarks = 0;
   snapshotStats.empty = 0;
   snapshotStats.notInSnapshot = 0;
@@ -558,6 +559,9 @@ export function snapshotAgeDays(now: Date = new Date()): number {
  * declaratie op productie verandert: de XML-route komt er immers nooit aan toe.
  */
 export const SNAPSHOT_MAX_AGE_DAYS = 180;
+
+/** Zie punt 10: de doelmarkt-waarschuwing is procesbreed, niet per GTIN. */
+let doelmarktGewaarschuwd = false;
 
 export function resetMarksCacheStats(): void {
   marksCacheStats.hits = 0;
@@ -678,9 +682,18 @@ export function nutriscoreDeclaredCodes(
  */
 export function shouldTreatCacheHitAsMiss(
   cached: DeclaredMarksResult,
-  useSnapshot: boolean
+  useSnapshot: boolean,
+  /**
+   * Punt 4 uit de code review: begrens de omzeiling tot sleutels die daadwerkelijk
+   * in de momentopname staan. Anders gaat elk NIET-geoogst product permanent langs
+   * de cache — en die groep groeit met elk nieuw product, dus dat zou stilaan de hele
+   * cachewinst opeten en per run 442+ extra catalogus-verzoeken kosten.
+   */
+  staatInMomentopname = true
 ): boolean {
-  if (useSnapshot && cached.reason === 'geen-tradeitem-bestand') return true;
+  if (useSnapshot && cached.reason === 'geen-tradeitem-bestand') {
+    return staatInMomentopname;
+  }
 
   // TWEEDE GRENDEL op besluit 2, naast de eigen cachesleutel hierboven. Komt een
   // uitkomst uit de momentopname en vraagt de aanroeper er niet om, dan krijgt hij
@@ -728,11 +741,17 @@ export function lookupSnapshot(
   // op iets anders staan, dan mist ELKE opzoeking zonder foutmelding en zonder
   // verschil met "niet gemeten". Dat moet luid zijn, niet stil.
   if (targetMarket !== TRADEITEM_SNAPSHOT_META.targetMarket) {
-    logger.warn('Momentopname overgeslagen: andere doelmarkt dan geoogst', {
-      gtin,
-      gevraagd: targetMarket,
-      geoogst: TRADEITEM_SNAPSHOT_META.targetMarket,
-    });
+    // Punt 10 uit de code review: één keer per proces. Dit is een instellingsfout die
+    // voor ELKE GTIN geldt; per product waarschuwen levert 1870 identieke regels op
+    // en verdrinkt precies het signaal dat je wilde zien.
+    if (!doelmarktGewaarschuwd) {
+      doelmarktGewaarschuwd = true;
+      logger.warn('Momentopname overgeslagen: andere doelmarkt dan geoogst', {
+        gevraagd: targetMarket,
+        geoogst: TRADEITEM_SNAPSHOT_META.targetMarket,
+        gevolg: 'de terugval levert niets op zolang dit verschil bestaat',
+      });
+    }
     return null;
   }
 
@@ -799,7 +818,11 @@ export async function resolveDeclaredMarks(
   let gln: string | null = knownGln ?? null;
   try {
     if (!gln) {
-      // Story 20.19 (AC11): mét orderBy. Zonder was de keuze bij een GTIN met
+      // Story 20.19 (AC11): mét orderBy. NEVENEFFECT, bewust aanvaard: voor een GTIN
+      // met meerdere gln's kan de gekozen gln nu een ANDERE zijn dan voorheen, en
+      // daarmee ook een andere cachesleutel. Die producten doen dus één keer een
+      // verse catalogus-aanroep; de oude entry verloopt vanzelf binnen zijn TTL.
+      // Zonder was de keuze bij een GTIN met
       // meerdere gln's niet gegarandeerd dezelfde als de gln waarmee geoogst is —
       // de sleutel wijkt dan af en de opzoeking mist stilzwijgend. Fail-open blijft
       // het gedrag, maar nu is het tenminste herhaalbaar.
@@ -825,12 +848,20 @@ export async function resolveDeclaredMarks(
 
   const key = marksCacheKey(gln, gtin, targetMarket, catalogEnvTag(baseUrl), useSnapshot);
   const cached = await marksCacheRead(key, gtin);
-  if (cached && !shouldTreatCacheHitAsMiss(cached, useSnapshot)) {
+  const inMomentopname =
+    TRADEITEM_SNAPSHOT[`${gln}-${gtin}-${targetMarket}`] !== undefined;
+  if (cached && !shouldTreatCacheHitAsMiss(cached, useSnapshot, inMomentopname)) {
     marksCacheStats.hits += 1;
     return cached;
   }
-  if (cached) snapshotStats.staleCacheDropped += 1;
-  marksCacheStats.misses += 1;
+  if (cached) {
+    // Punt 7 uit de code review: dit was een HIT die wij bewust laten vallen. Hem als
+    // miss tellen vervuilt de cache-statistiek waarmee 19.16 aantoont dat de cache
+    // werkt; hij krijgt daarom een eigen teller.
+    snapshotStats.staleCacheDropped += 1;
+  } else {
+    marksCacheStats.misses += 1;
+  }
 
   const { xml, reason } = await fetchTradeItemXmlWithRetry(baseUrl, apiKey, gln, gtin, targetMarket);
   let result: DeclaredMarksResult;

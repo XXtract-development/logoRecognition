@@ -229,7 +229,15 @@ describe('AC1 — besluit 2 is vastgepind op de aanroepers, niet op goed vertrou
   // je zou elke aanroeper apart moeten naspelen. Wie hier een regel toevoegt, moet
   // bewust door deze toets heen.
   const wortel = join(__dirname, '..', '..', '..');
-  const lees = (rel: string): string => readFileSync(join(wortel, rel), 'utf8');
+  /**
+   * Leest de bron ZONDER commentaar. Punt 9 uit de code review: anders zou een
+   * toelichting als "we zetten useSnapshot hier bewust niet aan" deze toets laten
+   * omvallen — precies de zin die iemand zou schrijven om het goed te doen.
+   */
+  const lees = (rel: string): string =>
+    readFileSync(join(wortel, rel), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/(^|[^:])\/\/.*$/gm, '$1');
 
   const MOETEN_UIT = [
     // Voegt Nutri-Score-letters samen in `declaredCodes`; die lopen door naar

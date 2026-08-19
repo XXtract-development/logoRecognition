@@ -20,6 +20,14 @@ const discoverArtwork = vi.fn();
 vi.mock('../../services/t3777-declarations', () => ({
   resolveDeclaredMarks: (...args: unknown[]) => resolveDeclaredMarks(...args),
   catalogEnvTag: (base: string) => (base.includes('stage') ? 'stage' : 'acc'),
+  // Story 20.19 — de indexbouwer drukt de stand van de momentopname af en zet de
+  // procesbrede tellers terug aan het begin van een run.
+  catalogFetchRetries: () => 0,
+  marksCacheStats: { hits: 0, misses: 0 },
+  snapshotStats: { withMarks: 0, empty: 0, notInSnapshot: 0, staleCacheDropped: 0 },
+  resetSnapshotStats: vi.fn(),
+  snapshotAgeDays: () => 0,
+  SNAPSHOT_MAX_AGE_DAYS: 180,
 }));
 vi.mock('../../services/mediaserver-client', () => ({
   mediaServerClient: { discoverArtwork: (...a: unknown[]) => discoverArtwork(...a) },

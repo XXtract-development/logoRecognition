@@ -50,6 +50,7 @@ import {
   catalogFetchRetries,
   marksCacheStats,
   snapshotStats,
+  resetSnapshotStats,
   snapshotAgeDays,
   SNAPSHOT_MAX_AGE_DAYS,
   type DeclaredMark,
@@ -432,6 +433,11 @@ export async function collectGtinData(
     onProgress?: (line: string) => void;
   } = {}
 ): Promise<CollectOutcome> {
+  // Punt 6 uit de code review: de tellers zijn procesbreed. Zonder deze reset telt een
+  // tweede run in hetzelfde proces (tests, of twee runs achter elkaar) door op de
+  // eerste, en klopt het afgedrukte getal niet meer.
+  resetSnapshotStats();
+
   const concurrency = opts.concurrency ?? getConcurrency();
   const gtinTimeoutMs = opts.gtinTimeoutMs ?? getGtinTimeoutMs();
   const maxRuntimeMs = opts.maxRuntimeMs ?? getMaxRuntimeMs();
