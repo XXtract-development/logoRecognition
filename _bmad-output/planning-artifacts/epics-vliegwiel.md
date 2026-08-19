@@ -132,6 +132,10 @@ Het historische archief (39k producten) krijgt GLN-dekking zodat declaratie-look
 Het vliegwiel wordt gericht gevoed: via de GS1-declaraties selecteren we etiketten die gegarandeerd een keurmerk bevatten, gebalanceerd per keurmerk (tot de class-cap), in plaats van blind het hele archief te verwerken. Een spike ontsluit eerst de ACC-verwerkingstoegang (media-index + catalog-baseline; bestanden staan al gesynct) en meet de werkelijke dekking; daarna parser-uitbreiding naar 5/5 velden, de keurmerk→etiket-index, en de gebalanceerde sampler. Na deze epic wordt de brandstoftank (Epic 18) gericht én gebalanceerd benut.
 **FRs covered:** FR-22 (+ 5/5-dekking raakt FR-1/12/15/20)
 
+### Epic 20: Een werkbare beoordeelronde en een oogst die blijft leveren
+Epic 19 zorgt dat we de JUISTE etiketten verwerken; Epic 20 zorgt dat een mens ze ook daadwerkelijk kan beoordelen en dat de toevoer niet opdroogt. Twee sporen: (a) het beoordeelscherm — bruikbaar op een telefoon, met een opmaak die gemeten wordt in plaats van op het oog beoordeeld; (b) de oogst — geen mislabels van gelijkende iconen, geen technische snijlijnpagina's, geen stille dood door de geheugengrens, en een declaratiebron die zichtbaar en herstelbaar is als hij wegvalt.
+**FRs covered:** FR-23, FR-24 (voortbouwend op FR-22)
+
 **Volgorde en afhankelijkheden:** 13 → 14 → 15 → 16 → 17 → 18 → 19. Epic 13 is standalone; 14 bouwt op de gold-set-opslag uit 13; 15 leest de state uit 13/14; 16 haakt op dezelfde paden als 13 maar staat functioneel los; 17 vereist de poort uit 13; 18 is onafhankelijk van 14–17 en kan desgewenst parallel; 19 bouwt op de poort (13), het bootstrap-/nominatiepad (17) en de brandstoftoegang (18), en start met een spike die de ACC-verwerkingstoegang ontsluit.
 
 **Coördinatie-noot (overview-endpoint en crosscheck-hook):** het endpoint `/api/v1/flywheel/overview` wordt modulair opgebouwd — per dashboard-paneel een eigen sub-service — omdat vijf epics (13 t/m 17) er panelen aan leveren; zo blijft elke epic zelfstandig integreerbaar zonder merge-conflicten op één monoliet-handler. Story 16.1 hergebruikt exact de 13.2-hook-plek in `apps/api/src/services/artwork-crosscheck.ts` (één instrumentatiepunt, twee afnemers).
@@ -975,3 +979,54 @@ So that herkenning niet stilletjes buren mist door een verkeerd geconfigureerde 
 **Then** bouwt hij eerst een gevulde ivfflat-index in de degenererende toestand op (anders doet Postgres seqscan en reproduceert de bug niet), en bewijst rood→groen dat de fix tot N buren teruggeeft.
 
 *Bronnen: diagnose + ACC-verificatie 2026-07-11; `apps/ml-service/app/services/database.py:601` (`find_similar_references`), migratie `0005_add_reference_embeddings`. Onafhankelijk, laag risico; raakt herkenning van álle codes via de referentie-match. Constraint: index-herbouw/REINDEX op ACC alleen met expliciete toestemming.*
+
+
+---
+
+## Epic 20: Een werkbare beoordeelronde en een oogst die blijft leveren
+
+*Toegevoegd 2026-08-19 via correct-course (`sprint-change-proposal-2026-08-19.md`). Negentien stories waren al gebouwd onder deze noemer voordat het epic bestond; dit is de registratie achteraf, niet een nieuwe koers. Het besluit van 2026-07-07 wees een Epic 20 toen af omdat het "dezelfde doelstelling" had als Epic 19, maar hield de deur open ("optie blijft open als de lijn verder groeit"). De lijn is met negentien stories gegroeid, en de doelstelling is inmiddels wél een andere: Epic 19 gaat over wélke etiketten je verwerkt, Epic 20 over of een mens ze kan beoordelen en of de toevoer blijft komen.*
+
+Epic 19 levert gerichte brandstof. Die brandstof is waardeloos als de beoordelaar er niet doorheen komt of als de toevoer stilvalt. Deze epic dekt beide: een beoordeelscherm dat op een telefoon werkt, en een oogst die niet stilzwijgend stopt of vervuilt. (FR-23 + FR-24 · ARCH-4)
+
+**FRs covered:** FR-23, FR-24
+
+**Volgorde:** de twee sporen lopen onafhankelijk van elkaar. Binnen spoor (a) is 20.15 (de meetbare opmaaktest) een harde voorwaarde voor 20.16 en 20.17 — zonder meting is opmaak niet toetsbaar, en precies dat liet twee eerdere stories groen afgetekend worden terwijl ze stuk waren.
+
+### Spoor (a) — Het beoordeelscherm
+
+| Story | Onderwerp |
+|---|---|
+| 20.3 | Mobiele crop-flow in de review-deck — tekenen zonder swipe-conflict |
+| 20.4 | Getekend kader indienen kan alleen via de hoofdknop, met keurmerkkeuze vooraf |
+| 20.5 | Correctie terugtonen en het keurmerk expliciet op de bevestigknop |
+| 20.6 | Per-item beeld-endpoints revalideren in plaats van vijf minuten blind cachen |
+| 20.8 | Voorbeeld-logo altijd aanwezig (gids-fallback plus placeholder) |
+| 20.10 | "Geen keurmerk" afwijzen werkt ook op een kaderloos reviewitem |
+| 20.12 | Review-deck toont het artwork paginabreed |
+| 20.13 | Voorbeeldlogo kiezen op HERKOMST, niet op alfabet |
+| 20.14 | Review-deck vult de beschikbare schermhoogte |
+| 20.15 | Een test die de opmaak van het beoordeelscherm écht meet |
+| 20.16 | Alle bediening in beeld, beeld niet meer afgekapt |
+| 20.17 | Contextbeeld dat een klein keurmerk ook écht groot toont |
+
+*Kernbeslissing in dit spoor: opmaak wordt gemeten in een echte browser met layout (Playwright), niet in jsdom of happy-dom. Die twee doen geen layout, en daardoor zijn twee stories groen afgetekend terwijl het scherm stuk was. Story 20.15 legt die meetopstelling vast.*
+
+### Spoor (b) — De oogst
+
+| Story | Onderwerp | Status-uitzondering |
+|---|---|---|
+| 20.1 | Gids-zaad en declaratiemeting voor categorie 3 (EU_consumerUsageLabelCodeList) | |
+| 20.2 | Sampler-run en het vullen van categorie 3 | geen story-bestand; voortgang zat alleen in het volgbestand |
+| 20.7 | Cross-code-guard tegen mislabels van gelijkende iconen | |
+| 20.9 | Keyline-guard — technische snijlijn- en cutterpagina's uit de oogst weren | |
+| 20.11 | De declaratie-oogst mag niet stilzwijgend door de geheugengrens gedood worden | |
+| ~~20.18~~ | ~~Verouderde gln blokkeert de oogst~~ | **VERVALLEN** — afgekeurd 2026-08-18; de aanname is nagemeten en weerlegd (0 van 62 gevallen opgelost) |
+| 20.19 | Declaraties uit een momentopname van de trade-item-database | specificatiefase; de geoogste gegevens en de generator zijn geleverd, de bedrading nog niet |
+
+*Kernbeslissingen in 20.19, allebei van Friso op 2026-08-19: de acceptatie-omgeving krijgt géén live verbinding met de productiedatabase (de uitlezing is eenmalig met de hand gedaan en als momentopname in de code vastgelegd), en de geoogste gegevens gaan uitsluitend naar de beoordeelwachtrij — nooit naar automatische goedkeuring of het aanmaken van referentielogo's, omdat ze bevroren zijn en er voor deze producten geen bestand is om ze tegen af te zetten.*
+
+### Wat NIET in deze epic zit
+
+- Open detectie (12.5) en de bijbehorende acceptatieset (12.6) — fase 2, wacht op menselijk labelwerk.
+- Modelbewaking en automatische terugdraaiing (Epic 10) en de AI-agenten (Epic 11) — ingepland ná Epic 20, besluit Friso 2026-08-19.
