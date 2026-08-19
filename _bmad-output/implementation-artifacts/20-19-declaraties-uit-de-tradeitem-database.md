@@ -301,15 +301,24 @@ eerder de region proposer een deploy.
     | GTINs die op `geen-tradeitem-bestand` liepen en niet in de momentopname staan | **0** bij de eerste run |
     | groei van de index in producten en in unieke `(fieldType, code)`-sleutels | te meten |
 
-    **De droogloop vraagt `KEURMERK_INDEX_LIMIT` op minstens het universumtotaal (~1863).**
-    `VERIFIED`: de standaard is **500** (`build-keurmerk-index.ts:261-264`) en poortregel 7d blokkeert
-    een run waarin `universeSize < universeTotal`. Zonder die instelling meet de droogloop een kwart
-    van de populatie en leest dat als een afwijking van 75%.
+    **De droogloop vraagt `KEURMERK_INDEX_LIMIT` op minstens het universumtotaal.** `VERIFIED, eigen
+    meting op de acceptatie-database, 19 augustus 2026`: het universum telt **1870** unieke
+    `(gln, gtin)`-paren. De standaard is **500** (`build-keurmerk-index.ts:261-264`) en poortregel 7d
+    blokkeert een run waarin `universeSize < universeTotal`. Zonder die instelling meet de droogloop
+    een kwart van de populatie en leest dat als een afwijking van 75%.
 
-    *`INFERENCE`, nog te meten vóór de bouw: dat alle 442 sleutels in het universum van de
-    indexbouwer zitten. Ze komen uit de cache van een eerdere indexrun, dus dat zou moeten, maar
-    `artwork_imports` is er niet op nagelezen. `VERIFIED` wél: de 442 sleutels bevatten 442 unieke
-    GTINs, dus "442 sleutels = 442 producten" klopt.*
+    `VERIFIED, eigen meting` — **alle 442 sleutels zitten in dat universum**, geen enkele ontbreekt.
+    Versie 6 voerde dit nog als aanname op; het is nu gemeten:
+
+    ```sql
+    -- acceptatie, alleen lezen
+    SELECT DISTINCT gln, gtin FROM artwork_imports WHERE gln IS NOT NULL;
+    -- daarna de 442 (gln, gtin)-paren uit de momentopname ertegen houden
+    -- uitkomst: universum 1870, gevraagd 442, gevonden 442, ontbreekt 0
+    ```
+
+    De 442 sleutels bevatten bovendien 442 **unieke** GTINs, dus "442 sleutels = 442 producten"
+    klopt.
 
     Verwachting en meting naast elkaar in het story-record. Wijkt de meting meer dan 5% af, dan
     eerst uitzoeken waaróm voordat de story op `done` gaat.
@@ -380,7 +389,7 @@ eerder de region proposer een deploy.
   **H3:** een zesde codeplek in `apps/web` zet de declaratie uit voor precies de 238 producten van
   deze story; de poort accepteert nu de nieuwe reden en het scherm toont de herkomst. Verder:
   `uit-momentopname` mag nooit `ok` zijn (eigen criterium, want `bootstrap-run.ts:451` hangt eraan),
-  de gln-zorg is niet vervallen maar verplaatst, de meting vraagt `KEURMERK_INDEX_LIMIT` ≥ 1863, en
+  de gln-zorg is niet vervallen maar verplaatst, de meting vraagt `KEURMERK_INDEX_LIMIT` ≥ 1870, en
   het onmeetbare getal 204 is vervangen door een eigen telregel. In de code verwerkt: `--harvested-at`
   voor een vergelijkbare hertelling, de generator weigert nu ook onveilige sleutels, oogstdatums en
   doelmarkten, het oogstscript importeert de dienstlaag niet meer (die trok Prisma en de queue zijn
