@@ -275,3 +275,7 @@ _bmad-output/labelronde-*.html
 # context-blok). claude-mem staat uit; deze bestanden dragen niets.
 CLAUDE.md
 !/.claude/skills/**/CLAUDE.md
+.bmad-loop/runs/
+.bmad-loop/cache/
+.bmad-loop/policy.toml
+_bmad/render/
