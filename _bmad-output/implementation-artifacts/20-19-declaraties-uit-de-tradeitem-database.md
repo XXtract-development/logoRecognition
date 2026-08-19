@@ -335,8 +335,17 @@ eerder de region proposer een deploy.
     RED-bewijs voor AC1 (de drie niet-deelnemende aanroepers), AC3 (`uit-momentopname` ≠ `ok`), AC6
     (het beoordeelscherm) en AC8 (de cache-invalidatie op oogstdatum). De api-suite blijft groen.
 
-    Toon ná de bouw dat de gecompileerde momentopname in `dist/` staat en dat de indexbouwer hem in
-    de draaiende container leest — een testsuite die lokaal groen is bewijst dat niet.
+    Toon ná de bouw dat de gecompileerde momentopname in `dist/` staat — dat is lokaal te
+    controleren met een build.
+
+    > [!warning]
+    > **De container-verificatie is permission-gated en hoort NIET bij de bouw.** Aantonen dat de
+    > indexbouwer de momentopname in de dráaiende container leest vraagt een uitrol op de
+    > acceptatie-omgeving, en die vereist expliciete toestemming van Friso. Een geautomatiseerde
+    > bouwsessie voert dit **niet** uit; hij levert de story op zonder dit punt en meldt het als
+    > openstaand. Hetzelfde geldt voor elke andere schrijfactie op ACC of productie: de droogloop van
+    > AC12, het herbouwen van de index en het opruimen van cachesleutels zijn alle drie
+    > permission-gated en gebeuren pas ná de bouw, met toestemming.
 
 ## Wat NIET in deze story zit, met het getal erbij
 
