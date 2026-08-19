@@ -369,6 +369,7 @@ async function main(): Promise<void> {
           const [next, batch] = await redis.scan(
             cursor,
             'MATCH',
+            // Vangt ook de `:snap`-variant; het patroon eindigt bewust open.
             `marks:${envTag}:*`,
             'COUNT',
             1000
@@ -398,9 +399,13 @@ async function main(): Promise<void> {
             ) {
               return;
             }
-            // marks:{env}:{gln}:{gtin}:{tm} -> {gln}-{gtin}-{tm}
+            // marks:{env}:{gln}:{gtin}:{tm}[:snap] -> {gln}-{gtin}-{tm}
+            // De `:snap`-variant is de eigen cachesleutel van het momentopname-pad
+            // (story 20.19). Beide vormen wijzen naar hetzelfde product; dubbele
+            // sleutels worden verderop ontdubbeld.
             const parts = key.split(':');
             if (parts.length < 5 || parts[1] !== envTag) return;
+            if (parts.length > 5 && parts[5] !== 'snap') return;
             ids.push(`${parts[2]}-${parts[3]}-${parts[4]}`);
           });
         }

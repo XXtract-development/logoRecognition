@@ -564,9 +564,28 @@ export function resetMarksCacheStats(): void {
   marksCacheStats.misses = 0;
 }
 
-/** Separate cache namespace from the T3777-only crosscheck cache. */
-function marksCacheKey(gln: string, gtin: string, tm: string, envTag: string): string {
-  return `marks:${envTag}:${gln}:${gtin}:${tm}`;
+/**
+ * Separate cache namespace from the T3777-only crosscheck cache.
+ *
+ * Story 20.19 — het momentopname-pad krijgt een EIGEN sleutel (`:snap`). Zonder dat
+ * onderscheid deelt het zijn uitkomst met alle andere aanroepers: een aanroep mét
+ * de terugval schreef `uit-momentopname` inclusief marks weg, en de eerstvolgende
+ * aanroep ZONDER de terugval kreeg die gewoon terug uit de cache. De vlag beschermde
+ * de aanroep, niet de sleutel — en `verify-flow.ts` kijkt alleen naar de marks, niet
+ * naar de reden, dus de bevroren Nutri-Score-letters liepen alsnog door naar
+ * `nominateFromKruischeck`. Precies wat besluit 2 uitsluit.
+ *
+ * Beide paden draaien in hetzelfde proces (de API-server bedient zowel het
+ * beoordeelscherm-endpoint als de detectiestroom), dus dit was geen theoretisch lek.
+ */
+function marksCacheKey(
+  gln: string,
+  gtin: string,
+  tm: string,
+  envTag: string,
+  useSnapshot = false
+): string {
+  return `marks:${envTag}:${gln}:${gtin}:${tm}${useSnapshot ? ':snap' : ''}`;
 }
 
 /**
@@ -662,6 +681,21 @@ export function shouldTreatCacheHitAsMiss(
   useSnapshot: boolean
 ): boolean {
   if (useSnapshot && cached.reason === 'geen-tradeitem-bestand') return true;
+
+  // TWEEDE GRENDEL op besluit 2, naast de eigen cachesleutel hierboven. Komt een
+  // uitkomst uit de momentopname en vraagt de aanroeper er niet om, dan krijgt hij
+  // hem niet — ook niet als een oude sleutel, een handmatige schrijfactie of een
+  // toekomstige wijziging de twee naamruimtes ooit weer laat overlappen.
+  const uitMomentopname =
+    cached.reason === 'uit-momentopname' || cached.snapshotHarvestedAt !== undefined;
+  if (uitMomentopname && !useSnapshot) return true;
+
+  // Een uitkomst uit een ANDERE oogst dan de huidige: als miss behandelen, zodat een
+  // verse momentopname zichzelf oppikt. Een `uit-momentopname` zónder datum is een
+  // entry van vóór deze story of een handmatige — die telt ook als verlopen.
+  if (cached.reason === 'uit-momentopname' && cached.snapshotHarvestedAt === undefined) {
+    return true;
+  }
   if (
     cached.snapshotHarvestedAt !== undefined &&
     cached.snapshotHarvestedAt !== TRADEITEM_SNAPSHOT_META.harvestedAt
@@ -789,7 +823,7 @@ export async function resolveDeclaredMarks(
     return { marks: [], reason: 'gln-ontbreekt' };
   }
 
-  const key = marksCacheKey(gln, gtin, targetMarket, catalogEnvTag(baseUrl));
+  const key = marksCacheKey(gln, gtin, targetMarket, catalogEnvTag(baseUrl), useSnapshot);
   const cached = await marksCacheRead(key, gtin);
   if (cached && !shouldTreatCacheHitAsMiss(cached, useSnapshot)) {
     marksCacheStats.hits += 1;

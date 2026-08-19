@@ -668,7 +668,9 @@ function printPlan(
   if (snapshotStats.notInSnapshot > 0) {
     console.log(
       `  LET OP             : ${snapshotStats.notInSnapshot} GTIN(s) liepen op 'geen bestand' ` +
-        'en staan NIET in de momentopname — dat is de omvang van een verse oogst.'
+        'en zijn niet in de momentopname gevonden. Dat is een BOVENGRENS voor een verse ' +
+        'oogst: een GTIN met meerdere gln\'s kan hier ook staan omdat de gekozen gln ' +
+        'afwijkt van de gln waarmee geoogst is, niet omdat hij nooit geoogst is.'
     );
   }
   if (Number.isFinite(leeftijd) && leeftijd > SNAPSHOT_MAX_AGE_DAYS) {

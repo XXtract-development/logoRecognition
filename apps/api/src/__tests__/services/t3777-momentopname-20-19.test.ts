@@ -7,6 +7,7 @@
  * "File not found at path" — geen 404 — dus dat is wat we hier nabootsen.
  */
 
+import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -173,15 +174,16 @@ describe('AC8 — de cache mag de terugval niet blokkeren', () => {
     expect(shouldTreatCacheHitAsMiss(actueel, true)).toBe(false);
   });
 
-  it('een gecachete `geen-tradeitem-bestand` houdt de terugval niet 24 uur tegen', async () => {
-    // Eerst zonder terugval: de negatieve uitkomst landt in de cache.
-    const eerst = await resolveDeclaredMarks(GTIN_MET, GLN_MET);
-    expect(eerst.reason).toBe('geen-tradeitem-bestand');
-    expect(redisSetex).toHaveBeenCalled();
+  it('een gecachete `geen-tradeitem-bestand` op het momentopname-pad blokkeert een VERSE oogst niet', async () => {
+    // Het scenario dat er sinds de gescheiden sleutels toe doet: een eerdere run mét
+    // de terugval vond dit product nog niet in de momentopname en schreef
+    // `geen-tradeitem-bestand` naar de `:snap`-sleutel. Daarna is er opnieuw geoogst
+    // en staat het er wél in. Zonder de hit-als-miss-regel zou dat een etmaal duren.
+    const snapSleutel = `marks:acc:${GLN_MET}:${GTIN_MET}:${TM}:snap`;
+    redisStore.set(snapSleutel, JSON.stringify({ marks: [], reason: 'geen-tradeitem-bestand' }));
 
-    // Daarna mét terugval: de hit wordt als miss behandeld en de momentopname wint.
-    const daarna = await resolveDeclaredMarks(GTIN_MET, GLN_MET, { useSnapshot: true });
-    expect(daarna.reason).toBe('uit-momentopname');
+    const res = await resolveDeclaredMarks(GTIN_MET, GLN_MET, { useSnapshot: true });
+    expect(res.reason).toBe('uit-momentopname');
     expect(snapshotStats.staleCacheDropped).toBe(1);
   });
 
@@ -256,7 +258,77 @@ describe('AC1 — besluit 2 is vastgepind op de aanroepers, niet op goed vertrou
     expect(lees(rel)).toContain('useSnapshot: true');
   });
 
-  it('kent alle vijf de aanroepers — een zesde moet hier langs', () => {
-    expect([...MOETEN_UIT, ...MOETEN_AAN]).toHaveLength(5);
+  it('kent ALLE aanroepers in de codebase — een zesde moet hier langs', () => {
+    // De vorige versie van deze toets vergeleek de lijst met zichzelf
+    // (`toHaveLength(5)`) en bewees dus niets. Nu zoeken we de aanroepers echt op:
+    // verschijnt er ergens een zesde, dan valt deze toets om en moet iemand er
+    // bewust over nadenken.
+    const gevonden = execSync(
+      "grep -rln 'resolveDeclaredMarks(' src --include='*.ts' | grep -v __tests__ | sort",
+      { cwd: join(__dirname, '..', '..', '..'), encoding: 'utf8' }
+    )
+      .trim()
+      .split('\n')
+      .filter((f) => !f.endsWith('services/t3777-declarations.ts')); // de definitie zelf
+
+    expect(gevonden.sort()).toEqual([...MOETEN_UIT, ...MOETEN_AAN].sort());
+  });
+});
+
+describe('AC1 — GEDRAG: de bevroren gegevens bereiken een niet-deelnemer nooit', () => {
+  // Dit is de toets die er eerst niet was. De vastpin-toets hierboven leest bron en
+  // bewijst alleen dat niemand het woord `useSnapshot` opschrijft — dat bleef waar
+  // terwijl de gegevens er via de GEDEELDE CACHE alsnog doorheen liepen: een aanroep
+  // met de vlag schreef `uit-momentopname` weg, en de volgende zonder vlag kreeg dat
+  // uit de cache terug, marks en al. Alleen gedrag betrapt zoiets.
+  it('een aanroep zonder de vlag krijgt niets, ook niet nadat een aanroep MET de vlag heeft gecachet', async () => {
+    const met = await resolveDeclaredMarks(GTIN_MET, GLN_MET, { useSnapshot: true });
+    expect(met.reason).toBe('uit-momentopname');
+    expect(met.marks.length).toBeGreaterThan(0);
+
+    const zonder = await resolveDeclaredMarks(GTIN_MET, GLN_MET);
+    expect(zonder.reason).toBe('geen-tradeitem-bestand');
+    expect(zonder.marks).toEqual([]);
+    expect(zonder.snapshotHarvestedAt).toBeUndefined();
+  });
+
+  it('en andersom: een gecachete negatieve uitkomst blokkeert de terugval niet', async () => {
+    const zonder = await resolveDeclaredMarks(GTIN_MET, GLN_MET);
+    expect(zonder.reason).toBe('geen-tradeitem-bestand');
+
+    const met = await resolveDeclaredMarks(GTIN_MET, GLN_MET, { useSnapshot: true });
+    expect(met.reason).toBe('uit-momentopname');
+  });
+
+  it('de twee paden gebruiken gescheiden cachesleutels', async () => {
+    await resolveDeclaredMarks(GTIN_MET, GLN_MET, { useSnapshot: true });
+    await resolveDeclaredMarks(GTIN_MET, GLN_MET);
+    const sleutels = [...redisStore.keys()];
+    expect(sleutels.some((k) => k.endsWith(':snap'))).toBe(true);
+    expect(sleutels.some((k) => !k.endsWith(':snap'))).toBe(true);
+  });
+
+  it('een momentopname-uitkomst wordt geweigerd als de aanroeper er niet om vraagt', () => {
+    // De TWEEDE grendel, los van de gescheiden cachesleutels. Die twee dekken elkaar
+    // af — precies de bedoeling — maar daardoor betrapt geen enkele gedragstoets
+    // deze regel als je hem alleen weghaalt. Hier wordt hij rechtstreeks getoetst,
+    // zodat hij niet ongemerkt kan verdwijnen.
+    const uitMomentopname = {
+      marks: [{ code: 'GREEN_DOT', fieldType: 'PackagingMarkedLabelAccreditationCode' }],
+      reason: 'uit-momentopname' as const,
+      snapshotHarvestedAt: TRADEITEM_SNAPSHOT_META.harvestedAt,
+    };
+    expect(shouldTreatCacheHitAsMiss(uitMomentopname, false)).toBe(true);
+    expect(shouldTreatCacheHitAsMiss(uitMomentopname, true)).toBe(false);
+  });
+
+  it('een momentopname-uitkomst zonder oogstdatum telt als verlopen', () => {
+    // Een entry van voor deze story, of met de hand geschreven. Die mag niet als
+    // geldig doorgaan: we weten niet uit welke oogst hij komt.
+    const zonderDatum = {
+      marks: [{ code: 'GREEN_DOT', fieldType: 'PackagingMarkedLabelAccreditationCode' }],
+      reason: 'uit-momentopname' as const,
+    };
+    expect(shouldTreatCacheHitAsMiss(zonderDatum, true)).toBe(true);
   });
 });
