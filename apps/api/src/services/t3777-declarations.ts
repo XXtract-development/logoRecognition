@@ -532,12 +532,26 @@ export const marksCacheStats = { hits: 0, misses: 0 };
  * de redenentellers: `lege-declaratie` bevat al 429 producten uit de XML-route, en
  * dan zijn de twee bronnen niet meer te scheiden.
  *
- * `notInSnapshot` is het getal dat telt: dat zijn producten die op
- * `geen-tradeitem-bestand` lopen en NIET geoogst zijn — precies de hoeveelheid werk
- * voor een verse oogst.
+ * `notInSnapshot` is een BOVENGRENS voor een verse oogst, geen exact getal: het telt
+ * producten die op `geen-tradeitem-bestand` lopen en niet in de momentopname gevonden
+ * zijn. Daar zit ook een GTIN tussen waarvan de gekozen gln afwijkt van de gln
+ * waarmee geoogst is — die is wél geoogst, alleen onder een andere sleutel.
+ *
+ * `staleCacheDropped` telt hits die wij bewust laten vallen. Let op: die tellen NIET
+ * mee in `marksCacheStats`, dus `hits + misses` is sinds deze story niet meer gelijk
+ * aan het aantal aanroepen. Dat is met opzet — een bewust genegeerde hit is geen miss
+ * en zou de cache-statistiek van 19.16 vertekenen.
  */
 export const snapshotStats = { withMarks: 0, empty: 0, notInSnapshot: 0, staleCacheDropped: 0 };
 
+/**
+ * Zet de procesbrede tellers terug aan het begin van een run.
+ *
+ * Doet BEWUST iets meer dan de naam suggereert: ook de eenmalige
+ * doelmarkt-waarschuwing gaat terug op scherp. Een nieuwe run hoort die melding
+ * opnieuw te geven — anders zou een tweede run in hetzelfde proces stil blijven over
+ * een instelling die al zijn opzoekingen laat mislukken.
+ */
 export function resetSnapshotStats(): void {
   doelmarktGewaarschuwd = false;
   snapshotStats.withMarks = 0;
@@ -560,7 +574,7 @@ export function snapshotAgeDays(now: Date = new Date()): number {
  */
 export const SNAPSHOT_MAX_AGE_DAYS = 180;
 
-/** Zie punt 10: de doelmarkt-waarschuwing is procesbreed, niet per GTIN. */
+/** Procesbreed: de doelmarkt-waarschuwing hoort één keer per run te klinken, niet per GTIN. */
 let doelmarktGewaarschuwd = false;
 
 export function resetMarksCacheStats(): void {
@@ -846,10 +860,21 @@ export async function resolveDeclaredMarks(
     return { marks: [], reason: 'gln-ontbreekt' };
   }
 
-  const key = marksCacheKey(gln, gtin, targetMarket, catalogEnvTag(baseUrl), useSnapshot);
+  const inMomentopname = TRADEITEM_SNAPSHOT[`${gln}-${gtin}-${targetMarket}`] !== undefined;
+  // Alleen sleutels die ECHT geoogst zijn krijgen de eigen naamruimte. De eerste
+  // versie gaf hem aan elk product met de vlag aan, en dat kostte een tweede
+  // catalogus-aanroep plus een tweede cachesleutel voor de HELE populatie (~1870) —
+  // om 442 te beschermen. Gemeten: 2 aanroepen en 2 sleutels voor een gewoon werkend
+  // product. Veilig, want een momentopname-uitkomst kán alleen ontstaan voor een
+  // sleutel die in de momentopname staat; de rest deelt dus niets gevaarlijks.
+  const key = marksCacheKey(
+    gln,
+    gtin,
+    targetMarket,
+    catalogEnvTag(baseUrl),
+    useSnapshot && inMomentopname
+  );
   const cached = await marksCacheRead(key, gtin);
-  const inMomentopname =
-    TRADEITEM_SNAPSHOT[`${gln}-${gtin}-${targetMarket}`] !== undefined;
   if (cached && !shouldTreatCacheHitAsMiss(cached, useSnapshot, inMomentopname)) {
     marksCacheStats.hits += 1;
     return cached;

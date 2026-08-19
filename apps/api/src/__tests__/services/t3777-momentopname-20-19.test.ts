@@ -271,9 +271,12 @@ describe('AC1 — besluit 2 is vastgepind op de aanroepers, niet op goed vertrou
     // (`toHaveLength(5)`) en bewees dus niets. Nu zoeken we de aanroepers echt op:
     // verschijnt er ergens een zesde, dan valt deze toets om en moet iemand er
     // bewust over nadenken.
+    // Scant de HELE repository, niet alleen apps/api/src: een aanroeper kan overal
+    // opduiken, en de vorige versie keek maar in één map.
     const gevonden = execSync(
-      "grep -rln 'resolveDeclaredMarks(' src --include='*.ts' | grep -v __tests__ | sort",
-      { cwd: join(__dirname, '..', '..', '..'), encoding: 'utf8' }
+      "grep -rln 'resolveDeclaredMarks(' apps --include='*.ts' --include='*.tsx' " +
+        "| grep -v __tests__ | grep -v '/dist/' | sed 's|^apps/api/||' | sort",
+      { cwd: join(__dirname, '..', '..', '..', '..', '..'), encoding: 'utf8' }
     )
       .trim()
       .split('\n')
@@ -338,5 +341,58 @@ describe('AC1 — GEDRAG: de bevroren gegevens bereiken een niet-deelnemer nooit
       reason: 'uit-momentopname' as const,
     };
     expect(shouldTreatCacheHitAsMiss(zonderDatum, true)).toBe(true);
+  });
+});
+
+describe('de reparatie mag de cache niet voor de hele populatie breken', () => {
+  // De eerste versie van de eigen cachesleutel gaf hem aan ELK product zodra de vlag
+  // aanstond. Gemeten: twee catalogus-aanroepen en twee cachesleutels voor een gewoon
+  // werkend product dat niets met de momentopname te maken heeft — de cache was
+  // daarmee gebroken voor ~1870 producten om er 442 te beschermen. Zonder deze toets
+  // sluipt dat er zo weer in.
+  const NIET_GEOOGST = '01111111111111';
+
+  beforeEach(() => {
+    global.fetch = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      headers: new Headers({ 'content-length': '90' }),
+      text: async () =>
+        '<x><packagingMarkedLabelAccreditationCode>GREEN_DOT</packagingMarkedLabelAccreditationCode></x>',
+    })) as unknown as typeof fetch;
+  });
+
+  it('een product dat NIET geoogst is deelt zijn cachesleutel tussen beide paden', async () => {
+    await resolveDeclaredMarks(NIET_GEOOGST, GLN_MET, { useSnapshot: true });
+    await resolveDeclaredMarks(NIET_GEOOGST, GLN_MET);
+
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect([...redisStore.keys()]).toHaveLength(1);
+    expect([...redisStore.keys()][0].endsWith(':snap')).toBe(false);
+  });
+
+  it('een product dat WEL geoogst is houdt zijn eigen naamruimte', async () => {
+    await resolveDeclaredMarks(GTIN_MET, GLN_MET, { useSnapshot: true });
+    expect([...redisStore.keys()].some((k) => k.endsWith(':snap'))).toBe(true);
+  });
+});
+
+describe('de begrenzing van de cache-omzeiling is toetsbaar (punt 4)', () => {
+  // De derde parameter kreeg standaard `true` en werd door geen enkele toets
+  // meegegeven — draai je de begrenzing terug, dan bleef de suite groen. Precies het
+  // faalpatroon van de vorige ronde, dus hier expliciet.
+  const negatieveHit = { marks: [], reason: 'geen-tradeitem-bestand' } as const;
+
+  it('een NIET-geoogst product gaat gewoon langs de cache in plaats van eromheen', () => {
+    expect(shouldTreatCacheHitAsMiss(negatieveHit, true, false)).toBe(false);
+  });
+
+  it('een WEL geoogst product mag de cache omzeilen, anders bereikt de terugval hem nooit', () => {
+    expect(shouldTreatCacheHitAsMiss(negatieveHit, true, true)).toBe(true);
+  });
+
+  it('zonder de vlag verandert er niets, ongeacht de momentopname', () => {
+    expect(shouldTreatCacheHitAsMiss(negatieveHit, false, true)).toBe(false);
+    expect(shouldTreatCacheHitAsMiss(negatieveHit, false, false)).toBe(false);
   });
 });
