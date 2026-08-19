@@ -1,6 +1,6 @@
 # Story 20.19: Declaraties uit een momentopname van de trade-item-database
 
-Status: **spec versie 5 — wacht op her-review.**
+Status: **spec versie 6 — wacht op her-review.**
 
 > **Twee besluiten van Friso, 19 augustus 2026, die dit ontwerp bepalen.**
 >
@@ -19,9 +19,10 @@ Status: **spec versie 5 — wacht op her-review.**
 > daadwerkelijk in het geoogste bestand). Een verkeerd referentielogo is later moeilijk terug te
 > draaien; een beoordelaar die ernaar kijkt is dat niet.
 >
-> **Wat besluit 2 betekent voor de code:** `resolveDeclarations` — de ingang die de automatische
-> bevestiging voedt — wordt **niet aangeraakt**. Alleen `resolveDeclaredMarks`, de ingang van de
-> indexbouwer, krijgt de terugval.
+> **Wat besluit 2 betekent voor de code — gecorrigeerd in versie 6.** Versie 5 vertaalde dit naar
+> "raak alleen `resolveDeclaredMarks` aan". Dat was fout: die functie is een **gedeelde dienst met
+> vijf aanroepers**, en twee daarvan schrijven. De terugval hoort daarom **aan de aanroepkant**, niet
+> in de dienst. Zie AC1.
 
 <!-- Vijfde poging in dit dossier. Vier eerdere verklaringen voor de vastgelopen oogst zijn
 gemeten en gesneuveld (te kleine index; uitgeputte bron; gat in de bestandsopslag; verouderde
@@ -114,24 +115,36 @@ Dockerfile kopieert `apps/api/src/` en `apps/api/prisma/`, **niet** `apps/api/sc
 (`Dockerfile:57-58`). Een databestand in `scripts/` bereikt de container nooit. Dezelfde val kostte
 eerder de region proposer een deploy.
 
-> **Volgorde-afwijking, met opzet vastgelegd.** Commit `c7e3fa5` bracht de momentopname, de
-> generator en de toetsen naar `acc` terwijl deze spec nog op her-review wachtte. Dat draait de
-> gebruikelijke volgorde om. Er is niets uitgerold en niets bedraad — het is data en een generator —
-> maar het hoort genoemd. De bedrading zelf (AC1 t/m AC12) wacht wél op de review van déze versie.
+> **Volgorde-afwijking, met opzet vastgelegd.** Drie commits brachten de momentopname, de generator
+> en de toetsen naar `acc` terwijl deze spec nog op her-review wachtte: `c7e3fa5` (oogst),
+> `4670d80` (reparaties uit ronde 4) en de commit van deze ronde. Dat is geen uitglijder meer maar
+> een patroon, en het hoort zo genoemd. Wat het beperkt houdt: het gaat om **data en een generator**,
+> niets is uitgerold en niets is bedraad. De bedrading zelf (AC1 t/m AC13) is nog niet gebouwd en
+> wacht wél op de review van déze versie.
 
 ## Acceptatiecriteria
 
-1. **De terugval leest uit de momentopname, niet uit een database, en alleen bij de indexbouwer.**
-   Levert `resolveDeclaredMarks` de reden `geen-tradeitem-bestand`, dan wordt
-   `{gln}-{gtin}-{targetMarket}` opgezocht in `TRADEITEM_SNAPSHOT`. Geen netwerkaanroep, geen
-   driver, geen inloggegevens.
+1. **De terugval staat aan de aanroepkant, niet in de gedeelde dienst.** Dit is de correctie op
+   versie 5, die "alleen bij de indexbouwer" schreef en hem vervolgens onvoorwaardelijk in
+   `resolveDeclaredMarks` legde. `VERIFIED`: die functie heeft **vijf** aanroepers, niet één:
 
-   **`resolveDeclarations` wordt niet aangeraakt** (besluit 2). Daarmee vervallen twee zorgen uit
-   de vorige review: de gln die die ingang zelf opzoekt is niet geordend
-   (`prisma.artworkImport.findFirst({ where: { gtin, gln: { not: null } } })`,
-   `t3777-declarations.ts:293-299`, zonder `orderBy`) en zou dus een andere sleutel kunnen vormen
-   dan waarmee geoogst is; en de 61 producten zonder `PackagingMarkedLabelAccreditationCode` zouden
-   daar een lege lijst opleveren zonder eigen reden. Beide zijn nu niet aan de orde.
+   | aanroeper | regel | krijgt de momentopname? | waarom |
+   |---|---|---|---|
+   | `apps/api/src/scripts/build-keurmerk-index.ts` | `:458` | **ja** | de indexbouwer — vult de beoordeelwachtrij, het doel van deze story |
+   | `apps/api/src/api/v1/artwork-pipeline.ts` | `:849` | **ja** | `GET /artwork/declared-marks/:gtin`, uitsluitend lezen; zónder dit ziet de beoordelaar de declaratie niet |
+   | `apps/api/src/services/pipeline/verify-flow.ts` | `:423` | **nee** | voegt Nutri-Score-letters samen in `declaredCodes` en die lopen door naar `runFlywheelHooks` → `nominateFromKruischeck` — kandidaat-referenties, precies wat besluit 2 uitsluit |
+   | `apps/api/src/services/flywheel/bootstrap-run.ts` | `:450` | **nee** | guard vóór de klasse-zoektocht die referenties oplevert |
+   | `apps/api/src/scripts/build-nutriscore-declared-map.ts` | `:256` | **nee** | schrijft de declaratiemap naar de MinIO-trainingsbucket |
+
+   Bouw dit als een expliciete keuze op de aanroep — bijvoorbeeld
+   `resolveDeclaredMarks(gtin, gln, { useSnapshot: true })` — met **uit** als standaard. Een
+   ontwikkelaar die een zesde aanroeper toevoegt krijgt dan het veilige gedrag zonder erover na te
+   denken.
+
+   **Leg het vast met een toets** die bewijst dat de drie niet-deelnemende aanroepers de
+   momentopname niet zien. `VERIFIED, nuance`: de twee schrijfpaden in `verify-flow` zitten vandaag
+   achter `FLYWHEEL_KRUISCHECK_NOMINATION_ENABLED`, die standaard uit staat (`verify-flow.ts:546-550`).
+   Dat is geen ontwerp — een vlag die morgen aan gaat mag deze belofte niet breken.
 
 2. **Drie uitkomsten, elk met een eigen reden. Geen vierde.**
 
@@ -141,28 +154,32 @@ eerder de region proposer een deploy.
    | sleutel staat erin met een **lege** lijst | geen marks | `lege-declaratie` |
    | sleutel staat erin **met codes** | de marks uit de momentopname | **`uit-momentopname`** (nieuw) |
 
-   De naam is `uit-momentopname`, in dezelfde vorm als de bestaande redenen
-   (`geen-tradeitem-bestand`, `lege-declaratie`). Zonder gekozen naam is dit niet te bouwen: de
-   plekken in AC6 zijn `switch`- en `Record`-constructies waar de naam letterlijk in de code komt.
+   De naam is `uit-momentopname`, in dezelfde vorm als de bestaande redenen. Zonder gekozen naam is
+   dit niet te bouwen: de plekken in AC6 zijn `switch`- en `Record`-constructies waar de naam
+   letterlijk in de code komt.
 
-   Het onderscheid tussen "lege lijst" en "ontbrekende sleutel" is met opzet: een lege lijst
-   betekent "gemeten, declareert niets" (204 sleutels), een ontbrekende sleutel betekent "niet
-   gemeten" — en dat laatste getal is precies de hoeveelheid werk voor een verse oogst.
+3. **`uit-momentopname` mag NOOIT `ok` zijn, en dat is dragend.** Een ontwikkelaar kan redeneren
+   dat de marks echt zijn en dus `ok` teruggeven. Dat breekt besluit 2 in stilte. `VERIFIED`:
+   `bootstrap-run.ts:451` luidt `if (decl.reason !== 'ok' || …) continue;` — die guard bepaalt welke
+   GTINs de klasse-zoektocht in gaan die referenties oplevert. Met `ok` zouden de 238 bevroren
+   producten daar meteen naar binnen lopen.
 
-3. **Alleen als terugval, nooit als vervanging.** De XML-route blijft primair; de momentopname
+   Leg dit vast met een toets die faalt zodra de terugval `ok` teruggeeft. Dit is geen stijlkeuze
+   maar de tweede grendel op besluit 2, naast AC1.
+
+4. **Alleen als terugval, nooit als vervanging.** De XML-route blijft primair; de momentopname
    wordt uitsluitend geraadpleegd nádat de XML-route `geen-tradeitem-bestand` heeft opgeleverd.
+   De 848 werkende producten kunnen niet geraakt worden: hun sleutels staan niet in de momentopname,
+   en de opzoeking gebeurt pas ná die ene reden. Leg dat vast met een test die bewijst dat een
+   `ok`-uitkomst de momentopname niet raadpleegt.
 
-   De 848 werkende producten kunnen niet geraakt worden: hun sleutels staan niet in de
-   momentopname, en de opzoeking gebeurt pas ná die ene reden. Leg dat vast met een test die
-   bewijst dat een `ok`-uitkomst de momentopname niet raadpleegt.
+5. **Alle vijf de veldsoorten, mét `fieldType`.** De indexbouwer werkt op `(fieldType, code)`-
+   sleutels; `parseDeclaredMarks` levert alle vijf (`MARK_FIELDS`,
+   `apps/api/src/services/t3777-declarations.ts:420-425`, plus `CONSUMER_USAGE_FIELD_TYPE` op
+   `:434`). De momentopname draagt dezelfde vijf en die gelijkheid is vastgepind in een toets —
+   `MARK_FIELDS` en `CONSUMER_USAGE_FIELD_TYPE` zijn daarvoor geëxporteerd.
 
-4. **Alle vijf de veldsoorten, mét `fieldType`.** De indexbouwer werkt op `(fieldType, code)`-
-   sleutels; `resolveDeclaredMarks` → `parseDeclaredMarks` levert alle vijf (`MARK_FIELDS`,
-   `t3777-declarations.ts:420-425`, plus `CONSUMER_USAGE_FIELD_TYPE` op `:434`). De momentopname
-   draagt dezelfde vijf en die gelijkheid is vastgepind in een toets — `MARK_FIELDS` en
-   `CONSUMER_USAGE_FIELD_TYPE` zijn daarvoor geëxporteerd.
-
-5. **De momentopname is al genormaliseerd; de terugval normaliseert niet opnieuw.** Bij het oogsten
+   De momentopname is al genormaliseerd; de terugval normaliseert **niet** opnieuw. Bij het oogsten
    is toegepast, gelijk aan `parseDeclaredMarks`: `trim()`, `toUpperCase()`, ontdubbeld per
    `(fieldType, code)`, lege waarden overgeslagen, uitsluitend `value` en nooit `oldValue`, en
    `enumerationValue` uitsluitend gescopet binnen `consumerUsageLabelCode`.
@@ -170,96 +187,150 @@ eerder de region proposer een deploy.
    *`oldValue` is bewust weggelaten: 17 code-instanties staan daar uitsluitend in, goed voor 5
    extra producten, maar het is een vórige waarde en zou valse akkoorden opleveren.*
 
-6. **Fail-open, met een reden die de kwaliteitspoort niet omgooit.** `mapDeclarationReason` heeft
+6. **`uit-momentopname` raakt ZES plekken, en twee ervan breken de compilatie niet.**
+
+   | plek | bestand en regel | compiler vangt het? |
+   |---|---|---|
+   | `DeclarationReason` (de union loopt t/m `:55`) | `apps/api/src/services/t3777-declarations.ts:48-55` | ja |
+   | `CollectReason` | `apps/api/src/scripts/build-keurmerk-index.ts:325-334` | ja |
+   | `emptyReasonCounts()` | `apps/api/src/scripts/build-keurmerk-index.ts:338-350` | ja |
+   | `mapDeclarationReason` — expliciete toewijzing, niet via `default` | `apps/api/src/scripts/build-keurmerk-index.ts:362` | **nee** — hij neemt `string`, geen `DeclarationReason` |
+   | de **voortgangsregel** (`:484-486`) én de samenvattingsregel (`:630-636`), die de redenen bij naam afdrukken | `apps/api/src/scripts/build-keurmerk-index.ts` | **nee** |
+   | het **beoordeelscherm**: `const has = res.reason === 'ok' && res.marks.length > 0;` | `apps/web/src/components/review/MobileReviewDeck.tsx:417` | **nee** | 
+
+   De laatste is de gemeenste en versie 5 miste hem volledig. `VERIFIED`: die regel haalt zijn
+   gegevens uit `fetchDeclaredMarks` (`apps/web/src/services/artworkReviewService.ts:164-176`) →
+   `GET /artwork/declared-marks/:gtin` → `resolveDeclaredMarks` (`artwork-pipeline.ts:849`). Met
+   reden `uit-momentopname` is `has` **false**, en het commentaar op `:299-300` zegt wat dat
+   betekent: *"without it we show nothing"*. De 238 producten van deze story zouden dan wél in de
+   wachtrij komen maar zónder hun declaratie — de beoordelaar krijgt precies het gegeven niet te
+   zien waar de hele story voor bestaat.
+
+   **Wat er moet gebeuren:** de poort accepteert ook `uit-momentopname`, en het scherm **toont de
+   herkomst** — een korte aanduiding dat deze declaratie uit een momentopname van
+   `TRADEITEM_SNAPSHOT_META.harvestedAt` komt en niet uit de actuele catalogus. Dat past bij de reden
+   waarom besluit 2 genomen is: de beoordelaar hoort te weten dat hij naar bevroren gegevens kijkt.
+   De bestaande deck-toetsen zetten allemaal `reason: 'ok'` in hun opstelling; er komt er één bij met
+   `uit-momentopname`.
+
+7. **Fail-open, met een reden die de kwaliteitspoort niet omgooit.** `mapDeclarationReason` heeft
    `default: return 'api-fout'`, dus élke nieuwe reden telt nu als technische fout — met 23,7%
-   tegen een drempel van 5% valt de poort van de indexbouwer om. `uit-momentopname` moet dus
-   expliciet toegewezen worden **en buiten de teller van poortregel 7b vallen**. `VERIFIED`: die
-   teller is `const technical = reasons['api-fout'] + reasons.timeout;`
+   tegen een drempel van 5% valt de poort van de indexbouwer om. `VERIFIED`: die teller is
+   `const technical = reasons['api-fout'] + reasons.timeout;`
    (`apps/api/src/scripts/build-keurmerk-index.ts:546`), dus een nieuwe reden valt er vanzelf
    buiten — zolang `mapDeclarationReason` hem niet alsnog op `api-fout` laat vallen.
 
-   **`uit-momentopname` raakt vijf plekken. Alle vijf bijwerken:**
+   *`timeout` en `niet-verwerkt` hoeven niet toegewezen te worden: die ontstaan in de indexbouwer
+   zelf en komen nooit langs `mapDeclarationReason`. `VERIFIED`: `DeclarationReason` kent ze niet.*
 
-   | plek | bestand en regel |
-   |---|---|
-   | `DeclarationReason` (de union loopt t/m `:55`) | `apps/api/src/services/t3777-declarations.ts:48-55` |
-   | `CollectReason` | `apps/api/src/scripts/build-keurmerk-index.ts:325-334` |
-   | `emptyReasonCounts()` | `apps/api/src/scripts/build-keurmerk-index.ts:338-349` |
-   | `mapDeclarationReason` — expliciete toewijzing, niet via `default` | `apps/api/src/scripts/build-keurmerk-index.ts` |
-   | de **voortgangsregel** én de samenvattingsregel, die de redenen bij naam afdrukken | `build-keurmerk-index.ts:484-486` en `:630-636` |
+8. **De cache mag de terugval niet blokkeren, en mag het oogstscript niet blind maken voor zijn
+   eigen bron.** Dit tweede deel is de vondst van ronde 5 en het is een eenrichtingsdeur als het
+   blijft staan.
 
-   Die voortgangsregel is de vijfde plek die versie 4 miste: hij drukt
-   `ok=… 404=… leeg=… geen-bestand=… api-fout=… timeout=…` af, dus een nieuwe reden is daar
-   onzichtbaar tot hij wordt toegevoegd.
+   `VERIFIED`, de volgorde in `resolveDeclaredMarks`: lezen op `:642`, en aan het eind
+   **onvoorwaardelijk** schrijven — `marksCacheWrite(key, result, ttlForReason(result.reason,
+   cacheTtlS), gtin)` (`:673`). `ttlForReason` (`:532-534`) geeft alles behalve `api-fout` de normale
+   TTL van 86.400 s (`T3777_CACHE_TTL_S`, `:87`).
 
-   *`timeout` en `niet-verwerkt` hoeven hier niet toegewezen te worden: die ontstaan in de
-   indexbouwer zelf en komen nooit langs `mapDeclarationReason`. `VERIFIED`: `DeclarationReason`
-   kent ze niet.*
+   Gevolg zonder maatregel: ná één indexrun dragen de 442 cachesleutels reden `uit-momentopname` of
+   `lege-declaratie`. Het oogstscript selecteert op `reason === 'geen-tradeitem-bestand'`
+   (`harvest-tradeitem-snapshot.ts:349`), dus **de 442 zijn onvindbaar geworden voor precies het
+   script dat ze moet verversen** — en daarmee is de regeneratie uit AC9, én de leeftijdsgrens,
+   een dode letter.
 
-7. **De cache mag de terugval niet 24 uur blokkeren.** `geen-tradeitem-bestand` houdt de normale
-   TTL van 86.400 s (`VERIFIED`: `ttlForReason` geeft alleen `api-fout` een korte TTL,
-   `t3777-declarations.ts:531-534`; `T3777_CACHE_TTL_S` staat standaard op `86400`, `:87`), en de
-   cache wordt gelezen vóór de aanroep (`marksCacheRead` op `:642`). Zonder maatregel bereikt de
-   terugval de 442 producten pas een dag ná uitrol.
+   Drie maatregelen, alle drie nodig:
+   - **De cache wordt gelezen, maar een hit met reden `geen-tradeitem-bestand` wordt als miss
+     behandeld.** "De cachelees overslaan" kan niet — je moet lezen om de reden te kennen.
+   - **De gecachete waarde draagt de oogstdatum van de momentopname waaruit hij komt.** Een hit met
+     reden `uit-momentopname` waarvan die datum niet gelijk is aan
+     `TRADEITEM_SNAPSHOT_META.harvestedAt` wordt óók als miss behandeld. Zo pikt een verse
+     momentopname zichzelf op, zonder dat iemand een schakelaar hoeft te onthouden.
+   - **Het oogstscript selecteert op `geen-tradeitem-bestand` én `uit-momentopname`, plus alle
+     sleutels die al in `TRADEITEM_SNAPSHOT` staan.** Dan is de populatie compleet, ongeacht wat de
+     cache op dat moment zegt.
 
-   - **Formulering die klopt:** de cache wordt gewoon gelezen, maar een hit met reden
-     `geen-tradeitem-bestand` wordt als **miss** behandeld. "De cachelees overslaan" kan niet — je
-     moet lezen om de reden te kennen.
-   - **De schakelaar is procesbreed, dus de naam moet dat zeggen.** `VERIFIED`: de cachelees zit in
-     `t3777-declarations.ts`, een dienst die óók de detectie-worker gebruikt
-     (`pipeline/detection-flow.ts:250`). Noem hem daarom niet `KEURMERK_INDEX_…`. Beter is een
-     parameter op de aanroep in plaats van een omgevingsvariabele; kies dat als het kan, en
-     anders een naam zonder `INDEX` erin.
-   - De 442 bestaande cachesleutels **blijven staan**; de maatregel loopt eromheen. Ze alsnog
-     verwijderen is een **schrijfactie op de acceptatie-Redis** en vraagt aparte toestemming.
+   De 442 bestaande cachesleutels **blijven staan**; de maatregelen lopen eromheen. Ze verwijderen is
+   een schrijfactie op de acceptatie-Redis en vraagt aparte toestemming.
 
-8. **De veroudering is zichtbaar én bezwaarlijk.** Dit is de prijs van deze ontwerpkeuze:
+   *Is er tóch een schakelaar nodig, geef hem dan geen `KEURMERK_INDEX_`-naam.* `VERIFIED`: de
+   cachelees zit in `t3777-declarations.ts`, een dienst die óók de detectie-worker gebruikt
+   (`apps/api/src/services/pipeline/detection-flow.ts:250`); de naam zou suggereren dat het alleen de
+   indexrun raakt.
+
+9. **De veroudering is zichtbaar én bezwaarlijk.**
    - De indexbouwer drukt bij elke run de **oogstdatum**, de **ouderdom in dagen** en de
-     **doelmarkt** af uit `TRADEITEM_SNAPSHOT_META`, plus hoeveel sleutels uit de momentopname zijn
-     gebruikt (de teller van `uit-momentopname`).
-   - **Boven een leeftijdsgrens wordt de indexbouwer luidruchtig.** Kies een grens — voorstel: 180
-     dagen — en laat de run daarboven een zichtbare waarschuwing geven. Zonder grens schaduwt een
-     bevroren sleutel een product voor onbepaalde tijd, ook als de declaratie op productie
-     verandert, want de XML-route komt er nooit aan toe.
-   - Loopt een GTIN op `geen-tradeitem-bestand` en staat hij **niet** in de momentopname, dan telt
-     dat als een eigen regel — dat getal is de hoeveelheid werk voor een verse oogst.
-   - `apps/api/scripts/harvest-tradeitem-snapshot.ts` regenereert het bestand. Handmatig, met een
-     leesverbinding, buiten de applicatie om, en bewust in `scripts/` zodat het níet mee de
-     container in gaat. Het vraagt `mongodb` en `tsx`, die eerst geïnstalleerd moeten worden.
+     **doelmarkt** af uit `TRADEITEM_SNAPSHOT_META`.
+   - **Boven 180 dagen wordt de run luidruchtig** — een zichtbare waarschuwing, geen keuze voor de
+     ontwikkelaar. Zonder grens schaduwt een bevroren sleutel een product voor onbepaalde tijd, ook
+     als de declaratie op productie verandert, want de XML-route komt er nooit aan toe.
+   - **Een eigen telregel voor het gebruik van de momentopname**, los van de redenentellers:
+     hoeveel sleutels met marks, hoeveel leeg, en hoeveel GTINs op `geen-tradeitem-bestand` liepen
+     zónder in de momentopname te staan. Dat laatste getal is de hoeveelheid werk voor een verse
+     oogst. Dit moet een eigen regel zijn omdat de `lege-declaratie`-teller al 429 producten uit de
+     XML-route bevat en die twee bronnen anders op één hoop vallen.
+   - `apps/api/scripts/harvest-tradeitem-snapshot.ts` regenereert het bestand: handmatig, met een
+     leesverbinding, buiten de applicatie om, en bewust in `scripts/` zodat het níet mee de container
+     in gaat. Vereisten op de uitvoerende machine: **`mongodb` en `tsx`** — beide staan in geen
+     enkele `package.json`. Met `--harvested-at=JJJJ-MM-DD` is een hertelling byte-voor-byte te
+     vergelijken met het gecommitte bestand.
 
-9. **De momentopname is doelmarkt-gebonden, en dat staat er ook.** `VERIFIED`: alle 442 sleutels
-   eindigen op `-528`, en `TRADEITEM_SNAPSHOT_META.targetMarket` draagt die waarde. Staat
-   `T3777_TARGET_MARKET` (`t3777-declarations.ts:86`, standaard `'528'`) ooit op iets anders, dan
-   mist **elke** opzoeking — zonder foutmelding en zonder verschil met "niet gemeten". De
-   opzoeking moet daarom melden wanneer de gevraagde doelmarkt niet die van de momentopname is,
-   in plaats van stilzwijgend niets te vinden.
+10. **De momentopname is doelmarkt-gebonden, en dat staat er ook.** `VERIFIED`: alle 442 sleutels
+    eindigen op `-528`, en `TRADEITEM_SNAPSHOT_META.targetMarket` draagt die waarde. Staat
+    `T3777_TARGET_MARKET` (`t3777-declarations.ts:86`, standaard `'528'`) ooit op iets anders, dan
+    mist **elke** opzoeking — zonder foutmelding en zonder verschil met "niet gemeten". De opzoeking
+    meldt daarom wanneer de gevraagde doelmarkt niet die van de momentopname is.
 
-10. **Meetbare uitkomst.** Draai de indexbouwer droog vóór en ná en leg vast:
+11. **De gln die de sleutel vormt is bepaald, niet toevallig.** Versie 5 voerde deze zorg op als
+    vervallen; dat was onjuist. `VERIFIED`: `resolveDeclaredMarks` doet **zelf** dezelfde
+    ongeordende opzoeking wanneer `knownGln` ontbreekt —
+    `prisma.artworkImport.findFirst({ where: { gtin, gln: { not: null } } })`
+    (`t3777-declarations.ts:620-625`, zonder `orderBy`). Van de vijf aanroepers geeft alleen de
+    indexbouwer een gln mee (`:458`).
+
+    Voor een GTIN met meer dan één gln vormt de terugval bij de tweede deelnemende aanroeper — de
+    endpoint van het beoordeelscherm — dus mogelijk een andere sleutel dan waarmee geoogst is. Het
+    gevolg is fail-open (geen terugval, oud gedrag), dus niet gevaarlijk, maar wel stil. Geef die
+    `findFirst` een `orderBy` zodat de keuze in elk geval deterministisch is, en leg vast dat een
+    afwijkende gln géén terugval oplevert in plaats van een verkeerde.
+
+12. **Meetbare uitkomst, met de voorwaarde erbij.**
 
     | wat | verwacht |
     |---|---|
-    | producten uit de 442 die alsnog een declaratie opleveren | **238** (475 code-instanties) |
-    | producten met reden `uit-momentopname` | **238** |
-    | producten met reden `lege-declaratie` uit de momentopname | **204** |
+    | producten met reden `uit-momentopname` | **238** (475 code-instanties) |
+    | GTINs die op `geen-tradeitem-bestand` liepen en niet in de momentopname staan | **0** bij de eerste run |
     | groei van de index in producten en in unieke `(fieldType, code)`-sleutels | te meten |
+
+    **De droogloop vraagt `KEURMERK_INDEX_LIMIT` op minstens het universumtotaal (~1863).**
+    `VERIFIED`: de standaard is **500** (`build-keurmerk-index.ts:261-264`) en poortregel 7d blokkeert
+    een run waarin `universeSize < universeTotal`. Zonder die instelling meet de droogloop een kwart
+    van de populatie en leest dat als een afwijking van 75%.
+
+    *`INFERENCE`, nog te meten vóór de bouw: dat alle 442 sleutels in het universum van de
+    indexbouwer zitten. Ze komen uit de cache van een eerdere indexrun, dus dat zou moeten, maar
+    `artwork_imports` is er niet op nagelezen. `VERIFIED` wél: de 442 sleutels bevatten 442 unieke
+    GTINs, dus "442 sleutels = 442 producten" klopt.*
 
     Verwachting en meting naast elkaar in het story-record. Wijkt de meting meer dan 5% af, dan
     eerst uitzoeken waaróm voordat de story op `done` gaat.
 
-11. **Testbaar zonder database.** De opzoeking krijgt de momentopname als **afhankelijkheid** mee,
-    net als `GlnLookup` (`apps/api/scripts/backfill-gln-from-tradeitems.ts:143`) en `BackfillDeps`
-    (`:146-159`), met een bestaande test ernaast. Zo draaien de tests op een kleine eigen
-    momentopname en niet op 442 echte sleutels.
+13. **Testbaar zonder database, met RED-bewijs, zonder regressie.** De opzoeking krijgt de
+    momentopname als **afhankelijkheid** mee, net als `GlnLookup`
+    (`apps/api/scripts/backfill-gln-from-tradeitems.ts:143`) en `BackfillDeps` (`:146-159`).
+    RED-bewijs voor AC1 (de drie niet-deelnemende aanroepers), AC3 (`uit-momentopname` ≠ `ok`), AC6
+    (het beoordeelscherm) en AC8 (de cache-invalidatie op oogstdatum). De api-suite blijft groen.
 
-12. **RED-bewijs** voor AC1, AC2 en AC7, en **geen regressie**: de api-suite blijft groen. Toon ná
-    de bouw dat de gecompileerde momentopname in `dist/` staat en dat de indexbouwer hem in de
-    draaiende container leest — een testsuite die lokaal groen is bewijst dat niet.
+    Toon ná de bouw dat de gecompileerde momentopname in `dist/` staat en dat de indexbouwer hem in
+    de draaiende container leest — een testsuite die lokaal groen is bewijst dat niet.
 
 ## Wat NIET in deze story zit, met het getal erbij
 
-- **De automatische bevestiging** — besluit 2. De 177 producten met een
-  `PackagingMarkedLabelAccreditationCode` blijven daar buiten. Wil je dat later wél, dan is dat een
-  eigen story mét een houdbaarheidsgrens op de momentopname.
+- **Alles wat schrijft op grond van een declaratie** — besluit 2, en dat is breder dan versie 5
+  dacht. Buiten deze story blijven: de automatische bevestiging (`resolveDeclarations`), het
+  aanmaken van kandidaat-referenties via de kruischeck (`verify-flow.ts` → `runFlywheelHooks` →
+  `nominateFromKruischeck`), de klasse-zoektocht van de bootstrap (`bootstrap-run.ts:450`) en de
+  Nutri-Score-declaratiemap in MinIO (`build-nutriscore-declared-map.ts:256`). Wil je dat later wél,
+  dan is dat een eigen story mét een houdbaarheidsgrens op de momentopname.
 - **Het omgevingssegment op de T3777-cachesleutel.** `VERIFIED`: `marks:{env}:{gln}:{gtin}:{tm}`
   draagt er een (`t3777-declarations.ts:521`), `t3777:{gln}:{gtin}:{tm}` niet (`:112`). Delen twee
   omgevingen ooit één Redis, dan kan het acceptatiepad langs die cache op productiegegevens gaan
@@ -290,10 +361,31 @@ eerder de region proposer een deploy.
 - [Source: apps/api/src/services/t3777-declarations.ts — XML-route, de twee ingangen, cache, `MARK_FIELDS`]
 - [Source: apps/api/src/scripts/build-keurmerk-index.ts — indexbouwer, redencodes, poortregel 7b]
 - [Source: apps/api/src/services/pipeline/detection-flow.ts — de automatische bevestiging die deze story bewust niet raakt]
+- [Source: apps/api/src/services/pipeline/verify-flow.ts:423 — de aanroeper die via de kruischeck kandidaat-referenties aanmaakt]
+- [Source: apps/api/src/services/flywheel/bootstrap-run.ts:450 — de guard die op reden `ok` staat]
+- [Source: apps/api/src/api/v1/artwork-pipeline.ts:849 — de endpoint achter de declaratie-prior van het beoordeelscherm]
+- [Source: apps/web/src/components/review/MobileReviewDeck.tsx:417 — de zesde plek, buiten apps/api]
 - [Source: Dockerfile:57-58 — `src/` en `prisma/` worden gekopieerd, `scripts/` niet]
 
 ## Change Log
 
+- 2026-08-19: **Versie 6** na `review-20-19-v5.md` (FAIL, 3 high / 10 medium / 5 low). De drie highs
+  zijn alle drie zelf nagemeten en klopten. **H1:** versie 5 vertaalde besluit 2 naar "raak alleen
+  `resolveDeclaredMarks` aan", maar dat is een gedeelde dienst met vijf aanroepers waarvan twee
+  schrijven — via `verify-flow.ts:423` zouden de 61 Nutri-Score-producten alsnog kandidaat-referentie
+  worden. De terugval gaat nu naar de aanroepkant, standaard uit, met twee expliciete deelnemers.
+  **H2:** de terugvaluitkomst wordt gecachet, waardoor het oogstscript ná één indexrun zijn eigen 442
+  sleutels niet meer terugvindt en de regeneratie een dode letter is; opgelost met drie maatregelen,
+  waaronder de oogstdatum in de gecachete waarde zodat een verse momentopname zichzelf oppikt.
+  **H3:** een zesde codeplek in `apps/web` zet de declaratie uit voor precies de 238 producten van
+  deze story; de poort accepteert nu de nieuwe reden en het scherm toont de herkomst. Verder:
+  `uit-momentopname` mag nooit `ok` zijn (eigen criterium, want `bootstrap-run.ts:451` hangt eraan),
+  de gln-zorg is niet vervallen maar verplaatst, de meting vraagt `KEURMERK_INDEX_LIMIT` ≥ 1863, en
+  het onmeetbare getal 204 is vervangen door een eigen telregel. In de code verwerkt: `--harvested-at`
+  voor een vergelijkbare hertelling, de generator weigert nu ook onveilige sleutels, oogstdatums en
+  doelmarkten, het oogstscript importeert de dienstlaag niet meer (die trok Prisma en de queue zijn
+  proces in), en het gegenereerde bestand staat in `.prettierignore` zodat `npm run format` het niet
+  in één klap herschrijft (gemeten: 2863 diff-regels).
 - 2026-08-19: **Versie 5** na `review-20-19-v4.md` (FAIL, 4 high / 13 medium / 7 low). Alle
   bevindingen verwerkt. De kern is besluit 2 van Friso: de geoogste gegevens gaan uitsluitend naar
   de beoordeelwachtrij, niet naar de automatische bevestiging. Daarmee vervallen drie bevindingen

@@ -1,0 +1,13 @@
+# Gegenereerde bestanden. Deze worden door hun eigen generator opgemaakt; laat de
+# repo-brede `npm run format` er vanaf, anders herschrijft die het bestand volledig
+# (gemeten: 2863 diff-regels) en geeft de eerstvolgende regeneratie weer een diff
+# over alle regels. Zie story 20.19, AC8.
+apps/api/src/services/tradeitem-declaration-snapshot.ts
+
+# Bouw- en rapportagemappen
+dist/
+build/
+coverage/
+node_modules/
+playwright-report/
+test-results/

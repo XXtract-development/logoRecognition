@@ -36,12 +36,13 @@
  *   TRADEITEMS_MONGO_URI=... REDIS_URL=... npx tsx scripts/harvest-tradeitem-snapshot.ts --dry-run
  *   # schrijft src/services/tradeitem-declaration-snapshot.ts:
  *   TRADEITEMS_MONGO_URI=... REDIS_URL=... npx tsx scripts/harvest-tradeitem-snapshot.ts --write
+ *   # hertelling die byte-voor-byte met het gecommitte bestand te vergelijken is:
+ *   ... --write --harvested-at=2026-08-19
  */
 
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { catalogEnvTag } from '../src/services/t3777-declarations';
 import { createLogger } from '../src/core/logger';
 
 const logger = createLogger('harvest-tradeitem-snapshot');
@@ -61,6 +62,28 @@ export const GDSN_TO_FIELD_TYPE: Readonly<Record<string, string>> = {
 
 /** Tekens die veilig als string-literal gerenderd kunnen worden. Zie L5 in extractMarks. */
 const SAFE_CODE = /^[A-Z0-9_.-]+$/;
+
+/** Sleutelvorm `{gln}-{gtin}-{targetMarket}`. Ook deze gaat ongefilterd de renderer in. */
+const SAFE_ID = /^\d+-\d+-\d+$/;
+
+/**
+ * Zelfde afleiding als `catalogEnvTag` in `src/services/t3777-declarations.ts`, hier
+ * met opzet OVERGENOMEN in plaats van geimporteerd: dat bestand importeert de
+ * Prisma-client en de queue op moduleniveau, en dit script hoort buiten de
+ * applicatie om te draaien. Zeven regels dubbel is goedkoper dan een script dat een
+ * gegenereerde database-client nodig heeft om een cachesleutel te kunnen lezen.
+ *
+ * catalog.stage.xxtract.com -> stage ; catalog.acc.xxtract.com -> acc
+ */
+export function envTagFromCatalogBase(baseUrl: string): string {
+  try {
+    const host = new URL(baseUrl).hostname.toLowerCase();
+    const parts = host.split('.');
+    return parts.length >= 3 ? parts[1] : host.replace(/[^a-z0-9]/g, '');
+  } catch {
+    return 'onbekend';
+  }
+}
 
 export interface HarvestedMark {
   fieldType: string;
@@ -201,6 +224,21 @@ export async function harvest(deps: HarvestDeps): Promise<HarvestResult> {
 
 /** Rendert het TypeScript-bestand. Puur, dus toetsbaar zonder schrijfrechten. */
 export function renderSnapshotModule(result: HarvestResult, harvestedAt: string): string {
+  // M10: niet alleen de codes gaan ongefilterd in enkele aanhalingstekens, ook de
+  // sleutel, de oogstdatum en de doelmarkt. Dezelfde redenering als bij SAFE_CODE:
+  // afdwingen is goedkoper dan hopen.
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(harvestedAt)) {
+    throw new Error(`Oogstdatum moet JJJJ-MM-DD zijn, kreeg: ${JSON.stringify(harvestedAt)}`);
+  }
+  if (!/^\d+$/.test(result.targetMarket)) {
+    throw new Error(`Doelmarkt moet cijfers zijn, kreeg: ${JSON.stringify(result.targetMarket)}`);
+  }
+  for (const id of Object.keys(result.snapshot)) {
+    if (!SAFE_ID.test(id)) {
+      throw new Error(`Sleutel heeft niet de vorm {gln}-{gtin}-{tm}: ${JSON.stringify(id)}`);
+    }
+  }
+
   const fieldTypes = Object.values(GDSN_TO_FIELD_TYPE);
   const counts = fieldTypes
     .map((ft) => `    ${ft}: ${result.instancesByFieldType[ft] ?? 0},`)
@@ -316,7 +354,7 @@ async function main(): Promise<void> {
         // M11: `marks:{env}:{gln}:{gtin}:{tm}` draagt een omgevingssegment. Delen twee
         // omgevingen ooit een Redis, dan oogst een blinde `marks:*`-scan ze door
         // elkaar. Filter dus op de omgeving die bij deze catalogus-basis hoort.
-        const envTag = catalogEnvTag(
+        const envTag = envTagFromCatalogBase(
           (process.env.CATALOG_API_BASE || 'https://catalog.acc.xxtract.com').replace(/\/+$/, '')
         );
         logger.info(`Oogst uitsluitend cachesleutels van omgeving '${envTag}'.`);
@@ -372,7 +410,13 @@ async function main(): Promise<void> {
       return;
     }
 
-    const harvestedAt = new Date().toISOString().slice(0, 10);
+    // M5: met --harvested-at=JJJJ-MM-DD is een hertelling byte-voor-byte te
+    // vergelijken met het gecommitte bestand. Zonder die vlag verschilt alleen al
+    // de datum en zegt een diff niets.
+    const pinned = process.argv.find((a) => a.startsWith('--harvested-at='));
+    const harvestedAt = pinned
+      ? pinned.slice('--harvested-at='.length)
+      : new Date().toISOString().slice(0, 10);
     // M2: door de uitvoer door dezelfde opmaakstap te halen die de repository ook
     // op de hand gebruikt, levert een tweede oogst hetzelfde bestand op in plaats
     // van een diff over alle 442 regels.
