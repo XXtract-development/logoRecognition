@@ -40,6 +40,10 @@ import {
   DeclarationProvider,
 } from './pipeline/detection-flow';
 import prisma from '../core/db';
+import {
+  TRADEITEM_SNAPSHOT,
+  TRADEITEM_SNAPSHOT_META,
+} from './tradeitem-declaration-snapshot';
 import { createLogger } from '../core/logger';
 
 const logger = createLogger('t3777-declarations');
@@ -52,7 +56,12 @@ export type DeclarationReason =
   | '404-mogelijk-TM-mismatch'
   | 'geen-tradeitem-bestand'
   | 'api-fout'
-  | 'lege-declaratie';
+  | 'lege-declaratie'
+  // Story 20.19 (AC2/AC3) — de declaratie komt uit de bevroren momentopname
+  // `tradeitem-declaration-snapshot.ts` in plaats van uit de catalogus-XML.
+  // MAG NOOIT `ok` zijn: `bootstrap-run.ts` laat alleen `ok` de klasse-zoektocht
+  // in die referenties oplevert, en besluit 2 sluit die route juist uit.
+  | 'uit-momentopname';
 
 export interface DeclarationResult {
   codes: string[];
@@ -407,6 +416,13 @@ export interface DeclaredMark {
 export interface DeclaredMarksResult {
   marks: DeclaredMark[];
   reason: DeclarationReason;
+  /**
+   * Story 20.19 (AC8) — alleen gezet bij `uit-momentopname` en `lege-declaratie`
+   * uit de momentopname. Staat in de cache zodat een VERSE momentopname zichzelf
+   * oppikt: een hit met een afwijkende oogstdatum wordt als miss behandeld. Zonder
+   * dit veld zou een nieuwe oogst 24 uur lang niet doorkomen.
+   */
+  snapshotHarvestedAt?: string;
 }
 
 /**
@@ -511,6 +527,38 @@ export function catalogEnvTag(baseUrl: string): string {
  */
 export const marksCacheStats = { hits: 0, misses: 0 };
 
+/**
+ * Story 20.19 (AC9) — gebruik van de momentopname, met een EIGEN teller. Niet via
+ * de redenentellers: `lege-declaratie` bevat al 429 producten uit de XML-route, en
+ * dan zijn de twee bronnen niet meer te scheiden.
+ *
+ * `notInSnapshot` is het getal dat telt: dat zijn producten die op
+ * `geen-tradeitem-bestand` lopen en NIET geoogst zijn — precies de hoeveelheid werk
+ * voor een verse oogst.
+ */
+export const snapshotStats = { withMarks: 0, empty: 0, notInSnapshot: 0, staleCacheDropped: 0 };
+
+export function resetSnapshotStats(): void {
+  snapshotStats.withMarks = 0;
+  snapshotStats.empty = 0;
+  snapshotStats.notInSnapshot = 0;
+  snapshotStats.staleCacheDropped = 0;
+}
+
+/** Ouderdom van de momentopname in dagen, op een meegegeven peildatum. */
+export function snapshotAgeDays(now: Date = new Date()): number {
+  const harvested = Date.parse(`${TRADEITEM_SNAPSHOT_META.harvestedAt}T00:00:00Z`);
+  if (!Number.isFinite(harvested)) return Number.NaN;
+  return Math.floor((now.getTime() - harvested) / 86_400_000);
+}
+
+/**
+ * Story 20.19 (AC9) — boven deze grens wordt de indexbouwer luidruchtig. Zonder
+ * grens schaduwt een bevroren sleutel een product voor onbepaalde tijd, ook als de
+ * declaratie op productie verandert: de XML-route komt er immers nooit aan toe.
+ */
+export const SNAPSHOT_MAX_AGE_DAYS = 180;
+
 export function resetMarksCacheStats(): void {
   marksCacheStats.hits = 0;
   marksCacheStats.misses = 0;
@@ -548,7 +596,11 @@ async function marksCacheRead(key: string, gtin: string): Promise<DeclaredMarksR
   try {
     const parsed = JSON.parse(raw) as DeclaredMarksResult;
     if (parsed && Array.isArray(parsed.marks)) {
-      return { marks: parsed.marks, reason: parsed.reason ?? 'ok' };
+      return {
+        marks: parsed.marks,
+        reason: parsed.reason ?? 'ok',
+        ...(parsed.snapshotHarvestedAt ? { snapshotHarvestedAt: parsed.snapshotHarvestedAt } : {}),
+      };
     }
   } catch {
     // corrupt cache entry → treat as a miss
@@ -594,6 +646,83 @@ export function nutriscoreDeclaredCodes(
 }
 
 /**
+ * Story 20.19 (AC8) — een cache-hit die de terugval in de weg staat, wordt als miss
+ * behandeld. Twee gevallen, allebei nodig:
+ *
+ *  1. `geen-tradeitem-bestand` staat 24 uur in de cache en wordt VOOR de aanroep
+ *     gelezen. Zonder deze regel bereikt de terugval de 442 producten pas een dag
+ *     na uitrol, en is de voor/na-meting onmogelijk.
+ *  2. `uit-momentopname` van een OUDERE oogst. Zo pikt een verse momentopname
+ *     zichzelf op, zonder dat iemand een schakelaar hoeft te onthouden.
+ *
+ * "De cachelees overslaan" kan niet: je moet lezen om de reden te kennen.
+ */
+export function shouldTreatCacheHitAsMiss(
+  cached: DeclaredMarksResult,
+  useSnapshot: boolean
+): boolean {
+  if (useSnapshot && cached.reason === 'geen-tradeitem-bestand') return true;
+  if (
+    cached.snapshotHarvestedAt !== undefined &&
+    cached.snapshotHarvestedAt !== TRADEITEM_SNAPSHOT_META.harvestedAt
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Story 20.19 (AC2) — de opzoeking in de momentopname. Drie uitkomsten, en het
+ * onderscheid tussen de laatste twee is met opzet:
+ *
+ *   sleutel afwezig        -> null; de aanroeper houdt `geen-tradeitem-bestand`.
+ *                             Dat betekent "NIET gemeten" en is precies de
+ *                             hoeveelheid werk voor een verse oogst.
+ *   sleutel met lege lijst -> `lege-declaratie`. Betekent "gemeten, declareert
+ *                             niets" (204 van de 442).
+ *   sleutel met codes      -> `uit-momentopname` (238 van de 442).
+ *
+ * De momentopname is al genormaliseerd bij het oogsten (trim, uppercase,
+ * ontdubbeld per (fieldType, code)); hier gebeurt dat NIET nog eens — AC5.
+ */
+export function lookupSnapshot(
+  gln: string,
+  gtin: string,
+  targetMarket: string
+): DeclaredMarksResult | null {
+  // Story 20.19 (AC10) — de momentopname is doelmarkt-gebonden. Zou T3777_TARGET_MARKET
+  // op iets anders staan, dan mist ELKE opzoeking zonder foutmelding en zonder
+  // verschil met "niet gemeten". Dat moet luid zijn, niet stil.
+  if (targetMarket !== TRADEITEM_SNAPSHOT_META.targetMarket) {
+    logger.warn('Momentopname overgeslagen: andere doelmarkt dan geoogst', {
+      gtin,
+      gevraagd: targetMarket,
+      geoogst: TRADEITEM_SNAPSHOT_META.targetMarket,
+    });
+    return null;
+  }
+
+  const marks = TRADEITEM_SNAPSHOT[`${gln}-${gtin}-${targetMarket}`];
+  if (marks === undefined) {
+    snapshotStats.notInSnapshot += 1;
+    return null;
+  }
+
+  const harvestedAt = TRADEITEM_SNAPSHOT_META.harvestedAt;
+  if (marks.length === 0) {
+    snapshotStats.empty += 1;
+    return { marks: [], reason: 'lege-declaratie', snapshotHarvestedAt: harvestedAt };
+  }
+
+  snapshotStats.withMarks += 1;
+  return {
+    marks: marks.map((m) => ({ code: m.code, fieldType: m.fieldType })),
+    reason: 'uit-momentopname',
+    snapshotHarvestedAt: harvestedAt,
+  };
+}
+
+/**
  * Resolve the declared GS1 marks for a GTIN (all sporen). Mirrors
  * resolveDeclarations' fail-safe order; NEVER throws. Returns marks + a distinct
  * reason so an empty prior never silently looks like "no data".
@@ -607,8 +736,25 @@ export async function resolveDeclaredMarks(
    * per volledige run, én een gln die kon afwijken van de gln in de index wanneer
    * een GTIN meerdere GLN's heeft. Weglaten = ongewijzigd oud gedrag.
    */
-  knownGln?: string
+  knownGln?: string,
+  /**
+   * Story 20.19 (AC1) — de momentopname-terugval staat STANDAARD UIT en wordt per
+   * aanroep aangezet. Dit is een gedeelde dienst met vijf aanroepers, waarvan twee
+   * schrijven: via `pipeline/verify-flow.ts` lopen Nutri-Score-letters door naar
+   * `runFlywheelHooks` → `nominateFromKruischeck` (kandidaat-referenties), en
+   * `scripts/build-nutriscore-declared-map.ts` schrijft naar MinIO. Besluit 2 van
+   * 2026-08-19 sluit beide uit: de geoogste, bevroren gegevens gaan uitsluitend
+   * naar de beoordeelwachtrij.
+   *
+   * Aan (bewust): `scripts/build-keurmerk-index.ts` (vult de wachtrij) en
+   * `api/v1/artwork-pipeline.ts` (leest alleen, voedt het beoordeelscherm).
+   * Uit: verify-flow, bootstrap-run, build-nutriscore-declared-map.
+   *
+   * Een zesde aanroeper krijgt zo vanzelf het veilige gedrag.
+   */
+  options?: { useSnapshot?: boolean }
 ): Promise<DeclaredMarksResult> {
+  const useSnapshot = options?.useSnapshot === true;
   const { apiKey, baseUrl, targetMarket, cacheTtlS } = readEnv();
 
   if (!apiKey) {
@@ -619,9 +765,14 @@ export async function resolveDeclaredMarks(
   let gln: string | null = knownGln ?? null;
   try {
     if (!gln) {
+      // Story 20.19 (AC11): mét orderBy. Zonder was de keuze bij een GTIN met
+      // meerdere gln's niet gegarandeerd dezelfde als de gln waarmee geoogst is —
+      // de sleutel wijkt dan af en de opzoeking mist stilzwijgend. Fail-open blijft
+      // het gedrag, maar nu is het tenminste herhaalbaar.
       const row = await prisma.artworkImport.findFirst({
         where: { gtin, gln: { not: null } },
         select: { gln: true },
+        orderBy: [{ gln: 'asc' }],
       });
       gln = row?.gln ?? null;
     }
@@ -640,16 +791,22 @@ export async function resolveDeclaredMarks(
 
   const key = marksCacheKey(gln, gtin, targetMarket, catalogEnvTag(baseUrl));
   const cached = await marksCacheRead(key, gtin);
-  if (cached) {
+  if (cached && !shouldTreatCacheHitAsMiss(cached, useSnapshot)) {
     marksCacheStats.hits += 1;
     return cached;
   }
+  if (cached) snapshotStats.staleCacheDropped += 1;
   marksCacheStats.misses += 1;
 
   const { xml, reason } = await fetchTradeItemXmlWithRetry(baseUrl, apiKey, gln, gtin, targetMarket);
   let result: DeclaredMarksResult;
   if (reason !== 'ok' || xml == null) {
     result = { marks: [], reason };
+    // Story 20.19 (AC1/AC4) — de terugval, en UITSLUITEND na deze ene reden. De 848
+    // werkende producten komen hier nooit langs: die hebben reden `ok`.
+    if (reason === 'geen-tradeitem-bestand' && useSnapshot) {
+      result = lookupSnapshot(gln, gtin, targetMarket) ?? result;
+    }
   } else {
     // 19.16: parseDeclaredMarks is de enige aanroep die kán throwen (alle andere
     // paden zijn fail-safe). Zonder deze guard breekt één misvormde XML de

@@ -147,8 +147,14 @@ export interface DeclaredMark {
 export interface DeclaredMarksResult {
   gtin: string;
   marks: DeclaredMark[];
-  /** Distinct fail-safe reason: 'ok' | 'lege-declaratie' | 'gln-ontbreekt' | … */
+  /** Distinct fail-safe reason: 'ok' | 'uit-momentopname' | 'lege-declaratie' | … */
   reason: string;
+  /**
+   * Story 20.19 — alleen gezet bij reden `uit-momentopname`: de dag waarop de
+   * declaratie uit de trade-item-database is geoogst. Het beoordeelscherm toont hem,
+   * zodat zichtbaar is dat dit bevroren gegevens zijn en geen actuele catalogus.
+   */
+  snapshotHarvestedAt?: string;
 }
 
 // Story 12.18 — canonicalDeclaredCode lives in ./declaredMarks (a pure module
@@ -168,6 +174,7 @@ export const fetchDeclaredMarks = async (gtin: string): Promise<DeclaredMarksRes
       gtin,
       marks: response.data?.marks ?? [],
       reason: response.data?.reason ?? 'onbekend',
+      snapshotHarvestedAt: response.data?.snapshotHarvestedAt,
     };
   } catch {
     // Network/HTTP error → behave like an empty prior (graceful fallback).

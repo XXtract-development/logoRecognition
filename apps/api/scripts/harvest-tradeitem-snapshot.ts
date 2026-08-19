@@ -14,7 +14,10 @@
  *
  * WAT HET DOET
  *   1. leest de declaratiecache van de doelomgeving en verzamelt de sleutels met
- *      reden `geen-tradeitem-bestand` (die groep, en alleen die groep);
+ *      reden `geen-tradeitem-bestand` OF `uit-momentopname`, plus alles wat al in de
+ *      bestaande momentopname staat. Die drie samen houden de populatie compleet:
+ *      na een indexrun dragen de geoogste sleutels de nieuwe reden, en selecteren op
+ *      alleen de oude zou dit script blind maken voor zijn eigen bron;
  *   2. zoekt elk `{gln}-{gtin}-{tm}` op als `_id` in `application.tradeItems` — een
  *      exacte sleutelopzoeking van 0 ms, NOOIT een `$regex` of een zoekopdracht op
  *      `meta.gtin` (die is een collectiescan van ~51 s per aanroep);
@@ -44,6 +47,7 @@ import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { createLogger } from '../src/core/logger';
+import { TRADEITEM_SNAPSHOT } from '../src/services/tradeitem-declaration-snapshot';
 
 const logger = createLogger('harvest-tradeitem-snapshot');
 
@@ -384,13 +388,26 @@ async function main(): Promise<void> {
             } catch {
               return;
             }
-            if (parsed.reason !== 'geen-tradeitem-bestand') return;
+            // Story 20.19 (AC8): OOK `uit-momentopname`. Na een indexrun dragen de
+            // geoogste sleutels die reden en niet meer `geen-tradeitem-bestand` —
+            // selecteren op alleen die oude reden maakt dit script blind voor zijn
+            // eigen bron, en dan is de regeneratie een dode letter.
+            if (
+              parsed.reason !== 'geen-tradeitem-bestand' &&
+              parsed.reason !== 'uit-momentopname'
+            ) {
+              return;
+            }
             // marks:{env}:{gln}:{gtin}:{tm} -> {gln}-{gtin}-{tm}
             const parts = key.split(':');
             if (parts.length < 5 || parts[1] !== envTag) return;
             ids.push(`${parts[2]}-${parts[3]}-${parts[4]}`);
           });
         }
+        // Story 20.19 (AC8): plus alles wat al in de momentopname staat. Dan is de
+        // populatie compleet, ongeacht wat de cache op dat moment zegt — ook als
+        // een sleutel er om welke reden dan ook helemaal uit is gevallen.
+        for (const id of Object.keys(TRADEITEM_SNAPSHOT)) ids.push(id);
         return ids;
       },
       // Uitsluitend een exacte sleutelopzoeking. Geen $regex, geen meta.gtin.

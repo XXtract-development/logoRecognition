@@ -298,11 +298,18 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate, f
   // Story 12.7 — declared GS1 marks of the current GTIN as a label-prior.
   // `has` = a real declaration exists (reason 'ok'); without it we show nothing
   // (graceful fallback). Cached per GTIN (queue repeats GTINs heavily).
-  const [declared, setDeclared] = useState<{ codes: Set<string>; has: boolean }>({
+  const [declared, setDeclared] = useState<{
+    codes: Set<string>;
+    has: boolean;
+    /** Story 20.19 — gezet als de declaratie uit de bevroren momentopname komt. */
+    snapshotHarvestedAt?: string;
+  }>({
     codes: new Set(),
     has: false,
   });
-  const declaredCache = useRef<Record<string, { codes: string[]; has: boolean }>>({});
+  const declaredCache = useRef<
+    Record<string, { codes: string[]; has: boolean; snapshotHarvestedAt?: string }>
+  >({});
   // "Bekijk in context": show the full source artwork with the bbox highlighted,
   // so partial/tight crops (cut exactly on the proposed box) stay interpretable.
   const [context, setContext] = useState(false);
@@ -409,18 +416,29 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate, f
     }
     const cached = declaredCache.current[gtin];
     if (cached) {
-      setDeclared({ codes: new Set(cached.codes), has: cached.has });
+      setDeclared({
+        codes: new Set(cached.codes),
+        has: cached.has,
+        snapshotHarvestedAt: cached.snapshotHarvestedAt,
+      });
       return;
     }
     let active = true;
     fetchDeclaredMarks(gtin).then((res) => {
-      const has = res.reason === 'ok' && res.marks.length > 0;
+      // Story 20.19 (AC6) — de zesde plek waar de nieuwe reden landt, en de enige
+      // buiten apps/api. Stond hier alleen `=== 'ok'`, dan zou de deck voor precies
+      // de 238 producten van die story NIETS tonen: ze komen wél in de wachtrij,
+      // maar zonder de declaratie waar ze voor bestaan.
+      const has =
+        (res.reason === 'ok' || res.reason === 'uit-momentopname') && res.marks.length > 0;
       // Story 12.18 — canonicalise so Nutri-Score letters (bare 'D') match the
       // review item's full code ('NUTRISCORE_D'); otherwise the prior always reads
       // as "niet gedeclareerd" for Nutri-Score.
       const codes = res.marks.map(canonicalDeclaredCode);
-      declaredCache.current[gtin] = { codes, has };
-      if (active) setDeclared({ codes: new Set(codes), has });
+      const snapshotHarvestedAt =
+        res.reason === 'uit-momentopname' ? res.snapshotHarvestedAt : undefined;
+      declaredCache.current[gtin] = { codes, has, snapshotHarvestedAt };
+      if (active) setDeclared({ codes: new Set(codes), has, snapshotHarvestedAt });
     });
     return () => {
       active = false;
@@ -1288,6 +1306,18 @@ const MobileReviewDeck: React.FC<MobileReviewDeckProps> = ({ items, canMutate, f
             ) : (
               <Tag color="#E8A33D" style={{ color: '#1E293B' }}>
                 {t('review.priorNotDeclared', { defaultValue: '⚠ niet gedeclareerd op deze GTIN' })}
+              </Tag>
+            )}
+            {/* Story 20.19 — herkomst tonen. De beoordelaar hoort te weten dat deze
+                declaratie uit een bevroren momentopname komt en niet uit de actuele
+                catalogus: de gegevens zijn niet meer te controleren tegen een bestand,
+                en bij een eerdere vergelijking week 2% af. */}
+            {declared.snapshotHarvestedAt && (
+              <Tag color="#54949E" style={{ color: '#FFFFFF', marginLeft: 6 }}>
+                {t('review.priorFromSnapshot', {
+                  defaultValue: 'uit momentopname van {{datum}}',
+                  datum: declared.snapshotHarvestedAt,
+                })}
               </Tag>
             )}
           </div>
