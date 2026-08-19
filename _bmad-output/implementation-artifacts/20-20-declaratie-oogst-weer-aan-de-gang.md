@@ -1,6 +1,6 @@
 # Story 20.20: De declaratie-oogst weer aan de gang, en goedkoop houden
 
-Status: **spec versie 1 — wacht op tegenlezen.**
+Status: **spec versie 2 — wacht op her-review.**
 
 > **Eigen nummer, met opzet.** Nummer 20.2 is al bezet door de oogster zelf (`queue_harvest_declared.py`,
 > zijn toetsen en het crop-voorvoegsel `20_2_`). Deze story maakt af wat daar open bleef en verwijst
@@ -21,7 +21,7 @@ zodat **de beoordeelwachtrij zich vult zonder handwerk en zonder nachtenlang rek
 |---|---|
 | Open items in de beoordeelwachtrij | **0** |
 | Meest recente item | 27 juli 2026 |
-| Keurmerkindex (herbouwd na story 20.19) | 89 codes, 1082 producten, **2377 paren** |
+| Keurmerkindex (herbouwd na story 20.19) | 89 codes, 1082 producten, **2376 unieke paren** |
 | De kaart die de oogst leest | **16 juli**, 39 codes, 791 producten |
 
 Drie oorzaken, en ze stapelen:
@@ -44,12 +44,17 @@ van het weg te nemen.
 
 | | paren |
 |---|---|
-| totaal in de index | 2377 |
+| totaal in de index | 2377 rijen, **2376** unieke paren |
 | **Nutri-Score** — sleutel `NutritionalScore/A`..`E`, maar de referenties heten `NUTRISCORE_A`..`E`; nul opbrengst, en er bestaat al een eigen Nutri-Score-oogst met een eigen markering | −209 |
 | **43 codes zonder ook maar één actieve referentie** — de oogst zoekt strikt in de eigen referentiepool van een code, dus dit levert per definitie niets | −281 |
-| blijft over | **1886** |
-| daarvan leverde al eens een item op (en wordt dus overgeslagen) | 312 |
-| **echt door te rekenen** | **1574 → ruim 12 uur** bij ~28 s per paar |
+| **`RECYCLABLE_GENERAL_CLAIM` en `TRIMAN`** — overstroming. `VERIFIED`: allebei hébben ze een actieve referentie, dus geen van de twee uitsluitingen hierboven vangt ze | −537 |
+| blijft over | **1349** paren, 39 codes, 867 producten |
+| daarvan leverde al eens een item op (en wordt dus overgeslagen) | 252 |
+| **echt door te rekenen** | **1097 → ~8,5 uur** bij ~28 s per paar *(uit `20-11-oogst-geheugengrens-batching.md:105`, gemeten op ACC — niet vandaag opnieuw gemeten)* |
+
+*Versie 1 van deze spec noemde 1886 / 41 / 1005 en 1574. Dat was de kolom **zonder** de
+overstromingsguard: die twee codes hebben een actieve referentie, dus ze bleven staan terwijl AC2 ze
+uitsluit. AC2 en de opbrengsttabel spraken elkaar daarmee tegen (`review-20-20.md`, hoog 1).*
 
 `VERIFIED` — en dit is de kern van de kosten: **de ontdubbeling onthoudt alleen paren die een item
 opléverden.** `review_item_exists` (`queue_harvest_declared.py:548`) kijkt naar bestaande
@@ -65,8 +70,9 @@ en is alle kennis over "al nagekeken" verdwenen.
 
 ### Deel A — de bouw
 
-1. **Een vastgelegde bouwer maakt de kaart uit de index.** Nieuw script naast
-   `apps/api/src/scripts/build-keurmerk-index.ts`, in dezelfde stijl: leest
+1. **Een vastgelegde bouwer maakt de kaart uit de index.** Nieuw script; het naaste precedent is
+   `apps/api/src/scripts/build-nutriscore-declared-map.ts` — die bouwt al een code→GTIN-kaart voor
+   een oogst. `build-keurmerk-index.ts` levert de vórm en de scriptstijl. Het script: leest
    `flywheel-index/keurmerk-etiket-index.json`, schrijft `flywheel-index/declared-harvest-map.json`
    in de vorm `{"codes": {code: [gtin, ...]}}`.
 
@@ -97,62 +103,148 @@ en is alle kennis over "al nagekeken" verdwenen.
    `PackagingMarkedLabelAccreditationCode` (2). Naïef omzetten gooit 130 producten weg voor 2. Voeg
    de productlijsten samen en ontdubbel.
 
-4. **De oogst onthoudt wát hij nakeek, niet alleen wat hij opleverde.** Dit is de duurste bevinding
-   en de enige die deze story blijvend goedkoop maakt.
+4. **De oogst onthoudt wát hij nakeek — maar alleen wat blijvend waar is.** Dit is de duurste
+   bevinding en de enige die deze story blijvend goedkoop maakt. Versie 1 wilde élke uitkomst
+   onthouden; dat is fout, en het zou het vliegwiel afknellen.
 
-   Leg per `(code, gtin)` vast dát het paar is nagekeken, met de uitkomst (kandidaat / onder de
-   drempel / cross-code afgewezen / keyline / cap). Een volgende ronde slaat een nagekeken paar over
-   **vóór** de regio-analyse.
+   **Drie soorten uitkomst, en ze horen verschillend behandeld:**
 
-   **De controle verhuist naar vóór het dure werk**: nu staat `propose_regions` op `:479` en de
-   ontdubbeling op `:548`. Zonder die verhuizing bespaart onthouden niets.
+   | uitkomst | onthouden? | waarom |
+   |---|---|---|
+   | kandidaat aangemaakt | **blijvend** | staat al in de wachtrij; opnieuw aanmaken is een duplicaat |
+   | keyline-pagina (20.9) | **blijvend** | eigenschap van de pagina zelf, niet van de referenties |
+   | onder de drempel | **voorlopig** | een oordeel tegen de referentiepool van dát moment |
+   | cross-code afgewezen (20.7) | **voorlopig** | idem — de vergelijking loopt over referenties |
+   | cap bereikt | **nooit** | een runbudget, geen oordeel. Vastleggen zou het paar voorgoed uitsluiten omdat er die nacht toevallig genoeg andere waren |
 
-   Sleutel de vastlegging op `(code, gtin, bronpagina)`. Verandert de paginakeuze voor een GTIN, dan
-   is het een nieuw paar en mag het opnieuw — dat is het enige gat in de "opnieuw aflopen is
-   veilig"-redenering en het hoort expliciet.
+   **Waarom "voorlopig" en niet gewoon blijvend:** de oogst matcht tegen de actieve referenties van
+   een code. Het hele punt van het vliegwiel is dat die verzameling groeit — een menselijk akkoord
+   levert een nieuwe referentie op. Een paar dat vandaag onder de drempel blijft, kan morgen wél
+   matchen. Blijvend onthouden sluit de oogst dus af voor precies de verbetering die hij zelf
+   voortbrengt.
 
-5. **De teller gaat terug zodra de parenlijst verandert, met een reden erbij.** Precedent: het
-   voortgangsbestand draagt zelf `resetAt: 2026-07-27` met
-   `resetReason: "kaart uitgebreid 8->11 codes; oude offset wees in de oude paren-lijst"`.
-   Leg vast wélk proces dat bestand schrijft (de ml-service, niet de bouwer) en wat er gebeurt als er
-   een lopende run is.
+   **De oplossing: een vingerafdruk van de referentiepool.** Leg bij een voorlopige uitkomst vast
+   tegen wélke pool geoordeeld is — het aantal actieve referenties voor die code plus de hoogste
+   `updated_at` daarvan. Een voorlopig oordeel telt alleen zolang die vingerafdruk gelijk is;
+   verandert hij, dan wordt het paar opnieuw bekeken. Zo blijft de winst behouden zonder het
+   vliegwiel te blokkeren.
 
-   Met AC4 erbij is terugzetten niet meer duur: de nagekeken paren worden goedkoop overgeslagen.
+   **De controle verhuist naar vóór het dure werk, en filtert de hele paginagroep.** `VERIFIED`:
+   `propose_regions` staat op `:477` en `review_item_exists` op `:548` — de controle staat dus ná de
+   analyse. Maar let op: de pagina wordt **per groep één keer** geladen en gelokaliseerd
+   (`for i in groups[src]`, met `page_loaded` als vlag). Een overslag per páár bespaart het
+   decoderen en lokaliseren dus níet. Filter de hele groep weg zodra elk paar erin al is nagekeken;
+   dat is waar de 8,5 uur vandaan komt.
 
-6. **Krimpbescherming.** Wordt de nieuwe kaart fors kleiner dan de bestaande, dan wordt hij **niet**
-   geschreven maar gemeld. Reden: de index kapt standaard af op 500 GTINs
-   (`KEURMERK_INDEX_LIMIT`, `build-keurmerk-index.ts:261-264`), dus een index die met de standaard
-   gebouwd is zou de kaart stilzwijgend uitkleden. Kies een grens en noem hem.
+   Haal de vastlegging **in bulk** op vóór de paginalus, niet per paar — anders vervang je dure
+   beeldanalyse door duizenden losse database-opzoekingen.
 
-7. **De aandrijving wordt geregeld.** De declaratie-oogst krijgt een eigen periodieke start, naast
-   de bestaande volume-oogst. Leg vast: wie start hem, hoe vaak, en met welke tijdslimiet. Zonder
-   dit criterium maakt de story haar titel niet waar.
+   **Sleutel:** `(code, gtin, bronpagina)`, en dat is de enige. Versie 1 noemde op één plek
+   `(code, gtin)`; die tegenstrijdigheid is weg. Verandert de paginakeuze voor een GTIN, dan is het
+   een nieuw paar en mag het opnieuw bekeken worden.
 
-   *Let op: de twee diensten draaien in aparte containers, dus een omgevingsvariabele "op één plek"
-   bestaat niet. Zeg per instelling waar hij gezet wordt.*
+   **Naast, niet in plaats van `review_item_exists`.** Die controle is bewust statusblind en houdt
+   ook een eerder afgewézen item tegen; dat gedrag blijft. De nieuwe vastlegging voegt toe wat er
+   nooit was: paren die zijn nagekeken en géén item opleverden.
 
-8. **Geen regressie op de bestaande guards.** De cross-code-guard uit story 20.7 (`:535`) en de
-   keyline-guard uit 20.9 (`:480`) blijven ongewijzigd en hun toetsen groen.
+5. **De vastlegging krijgt een eigen tabel, en verdwijnt niet stilzwijgend.**
 
-9. **RED-bewijs** voor AC2 (elk van de drie uitsluitingen), AC3 (de botsing), AC4 (overslaan vóór de
-   analyse) en AC6, en **geen regressie**: de api- en ml-suites blijven groen.
+   **Waar:** een eigen tabel in de database, niet in de objectopslag. Reden: dit vraagt opzoekingen
+   per paar, en het bestaande opslagpatroon valt bij een leesfout fail-safe terug op "niets
+   onthouden" — precies het dure geval, en dan onzichtbaar. De oogst heeft al een databaseverbinding.
+
+   **Omvang:** in de orde van duizenden rijen (1349 paren nu), met een unieke sleutel op
+   `(code, gtin, bronpagina)`. Verwaarloosbaar naast de 7.635 review-items.
+
+   **Ontbreekt of onleesbaar:** de run **stopt met een duidelijke melding**. Hij begint níet stil
+   opnieuw — dat is 8,5 uur rekenwerk dat niemand heeft gevraagd, en het zou als "traag" gelezen
+   worden in plaats van als "kapot".
+
+   De teller uit het bestaande voortgangsbestand blijft bestaan voor de volgorde binnen één run,
+   maar is niet meer de drager van "al gedaan" — die rol gaat volledig naar de vastlegging. Leg vast
+   welk proces welk bestand schrijft (de ml-service, niet de bouwer).
+
+   **"De parenlijst verandert" wordt vastgesteld op de paren in de KAART**, niet op de door artwork
+   gefilterde paren: die tweede hangt af van wat er die nacht in de opslag staat en zou de teller om
+   niets laten terugspringen. **Loopt er een run?** Dan wordt de teller niet teruggezet en meldt de
+   bouwer dat; hij wacht niet.
+
+6. **Krimpbescherming, met een getal.** Wordt de nieuwe kaart **meer dan 10% kleiner** in paren dan
+   de bestaande, dan wordt hij **niet** geschreven maar gemeld; `--force` overschrijft dat bewust.
+   Reden: de index kapt standaard af op 500 GTINs (`KEURMERK_INDEX_LIMIT`,
+   `getIndexLimit()`, `build-keurmerk-index.ts:266`) van de 1862, dus een index die per ongeluk met de standaard
+   gebouwd is zou de kaart stilzwijgend uitkleden tot een kwart. De grens is toetsbaar zonder echte
+   kaart: geef de vergelijkfunctie twee tellingen.
+
+   Twee gevallen die er expliciet bij horen: **is er nog geen kaart**, dan blokkeert de bescherming
+   niet (eerste run). En de **droogloop meldt de krimp wél** — anders ontdek je de blokkade pas bij
+   het schrijven.
+
+   *De opgeslagen index draagt géén melding dát hij afgekapt is; `summary.gtinsWithData` (nu 1082)
+   is het bruikbare tweede signaal om dat te zien.*
+
+7. **De aandrijving wordt geregeld — inhalen en bijhouden zijn twee verschillende dingen.**
+   Versie 1 vroeg een nachtelijke start én beloofde "~12 uur eenmalig". Die twee gaan niet samen:
+   `VERIFIED` — een nachtelijke run haalt ongeveer 35 paren, dus 1097 paren zou **ruim 31 nachten**
+   duren. Scheid ze:
+
+   - **Inhalen:** één keer, met een ruim tijdsbudget, handmatig gestart en permission-gated
+     (deel B). ~8,5 uur voor 1097 paren.
+   - **Bijhouden:** daarna een nachtelijke start naast de bestaande volume-oogst. Die hoeft alleen
+     nog het verschil te doen, en dat is klein — dat is precies de winst van AC4.
+
+   Leg per start vast: wie hem aftrapt, hoe vaak, en met welk tijdsbudget.
+
+   **Ook de kaart zelf wordt periodiek herbouwd**, niet alleen de oogst gestart. Zonder dat komen de
+   43 wachtende codes nooit in de kaart zodra ze hun eerste referentie krijgen, en staat de story
+   over een maand weer stil op precies dezelfde manier.
+
+   *De twee diensten draaien in aparte containers, dus een omgevingsvariabele "op één plek" bestaat
+   niet. Zeg per instelling waar hij gezet wordt.*
+
+8. **Twee oogsters mogen elkaar niet in de weg lopen.** `VERIFIED`: ze draaien in **dezelfde**
+   ml-service-container met 8 GiB, en de declaratie-oogst breekt zichzelf af boven 75% van dat
+   gedeelde geheugen. De bestaande volume-oogst start om 3:37. Er is vandaag geen enkele
+   bescherming: `in_progress` wordt nergens gelezen om een tweede start te weigeren.
+
+   Vereist: een slot dat een tweede oogst weigert zolang er één loopt, én een starttijd die niet
+   met 3:37 samenvalt. Een run die het slot niet krijgt stopt met een melding — hij wacht niet en
+   hij draait niet alsnog.
+
+9. **Geen regressie op de bestaande guards.** De cross-code-guard uit story 20.7
+   (`_cross_code_rejected`) en de keyline-guard uit 20.9 (`_is_keyline`) blijven ongewijzigd en hun
+   toetsen groen. *Bij naam, niet op regelnummer: de vorige ronde liet zien dat die verschuiven.*
+
+10. **RED-bewijs** voor AC2 (elk van de drie uitsluitingen), AC3 (de botsing), AC4 (het onderscheid
+    blijvend/voorlopig én overslaan vóór de analyse), AC6 en AC8 (het slot), en **geen regressie**:
+    de api- en ml-suites blijven groen.
 
 ### Deel B — ná toestemming, niet onderdeel van de bouw
 
-10. **Permission-gated.** Het schrijven van de kaart, het terugzetten van de teller en de echte
-    oogstrun schrijven alle drie op acceptatie en wachten op expliciete toestemming van Friso. De
-    **droogloop** mag wel — die schrijft niets.
+11. **Permission-gated.** Het schrijven van de kaart, het terugzetten van de teller, de
+    inhaal-oogstrun **en het plaatsen van de periodieke start op `vanilla`** schrijven alle vier op
+    acceptatie en wachten op expliciete toestemming van Friso. Dat laatste hoorde er in versie 1
+    niet bij, terwijl een cron-regel plaatsen net zo goed een wijziging op die machine is. De **droogloop** mag wel — die schrijft niets.
 
-11. **Meetbare uitkomst**, vast te leggen ná toestemming:
+12. **Meetbare uitkomst**, vast te leggen ná toestemming:
 
     | wat | vóór (gemeten 19 aug) | verwacht | gemeten |
     |---|---|---|---|
     | open items in de wachtrij | 0 | — | *na de run* |
-    | codes in de kaart | 39 | 41 | |
-    | producten in de kaart | 791 | 1005 | |
-    | paren om door te rekenen | 1521 (oude lijst) | 1574 | |
-    | rekentijd | — | ~12 uur eenmalig | |
-    | rekentijd van de vólgende ronde | — | **klein** — dat is de winst van AC4 | |
+    | codes in de kaart | 39 | **39** | |
+    | producten in de kaart | 791 | **867** | |
+    | paren in de kaart | 1521 (oude lijst) | **1349** | |
+    | paren om door te rekenen | — | **1097** | |
+    | rekentijd van de inhaalronde | — | **~8,5 uur**, eenmalig | |
+    | rekentijd van de vólgende nachtelijke ronde | — | **klein** — dat is de winst van AC4 | |
+
+    *De kaart wordt in páren kleiner dan de oude (1349 tegenover 1521) omdat de overstromingsguard
+    er 537 uithaalt. Dat is gewenst, maar het botst met de krimpbescherming uit AC6 — de eerste
+    schrijfactie heeft dus `--force` nodig, mét die reden erbij. Leg dat vast, anders staat de
+    ontwikkelaar voor een blokkade die niemand verwacht.*
+
+    *De verwachte opbrengst in nieuwe items staat er bewust niet als hard getal: de historische
+    verhouding komt van een andere codemix. De meting stelt hem vast.*
 
     *De verwachte opbrengst in nieuwe items is bewust niet als hard getal opgenomen: de historische
     verhouding (~21%) komt van een andere codemix en zou een schijnnauwkeurigheid geven. De meting
@@ -182,7 +274,25 @@ en is alle kennis over "al nagekeken" verdwenen.
 
 ## Change Log
 
-- 2026-08-19: Aangemaakt na `review-20-2.md` (FAIL). Eigen nummer omdat 20.2 bezet is. Kern van de
-  herziening: de kaart laten meegroeien lost niets op zolang niets de oogst aandrijft (AC7) en
-  zolang de oogst vergeet wat hij al nakeek (AC4). Eigen metingen: 2377 paren, waarvan 490 kansloos
-  en 312 al afgehandeld, blijft 1574 over — ruim 12 uur, eenmalig.
+- 2026-08-19: **Versie 2** na `review-20-20.md` (FAIL, 4 hoog / 10 middel / 4 laag). Alle dertien
+  punten verwerkt. Twee daarvan veranderden de story wezenlijk:
+
+  **De derde uitsluiting stond in geen enkel getal.** `RECYCLABLE_GENERAL_CLAIM` en `TRIMAN` hebben
+  allebei een actieve referentie, dus geen van de andere twee uitsluitingen ving ze. Alle cijfers
+  liepen daardoor 537 paren te hoog. Zelf nagemeten en gecorrigeerd: **1349 paren, 39 codes, 867
+  producten, 1097 door te rekenen, ~8,5 uur** — versie 1 zei 1886 / 41 / 1005 / 1574 / ~12 uur.
+
+  **AC4 wilde te veel onthouden.** "Onder de drempel" is een oordeel tegen de referentiepool van dát
+  moment; blijvend vastleggen zou de oogst afsluiten voor precies de referenties die het vliegwiel
+  zelf oplevert. En "cap" is een runbudget, geen oordeel. Nu drie soorten uitkomst — blijvend,
+  voorlopig (met een vingerafdruk van de referentiepool) en nooit — plus de eis dat de hele
+  paginagroep vóór het laden gefilterd wordt, want de pagina wordt per groep geladen en een overslag
+  per paar bespaart het decoderen niet.
+
+  Verder: een eigen tabel voor de vastlegging met stoppen-bij-ontbreken in plaats van stil
+  terugvallen; inhalen en bijhouden gescheiden (een nachtelijke run haalt ~35 paren, dus 1097 zou 31
+  nachten duren); een slot tegen twee gelijktijdige oogsters in dezelfde 8 GiB-container; de kaart
+  óók periodiek herbouwen; het plaatsen van de planning erkend als schrijfactie; een krimpgrens van
+  10% met de eerste-run- en droogloop-gevallen erbij; en de correcties 2377→2376 unieke paren,
+  `:479`→`:477`, `:261-264`→`:266`, plus de herkomst van de ~28 s per paar.
+- 2026-08-19: Versie 1 aangemaakt na `review-20-2.md` (FAIL). Eigen nummer omdat 20.2 bezet is.
