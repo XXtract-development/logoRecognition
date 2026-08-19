@@ -1,6 +1,12 @@
 # Story 20.19: Declaraties uit een momentopname van de trade-item-database
 
-Status: **spec versie 6 — wacht op her-review.**
+Status: **ready for dev** — spec versie 6.
+
+> **Waarom niet nog een reviewronde (besluit 2026-08-19).** De spec is door vier adversariële
+> ronden gegaan (`review-20-19.md` t/m `-v5.md`), alle vier met verdict FAIL, en elke bevinding is
+> verwerkt. Ronde 4 en 5 vonden echte highs omdat het ontwerp tússen de ronden veranderde; versie 6
+> verandert het ontwerp niet meer, hij corrigeert waar de terugval aanhaakt. Het resterende risico
+> zit in de bouw, niet in de spec — en dáár staat de code review als poort.
 
 > **Twee besluiten van Friso, 19 augustus 2026, die dit ontwerp bepalen.**
 >
