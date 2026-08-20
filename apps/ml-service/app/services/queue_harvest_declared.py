@@ -26,11 +26,17 @@ Kernverschillen met de Nutri-Score-variant (bewust):
 Env (namespace ``DECLARED_HARVEST_``):
   DECLARED_HARVEST_MAP_KEY       MinIO-sleutel van de code->GTINs map
                                   (default flywheel-index/declared-harvest-map.json)
-  DECLARED_HARVEST_CODES         comma-lijst; leeg = alle codes uit de map
+  DECLARED_HARVEST_CODES         comma-lijst; leeg = alle codes uit de map. Een
+                                  gescopete run houdt zijn EIGEN teller en
+                                  vingerafdruk in het voortgangsbestand (zie
+                                  ``_scope_suffix``), zodat een debugrun de
+                                  nachtelijke teller niet overschrijft
   DECLARED_HARVEST_FLOOR         cosine-vloer (default 0.60 — gids-zaad-niveau,
                                   patroon 12.15; declaratie is de prior)
   DECLARED_HARVEST_BATCH         (code,gtin)-paren per run (default 400)
-  DECLARED_HARVEST_PER_CODE_CAP  max kandidaten per code per run (default 15)
+  DECLARED_HARVEST_PER_CODE_CAP  max kandidaten per code per run (default 15);
+                                  <= 0 betekent "lever niets" en stopt de run
+                                  meteen met status ``cap_disabled``
   DECLARED_HARVEST_MAX_SECONDS   tijd-box (default 1000)
   DECLARED_HARVEST_DRY_RUN       1/true/yes -> geen crop-upload, geen INSERT,
                                   geen state-write, GEEN vastlegging; kandidaten
@@ -72,6 +78,7 @@ import hashlib
 import json
 import os
 import re
+import sys
 import time
 from collections import defaultdict
 
@@ -282,7 +289,9 @@ def _lock_held(state: dict, now: float, max_age: float) -> bool:
     return (now - epoch) < max_age
 
 
-def _counter_reset_needed(state: dict, map_signature: str) -> bool:
+def _counter_reset_needed(
+    state: dict, map_signature: str, field: str = "map_signature"
+) -> bool:
     """Moet de teller terug omdat de parenlijst in de KAART veranderd is? (AC5)
 
     Vastgesteld op de paren in de KAART en niet op de door artwork gefilterde
@@ -299,8 +308,10 @@ def _counter_reset_needed(state: dict, map_signature: str) -> bool:
     Draagt het voortgangsbestand nog geen vingerafdruk, dan doet deze oogst geen
     uitspraak — dat is de eerste run ná 20.20, en het eenmalig terugzetten van de
     teller is daar een bewuste, toestemmingsplichtige handeling (deel B).
+
+    ``field`` is de vingerafdruk van DEZE scope; zie ``_scope_suffix``.
     """
-    recorded = state.get("map_signature")
+    recorded = state.get(field)
     if recorded is None:
         return False
     return str(recorded) != str(map_signature)
@@ -438,6 +449,96 @@ def _load_declared_map(storage_service) -> dict:
     return out
 
 
+class StateUnavailable(Exception):
+    """Het voortgangsbestand is er wél, maar niet te lezen (Story 20.20, her-review).
+
+    "Bestaat niet" en "leesfout" zijn twee verschillende dingen. Het eerste is
+    een verse start en volkomen normaal. Het tweede is een storing, en die kreeg
+    tot nu toe dezelfde behandeling: ``state = {"next_offset": 0}``. Omdat de
+    run-marker sinds AC8 ONMIDDELLIJK wordt weggeschreven, zette één hikje in de
+    objectopslag die verse stand meteen over de echte heen — teller én
+    vingerafdruk weg. Dat is precies de redenering die voor de KAART tot een
+    eigen status leidde; de stand krijgt hem nu ook.
+    """
+
+    def __init__(self, reason: str):
+        super().__init__(reason)
+        self.reason = reason
+
+
+# Herkenningspunten voor "dit object bestaat (nog) niet" — de enige leesfout die
+# terecht een verse start oplevert. Bewust NIET "bucket bestaat niet": dat is een
+# configuratiefout en geen lege stand.
+_MISSING_OBJECT_CODES = ("nosuchkey", "nosuchobject", "notfound")
+_MISSING_OBJECT_TEXT = ("no such key", "does not exist", "not found", "no such file")
+
+
+def _is_missing_object(exc: Exception) -> bool:
+    """True als deze fout "het object bestaat niet" betekent."""
+    if isinstance(exc, (FileNotFoundError, KeyError)):
+        return True
+    code = str(getattr(exc, "code", "") or "").strip().lower()
+    if code in _MISSING_OBJECT_CODES:
+        return True
+    tekst = f"{code} {exc}".lower()
+    return any(m in tekst for m in _MISSING_OBJECT_TEXT)
+
+
+def _load_state(storage_service) -> dict:
+    """Lees de stand: ontbreken mag, onleesbaar zijn niet.
+
+    Ontbreekt het bestand, dan is dit de eerste run en begint de teller op 0.
+    Elke ANDERE fout (netwerk, rechten, misvormde JSON) is een storing: de run
+    stopt en laat de stand staan, in plaats van hem te overschrijven met een
+    verse.
+    """
+    try:
+        raw = storage_service.get_training_image(STATE_KEY)
+    except Exception as exc:
+        if _is_missing_object(exc):
+            return {"next_offset": 0}
+        logger.error(
+            "Voortgangsbestand niet leesbaar — de run stopt",
+            extra={"key": STATE_KEY, "error": str(exc)},
+        )
+        raise StateUnavailable("unreadable") from exc
+    try:
+        data = json.loads(
+            raw.decode("utf-8") if isinstance(raw, (bytes, bytearray)) else raw
+        )
+    except Exception as exc:
+        raise StateUnavailable("malformed") from exc
+    if not isinstance(data, dict):
+        raise StateUnavailable("malformed")
+    return data
+
+
+def _scope_suffix() -> str:
+    """Achtervoegsel waaronder DEZE scope zijn voortgang bewaart (her-review).
+
+    De vingerafdruk van de kaart werd scope-ONafhankelijk (M6 uit de vorige
+    ronde) — terecht, want de kaart is dat ook. Maar ``next_offset`` bleef in de
+    parenlijst van de DRAAIENDE scope wijzen. Een handmatige debugrun met
+    ``DECLARED_HARVEST_CODES=FSC`` bouwde zijn teller op in een lijst van dertig
+    paren en schreef die over de nachtelijke teller heen, die er 1349 heeft.
+    Vóór die wijziging viel dat nog op (de vingerafdruk veranderde, de teller
+    ging terug); daarna bleef het stil, en de voorste paren van de volledige
+    lijst werden overgeslagen tot de kaart toevallig veranderde.
+
+    Elke scope houdt daarom zijn eigen teller én zijn eigen vingerafdruk. Het
+    SLOT blijft gedeeld — de container is dat ook, en twee oogsten naast elkaar
+    blijft een OOM-recept.
+    """
+    if not HARVEST_CODES:
+        return ""
+    return ":" + ",".join(sorted(HARVEST_CODES))
+
+
+def _total_field(offset_field: str) -> str:
+    """Bij de teller horende naam voor het aantal paren in dezelfde scope."""
+    return "total_pairs" + offset_field[len("next_offset") :]
+
+
 def _scoped_pairs(declared_map: dict) -> list:
     """Deterministische (code, gtin)-parenlijst binnen de env-scope."""
     pairs = []
@@ -550,7 +651,12 @@ async def _flush_checks(pending: list, db_service) -> int:
 
 
 def _checkpoint(
-    state: dict, storage_service, reached: int, total: int, done: bool = False
+    state: dict,
+    storage_service,
+    reached: int,
+    total: int,
+    done: bool = False,
+    offset_field: str = "next_offset",
 ) -> None:
     """
     Story 20.11 (AC3) — offset wegschrijven. ALTIJD ná een flush aanroepen, nooit
@@ -560,8 +666,8 @@ def _checkpoint(
     """
     if DRY_RUN:
         return
-    state["next_offset"] = reached
-    state["total_pairs"] = total
+    state[offset_field] = reached
+    state[_total_field(offset_field)] = total
     if done:
         _clear_lock_fields(state)
     storage_service.put_training_image(
@@ -625,7 +731,49 @@ def _release_lock(state: dict, storage_service) -> None:
         logger.warning("Run-marker kon niet opgeruimd worden", extra={"key": STATE_KEY})
 
 
+# Statussen waarop de oogst NIETS gedaan heeft en dat iemand moet merken. De
+# cron schreef de regel netjes in het logbestand, maar niets keek naar een
+# exitcode — en precies zo bleef 20.2 wekenlang stil "draaien". Een niet-nul
+# exitcode zet de cron-mail én elke bewaking in beweging.
+ALERT_STATUSES = frozenset(
+    {
+        "map_unavailable",
+        "state_unavailable",
+        "checks_unavailable",
+        "locked",
+        "cap_disabled",
+    }
+)
+
+
+def exit_code_for(result: dict) -> int:
+    """Exitcode van een run, afgeleid uit zijn status (her-review, L2)."""
+    return 1 if (result or {}).get("status") in ALERT_STATUSES else 0
+
+
 async def run_batch() -> dict:
+    # Story 20.20 (her-review) — een cap van nul of lager betekent "lever deze
+    # run niets". Zonder eigen tak stond de oogst dan PERMANENT stil: elk paar
+    # ketste af op de cap, geen enkel paar telde als afgehandeld, de teller
+    # schoof nooit op en de run eindigde nooit op `complete` — elke nacht
+    # dezelfde paren, elke nacht hetzelfde niets. Nu stopt de run meteen, vóór
+    # het model, de kaart, het slot en de teller, en meldt hij het met een
+    # niet-nul exitcode zodat "de oogst staat uit" niet stil blijft.
+    if PER_CODE_CAP <= 0:
+        result = {
+            "status": "cap_disabled",
+            "per_code_cap": PER_CODE_CAP,
+            "candidates": 0,
+            "inserted": 0,
+        }
+        logger.warning(
+            "Declaratie-oogst gestopt: DECLARED_HARVEST_PER_CODE_CAP staat op "
+            "nul of lager, dus er kan niets uitkomen. De teller blijft staan.",
+            extra=result,
+        )
+        print(json.dumps(result))
+        return result
+
     from app.ml.model_manager import model_manager
     from app.services.classification import _to_pil
     from app.services.database import db_service
@@ -660,12 +808,26 @@ async def run_batch() -> dict:
         print(json.dumps(result))
         return result
 
+    # Story 20.20 (her-review) — ontbreken is een verse start, onleesbaar is een
+    # storing. De marker gaat hierna METEEN op de stand; met de oude fail-safe
+    # schreef één leesfout dus gegarandeerd een verse stand over de echte heen.
     try:
-        state = json.loads(
-            storage_service.get_training_image(STATE_KEY).decode("utf-8")
+        state = _load_state(storage_service)
+    except StateUnavailable as exc:
+        result = {
+            "status": "state_unavailable",
+            "reason": exc.reason,
+            "key": STATE_KEY,
+            "candidates": 0,
+            "inserted": 0,
+        }
+        logger.error(
+            "Declaratie-oogst gestopt: het voortgangsbestand is er wél maar niet "
+            "leesbaar. Er wordt niets overschreven.",
+            extra=result,
         )
-    except Exception:
-        state = {"next_offset": 0}
+        print(json.dumps(result))
+        return result
 
     # Story 20.20 (AC8) — één oogst tegelijk. De volume-oogst en deze oogst delen
     # dezelfde ml-service-container van 8 GiB; twee declaratie-runs naast elkaar
@@ -701,21 +863,29 @@ async def run_batch() -> dict:
     # kaarten met evenveel maar andere paren lieten de teller staan terwijl de
     # offset in een andere lijst wees), en niet op de door artwork gefilterde
     # paren (die hangen af van wat er die nacht in de opslag staat).
+    # De teller hoort bij de SCOPE die hem opbouwde — zie `_scope_suffix`. De
+    # vingerafdruk van de kaart is scope-onafhankelijk, maar hij wordt per scope
+    # bewaard: anders meldt een gescopete debugrun "kaart ongewijzigd" en laat
+    # hij de nachtelijke teller in een oude parenlijst staan.
+    offset_field = f"next_offset{_scope_suffix()}"
+    signature_field = f"map_signature{_scope_suffix()}"
+
     map_signature = _map_signature(declared_map)
     map_pairs = len(_all_pairs(declared_map))
-    if _counter_reset_needed(state, map_signature):
+    if _counter_reset_needed(state, map_signature, signature_field):
         logger.info(
             "Declaratie-oogst zet de teller terug: de kaart heeft een andere parenlijst",
             extra={
-                "was": state.get("map_signature"),
+                "was": state.get(signature_field),
                 "nu": map_signature,
+                "scope": sorted(HARVEST_CODES) or "hele kaart",
             },
         )
-        state["next_offset"] = 0
-    state["map_signature"] = map_signature
+        state[offset_field] = 0
+    state[signature_field] = map_signature
     state["map_pairs"] = map_pairs
 
-    next_offset = int(state.get("next_offset", 0))
+    next_offset = int(state.get(offset_field, 0))
 
     keys = [
         k
@@ -751,7 +921,11 @@ async def run_batch() -> dict:
             "next_offset": next_offset,
             "candidates": 0,
             "inserted": 0,
-            "stale_marker_cleared": stale_marker,
+            # In DRY_RUN keert `_release_lock` meteen terug en is er niets
+            # opgeruimd; "true" melden zou een onwaar veld zijn in een uitvoer
+            # die als bewijs gelezen wordt.
+            "stale_marker_cleared": stale_marker and not DRY_RUN,
+            "scope": sorted(HARVEST_CODES) or None,
         }
         print(json.dumps(result))
         return result
@@ -1087,7 +1261,9 @@ async def run_batch() -> dict:
             n = await _flush(queue, db_service, storage_service)
             inserted_total += n
             checks_recorded += await _flush_checks(pending_checks, db_service)
-            _checkpoint(state, storage_service, _reached(), total)
+            _checkpoint(
+                state, storage_service, _reached(), total, offset_field=offset_field
+            )
             processed_since_flush = 0
 
     reached = _reached()
@@ -1095,7 +1271,9 @@ async def run_batch() -> dict:
     # Slot-flush + checkpoint voor de rest van de queue.
     inserted_total += await _flush(queue, db_service, storage_service)
     checks_recorded += await _flush_checks(pending_checks, db_service)
-    _checkpoint(state, storage_service, reached, total, done=True)
+    _checkpoint(
+        state, storage_service, reached, total, done=True, offset_field=offset_field
+    )
 
     candidate_count = candidate_total
     inserted = inserted_total
@@ -1120,6 +1298,7 @@ async def run_batch() -> dict:
         "checks_recorded": checks_recorded,
         "map_pairs": map_pairs,
         "map_signature": map_signature,
+        "scope": sorted(HARVEST_CODES) or None,
         "total_pairs": total,
         "from_offset": next_offset,
         "to_offset": reached,
@@ -1133,4 +1312,4 @@ async def run_batch() -> dict:
 
 
 if __name__ == "__main__":
-    asyncio.run(run_batch())
+    sys.exit(exit_code_for(asyncio.run(run_batch())))

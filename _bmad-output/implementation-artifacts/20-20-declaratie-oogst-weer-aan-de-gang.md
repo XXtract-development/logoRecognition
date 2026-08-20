@@ -226,6 +226,16 @@ en is alle kennis over "al nagekeken" verdwenen.
     acceptatie en wachten op expliciete toestemming van Friso. Dat laatste hoorde er in versie 1
     niet bij, terwijl een cron-regel plaatsen net zo goed een wijziging op die machine is. De **droogloop** mag wel — die schrijft niets.
 
+> [!warning] Migratie 0021 is ná zijn eigen commit nog gewijzigd
+> `apps/api/prisma/migrations/0021_add_declared_harvest_checks/` kreeg in de review-verwerking
+> commentaarregels en twee `COMMENT ON`-opdrachten erbij, ná de commit waarin hij is aangemaakt.
+> Prisma bewaart per toegepaste migratie een checksum, dus **is hij ergens al toegepast, dan
+> klaagt hij bij de eerstvolgende `migrate`-opdracht over een gewijzigde checksum**. Nu ongevaarlijk:
+> niets past hem automatisch toe (`VERIFIED` in twee reviewrondes) en hij is op geen enkele
+> omgeving gedraaid — de tabel `declared_harvest_checks` bestaat daar dus nog niet. Wie hem als
+> eerste toepast heeft er geen last van. Wordt er ooit tóch een omgeving gevonden waar hij al
+> staat: niet opnieuw wijzigen, maar de checksum daar bijwerken (`prisma migrate resolve`).
+
 12. **Meetbare uitkomst**, vast te leggen ná toestemming:
 
     | wat | vóór (gemeten 19 aug) | verwacht | gemeten |
@@ -273,6 +283,42 @@ en is alle kennis over "al nagekeken" verdwenen.
 - [Source: `/usr/local/bin/keurmerk-harvest.sh` op vanilla — de enige planning, en hij start de volume-oogst]
 
 ## Change Log
+
+- 2026-08-20 (nog later): **De her-review verwerkt** (`review-20-20-code-v2.md`, FAIL, 1 hoog /
+  3 middel / 6 laag). Het hoofddeel van het hoge punt zat al in commit `f051ddf`; de rest is nu
+  gedaan, met terugdraai-bewijs voor het hoge punt en voor middel 2 en 3.
+
+  **Hoog (restdeel).** Een cap van nul of lager zette de oogst permanent stil: élk paar ketste af
+  op het runbudget, geen enkel paar telde als afgehandeld, de teller schoof nooit op en de run
+  eindigde nooit op `complete` — elke nacht dezelfde paren, elke nacht hetzelfde niets. Zo'n run
+  stopt nu meteen met status `cap_disabled`, vóór het model, de kaart, het slot en de teller.
+  Nieuw is ook de toets die twee opeenvolgende runs met een volle cap naast elkaar legt: de teller
+  schuift op, en de tweede run laadt de al beoordeelde en de afgeketste pagina's niet opnieuw.
+
+  **Middel.** De droogloop van de bouwer besliste nog op een tellíng terwijl de oogst op een
+  digest beslist — bij evenveel maar andere paren meldde hij dus het tegenovergestelde van wat er
+  zou gebeuren, op precies het scherm waarop een mens over `--apply` beslist. De bouwer rekent nu
+  dezelfde vingerafdruk uit (gemeten tegen de uitvoer van de draaiende python-module, niet
+  nagerekend). De teller is scope-bewust geworden: een gescopete debugrun houdt zijn eigen teller
+  en vingerafdruk in het voortgangsbestand en schrijft de nachtelijke teller niet meer over — die
+  liet sinds de scope-onafhankelijke vingerafdruk een stil dekkingsgat achter. En een ONLEESBAAR
+  voortgangsbestand krijgt nu dezelfde behandeling als een onleesbare kaart: "bestaat niet" blijft
+  een verse start, een leesfout stopt de run met status `state_unavailable` in plaats van de stand
+  te overschrijven.
+
+  **Laag.** `stale_marker_cleared` meldt in een droogloop niet langer een opruiming die er niet
+  was; de statussen waarop niets gebeurde (`map_unavailable`, `state_unavailable`,
+  `checks_unavailable`, `locked`, `cap_disabled`) geven een niet-nul exitcode zodat de cron er niet
+  stil op blijft staan; een onschrijfbaar logbestand draait die exitcode niet meer om (`PIPESTATUS`
+  in plaats van kale `pipefail`, nagemeten in drie gevallen); de api-containerprefix wordt nu
+  getoetst tegen twee namen waarop op acceptatie werkelijk `docker exec` is gedraaid; allebei de
+  scripts stoppen bij méér dan één treffer in plaats van er met `head -n 1` één te gokken; de dode
+  assert in de markertoets is vervangen door een echte volgordemeting, en de TS-slottoets rekent de
+  vervaltijdformule niet meer na. Het poortgetal in `sprint-status.yaml` staat op de gemeten 1131.
+
+  **Bewust niet gedaan:** de zeven `eslint`-waarschuwingen over ongebruikte `eslint-disable`-regels
+  in de bouwer. Ze stonden in de toelichting van de review, niet in de lijst met te wijzigen punten,
+  en ze zeggen niets over het gedrag.
 
 - 2026-08-20 (later die dag): **De code-review verwerkt** (`review-20-20-code.md`, FAIL, 4 hoog /
   6 middel / 5 laag). Alle vijftien punten doorgevoerd, geen waivers.

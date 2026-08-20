@@ -36,6 +36,7 @@ import {
   serializeDeclaredHarvestMap,
   evaluateShrink,
   describeCounterPlan,
+  declaredHarvestMapSignature,
   runBuild,
   DECLARED_HARVEST_MAP_OBJECT_KEY,
   SOURCE_INDEX_OBJECT_KEY,
@@ -320,28 +321,98 @@ describe('AC6 — krimpbescherming met een getal', () => {
 // ===========================================================================
 
 describe('AC5 — wanneer de teller terug moet', () => {
-  it('meldt dat de teller terug moet zodra de paren in de KAART veranderen', () => {
-    const plan = describeCounterPlan({ mapPairs: 1349, statePairs: 1521, inProgress: false });
+  /**
+   * De vingerafdrukken hieronder zijn GEMETEN aan de draaiende python-module
+   * (`_map_signature` in queue_harvest_declared.py, uitvoer van de ml-suite in
+   * de wegwerpcontainer), niet in TypeScript nagerekend. Wijkt de bouwer af van
+   * de oogst, dan valt deze toets om.
+   */
+  const GEMETEN_IN_PYTHON: Array<[Record<string, string[]>, string]> = [
+    [{ A: ['111'] }, '1|ad368640e1c6a909185d65ab45596a8e'],
+    [{ A: ['111', '222', '333'] }, '3|32c3bcf1cd29a9d131d0db65452bfba0'],
+    [{ A: ['111', '222', '333'], B: ['444'] }, '4|4b6ac11b3d0e830623c8bd6c3e410a8b'],
+  ];
+
+  it('rekent dezelfde vingerafdruk uit als de oogst', () => {
+    for (const [kaart, verwacht] of GEMETEN_IN_PYTHON) {
+      expect(declaredHarvestMapSignature(kaart)).toBe(verwacht);
+    }
+  });
+
+  it('de vingerafdruk hangt niet van de sleutelvolgorde af, wél van de paren', () => {
+    expect(declaredHarvestMapSignature({ B: ['333'], A: ['222', '111'] })).toBe(
+      declaredHarvestMapSignature({ A: ['111', '222'], B: ['333'] })
+    );
+    expect(declaredHarvestMapSignature({ A: ['111', '999'] })).not.toBe(
+      declaredHarvestMapSignature({ A: ['111', '222'] })
+    );
+  });
+
+  it('meldt dat de teller terug moet zodra de parenlijst in de KAART verandert', () => {
+    const plan = describeCounterPlan({
+      mapPairs: 1349,
+      mapSignature: declaredHarvestMapSignature({ A: ['111'] }),
+      statePairs: 1521,
+      stateSignature: declaredHarvestMapSignature({ A: ['222'] }),
+      inProgress: false,
+    });
     expect(plan.reset).toBe(true);
     expect(plan.message).toContain('1521');
     expect(plan.message).toContain('1349');
   });
 
-  it('laat de teller staan als de kaart dezelfde paren houdt', () => {
-    expect(describeCounterPlan({ mapPairs: 1349, statePairs: 1349, inProgress: false }).reset).toBe(
-      false
-    );
+  it('meldt de teruggang OOK bij evenveel paren met een andere lijst', () => {
+    // Eén product eruit, één erin — bij een wekelijkse herbouw uit een levende
+    // index geen uitzondering. Op een TELLING meldde de bouwer hier "de teller
+    // blijft staan" terwijl de oogst hem terugzet: het tegenovergestelde van
+    // wat er gebeurt, op het scherm waarop een mens over --apply beslist.
+    const plan = describeCounterPlan({
+      mapPairs: 3,
+      mapSignature: declaredHarvestMapSignature({ A: ['111', '999'], B: ['333'] }),
+      statePairs: 3,
+      stateSignature: declaredHarvestMapSignature({ A: ['111', '222'], B: ['333'] }),
+      inProgress: false,
+    });
+    expect(plan.reset).toBe(true);
+    expect(plan.message.toUpperCase()).toContain('ANDERE');
+  });
+
+  it('laat de teller staan als de kaart dezelfde parenlijst houdt', () => {
+    const zelfde = declaredHarvestMapSignature({ A: ['111', '222'], B: ['333'] });
+    const plan = describeCounterPlan({
+      mapPairs: 3,
+      mapSignature: zelfde,
+      statePairs: 3,
+      stateSignature: zelfde,
+      inProgress: false,
+    });
+    expect(plan.reset).toBe(false);
   });
 
   it('zet de teller NIET terug als er een oogstrun loopt, en meldt dat — hij wacht niet', () => {
-    const plan = describeCounterPlan({ mapPairs: 1349, statePairs: 1521, inProgress: true });
+    const plan = describeCounterPlan({
+      mapPairs: 1349,
+      mapSignature: declaredHarvestMapSignature({ A: ['111'] }),
+      statePairs: 1521,
+      stateSignature: declaredHarvestMapSignature({ A: ['222'] }),
+      inProgress: true,
+    });
     expect(plan.reset).toBe(false);
     expect(plan.message.toLowerCase()).toContain('loopt');
   });
 
-  it('doet geen uitspraak als het voortgangsbestand nog geen parenaantal draagt', () => {
-    const plan = describeCounterPlan({ mapPairs: 1349, statePairs: null, inProgress: false });
+  it('doet geen uitspraak als het voortgangsbestand nog geen vingerafdruk draagt', () => {
+    // Dezelfde regel als `_counter_reset_needed`: zonder vastgelegde vingerafdruk
+    // zet de oogst niets terug — dat is de eerste run ná 20.20.
+    const plan = describeCounterPlan({
+      mapPairs: 1349,
+      mapSignature: declaredHarvestMapSignature({ A: ['111'] }),
+      statePairs: 1521,
+      stateSignature: null,
+      inProgress: false,
+    });
     expect(plan.reset).toBe(false);
+    expect(plan.message).toContain('vingerafdruk');
   });
 });
 
@@ -454,6 +525,53 @@ describe('AC7 — de aandrijving is uitvoerbaar, niet alleen opgeschreven', () =
     }
   });
 
+  it('de prefix van het KAARTSCRIPT hoort bij de echte api-containernaamgeving', () => {
+    // Symmetrisch aan de ml-prefix hieronder, en met dezelfde soort bewijs: dit
+    // zijn namen waarop op acceptatie werkelijk `docker exec` is gedraaid
+    // (review-20-18.md, review-20-19.md, 20-19-declaraties-uit-de-tradeitem-
+    // database.md:449). De api-prefix was tot nu toe alleen als TEGENvoorbeeld
+    // in de ml-toets getoetst — of hij zelf klopte, stond nergens.
+    const bron = readFileSync(mapScript, 'utf8')
+      .split('\n')
+      .filter((r) => !r.trimStart().startsWith('#'))
+      .join('\n');
+    const prefix = bron.match(/API_CONTAINER_PREFIX:-([^}"]+)/)?.[1];
+    expect(prefix, 'het script moet een prefix als standaardwaarde hebben').toBeTruthy();
+    for (const gemeten of [
+      'app-qsookwow8koko0kwg00g0cwk-134318329338',
+      'app-qsookwow8koko0kwg00g0cwk-165822722086',
+    ]) {
+      expect(gemeten.startsWith(prefix!), `${gemeten} valt buiten de prefix`).toBe(true);
+    }
+    // En hij mag de ML-container niet vangen: die draait een ander commando.
+    expect(
+      'ml-service-qsookwow8koko0kwg00g0cwk-203251989081'.startsWith(prefix!)
+    ).toBe(false);
+  });
+
+  it('stopt allebei de scripts bij MEER DAN EEN treffer in plaats van er een te gokken', () => {
+    // Tijdens een blauw/groen-uitrol draaien er twee containers met dezelfde
+    // prefix; `head -n 1` koos er dan willekeurig een, mogelijk juist de
+    // container die wordt weggehaald.
+    for (const pad of [harvestScript, mapScript]) {
+      const bron = readFileSync(pad, 'utf8');
+      expect(bron, `${pad} telt de treffers niet`).toMatch(/AANTAL=.*grep -c/);
+      expect(bron).toMatch(/MEER DAN EEN/);
+    }
+  });
+
+  it('laat een onschrijfbaar logbestand de exitcode van het werk niet omdraaien', () => {
+    // Met `pipefail` bepaalt de laatste falende schakel de uitkomst, en `tee`
+    // faalt zodra het logpad niet schrijfbaar is — terwijl het werk gewoon
+    // draait en de uitvoer op stdout staat. Een geslaagde run rapporteerde zo
+    // een mislukking, in de enige richting die telt.
+    for (const pad of [harvestScript, mapScript]) {
+      const bron = readFileSync(pad, 'utf8');
+      expect(bron, `${pad} laat tee de exitcode bepalen`).toMatch(/PIPESTATUS/);
+      expect(bron).toMatch(/exit "\$status"/);
+    }
+  });
+
   it('laat allebei de scripts hun melding ergens aankomen', () => {
     // AC6 wil dat een geblokkeerde krimp "gemeld" wordt en AC8 dat een geweigerde
     // run "stopt met een melding". Een cron-proces heeft geen terminal: zonder
@@ -465,20 +583,38 @@ describe('AC7 — de aandrijving is uitvoerbaar, niet alleen opgeschreven', () =
     }
   });
 
-  it('geeft de inhaalronde een slot dat lánger meegaat dan zijn eigen tijdsbudget', () => {
-    // De runbook schrijft een tijdsbudget voor; de oogstcode bepaalt hoe lang de
-    // marker een tweede start tegenhoudt. Die twee moeten bij elkaar passen,
-    // anders start de nachtelijke cron een tweede oogst midden in de inhaalronde.
+  it('leidt de vervaltijd van het slot af uit het tijdsbudget van de run', () => {
+    // De runbook schrijft een tijdsbudget van tien uur voor; de standaardvervaltijd
+    // van de marker is zes. Ging die vervaltijd niet mee met het budget, dan startte
+    // de nachtelijke cron een tweede oogst midden in de inhaalronde.
+    //
+    // Deze toets rekent de formule NIET na — dat deed hij eerst, en dan blijft hij
+    // groen terwijl `_lock_max_age_for_run` van vorm verandert. Het numerieke bewijs
+    // staat in de ml-suite (`test_ac8_slot_dekt_een_inhaalronde_die_langer_duurt…`,
+    // die de functie echt aanroept); hier hoort alleen de KOPPELING tussen de
+    // runbook en de code thuis: het budget staat in de runbook, en de vervaltijd
+    // wordt uit datzelfde budget afgeleid in plaats van uit een constante.
     const tekst = readFileSync(runbook, 'utf8');
     const budget = Number(tekst.match(/DECLARED_HARVEST_MAX_SECONDS=(\d+)/)![1]);
     expect(budget).toBe(36000);
 
     const py = readFileSync(harvestModule, 'utf8');
-    const lock = Number(py.match(/DECLARED_HARVEST_LOCK_MAX_AGE_SECONDS", "(\d+)"/)![1]);
-    const grace = Number(py.match(/DECLARED_HARVEST_LOCK_GRACE_SECONDS", "(\d+)"/)![1]);
-    // Dit is precies wat `_lock_max_age_for_run()` rekent.
-    const vervaltijd = Math.max(lock, budget + grace);
-    expect(vervaltijd).toBeGreaterThan(budget);
+    const functie = py.slice(py.indexOf('def _lock_max_age_for_run'));
+    const lichaam = functie.slice(0, functie.indexOf('\ndef ', 1));
+    expect(lichaam, 'de vervaltijd hangt niet meer aan het tijdsbudget').toContain(
+      'MAX_SECONDS + LOCK_GRACE_SECONDS'
+    );
+  });
+
+  it('leest het vingerafdrukveld dat de oogst ook echt schrijft', () => {
+    // De bouwer meldt in de droogloop wat er met de teller gebeurt, en beslist
+    // daarvoor op dezelfde vingerafdruk als de oogst. Wordt dat veld hernoemd,
+    // dan meldt de droogloop stilletjes "nog geen vingerafdruk" en klopt het
+    // scherm waarop een mens over --apply beslist niet meer.
+    const py = readFileSync(harvestModule, 'utf8');
+    expect(py).toContain('signature_field = f"map_signature{_scope_suffix()}"');
+    expect(py).toContain('state[signature_field] = map_signature');
+    expect(py).toContain('def _map_signature(');
   });
 
   it('laat de declaratie-oogst niet op 3:37 starten — dat is de volume-oogst', () => {
@@ -520,7 +656,9 @@ describe('AC1 — droogloop is de standaard', () => {
         .mockResolvedValue(index({ 'PackagingMarkedLabelAccreditationCode/FSC': ['111', '222'] })),
       listActiveReferenceCodes: vi.fn().mockResolvedValue(['FSC']),
       readExistingPairs: vi.fn().mockResolvedValue(null),
-      readHarvestState: vi.fn().mockResolvedValue({ pairs: null, inProgress: false }),
+      readHarvestState: vi
+        .fn()
+        .mockResolvedValue({ pairs: null, signature: null, inProgress: false }),
       writeMap: vi.fn().mockResolvedValue(undefined),
       ...over,
     };

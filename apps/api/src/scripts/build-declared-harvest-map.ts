@@ -45,6 +45,8 @@
  * `main()` kunnen importeren.
  */
 
+import { createHash } from "node:crypto";
+
 import prisma from "../core/db";
 import {
   getStorageAdapter,
@@ -379,6 +381,32 @@ export function evaluateShrink(args: {
   return { blocked: !force, shrinkPct, message };
 }
 
+/**
+ * DEZELFDE vingerafdruk als de oogst berekent (`_map_signature` in
+ * `apps/ml-service/app/services/queue_harvest_declared.py`).
+ *
+ * Vorm: `"<aantal paren>|<md5 over de paren>"`, met per regel `"<CODE>\t<GTIN>"`,
+ * codes gesorteerd en binnen een code de GTIN's gesorteerd — precies wat
+ * `_all_pairs` oplevert nadat `_load_declared_map` heeft genormaliseerd.
+ *
+ * WAAROM DE BOUWER DIT NAREKENT: de oogst besluit op deze digest of zijn teller
+ * terug moet. Deed de bouwer dat op een TELLING, dan meldde de droogloop bij
+ * evenveel maar andere paren — één product eruit, één erin, bij een wekelijkse
+ * herbouw uit een levende index geen uitzondering — het tegenovergestelde van
+ * wat er daarna gebeurt. En de droogloop is juist het scherm waarop een mens
+ * beslist of `--apply` verantwoord is.
+ */
+export function declaredHarvestMapSignature(
+  codes: Record<string, string[]>,
+): string {
+  const regels: string[] = [];
+  for (const code of Object.keys(codes).sort()) {
+    for (const gtin of [...codes[code]].sort()) regels.push(`${code}\t${gtin}`);
+  }
+  const digest = createHash("md5").update(regels.join("\n"), "utf8").digest("hex");
+  return `${regels.length}|${digest}`;
+}
+
 export interface CounterPlan {
   reset: boolean;
   message: string;
@@ -395,39 +423,52 @@ export interface CounterPlan {
  * van het voortgangsbestand. Deze functie beschrijft alleen wat er staat te
  * gebeuren. Loopt er een run, dan blijft de teller staan en meldt de bouwer dat;
  * hij wacht niet.
+ *
+ * De beslissing loopt over de VINGERAFDRUK, niet over het aantal paren — exact
+ * de regel die `_counter_reset_needed` in de oogst hanteert, inclusief "nog geen
+ * vingerafdruk vastgelegd betekent: niet terugzetten". Op een telling meldde de
+ * droogloop bij evenveel maar andere paren het tegenovergestelde van wat er
+ * gebeurde.
  */
 export function describeCounterPlan(args: {
   mapPairs: number;
+  mapSignature: string;
   statePairs: number | null;
+  stateSignature: string | null;
   inProgress: boolean;
 }): CounterPlan {
-  const { mapPairs, statePairs, inProgress } = args;
-  if (statePairs === null) {
+  const { mapPairs, mapSignature, statePairs, stateSignature, inProgress } =
+    args;
+  if (stateSignature === null) {
     return {
       reset: false,
       message:
-        "het voortgangsbestand draagt nog geen parenaantal — de oogst legt het bij " +
-        "zijn eerstvolgende start vast; de teller wordt nu niet teruggezet",
+        "het voortgangsbestand draagt nog geen vingerafdruk van de kaart — de oogst " +
+        "legt hem bij zijn eerstvolgende start vast; de teller wordt nu niet teruggezet",
     };
   }
-  if (statePairs === mapPairs) {
+  if (stateSignature === mapSignature) {
     return {
       reset: false,
-      message: `de kaart houdt ${mapPairs} paren — de teller blijft staan`,
+      message: `dezelfde parenlijst als de oogst laatst zag (${mapPairs} paren) — de teller blijft staan`,
     };
   }
+  const verschil =
+    statePairs === mapPairs
+      ? `evenveel paren (${mapPairs}) maar een ANDERE lijst`
+      : `${statePairs ?? "?"} → ${mapPairs} paren`;
   if (inProgress) {
     return {
       reset: false,
       message:
-        `er loopt een oogstrun; de teller wordt NIET teruggezet (${statePairs} → ${mapPairs} paren). ` +
+        `er loopt een oogstrun; de teller wordt NIET teruggezet (${verschil}). ` +
         "De bouwer wacht niet — herhaal deze melding na afloop van die run.",
     };
   }
   return {
     reset: true,
     message:
-      `de kaart gaat van ${statePairs} naar ${mapPairs} paren — de oogst zet zijn teller ` +
+      `de kaart krijgt een andere parenlijst: ${verschil} — de oogst zet zijn teller ` +
       "bij de eerstvolgende start terug naar 0",
   };
 }
@@ -443,9 +484,14 @@ export interface DeclaredHarvestMapDeps {
   listActiveReferenceCodes: () => Promise<string[]>;
   /** Het aantal paren in de bestaande kaart, of `null` als er geen kaart is. */
   readExistingPairs: () => Promise<number | null>;
-  /** `{pairs, inProgress}` uit het voortgangsbestand van de oogst (alleen lezen). */
+  /**
+   * `{pairs, signature, inProgress}` uit het voortgangsbestand van de oogst
+   * (alleen lezen). `signature` is de vingerafdruk die de oogst er laatst in
+   * legde — dat is waarop hij besluit of zijn teller terug moet.
+   */
   readHarvestState: () => Promise<{
     pairs: number | null;
+    signature: string | null;
     inProgress: boolean;
   }>;
   /** Schrijf de kaart (alleen aangeroepen bij `--apply` en een doorlaatbare poort). */
@@ -495,21 +541,27 @@ async function readExistingPairs(): Promise<number | null> {
 
 async function readHarvestState(): Promise<{
   pairs: number | null;
+  signature: string | null;
   inProgress: boolean;
 }> {
   try {
     const buf = await downloadTrainingObject(HARVEST_STATE_OBJECT_KEY);
-    if (!buf) return { pairs: null, inProgress: false };
+    if (!buf) return { pairs: null, signature: null, inProgress: false };
     const parsed = JSON.parse(buf.toString("utf8")) as {
       map_pairs?: number;
+      map_signature?: string;
       in_progress?: boolean;
     };
     return {
       pairs: typeof parsed?.map_pairs === "number" ? parsed.map_pairs : null,
+      // Bewust het ONGESCOPETE veld: dat is de teller van de nachtelijke run.
+      // Een gescopete debugrun bewaart zijn voortgang onder `map_signature:<codes>`.
+      signature:
+        typeof parsed?.map_signature === "string" ? parsed.map_signature : null,
       inProgress: Boolean(parsed?.in_progress),
     };
   } catch {
-    return { pairs: null, inProgress: false };
+    return { pairs: null, signature: null, inProgress: false };
   }
 }
 
@@ -611,7 +663,9 @@ export async function runBuild(
   const state = await deps.readHarvestState();
   const plan = describeCounterPlan({
     mapPairs: map.summary.pairs,
+    mapSignature: declaredHarvestMapSignature(map.codes),
     statePairs: state.pairs,
+    stateSignature: state.signature,
     inProgress: state.inProgress,
   });
   console.log(`  Teller van de oogst: ${plan.message}`);

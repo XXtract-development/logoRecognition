@@ -77,21 +77,37 @@ def _fresh_module(monkeypatch):
 
 
 class _FakeStorage:
-    def __init__(self, store, artwork_keys, shared):
+    """`events` legt de VOLGORDE van de handelingen vast.
+
+    Zonder die volgorde is "de marker staat er vóór het dure voorwerk" niet te
+    zien: `puts`/`gets` alleen laten niet weten wat er tússendoor gebeurde, en de
+    sleutellijst kwam nergens terecht.
+
+    `read_errors` simuleert een sleutel die er wél is maar niet gelezen kan
+    worden (netwerk, rechten) — iets anders dan een sleutel die ontbreekt.
+    """
+
+    def __init__(self, store, artwork_keys, shared, read_errors=()):
         self.store = dict(store)
         self.artwork_keys = list(artwork_keys)
         self.puts = []
         self.gets = []
+        self.events = []
+        self.read_errors = set(read_errors)
         self.shared = shared
 
     def connect(self):
         pass
 
     def list_training_images(self, prefix=""):
+        self.events.append(("list", prefix))
         return [k for k in self.artwork_keys if k.startswith(prefix)]
 
     def get_training_image(self, key):
         self.gets.append(key)
+        self.events.append(("get", key))
+        if key in self.read_errors:
+            raise RuntimeError(f"objectopslag onbereikbaar voor {key}")
         if key.startswith("artwork/"):
             self.shared["current_src"] = key
         if key in self.store:
@@ -101,6 +117,7 @@ class _FakeStorage:
     def put_training_image(self, key, data, content_type="image/png"):
         self.store[key] = data
         self.puts.append(key)
+        self.events.append(("put", key))
         return key
 
 
@@ -229,6 +246,8 @@ class _Harness:
         state=None,
         lock_max_age=None,
         max_seconds=None,
+        scope_codes=None,
+        state_read_error=False,
     ):
         mp = self.mp
         for var in (
@@ -252,6 +271,8 @@ class _Harness:
             mp.setenv("DECLARED_HARVEST_LOCK_MAX_AGE_SECONDS", str(lock_max_age))
         if max_seconds is not None:
             mp.setenv("DECLARED_HARVEST_MAX_SECONDS", str(max_seconds))
+        if scope_codes is not None:
+            mp.setenv("DECLARED_HARVEST_CODES", scope_codes)
 
         module = _fresh_module(mp)
 
@@ -275,7 +296,12 @@ class _Harness:
                 region_meta[(src, x)] = r
             boxes_by_src[src] = boxes
 
-        storage = _FakeStorage(store, artwork_keys, shared)
+        storage = _FakeStorage(
+            store,
+            artwork_keys,
+            shared,
+            read_errors=[module.STATE_KEY] if state_read_error else [],
+        )
         conn = _FakeConn()
 
         def find_fn(threshold):
@@ -821,8 +847,15 @@ def test_ac8_marker_staat_er_voor_het_dure_voorwerk(harness):
 
     eerste_schrijf = out.storage.puts[0]
     assert eerste_schrijf == out.module.STATE_KEY
-    # ...en dat gebeurde vóór de sleutellijst opgehaald werd.
-    assert out.storage.puts, "er is geen marker geschreven"
+    # ...en dat gebeurde vóór de sleutellijst opgehaald werd. Die volgorde is de
+    # hele bewering, dus hij wordt ook echt gemeten (de vorige versie keek naar
+    # `puts` en zei daarmee niets over het moment).
+    volgorde = out.storage.events
+    marker = next(i for i, e in enumerate(volgorde) if e == ("put", out.module.STATE_KEY))
+    sleutellijst = next(i for i, e in enumerate(volgorde) if e[0] == "list")
+    assert marker < sleutellijst, (
+        "de sleutellijst werd vóór de marker opgehaald — daar zat het raam"
+    )
 
 
 def test_ac8_een_gestrande_run_laat_geen_slot_achter(harness):
@@ -870,14 +903,195 @@ def test_cap_kost_geen_pagina_laden_en_geen_analyse(harness):
     assert _src("222") not in out.storage.gets, "pagina tóch gedownload voor een afgeketst paar"
 
 
-def test_cap_op_nul_laat_de_oogst_niet_permanent_rekenen(harness):
-    """Met de cap op nul komt er niets uit — en het mag ook niets kosten."""
-    codes_map = {"A": ["111"]}
-    out = harness.run([_page("111", _region())], codes_map, per_code_cap=0)
+def test_cap_op_nul_stopt_de_run_met_een_eigen_status(harness):
+    """Een cap van nul betekent "lever niets" — en dan hoort de run te stoppen.
 
+    Anders ketste élk paar af op de cap, telde geen enkel paar als afgehandeld,
+    schoof de teller nooit op en eindigde de run nooit op `complete`: elke nacht
+    dezelfde paren, elke nacht hetzelfde niets. Zonder dat iemand het zag.
+    """
+    codes_map = {"A": ["111"]}
+    out = harness.run(
+        [_page("111", _region())],
+        codes_map,
+        per_code_cap=0,
+        state={"next_offset": 7, "map_signature": "1|watdanook"},
+    )
+
+    assert out.result["status"] == "cap_disabled"
     assert out.result["candidates"] == 0
     assert out.propose_calls == [], "de oogst rekent door terwijl er niets uit kan komen"
-    # De kaart en het voortgangsbestand worden terecht wél gelezen; het gaat om de
-    # ARTWORK-pagina's, want die kosten het echte werk.
+    # Niets gelezen, niets geschreven: de teller blijft precies staan.
+    assert out.storage.puts == []
+    stand = json.loads(out.storage.store[out.module.STATE_KEY].decode("utf-8"))
+    assert stand["next_offset"] == 7
+    # En het blijft niet stil: een uitgezette oogst hoort een niet-nul exitcode
+    # te geven, anders is het weer wekenlang "er gebeurt niets".
+    assert out.module.exit_code_for(out.result) == 1
+
+
+def test_cap_op_nul_kost_geen_enkel_artwork(harness):
+    """Het dure werk is het artwork; dat mag er niet één keer bij zitten."""
+    out = harness.run([_page("111", _region())], {"A": ["111"]}, per_code_cap=0)
     paginas = [k for k in out.storage.gets if k.startswith("artwork/")]
     assert paginas == [], f"artwork tóch gedownload terwijl er niets uit kan komen: {paginas}"
+
+
+def _checks_uit(recorded) -> dict:
+    """Zet de vastlegging van een run om in de vorm die de VOLGENDE run inleest."""
+    return {
+        (code, gtin, src): {"outcome": o, "permanent": p, "fingerprint": f}
+        for code, gtin, src, o, p, f in recorded
+    }
+
+
+def _stand_uit(out) -> dict:
+    """Het voortgangsbestand zoals het na een run in de opslag staat."""
+    return json.loads(out.storage.store[out.module.STATE_KEY].decode("utf-8"))
+
+
+def test_twee_runs_met_een_volle_cap_schuiven_op_en_rekenen_niet_opnieuw(harness):
+    """De vraag die één run niet kan beantwoorden: wat kost de VOLGENDE ronde?
+
+    Met de cap op één levert een code per run één kandidaat. De paren erachter
+    ketsen af op het runbudget en worden bewust niet vastgelegd, dus de tweede
+    run biedt ze opnieuw aan. Twee dingen moeten dan kloppen: de teller schuift
+    écht op (anders staat het vliegwiel voorgoed stil achter één verzadigde
+    code), en de tweede run doet het dure werk van de eerste niet over — niet
+    voor de al beoordeelde pagina's, en niet voor de afgeketste.
+    """
+    codes_map = {"A": ["111", "222", "333"]}
+    paginas = [
+        _page("111", _region()),
+        _page("222", _region()),
+        _page("333", _region()),
+    ]
+
+    run1 = harness.run(paginas, codes_map, per_code_cap=1)
+    assert run1.result["candidates"] == 1
+    assert run1.result["cap_deferred"] == 2
+    assert run1.result["to_offset"] == 1
+    # De afgeketste paren kostten geen analyse.
+    assert run1.propose_calls == [_src("111")]
+
+    run2 = harness.run(
+        paginas,
+        codes_map,
+        per_code_cap=1,
+        state=_stand_uit(run1),
+        checks=_checks_uit(run1.db.recorded),
+        existing={("111", "declared-harvest:A", _src("111"))},
+    )
+
+    # De teller schuift op: de tweede run begint waar de eerste stopte.
+    assert run2.result["from_offset"] == 1, "de teller staat vast achter het cap-paar"
+    assert run2.result["to_offset"] == 2
+    assert run2.result["candidates"] == 1
+    # En hij rekent alleen het paar door dat aan de beurt is: 111 is al
+    # beoordeeld en ligt achter de offset, 333 ketst opnieuw af op de cap.
+    assert run2.propose_calls == [_src("222")]
+    assert _src("111") not in run2.storage.gets
+    assert _src("333") not in run2.storage.gets
+
+
+def test_een_gescopete_debugrun_schrijft_de_nachtelijke_teller_niet_over(harness, module):
+    """Een gescopete run is een debugrun; zijn teller wijst in een ándere lijst.
+
+    De nachtelijke run heeft 1349 paren, een run met DECLARED_HARVEST_CODES=A
+    dertig. Schreef die zijn offset in hetzelfde veld, dan sprong de nachtelijke
+    teller vooruit en werden de paren daarvóór stil overgeslagen — sinds de
+    vingerafdruk scope-onafhankelijk is, zonder dat er nog iets terugsprong.
+    """
+    codes_map = {"A": ["111", "222", "333"], "B": ["444"]}
+    paginas = [
+        _page("111", _region()),
+        _page("222", _region()),
+        _page("333", _region()),
+        _page("444", _region()),
+    ]
+    volledige_vingerafdruk = module._map_signature(codes_map)
+    # De nachtelijke stand: één paar gedaan, de rest wacht.
+    nachtelijk = {"next_offset": 1, "map_signature": volledige_vingerafdruk}
+
+    gescoped = harness.run(paginas, codes_map, scope_codes="A", state=nachtelijk)
+    assert gescoped.result["scope"] == ["A"]
+    assert gescoped.result["to_offset"] == 3, "de gescopete run deed zijn eigen drie paren"
+
+    stand = _stand_uit(gescoped)
+    assert stand["next_offset"] == 1, "de gescopete run schreef over de gedeelde teller"
+    assert stand["next_offset:A"] == 3, "de gescopete run onthoudt zijn eigen voortgang niet"
+
+    # En de nachtelijke run pakt daarna gewoon zijn eigen draad op.
+    nacht = harness.run(paginas, codes_map, state=stand)
+    assert nacht.result["from_offset"] == 1
+    assert _src("222") in nacht.propose_calls
+
+
+def test_onleesbaar_voortgangsbestand_stopt_de_run_in_plaats_van_hem_te_wissen(harness):
+    """Ontbreken is een verse start; een leesfout is een storing.
+
+    Allebei gaven `next_offset: 0`, en omdat de marker meteen wordt weggeschreven
+    zette één hikje in de objectopslag die verse stand over de echte heen —
+    teller én vingerafdruk weg. De kaart kreeg daar een eigen status voor; de
+    stand hoort dezelfde bescherming te krijgen.
+    """
+    out = harness.run(
+        [_page("111", _region())],
+        {"A": ["111"]},
+        state={"next_offset": 900, "map_signature": "1349|watdanook"},
+        state_read_error=True,
+    )
+
+    assert out.result["status"] == "state_unavailable"
+    assert out.propose_calls == []
+    # Niets overschreven: de stand in de opslag is nog de oude.
+    assert out.storage.puts == []
+    assert _stand_uit(out)["next_offset"] == 900
+    assert out.module.exit_code_for(out.result) == 1
+
+
+def test_een_ontbrekend_voortgangsbestand_blijft_een_verse_start(harness):
+    """De eerste run ooit mag niet als storing gelezen worden."""
+    out = harness.run([_page("111", _region())], {"A": ["111"]})
+    assert out.result["status"] == "ok"
+    assert out.result["from_offset"] == 0
+
+
+def test_de_statussen_waarop_niets_gebeurde_geven_een_niet_nul_exitcode(module):
+    """`run_batch` gaf altijd exitcode 0, ook als er niets gedraaid had.
+
+    De cron schreef de regel netjes in het logbestand en niemand keek ernaar —
+    precies de wekenlange stilte van 20.2. Een geslaagde ronde blijft 0.
+    """
+    for status in (
+        "map_unavailable",
+        "state_unavailable",
+        "checks_unavailable",
+        "locked",
+        "cap_disabled",
+    ):
+        assert module.exit_code_for({"status": status}) == 1, status
+    assert module.exit_code_for({"status": "ok"}) == 0
+    assert module.exit_code_for({"status": "complete"}) == 0
+    assert module.exit_code_for({"status": "timebox"}) == 0
+
+
+def test_droogloop_meldt_geen_opgeruimde_marker_die_er_niet_was(harness):
+    """`stale_marker_cleared: true` in een droogloop was onwaar.
+
+    Een droogloop ruimt niets op — `_release_lock` keert meteen terug — maar de
+    `complete`-tak meldde het wél. Dat is een onwaar veld in een uitvoer die als
+    bewijs gelezen wordt.
+    """
+    codes_map = {"A": ["111"]}
+    stand = {
+        "next_offset": 1,
+        "map_signature": None,
+        "in_progress": True,
+        "run_started_at": "2020-01-01T00:00:00Z",
+    }
+    out = harness.run(
+        [_page("111", _region())], codes_map, dry_run=True, state=stand, lock_max_age=1
+    )
+    assert out.result["status"] == "complete"
+    assert out.result["stale_marker_cleared"] is False

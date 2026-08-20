@@ -41,7 +41,19 @@ mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null || true
 CONTAINER_PREFIX="${API_CONTAINER_PREFIX:-app-qsookwow8koko0kwg00g0cwk-}"
 CONTAINER="${API_CONTAINER:-}"
 if [ -z "$CONTAINER" ]; then
-  CONTAINER="$(docker ps --filter "name=^${CONTAINER_PREFIX}" --format '{{.Names}}' | head -n 1)"
+  # Bewust NIET `head -n 1`. Tijdens een blauw/groen-uitrol draaien er twee
+  # containers met dezelfde prefix; dan pakt `head` er willekeurig één en draait
+  # dit werk mogelijk in de container die net wordt weggehaald. Twee treffers is
+  # geen keuze maar een fout: stoppen en melden, en met API_CONTAINER kan een mens
+  # er bewust één aanwijzen.
+  MATCHES="$(docker ps --filter "name=^${CONTAINER_PREFIX}" --format '{{.Names}}')"
+  AANTAL="$(printf '%s' "$MATCHES" | grep -c . || true)"
+  if [ "$AANTAL" -gt 1 ]; then
+    echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] MEER DAN EEN api-container met prefix '${CONTAINER_PREFIX}' ($(echo "$MATCHES" | tr '\n' ' ')) — kaart NIET herbouwd. Wijs er een aan met API_CONTAINER=." \
+      | tee -a "$LOG_FILE" >&2
+    exit 1
+  fi
+  CONTAINER="$(printf '%s' "$MATCHES" | head -n 1)"
 fi
 if [ -z "$CONTAINER" ]; then
   echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] GEEN api-container gevonden met prefix '${CONTAINER_PREFIX}' — kaart NIET herbouwd." \
@@ -49,7 +61,24 @@ if [ -z "$CONTAINER" ]; then
   exit 1
 fi
 
+# De exitcode van HET WERK telt, niet die van `tee`. Met `pipefail` (hierboven)
+# bepaalt de laatste falende schakel de uitkomst, en `tee` faalt zodra het
+# logpad niet schrijfbaar is — het kopieert dan gewoon door naar stdout, het werk
+# draait, en tóch eindigt de pijplijn op 1. Een geslaagde run rapporteerde zo een
+# mislukking, in de enige richting die telt. `PIPESTATUS` haalt de twee uit
+# elkaar; een onschrijfbaar log is een waarschuwing, geen mislukking.
+set +e
 {
   echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] kaartherbouw start in ${CONTAINER}"
   docker exec "$CONTAINER" node dist/scripts/build-declared-harvest-map.js --apply
 } 2>&1 | tee -a "$LOG_FILE"
+# In één keer overnemen: elke volgende opdracht overschrijft PIPESTATUS, dus
+# twee losse regels lezen de tweede waarde uit een array die er niet meer is.
+pipe_status=("${PIPESTATUS[@]}")
+set -e
+status=${pipe_status[0]}
+log_status=${pipe_status[1]:-0}
+if [ "$log_status" -ne 0 ]; then
+  echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] WAARSCHUWING: ${LOG_FILE} is niet schrijfbaar — de uitvoer stond alleen op stdout." >&2
+fi
+exit "$status"
