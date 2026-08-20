@@ -47,7 +47,6 @@
 
 import { createHash } from "node:crypto";
 
-import prisma from "../core/db";
 import {
   getStorageAdapter,
   BUCKETS,
@@ -512,6 +511,11 @@ async function readSourceIndex(): Promise<SourceIndexLike | null> {
 }
 
 async function listActiveReferenceCodes(): Promise<string[]> {
+  // Lazy import, zelfde reden als in het 18.1-script: op moduleniveau opent dit een
+  // Prisma-client, en dat gebeurde dus ook zodra een TOETS dit bestand importeerde
+  // voor zijn pure functies. Gemeten gevolg: vier database-toetsen elders vielen om
+  // in de volle suite terwijl ze los groen waren — de extra client vrat verbindingen.
+  const { default: prisma } = await import('../core/db');
   const rows = await prisma.referenceLogo.findMany({
     where: { active: true },
     distinct: ["t3777Code"],
@@ -720,6 +724,7 @@ if (require.main === module) {
       process.exitCode = 1;
     })
     .finally(async () => {
+      const { default: prisma } = await import('../core/db');
       await prisma.$disconnect();
     });
 }
