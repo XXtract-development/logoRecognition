@@ -27,8 +27,18 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { readFileSync, existsSync, statSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { spawnSync } from 'node:child_process';
+import {
+  readFileSync,
+  existsSync,
+  statSync,
+  mkdtempSync,
+  mkdirSync,
+  writeFileSync,
+  chmodSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import { resolve, join } from 'node:path';
 
 import {
   splitIndexKey,
@@ -37,6 +47,7 @@ import {
   evaluateShrink,
   describeCounterPlan,
   declaredHarvestMapSignature,
+  parseHarvestState,
   runBuild,
   DECLARED_HARVEST_MAP_OBJECT_KEY,
   SOURCE_INDEX_OBJECT_KEY,
@@ -425,7 +436,85 @@ describe('AC7 — de aandrijving is uitvoerbaar, niet alleen opgeschreven', () =
   const runbook = resolve(repoRoot, '_bmad-output/implementation-artifacts/20-20-aandrijving.md');
   const mapScript = resolve(repoRoot, 'scripts/deployment/build-declared-harvest-map.sh');
   const harvestScript = resolve(repoRoot, 'scripts/deployment/declared-harvest.sh');
-  const harvestModule = resolve(repoRoot, 'apps/ml-service/app/services/queue_harvest_declared.py');
+
+  /**
+   * Draait een startscript ECHT, met een NAGEMAAKTE `docker` vóór in `PATH`.
+   *
+   * Her-review ronde 3 (L2): drie toetsen hieronder beweerden iets over gedrag
+   * maar zochten een tekenreeks in het script (`PIPESTATUS`, `MEER DAN EEN`).
+   * Zo'n toets blijft groen bij een `PIPESTATUS` die op de verkeerde plek staat
+   * en valt om bij elke onschuldige herformulering. Bash draaien kost hier één
+   * wegwerpmap en meet wél wat er gebeurt.
+   *
+   * Er wordt geen enkele echte container aangeraakt: de nagemaakte `docker`
+   * antwoordt op `ps` met de namen die de toets kiest, schrijft bij `exec` zijn
+   * argumenten weg en geeft de exitcode terug die de toets voorschrijft.
+   */
+  function draaiScript(
+    script: string,
+    opties: {
+      containers?: string[];
+      werkExitcode?: number;
+      logbestand?: 'schrijfbaar' | 'onschrijfbaar';
+      env?: Record<string, string>;
+    } = {}
+  ): { code: number; uitvoer: string; execArgs: string } {
+    const {
+      containers = ['ml-service-qsookwow8koko0kwg00g0cwk-203251989081'],
+      werkExitcode = 0,
+      logbestand = 'schrijfbaar',
+      env = {},
+    } = opties;
+
+    const werkmap = mkdtempSync(join(tmpdir(), 'declared-harvest-toets-'));
+    const binmap = join(werkmap, 'bin');
+    mkdirSync(binmap);
+    const argvBestand = join(werkmap, 'exec-argv');
+    const namen = containers.map((n) => `'${n}'`).join(' ');
+    const nepDocker = join(binmap, 'docker');
+    writeFileSync(
+      nepDocker,
+      [
+        '#!/usr/bin/env bash',
+        'if [ "$1" = "ps" ]; then',
+        containers.length ? `  printf '%s\n' ${namen}` : '  :',
+        '  exit 0',
+        'fi',
+        'if [ "$1" = "exec" ]; then',
+        `  printf '%s\n' "$@" > ${JSON.stringify(argvBestand)}`,
+        `  exit ${werkExitcode}`,
+        'fi',
+        'exit 0',
+        '',
+      ].join('\n')
+    );
+    chmodSync(nepDocker, 0o755);
+
+    // Een pad waarvan een DEEL geen map is: `mkdir -p` faalt en `tee` kan er niet
+    // bij — precies het geval waarin `pipefail` de exitcode omdraaide.
+    const log =
+      logbestand === 'schrijfbaar'
+        ? join(werkmap, 'run.log')
+        : join(werkmap, 'run.log', 'kan-niet', 'run.log');
+    if (logbestand === 'onschrijfbaar') writeFileSync(join(werkmap, 'run.log'), '');
+
+    const res = spawnSync('bash', [script], {
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        PATH: `${binmap}:${process.env.PATH ?? ''}`,
+        DECLARED_HARVEST_LOG: log,
+        DECLARED_HARVEST_MAP_LOG: log,
+        ...env,
+      },
+    });
+
+    return {
+      code: res.status ?? -1,
+      uitvoer: `${res.stdout ?? ''}${res.stderr ?? ''}`,
+      execArgs: existsSync(argvBestand) ? readFileSync(argvBestand, 'utf8') : '',
+    };
+  }
 
   /**
    * DE KERN VAN DEZE BESCHRIJVING (code-review 20 aug 2026): de vorige AC7-toetsen
@@ -550,11 +639,27 @@ describe('AC7 — de aandrijving is uitvoerbaar, niet alleen opgeschreven', () =
   it('stopt allebei de scripts bij MEER DAN EEN treffer in plaats van er een te gokken', () => {
     // Tijdens een blauw/groen-uitrol draaien er twee containers met dezelfde
     // prefix; `head -n 1` koos er dan willekeurig een, mogelijk juist de
-    // container die wordt weggehaald.
+    // container die wordt weggehaald. Gemeten in plaats van gelezen: het script
+    // draait echt, met twee namen in de nagemaakte `docker`.
     for (const pad of [harvestScript, mapScript]) {
-      const bron = readFileSync(pad, 'utf8');
-      expect(bron, `${pad} telt de treffers niet`).toMatch(/AANTAL=.*grep -c/);
-      expect(bron).toMatch(/MEER DAN EEN/);
+      const twee = draaiScript(pad, { containers: ['stack-aaa-111', 'stack-aaa-222'] });
+      expect(twee.code, `${pad} koos er stilletjes een`).toBe(1);
+      expect(twee.uitvoer).toContain('MEER DAN EEN');
+      expect(twee.execArgs, `${pad} draaide het werk tóch`).toBe('');
+
+      // En met precies één treffer draait hij gewoon door.
+      const een = draaiScript(pad, { containers: ['stack-aaa-111'] });
+      expect(een.code).toBe(0);
+      expect(een.execArgs).toContain('stack-aaa-111');
+    }
+  });
+
+  it('stopt allebei de scripts als er GEEN container is', () => {
+    for (const pad of [harvestScript, mapScript]) {
+      const geen = draaiScript(pad, { containers: [] });
+      expect(geen.code).toBe(1);
+      expect(geen.uitvoer).toMatch(/GEEN (ml|api)-container gevonden/);
+      expect(geen.execArgs).toBe('');
     }
   });
 
@@ -564,9 +669,18 @@ describe('AC7 — de aandrijving is uitvoerbaar, niet alleen opgeschreven', () =
     // draait en de uitvoer op stdout staat. Een geslaagde run rapporteerde zo
     // een mislukking, in de enige richting die telt.
     for (const pad of [harvestScript, mapScript]) {
-      const bron = readFileSync(pad, 'utf8');
-      expect(bron, `${pad} laat tee de exitcode bepalen`).toMatch(/PIPESTATUS/);
-      expect(bron).toMatch(/exit "\$status"/);
+      const geslaagd = draaiScript(pad, { logbestand: 'onschrijfbaar' });
+      expect(geslaagd.code, `${pad} meldt een geslaagde run als mislukt`).toBe(0);
+      expect(geslaagd.uitvoer).toContain('niet schrijfbaar');
+      expect(geslaagd.execArgs, `${pad} draaide het werk niet`).not.toBe('');
+
+      // Andersom mag de eigen foutcode van het werk niet platgeslagen worden.
+      const mislukt = draaiScript(pad, { logbestand: 'onschrijfbaar', werkExitcode: 3 });
+      expect(mislukt.code, `${pad} verliest de foutcode van het werk`).toBe(3);
+
+      // En met een schrijfbaar log verandert er niets aan de uitkomst.
+      expect(draaiScript(pad, { werkExitcode: 3 }).code).toBe(3);
+      expect(draaiScript(pad).code).toBe(0);
     }
   });
 
@@ -581,26 +695,33 @@ describe('AC7 — de aandrijving is uitvoerbaar, niet alleen opgeschreven', () =
     }
   });
 
-  it('leidt de vervaltijd van het slot af uit het tijdsbudget van de run', () => {
-    // De runbook schrijft een tijdsbudget van tien uur voor; de standaardvervaltijd
-    // van de marker is zes. Ging die vervaltijd niet mee met het budget, dan startte
+  it('geeft het tijdsbudget uit de runbook echt aan de container mee', () => {
+    // De runbook schrijft voor de inhaalronde een tijdsbudget van tien uur voor,
+    // en dáár hangt de vervaltijd van het slot aan: ging die niet mee, dan startte
     // de nachtelijke cron een tweede oogst midden in de inhaalronde.
     //
-    // Deze toets rekent de formule NIET na — dat deed hij eerst, en dan blijft hij
-    // groen terwijl `_lock_max_age_for_run` van vorm verandert. Het numerieke bewijs
-    // staat in de ml-suite (`test_ac8_slot_dekt_een_inhaalronde_die_langer_duurt…`,
-    // die de functie echt aanroept); hier hoort alleen de KOPPELING tussen de
-    // runbook en de code thuis: het budget staat in de runbook, en de vervaltijd
-    // wordt uit datzelfde budget afgeleid in plaats van uit een constante.
+    // Deze toets pinde eerst de BRONTEKST van de python-module ('MAX_SECONDS +
+    // LOCK_GRACE_SECONDS'), wat bij elke herformulering omvalt en niets meet. Het
+    // numerieke bewijs dat de vervaltijd uit het budget volgt staat in de ml-suite
+    // (`test_ac8_slot_dekt_een_inhaalronde_die_langer_duurt…`, die de functie echt
+    // aanroept met dit budget). Hier hoort het stuk dat de ml-suite níet kan zien:
+    // dat de runbook dat budget noemt en dat het startscript het ook werkelijk aan
+    // de container doorgeeft in plaats van het aan de container-omgeving te laten.
     const tekst = readFileSync(runbook, 'utf8');
     const budget = Number(tekst.match(/DECLARED_HARVEST_MAX_SECONDS=(\d+)/)![1]);
     expect(budget).toBe(36000);
 
-    const py = readFileSync(harvestModule, 'utf8');
-    const functie = py.slice(py.indexOf('def _lock_max_age_for_run'));
-    const lichaam = functie.slice(0, functie.indexOf('\ndef ', 1));
-    expect(lichaam, 'de vervaltijd hangt niet meer aan het tijdsbudget').toContain(
-      'MAX_SECONDS + LOCK_GRACE_SECONDS'
+    const inhaal = draaiScript(harvestScript, {
+      env: { DECLARED_HARVEST_MAX_SECONDS: String(budget) },
+    });
+    expect(inhaal.code).toBe(0);
+    expect(inhaal.execArgs).toContain(`DECLARED_HARVEST_MAX_SECONDS=${budget}`);
+    expect(inhaal.execArgs).toContain('app.services.queue_harvest_declared');
+
+    // Zonder eigen budget draait de nachtelijke run op zijn kleine standaard —
+    // die twee mogen elkaar niet overschrijven.
+    expect(draaiScript(harvestScript).execArgs).toContain(
+      'DECLARED_HARVEST_MAX_SECONDS=1000'
     );
   });
 
@@ -609,10 +730,37 @@ describe('AC7 — de aandrijving is uitvoerbaar, niet alleen opgeschreven', () =
     // daarvoor op dezelfde vingerafdruk als de oogst. Wordt dat veld hernoemd,
     // dan meldt de droogloop stilletjes "nog geen vingerafdruk" en klopt het
     // scherm waarop een mens over --apply beslist niet meer.
-    const py = readFileSync(harvestModule, 'utf8');
-    expect(py).toContain('signature_field = f"map_signature{_scope_suffix()}"');
-    expect(py).toContain('state[signature_field] = map_signature');
-    expect(py).toContain('def _map_signature(');
+    //
+    // Het document hieronder is GEMETEN: letterlijk wat queue_harvest_declared.py
+    // wegschreef in de wegwerpcontainer bij een gescopete debugrun naast een
+    // nachtelijke stand. Deze toets zocht eerder de brontekst van die module af;
+    // dat blijft groen bij een hernoemd veld met dezelfde regel eromheen.
+    const gemetenStand = Buffer.from(
+      JSON.stringify({
+        map_pairs: 2,
+        map_signature: '1349|nachtelijk',
+        'map_signature:FSC': '2|045dbb622b3f93f005696e70ea457cf5',
+        next_offset: 1,
+        'next_offset:FSC': 2,
+        total_pairs: 1349,
+        'total_pairs:FSC': 2,
+      }),
+      'utf8'
+    );
+
+    const gelezen = parseHarvestState(gemetenStand);
+    expect(gelezen.signature).toBe('1349|nachtelijk');
+    expect(gelezen.signature, 'de bouwer leest de zijteller van een debugrun').not.toBe(
+      '2|045dbb622b3f93f005696e70ea457cf5'
+    );
+    expect(gelezen.unavailable).toBeUndefined();
+    expect(gelezen.inProgress).toBe(false);
+
+    // Ontbreekt het bestand, dan is er niets te melden — en dat is iets anders
+    // dan een leesfout, die `unavailable` zet.
+    expect(parseHarvestState(null).signature).toBeNull();
+    expect(parseHarvestState(null).unavailable).toBeUndefined();
+    expect(parseHarvestState(Buffer.from('{ dit is geen json', 'utf8')).unavailable).toBeTruthy();
   });
 
   it('laat de declaratie-oogst niet op 3:37 starten — dat is de volume-oogst', () => {

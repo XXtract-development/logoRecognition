@@ -472,15 +472,34 @@ class StateUnavailable(Exception):
 _MISSING_OBJECT_CODES = ("nosuchkey", "nosuchobject", "notfound")
 _MISSING_OBJECT_TEXT = ("no such key", "does not exist", "not found", "no such file")
 
+# ... en het tegendeel, want de tekstmatch hierboven was breder dan zijn eigen
+# commentaar (her-review ronde 3, L1). De standaardboodschap van een ontbrekende
+# BUCKET is "The specified bucket does not exist" en de code is `NoSuchBucket`:
+# allebei vielen ze onder "does not exist" en werden ze dus als een lege stand
+# gelezen. Een ontbrekende bucket is geen verse start maar een configuratiefout —
+# de emmer waarin alles zou moeten staan is er niet, en stil op nul beginnen zou
+# de teller weggooien voor een fout die niemand had gezien.
+_MISSING_BUCKET_CODES = ("nosuchbucket",)
+_MISSING_BUCKET_TEXT = (
+    "no such bucket",
+    "bucket does not exist",
+    "bucket not found",
+    "specified bucket",
+)
+
 
 def _is_missing_object(exc: Exception) -> bool:
     """True als deze fout "het object bestaat niet" betekent."""
+    code = str(getattr(exc, "code", "") or "").strip().lower()
+    tekst = f"{code} {exc}".lower()
+    # Eerst het uitsluitsel: een ontbrekende bucket is een storing, geen lege
+    # stand, en de tekst ervan overlapt met die van een ontbrekend object.
+    if code in _MISSING_BUCKET_CODES or any(m in tekst for m in _MISSING_BUCKET_TEXT):
+        return False
     if isinstance(exc, (FileNotFoundError, KeyError)):
         return True
-    code = str(getattr(exc, "code", "") or "").strip().lower()
     if code in _MISSING_OBJECT_CODES:
         return True
-    tekst = f"{code} {exc}".lower()
     return any(m in tekst for m in _MISSING_OBJECT_TEXT)
 
 
@@ -735,12 +754,21 @@ def _release_lock(state: dict, storage_service) -> None:
 # cron schreef de regel netjes in het logbestand, maar niets keek naar een
 # exitcode — en precies zo bleef 20.2 wekenlang stil "draaien". Een niet-nul
 # exitcode zet de cron-mail én elke bewaking in beweging.
+#
+# `locked` hoort er BEWUST niet bij (her-review ronde 3, L3). Dat is de enige
+# status uit dit rijtje waarop het systeem precies doet wat het moet doen: er
+# loopt al een oogst, dus deze stopt. De runbook schrijft een eenmalige
+# inhaalronde van tien uur voor; elke nacht dat die nog loopt zou de cron een
+# mail "mislukt" sturen voor een run die correct wijkt. Alarm bij correct gedrag
+# leert mensen de mail weg te klikken, en dan mist ook `map_unavailable`.
+# Een marker die te LANG blijft staan valt hier niet onder: zo'n marker vervalt
+# vanzelf (`lock_max_age_seconds`), waarna de volgende run gewoon draait — er is
+# dus geen bereikbare "verlopen marker"-tak om op te alarmeren.
 ALERT_STATUSES = frozenset(
     {
         "map_unavailable",
         "state_unavailable",
         "checks_unavailable",
-        "locked",
         "cap_disabled",
     }
 )

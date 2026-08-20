@@ -117,6 +117,21 @@ en is alle kennis over "al nagekeken" verdwenen.
    | cross-code afgewezen (20.7) | **voorlopig** | idem — de vergelijking loopt over referenties |
    | cap bereikt | **nooit** | een runbudget, geen oordeel. Vastleggen zou het paar voorgoed uitsluiten omdat er die nacht toevallig genoeg andere waren |
 
+   **Eigenschap van dit ontwerp: achter een verzadigde code schuift de teller hooguit
+   `PER_CODE_CAP` per run op.** De paren worden in vaste volgorde afgewerkt en de teller loopt mee
+   met die volgorde. Zit er vooraan in de lijst een code met veel paren, dan raakt die zijn
+   runbudget (`DECLARED_HARVEST_PER_CODE_CAP`, standaard 15) op vóórdat de teller voorbij zijn
+   paren is — en de paren daarachter komen die nacht dus niet aan de beurt. Een afgeketst paar
+   kost niets meer (geen pagina, geen analyse), maar het schuift de teller ook niet op.
+
+   *Met 1349 paren, 39 codes en een cap van 15 is dat geen probleem: geen enkele code is groot
+   genoeg om de nacht te vullen. Het wordt er wel één zodra één code honderden paren krijgt — dan
+   houdt die code het vliegwiel achter zich traag. Dit staat hier opgeschreven omdat het een
+   bewuste eigenschap van de volgorde is en geen fout: wie later ziet dat de teller nauwelijks
+   beweegt, moet niet naar een bug gaan zoeken maar naar de codeverdeling kijken. De uitweg, als
+   het zover komt, is de volgorde per ronde laten rouleren of de cap per code laten meeschalen —
+   allebei buiten deze story.*
+
    **Waarom "voorlopig" en niet gewoon blijvend:** de oogst matcht tegen de actieve referenties van
    een code. Het hele punt van het vliegwiel is dat die verzameling groeit — een menselijk akkoord
    levert een nieuwe referentie op. Een paar dat vandaag onder de drempel blijft, kan morgen wél
@@ -283,6 +298,42 @@ en is alle kennis over "al nagekeken" verdwenen.
 - [Source: `/usr/local/bin/keurmerk-harvest.sh` op vanilla — de enige planning, en hij start de volume-oogst]
 
 ## Change Log
+
+- 2026-08-20 (laatste ronde): **De vijf lage punten uit `review-20-20-code-v3.md` verwerkt.** Het
+  hoge punt en de vier middelen zaten al in `d3e0d4c`.
+
+  "Bucket bestaat niet" werd door de oogst gelezen als "eerste run" — de tekstmatch ving `does not
+  exist`, en dat is precies de standaardboodschap van een ontbrekende bucket. Zo'n
+  configuratiefout zou de teller op nul hebben gezet; nu stopt de run ermee, terwijl een
+  ontbrekende sleutel gewoon een verse start blijft.
+
+  Een run die netjes wijkt omdat er al een oogst loopt (`locked`) geeft geen alarm meer. De
+  eenmalige inhaalronde duurt tien uur, en elke nacht dat die liep leverde een cron-mail
+  "mislukt" op voor een run die precies deed wat hij moest doen — daar leren mensen die mail van
+  wegklikken, en dan mist ook een échte storing.
+
+  Vier toetsen die een tekenreeks in een ánder bestand zochten, meten nu gedrag: de startscripts
+  draaien echt (met een nagemaakte `docker` in een wegwerpmap, geen enkele container aangeraakt)
+  en bewijzen dat twee containers met dezelfde prefix de run tegenhouden, dat een onschrijfbaar
+  logbestand een geslaagde run niet als mislukking rapporteert en de foutcode van het werk niet
+  platslaat, en dat het tijdsbudget uit de runbook werkelijk aan de container wordt meegegeven.
+  Het vingerafdrukveld wordt getoetst op een voortgangsbestand dat de oogst zélf heeft
+  weggeschreven, in plaats van op de brontekst van de python-module.
+
+  Nieuw is ook een toets die bewijst dat de exitcode de container werkelijk verlaat: dat
+  `exit_code_for` de goede getallen gaf was gedekt, dat `__main__` ze aan `sys.exit` doorgeeft
+  niet — en zonder die regel meldt elke mislukte oogst weer stilletjes succes.
+
+  Tot slot staat nu opgeschreven wat het ontwerp doet achter een verzadigde code: de teller
+  schuift dan hooguit `PER_CODE_CAP` per run op. Met 39 codes en een cap van 15 is dat geen
+  probleem, maar wie later ziet dat de teller nauwelijks beweegt moet niet naar een fout gaan
+  zoeken.
+
+  **Terugdraai-bewijs** voor de drie gedragswijzigingen: met de bucket-uitsluiting uitgezet valt
+  alléén de bucket-toets om (38 van 39 blijven groen), met `locked` terug in de alarmlijst alléén
+  de wijk-toets, en met `sys.exit` uit `__main__` alléén de exitcode-toets. De twee nieuwe
+  scripttoetsen zijn op dezelfde manier nagelopen: met `PIPESTATUS` teruggedraaid naar kale
+  `pipefail` en met de multi-treffer-guard uitgezet worden precies die toetsen rood.
 
 - 2026-08-20 (nog later): **De her-review verwerkt** (`review-20-20-code-v2.md`, FAIL, 1 hoog /
   3 middel / 6 laag). Het hoofddeel van het hoge punt zat al in commit `f051ddf`; de rest is nu

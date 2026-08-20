@@ -42,7 +42,7 @@ _MODULE_PATH = os.path.abspath(
 )
 
 
-def _fresh_module(monkeypatch):
+def _install_stubs(monkeypatch):
     for name in ("app", "app.core", "app.services", "app.ml"):
         mod = types.ModuleType(name)
         mod.__path__ = [os.path.join(_APP_PKG, *name.split(".")[1:])]
@@ -62,6 +62,9 @@ def _fresh_module(monkeypatch):
     cv2_stub.imencode = lambda ext, crop: (True, np.frombuffer(b"png", np.uint8))
     monkeypatch.setitem(sys.modules, "cv2", cv2_stub)
 
+
+def _fresh_module(monkeypatch):
+    _install_stubs(monkeypatch)
     spec = importlib.util.spec_from_file_location(
         "app.services.queue_harvest_declared", _MODULE_PATH
     )
@@ -69,6 +72,36 @@ def _fresh_module(monkeypatch):
     monkeypatch.setitem(sys.modules, "app.services.queue_harvest_declared", module)
     spec.loader.exec_module(module)
     return module
+
+
+def _run_as_script(monkeypatch, result):
+    """Voer de module uit ZOALS de cron hem start: met ``__name__`` op ``__main__``.
+
+    Her-review ronde 3 (L5): dat `exit_code_for` de goede getallen geeft was
+    getoetst, maar niet dat die getallen de container ook echt verlaten. Eén
+    weggevallen `sys.exit(...)` en elke mislukte oogst meldt weer stilletjes
+    succes — precies de wekenlange stilte van 20.2, met een groene suite erbij.
+
+    `run_batch()` levert een coroutine op zonder ook maar iets te doen; die wordt
+    hier netjes gesloten in plaats van gedraaid, zodat alleen het doorgeven van
+    de exitcode gemeten wordt.
+    """
+    _install_stubs(monkeypatch)
+    aangeroepen = []
+
+    def _fake_asyncio_run(coro):
+        coro.close()
+        aangeroepen.append(True)
+        return result
+
+    monkeypatch.setattr(asyncio, "run", _fake_asyncio_run)
+    spec = importlib.util.spec_from_file_location("__main__", _MODULE_PATH)
+    module = importlib.util.module_from_spec(spec)
+    assert module.__name__ == "__main__"
+    with pytest.raises(SystemExit) as gestopt:
+        spec.loader.exec_module(module)
+    assert aangeroepen, "de module startte de oogst niet toen hij als script draaide"
+    return gestopt.value.code
 
 
 # ---------------------------------------------------------------------------
@@ -87,13 +120,19 @@ class _FakeStorage:
     worden (netwerk, rechten) — iets anders dan een sleutel die ontbreekt.
     """
 
-    def __init__(self, store, artwork_keys, shared, read_errors=()):
+    def __init__(self, store, artwork_keys, shared, read_errors=(), read_exc=None):
         self.store = dict(store)
         self.artwork_keys = list(artwork_keys)
         self.puts = []
         self.gets = []
         self.events = []
         self.read_errors = set(read_errors)
+        # `read_exc` bepaalt de VORM van die leesfout: een netwerkstoring leest
+        # anders dan een S3-fout met een `code` erop, en dat verschil is precies
+        # wat `_is_missing_object` moet wegen.
+        self.read_exc = read_exc or (
+            lambda key: RuntimeError(f"objectopslag onbereikbaar voor {key}")
+        )
         self.shared = shared
 
     def connect(self):
@@ -107,7 +146,7 @@ class _FakeStorage:
         self.gets.append(key)
         self.events.append(("get", key))
         if key in self.read_errors:
-            raise RuntimeError(f"objectopslag onbereikbaar voor {key}")
+            raise self.read_exc(key)
         if key.startswith("artwork/"):
             self.shared["current_src"] = key
         if key in self.store:
@@ -248,6 +287,7 @@ class _Harness:
         max_seconds=None,
         scope_codes=None,
         state_read_error=False,
+        state_read_exc=None,
     ):
         mp = self.mp
         for var in (
@@ -301,6 +341,7 @@ class _Harness:
             artwork_keys,
             shared,
             read_errors=[module.STATE_KEY] if state_read_error else [],
+            read_exc=state_read_exc,
         )
         conn = _FakeConn()
 
@@ -1067,7 +1108,6 @@ def test_de_statussen_waarop_niets_gebeurde_geven_een_niet_nul_exitcode(module):
         "map_unavailable",
         "state_unavailable",
         "checks_unavailable",
-        "locked",
         "cap_disabled",
     ):
         assert module.exit_code_for({"status": status}) == 1, status
@@ -1095,3 +1135,105 @@ def test_droogloop_meldt_geen_opgeruimde_marker_die_er_niet_was(harness):
     )
     assert out.result["status"] == "complete"
     assert out.result["stale_marker_cleared"] is False
+
+
+# ===========================================================================
+# Her-review ronde 3 — de lage punten
+# ===========================================================================
+
+
+class _S3Fout(Exception):
+    """Vorm van een minio/boto-fout: een `code` naast de boodschap.
+
+    De echte boodschappen staan er letterlijk in, want juist de TEKST bepaalde
+    de verkeerde beslissing.
+    """
+
+    def __init__(self, code, message):
+        super().__init__(message)
+        self.code = code
+
+
+def test_l1_een_ontbrekende_bucket_is_geen_lege_stand(harness):
+    """"Bucket bestaat niet" is een configuratiefout, geen eerste run.
+
+    `_MISSING_OBJECT_TEXT` bevatte "does not exist", en de standaardboodschap van
+    een ontbrekende bucket is "The specified bucket does not exist". De emmer
+    waarin álles staat was dan weg, en de oogst begon stil op nul — teller en
+    vingerafdruk overschreven voor een fout die niemand gezien had.
+    """
+    out = harness.run(
+        [_page("111", _region())],
+        {"A": ["111"]},
+        state={"next_offset": 900, "map_signature": "1349|watdanook"},
+        state_read_error=True,
+        state_read_exc=lambda key: _S3Fout(
+            "NoSuchBucket", "The specified bucket does not exist"
+        ),
+    )
+
+    assert out.result["status"] == "state_unavailable"
+    assert out.propose_calls == []
+    assert out.storage.puts == [], "de stand is overschreven"
+    assert _stand_uit(out)["next_offset"] == 900
+    assert out.module.exit_code_for(out.result) == 1
+
+
+def test_l1_een_ontbrekend_object_blijft_wel_een_verse_start(harness):
+    """De tegenhanger: een ontbrekende SLEUTEL is nog steeds een eerste run.
+
+    Zonder dit paar zou "alles fail-loud maken" ook goed lijken, en dan stopt de
+    allereerste run met een storing die er niet is.
+    """
+    out = harness.run(
+        [_page("111", _region())],
+        {"A": ["111"]},
+        state_read_error=True,
+        state_read_exc=lambda key: _S3Fout(
+            "NoSuchKey", "The specified key does not exist."
+        ),
+    )
+
+    assert out.result["status"] == "ok"
+    assert out.result["from_offset"] == 0
+
+
+def test_l3_wijken_voor_een_lopende_oogst_is_geen_mislukking(harness):
+    """Een geweigerde run deed precies wat hij moest doen — dat is geen alarm.
+
+    De runbook schrijft een eenmalige inhaalronde van tien uur voor. Stond
+    `locked` in `ALERT_STATUSES`, dan leverde elke nacht dat die ronde nog liep
+    een cron-mail "mislukt" op. Alarm bij correct gedrag leert mensen de mail weg
+    te klikken — en dan mist ook `map_unavailable`.
+    """
+    import time as _time
+
+    out = harness.run(
+        [_page("111", _region())],
+        {"A": ["111"]},
+        state={
+            "next_offset": 0,
+            "in_progress": True,
+            "run_started_at": _time.strftime("%Y-%m-%dT%H:%M:%SZ", _time.gmtime()),
+        },
+    )
+
+    assert out.result["status"] == "locked"
+    assert out.module.exit_code_for(out.result) == 0, (
+        "een run die netjes wijkt voor een lopende oogst mag geen alarm geven"
+    )
+    # En de storingen blijven wél alarmeren — anders is dit een verzwakking.
+    assert out.module.exit_code_for({"status": "map_unavailable"}) == 1
+
+
+def test_l5_main_geeft_de_exitcode_van_de_run_werkelijk_door(monkeypatch):
+    """De brug tussen `exit_code_for` en de container.
+
+    Dat de functie de goede getallen geeft was getoetst; dat `__main__` ze aan
+    `sys.exit` doorgeeft niet. Zonder die regel eindigt elke mislukte oogst weer
+    op exitcode 0 en blijft de cron er stil op staan.
+    """
+    assert _run_as_script(monkeypatch, {"status": "map_unavailable"}) == 1
+    assert _run_as_script(monkeypatch, {"status": "state_unavailable"}) == 1
+    assert _run_as_script(monkeypatch, {"status": "complete"}) == 0
+    assert _run_as_script(monkeypatch, {"status": "ok"}) == 0

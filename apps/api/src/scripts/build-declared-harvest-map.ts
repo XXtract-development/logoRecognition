@@ -580,16 +580,27 @@ async function readExistingPairs(): Promise<BestaandeKaart> {
   }
 }
 
-async function readHarvestState(): Promise<{
+export interface HarvestStateView {
   pairs: number | null;
   signature: string | null;
   inProgress: boolean;
   /** Gezet bij een LEESFOUT; "bestaat niet" laat dit veld leeg. */
   unavailable?: string;
-}> {
+}
+
+/**
+ * Haalt uit het voortgangsbestand van de OOGST wat de bouwer ervan nodig heeft.
+ *
+ * Puur en geëxporteerd (her-review ronde 3, L2) omdat dit de enige plek is waar
+ * de twee diensten elkaars veldnamen moeten kennen: `queue_harvest_declared.py`
+ * schrijft dit bestand, de bouwer leest het. Dat contract werd tot nu toe
+ * bewaakt door een toets die de BRONTEKST van de python-module doorzocht; die
+ * bleef groen bij elke herformulering en viel om bij elke onschuldige. Nu meten
+ * beide kanten hun eigen gedrag op hetzelfde document.
+ */
+export function parseHarvestState(buf: Buffer | null): HarvestStateView {
+  if (!buf) return { pairs: null, signature: null, inProgress: false };
   try {
-    const buf = await downloadTrainingObject(HARVEST_STATE_OBJECT_KEY);
-    if (!buf) return { pairs: null, signature: null, inProgress: false };
     const parsed = JSON.parse(buf.toString("utf8")) as {
       map_pairs?: number;
       map_signature?: string;
@@ -603,6 +614,21 @@ async function readHarvestState(): Promise<{
         typeof parsed?.map_signature === "string" ? parsed.map_signature : null,
       inProgress: Boolean(parsed?.in_progress),
     };
+  } catch (err) {
+    return {
+      pairs: null,
+      signature: null,
+      inProgress: false,
+      unavailable: err instanceof Error ? err.message : "onbekende leesfout",
+    };
+  }
+}
+
+async function readHarvestState(): Promise<HarvestStateView> {
+  try {
+    return parseHarvestState(
+      await downloadTrainingObject(HARVEST_STATE_OBJECT_KEY),
+    );
   } catch (err) {
     // Her-review ronde 3: dezelfde stille terugval als bij de kaart. Bij een
     // LEESFOUT weet de bouwer niets, en dan mag hij niet voorspellen dat de teller

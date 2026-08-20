@@ -51,6 +51,15 @@ Verder: een product dat vanwege het dagbudget wordt overgeslagen komt de volgend
 terug, de meldingen van de nachtelijke starts komen voortaan ergens aan in plaats van te
 verdwijnen, en een proefdraai meldt niet langer een fout terwijl er niets mis is.
 
+**Laatste ronde tegenlezen — twee dingen die verkeerd zouden aflopen**
+
+- Ontbreekt niet één bestand maar de hele opslagruimte, dan las de oogst dat als "eerste keer" en
+  begon hij van voren af aan. De voortgang van weken zou daarmee weg zijn geweest. Zo'n fout is nu
+  een storing waarop hij stopt; een enkel ontbrekend bestand blijft gewoon een eerste keer.
+- Zolang de eenmalige inhaalronde van tien uur draait, wijkt de nachtelijke start ervoor — precies
+  zoals bedoeld. Toch stuurde hij daarover elke nacht een foutmelding. Die melding blijft nu
+  achterwege; alleen echte storingen melden zich nog.
+
 ## 19 augustus 2026
 
 **Producten waarvan het gegevensbestand ontbreekt komen weer in de beoordeelwachtrij**
