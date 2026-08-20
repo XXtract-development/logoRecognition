@@ -297,6 +297,18 @@ en is alle kennis over "al nagekeken" verdwenen.
 - [Source: _bmad-output/implementation-artifacts/20-19-declaraties-uit-de-tradeitem-database.md — de story die de index liet groeien]
 - [Source: `/usr/local/bin/keurmerk-harvest.sh` op vanilla — de enige planning, en hij start de volume-oogst]
 
+## Onderzocht en weerlegd
+
+**"Een gescopete debugrun vervuilt `map_pairs`"** — gemeld tijdens de bouw, nagemeten en
+**onjuist**. `map_pairs` komt uit `_all_pairs()`, en die functie is expliciet scope-onafhankelijk
+(`queue_harvest_declared.py:572-580`, met de reden erbij: anders zou één debugrun de vingerafdruk
+van dat ene stukje vastleggen en de nachtelijke teller om niets terugzetten). Gemeten met een
+gescopete run over een kaart van drie paren: `map_pairs` blijft 3 terwijl `total_pairs` op 2 staat.
+
+De voorgestelde reparatie — `map_pairs` een scope-achtervoegsel geven, net als de teller en de
+vingerafdruk — is daarom **niet doorgevoerd**: die zou een scope-onafhankelijke waarde dupliceren
+in een scope-veld, en daarmee juist de verwarring introduceren die hij moest wegnemen.
+
 ## Change Log
 
 - 2026-08-20 (laatste ronde): **De vijf lage punten uit `review-20-20-code-v3.md` verwerkt.** Het
