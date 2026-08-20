@@ -1,5 +1,65 @@
 # Versiegeschiedenis
 
+## 20 augustus 2026
+
+**De declaratie-oogst kan weer draaien, en rekent niet meer nachtenlang aan kansloze producten**
+
+De beoordeelwachtrij liep leeg: sinds 27 juli kwam er niets meer bij. Er waren drie oorzaken,
+en ze stapelden. De lijst met producten waaraan de oogst rekent werd met de hand gemaakt en
+stond daarom sinds 16 juli stil, terwijl het overzicht waaruit die lijst komt gewoon
+doorgroeide. Er was ook niets dat de oogst startte. En de oogst rekende elke ronde opnieuw
+aan producten die hij al eens had bekeken, omdat hij alleen onthield wat íets opleverde.
+
+Wat er nu is:
+
+- Een programma dat de werklijst automatisch afleidt uit het keurmerkoverzicht, in plaats van
+  met de hand. Het laat eerst zien wat het zou doen; pas op uitdrukkelijk verzoek schrijft het
+  de lijst weg.
+- Drie soorten kansloos rekenwerk gaan eruit — met de reden erbij, zodat naderhand te zien is
+  waarom iets is overgeslagen. Keurmerken die nog helemaal geen voorbeeldafbeelding hebben,
+  krijgen een eigen lijstje: die wachten alleen op hun eerste voorbeeld.
+- De oogst onthoudt voortaan wát hij heeft bekeken, niet alleen wat het opleverde. Een oordeel
+  dat "dit lijkt er niet genoeg op" is bewust tijdelijk: komt er later een nieuw voorbeeld bij,
+  dan wordt dat product opnieuw bekeken. Zo blijft de winst behouden zonder dat het systeem
+  zichzelf afsluit voor zijn eigen verbeteringen.
+- Twee oogsten kunnen elkaar niet meer in de weg lopen. Start er een terwijl er al een draait,
+  dan stopt de tweede met een melding.
+- Raakt de administratie van "al bekeken" zoek, dan stopt de oogst met een duidelijke melding
+  in plaats van stilletjes uren opnieuw te beginnen.
+
+Voor de wachtrij betekent dit: eenmalig een inhaalronde van ongeveer achtenhalf uur, en daarna
+elke nacht alleen nog het verschil. Het aanzetten zelf gebeurt pas na akkoord.
+
+**Na tegenlezen bijgesteld — vijf dingen die anders niet zouden werken**
+
+- Het wekelijkse bijwerken van de werklijst startte een programma dat op de acceptatie-omgeving
+  helemaal niet aanwezig is. Het zou dus meteen de eerste keer zijn mislukt. Nu draait het het
+  juiste programma, en zoekt het zelf op waar het moet draaien.
+- De bescherming tegen twee oogsten tegelijk hield het maar zes uur vol, terwijl de inhaalronde
+  tien uur mag duren. Er kon dus midden in die inhaalronde alsnog een tweede starten. De
+  bescherming duurt nu net zo lang als de ronde zelf.
+- "Er is een nieuw voorbeeld bijgekomen" werd op de verkeerde plek gemeten: op de voorbeelden
+  zoals ze geregistreerd staan, niet op de voorbeelden waarmee werkelijk vergeleken wordt. Een
+  product bleef daardoor onbekeken terwijl er wél iets veranderd was.
+- "De werklijst is veranderd" werd op het aantal producten vastgesteld. Ging er één af en kwam
+  er één bij, dan merkte de oogst dat niet en las hij vanaf dat moment de verkeerde plek in de
+  lijst. Dat gaat nu op de lijst zelf.
+- Raakt de werklijst zoek, dan meldt de oogst dat als storing in plaats van te doen alsof de
+  lijst leeg is — dat wiste eerder de voortgang.
+
+Verder: een product dat vanwege het dagbudget wordt overgeslagen komt de volgende ronde echt
+terug, de meldingen van de nachtelijke starts komen voortaan ergens aan in plaats van te
+verdwijnen, en een proefdraai meldt niet langer een fout terwijl er niets mis is.
+
+**Laatste ronde tegenlezen — twee dingen die verkeerd zouden aflopen**
+
+- Ontbreekt niet één bestand maar de hele opslagruimte, dan las de oogst dat als "eerste keer" en
+  begon hij van voren af aan. De voortgang van weken zou daarmee weg zijn geweest. Zo'n fout is nu
+  een storing waarop hij stopt; een enkel ontbrekend bestand blijft gewoon een eerste keer.
+- Zolang de eenmalige inhaalronde van tien uur draait, wijkt de nachtelijke start ervoor — precies
+  zoals bedoeld. Toch stuurde hij daarover elke nacht een foutmelding. Die melding blijft nu
+  achterwege; alleen echte storingen melden zich nog.
+
 ## 19 augustus 2026
 
 **Producten waarvan het gegevensbestand ontbreekt komen weer in de beoordeelwachtrij**

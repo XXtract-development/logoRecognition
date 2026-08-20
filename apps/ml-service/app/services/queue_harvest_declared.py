@@ -26,22 +26,59 @@ Kernverschillen met de Nutri-Score-variant (bewust):
 Env (namespace ``DECLARED_HARVEST_``):
   DECLARED_HARVEST_MAP_KEY       MinIO-sleutel van de code->GTINs map
                                   (default flywheel-index/declared-harvest-map.json)
-  DECLARED_HARVEST_CODES         comma-lijst; leeg = alle codes uit de map
+  DECLARED_HARVEST_CODES         comma-lijst; leeg = alle codes uit de map. Een
+                                  gescopete run houdt zijn EIGEN teller en
+                                  vingerafdruk in het voortgangsbestand (zie
+                                  ``_scope_suffix``), zodat een debugrun de
+                                  nachtelijke teller niet overschrijft
   DECLARED_HARVEST_FLOOR         cosine-vloer (default 0.60 — gids-zaad-niveau,
                                   patroon 12.15; declaratie is de prior)
   DECLARED_HARVEST_BATCH         (code,gtin)-paren per run (default 400)
-  DECLARED_HARVEST_PER_CODE_CAP  max kandidaten per code per run (default 15)
+  DECLARED_HARVEST_PER_CODE_CAP  max kandidaten per code per run (default 15);
+                                  <= 0 betekent "lever niets" en stopt de run
+                                  meteen met status ``cap_disabled``
   DECLARED_HARVEST_MAX_SECONDS   tijd-box (default 1000)
   DECLARED_HARVEST_DRY_RUN       1/true/yes -> geen crop-upload, geen INSERT,
-                                  geen state-write; kandidaten wel geteld
+                                  geen state-write, GEEN vastlegging; kandidaten
+                                  wel geteld
+  DECLARED_HARVEST_LOCK_MAX_AGE_SECONDS
+                                  ONDERGRENS voor hoe lang een achtergebleven
+                                  run-marker een tweede start blokkeert (default
+                                  21600 = 6 uur; <= 0 laat hem nooit vervallen).
+                                  Een run met een groter tijdsbudget zet zijn
+                                  eigen, ruimere vervaltijd in de marker.
+  DECLARED_HARVEST_LOCK_GRACE_SECONDS
+                                  marge bovenop MAX_SECONDS voor die vervaltijd
+                                  (default 1800)
+
+Story 20.20 — wat deze oogst sinds 20.20 ONTHOUDT (AC4/AC5):
+  De ontdubbeling via ``review_item_exists`` onthield alleen paren die een item
+  OPLEVERDEN. De paren die zijn nagekeken en niets opleverden stonden nergens en
+  werden elke ronde opnieuw doorgerekend (~28 s per paar). De tabel
+  ``declared_harvest_checks`` vult dat gat, met onderscheid tussen een BLIJVEND
+  oordeel (kandidaat aangemaakt, keyline-pagina) en een VOORLOPIG oordeel (onder
+  de drempel, cross-code afgewezen) dat alleen telt zolang de referentiepool van
+  de code niet veranderd is. "Cap bereikt" is een runbudget en wordt nooit
+  vastgelegd.
+
+  De controle staat VOOR het dure werk en filtert de HELE paginagroep: de pagina
+  wordt per groep één keer geladen en gelokaliseerd, dus een overslag per paar
+  zou het decoderen niet besparen.
+
+EIGENAARSCHAP VAN BESTANDEN (AC5): deze module — de ml-service — is de enige
+schrijver van ``keurmerk-harvest/declared-harvest-state.json``. De kaartbouwer
+(``apps/api/src/scripts/build-declared-harvest-map.ts``) schrijft uitsluitend de
+kaart en LEEST dit bestand alleen om te melden wat er staat te gebeuren.
 """
 
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import os
 import re
+import sys
 import time
 from collections import defaultdict
 
@@ -51,6 +88,9 @@ import numpy as np
 from app.core.logging import logger
 
 STATE_KEY = "keurmerk-harvest/declared-harvest-state.json"
+# Story 20.20 (AC5) — vastgelegd eigenaarschap: dit bestand wordt door de
+# ml-service geschreven, nooit door de kaartbouwer aan de api-kant.
+STATE_OWNER = "ml-service (app.services.queue_harvest_declared)"
 DECLARED_MAP_KEY = os.environ.get(
     "DECLARED_HARVEST_MAP_KEY", "flywheel-index/declared-harvest-map.json"
 )
@@ -119,6 +159,162 @@ def _cross_code_rejected(declared_code, declared_sim, open_matches, margin) -> b
         ):
             return True
     return False
+
+
+# ---------------------------------------------------------------------------
+# Story 20.20 — onthouden wat er is nagekeken, en één oogst tegelijk
+# ---------------------------------------------------------------------------
+
+# De uitkomsten die vastgelegd worden. "Cap bereikt" staat er bewust NIET bij:
+# dat is een runbudget en geen oordeel — vastleggen zou het paar voorgoed
+# uitsluiten omdat er die nacht toevallig genoeg andere waren, en daarom telt zo'n
+# paar ook niet als afgehandeld.
+OUTCOME_CANDIDATE = "candidate"
+OUTCOME_KEYLINE = "keyline"
+# Een paar waarvoor er AL een review-item stond. Dezelfde houdbaarheid als
+# "kandidaat aangemaakt", maar bewust een eigen waarde: "er stond al iets" en "ik
+# heb zojuist iets aangemaakt" zijn verschillende herkomsten, en met één gedeelde
+# waarde is later niet meer te verklaren waar een rij vandaan komt.
+OUTCOME_EXISTING_ITEM = "existing_item"
+OUTCOME_BELOW_FLOOR = "below_floor"
+OUTCOME_CROSS_CODE = "cross_code"
+
+# BLIJVEND: een aangemaakte kandidaat staat al in de wachtrij (opnieuw aanmaken
+# is een duplicaat), een paar dat al een item had staat er per definitie ook, en
+# of een pagina een technische keyline-sheet is (20.9) is een eigenschap van die
+# pagina zelf — geen van drieën draait ooit om.
+PERMANENT_OUTCOMES = frozenset(
+    {OUTCOME_CANDIDATE, OUTCOME_EXISTING_ITEM, OUTCOME_KEYLINE}
+)
+# VOORLOPIG: allebei oordelen tegen de referentiepool van DAT moment. Het hele
+# punt van het vliegwiel is dat die pool groeit — een menselijk akkoord levert een
+# nieuwe referentie op — dus een paar dat vandaag onder de drempel blijft kan
+# morgen wél matchen. Blijvend onthouden zou de oogst afsluiten voor precies de
+# verbetering die hij zelf voortbrengt.
+PROVISIONAL_OUTCOMES = frozenset({OUTCOME_BELOW_FLOOR, OUTCOME_CROSS_CODE})
+
+# Story 20.20 (AC8) — hoe lang een achtergebleven run-marker een tweede start
+# tegenhoudt. SIGKILL kent geen handler, dus een OOM laat de marker staan; zonder
+# verval zou één gesneuvelde run de oogst voorgoed stoppen. <= 0 laat de marker
+# nooit vervallen.
+LOCK_MAX_AGE_SECONDS = float(
+    os.environ.get("DECLARED_HARVEST_LOCK_MAX_AGE_SECONDS", "21600")
+)
+
+# Marge bovenop het eigen tijdsbudget van een run. Het budget begrenst alleen het
+# starten van een nieuwe paginagroep; de groep die al bezig is loopt af, en de
+# slot-flush erna schrijft nog crops en rijen weg.
+LOCK_GRACE_SECONDS = float(
+    os.environ.get("DECLARED_HARVEST_LOCK_GRACE_SECONDS", "1800")
+)
+
+
+def _lock_max_age_for_run() -> float:
+    """Vervaltijd die DEZE run in zijn eigen marker legt (AC8).
+
+    De standaardvervaltijd is zes uur, maar de eenmalige inhaalronde krijgt een
+    tijdsbudget van tien uur mee. Met een vaste constante verviel de marker dus
+    midden in die inhaalronde en startte de nachtelijke cron een TWEEDE
+    declaratie-oogst in dezelfde 8 GiB-container — exact het OOM-recept dat AC8
+    moet uitsluiten, en met de zwaarste run als slachtoffer.
+
+    De vervaltijd hoort daarom bij de run die de marker zet, niet bij de run die
+    hem léést: de lezer heeft zijn eigen (kleine) budget en weet niets van dat
+    van de ander. Vandaar dat de marker zijn eigen vervaltijd draagt, afgeleid
+    uit het tijdsbudget van deze run plus een marge voor de afronding.
+
+    ``LOCK_MAX_AGE_SECONDS <= 0`` betekent bewust "nooit vervallen"; dat blijft
+    ongemoeid.
+    """
+    if LOCK_MAX_AGE_SECONDS <= 0:
+        return 0.0
+    return max(LOCK_MAX_AGE_SECONDS, MAX_SECONDS + LOCK_GRACE_SECONDS)
+
+
+def _is_permanent(outcome: str) -> bool:
+    """True als deze uitkomst blijvend waar is (Story 20.20, AC4)."""
+    return outcome in PERMANENT_OUTCOMES
+
+
+def _already_checked(record, current_fingerprint) -> bool:
+    """Telt een eerder oordeel nog, gegeven de referentiepool van nu?
+
+    Geen vastlegging -> nooit overslaan. Blijvend -> altijd overslaan. Voorlopig
+    -> alleen overslaan zolang de vingerafdruk van de referentiepool ongewijzigd
+    is; is hij veranderd (of onbekend), dan wordt het paar opnieuw bekeken.
+    """
+    if not record:
+        return False
+    if record.get("permanent"):
+        return True
+    fp = record.get("fingerprint")
+    return bool(fp) and bool(current_fingerprint) and fp == current_fingerprint
+
+
+def _lock_held(state: dict, now: float, max_age: float) -> bool:
+    """True als er een oogstrun loopt die een tweede start moet weigeren (AC8).
+
+    De twee oogsters delen één ml-service-container van 8 GiB en de declaratie-
+    oogst breekt zichzelf af boven 75% daarvan; twee tegelijk is dus een
+    OOM-recept. Een run die het slot niet krijgt STOPT — hij wacht niet.
+
+    Een marker zonder leesbaar starttijdstip telt als "vast": liever een run te
+    veel geweigerd dan twee tegelijk gedraaid.
+
+    De marker draagt zijn EIGEN vervaltijd (``lock_max_age_seconds``, gezet door
+    de run die hem schreef); die gaat vóór de constante van de lezer. Zonder dat
+    beoordeelt een nachtelijke run met een budget van 1000 seconden de marker van
+    een inhaalronde van tien uur met zijn eigen zes-uursgrens — en start hij er
+    dus alsnog een tweede naast.
+    """
+    if not state.get("in_progress"):
+        return False
+    recorded = state.get("lock_max_age_seconds")
+    if recorded is not None:
+        try:
+            max_age = float(recorded)
+        except (TypeError, ValueError):
+            pass
+    if max_age <= 0:
+        return True
+    started = state.get("run_started_at")
+    if not started:
+        return True
+    try:
+        import calendar
+
+        epoch = calendar.timegm(time.strptime(str(started), "%Y-%m-%dT%H:%M:%SZ"))
+    except Exception:
+        return True
+    return (now - epoch) < max_age
+
+
+def _counter_reset_needed(
+    state: dict, map_signature: str, field: str = "map_signature"
+) -> bool:
+    """Moet de teller terug omdat de parenlijst in de KAART veranderd is? (AC5)
+
+    Vastgesteld op de paren in de KAART en niet op de door artwork gefilterde
+    paren: die tweede hangt af van wat er die nacht in de opslag staat en zou de
+    teller om niets laten terugspringen.
+
+    Op de PARENLIJST en niet op een telling. Twee kaarten met evenveel maar
+    andere paren — bij een wekelijkse herbouw uit een levende index geen
+    uitzondering: één product eruit, één erin — lieten de teller staan, terwijl
+    de offset daarna in een ándere lijst wees: alles vóór de offset werd nooit
+    bekeken en de run meldde gewoon ``complete``. Stil, en niet zelfherstellend
+    zolang de telling toevallig gelijk bleef.
+
+    Draagt het voortgangsbestand nog geen vingerafdruk, dan doet deze oogst geen
+    uitspraak — dat is de eerste run ná 20.20, en het eenmalig terugzetten van de
+    teller is daar een bewuste, toestemmingsplichtige handeling (deel B).
+
+    ``field`` is de vingerafdruk van DEZE scope; zie ``_scope_suffix``.
+    """
+    recorded = state.get(field)
+    if recorded is None:
+        return False
+    return str(recorded) != str(map_signature)
 
 
 # ---------------------------------------------------------------------------
@@ -204,23 +400,42 @@ def _pick_page(keys):
     return ks[0] if ks else None
 
 
+class DeclaredMapUnavailable(Exception):
+    """De kaart is niet te lezen, of hij is leeg (Story 20.20, AC5).
+
+    Bewust een storing en géén "kaart van nul paren". De oude fail-safe gaf bij
+    een leesfout een lege dict terug; sinds de teller op de parenlijst let liep
+    dat door in een lege vingerafdruk, zette de oogst zijn teller op 0 en meldde
+    hij ``complete`` — hetzelfde woord als een geslaagde volledige ronde. Eén
+    hikje in de objectopslag gooide zo de voortgang weg. Nu stopt de run met een
+    eigen status en blijft de teller ongemoeid.
+    """
+
+    def __init__(self, reason: str):
+        super().__init__(reason)
+        self.reason = reason
+
+
 def _load_declared_map(storage_service) -> dict:
-    """Laad de code->GTIN-lijst map. Fail-safe: onleesbaar/misvormd -> lege
-    dict (0 kandidaten, gerapporteerd; nooit een crash of een gok)."""
+    """Laad de code->GTIN-lijst map.
+
+    Fail-LOUD: onleesbaar, misvormd of leeg -> ``DeclaredMapUnavailable``. Er is
+    geen zinnige run zonder kaart, en stil doorgaan zou de voortgang wissen.
+    """
     try:
         raw = storage_service.get_training_image(DECLARED_MAP_KEY)
         data = json.loads(
             raw.decode("utf-8") if isinstance(raw, (bytes, bytearray)) else raw
         )
-    except Exception:
-        logger.warning(
-            "Declaratie-oogst-map niet leesbaar — 0 kandidaten",
-            extra={"key": DECLARED_MAP_KEY},
+    except Exception as exc:
+        logger.error(
+            "Declaratie-oogst-map niet leesbaar — de run stopt",
+            extra={"key": DECLARED_MAP_KEY, "error": str(exc)},
         )
-        return {}
+        raise DeclaredMapUnavailable("unreadable") from exc
     codes = data.get("codes") if isinstance(data, dict) else None
     if not isinstance(codes, dict):
-        return {}
+        raise DeclaredMapUnavailable("malformed")
     out: dict = {}
     for code, gtins in codes.items():
         code_u = str(code).strip().upper()
@@ -229,7 +444,118 @@ def _load_declared_map(storage_service) -> dict:
         clean = sorted({str(g).strip() for g in gtins if str(g).strip()})
         if clean:
             out[code_u] = clean
+    if not out:
+        raise DeclaredMapUnavailable("empty")
     return out
+
+
+class StateUnavailable(Exception):
+    """Het voortgangsbestand is er wél, maar niet te lezen (Story 20.20, her-review).
+
+    "Bestaat niet" en "leesfout" zijn twee verschillende dingen. Het eerste is
+    een verse start en volkomen normaal. Het tweede is een storing, en die kreeg
+    tot nu toe dezelfde behandeling: ``state = {"next_offset": 0}``. Omdat de
+    run-marker sinds AC8 ONMIDDELLIJK wordt weggeschreven, zette één hikje in de
+    objectopslag die verse stand meteen over de echte heen — teller én
+    vingerafdruk weg. Dat is precies de redenering die voor de KAART tot een
+    eigen status leidde; de stand krijgt hem nu ook.
+    """
+
+    def __init__(self, reason: str):
+        super().__init__(reason)
+        self.reason = reason
+
+
+# Herkenningspunten voor "dit object bestaat (nog) niet" — de enige leesfout die
+# terecht een verse start oplevert. Bewust NIET "bucket bestaat niet": dat is een
+# configuratiefout en geen lege stand.
+_MISSING_OBJECT_CODES = ("nosuchkey", "nosuchobject", "notfound")
+_MISSING_OBJECT_TEXT = ("no such key", "does not exist", "not found", "no such file")
+
+# ... en het tegendeel, want de tekstmatch hierboven was breder dan zijn eigen
+# commentaar (her-review ronde 3, L1). De standaardboodschap van een ontbrekende
+# BUCKET is "The specified bucket does not exist" en de code is `NoSuchBucket`:
+# allebei vielen ze onder "does not exist" en werden ze dus als een lege stand
+# gelezen. Een ontbrekende bucket is geen verse start maar een configuratiefout —
+# de emmer waarin alles zou moeten staan is er niet, en stil op nul beginnen zou
+# de teller weggooien voor een fout die niemand had gezien.
+_MISSING_BUCKET_CODES = ("nosuchbucket",)
+_MISSING_BUCKET_TEXT = (
+    "no such bucket",
+    "bucket does not exist",
+    "bucket not found",
+    "specified bucket",
+)
+
+
+def _is_missing_object(exc: Exception) -> bool:
+    """True als deze fout "het object bestaat niet" betekent."""
+    code = str(getattr(exc, "code", "") or "").strip().lower()
+    tekst = f"{code} {exc}".lower()
+    # Eerst het uitsluitsel: een ontbrekende bucket is een storing, geen lege
+    # stand, en de tekst ervan overlapt met die van een ontbrekend object.
+    if code in _MISSING_BUCKET_CODES or any(m in tekst for m in _MISSING_BUCKET_TEXT):
+        return False
+    if isinstance(exc, (FileNotFoundError, KeyError)):
+        return True
+    if code in _MISSING_OBJECT_CODES:
+        return True
+    return any(m in tekst for m in _MISSING_OBJECT_TEXT)
+
+
+def _load_state(storage_service) -> dict:
+    """Lees de stand: ontbreken mag, onleesbaar zijn niet.
+
+    Ontbreekt het bestand, dan is dit de eerste run en begint de teller op 0.
+    Elke ANDERE fout (netwerk, rechten, misvormde JSON) is een storing: de run
+    stopt en laat de stand staan, in plaats van hem te overschrijven met een
+    verse.
+    """
+    try:
+        raw = storage_service.get_training_image(STATE_KEY)
+    except Exception as exc:
+        if _is_missing_object(exc):
+            return {"next_offset": 0}
+        logger.error(
+            "Voortgangsbestand niet leesbaar — de run stopt",
+            extra={"key": STATE_KEY, "error": str(exc)},
+        )
+        raise StateUnavailable("unreadable") from exc
+    try:
+        data = json.loads(
+            raw.decode("utf-8") if isinstance(raw, (bytes, bytearray)) else raw
+        )
+    except Exception as exc:
+        raise StateUnavailable("malformed") from exc
+    if not isinstance(data, dict):
+        raise StateUnavailable("malformed")
+    return data
+
+
+def _scope_suffix() -> str:
+    """Achtervoegsel waaronder DEZE scope zijn voortgang bewaart (her-review).
+
+    De vingerafdruk van de kaart werd scope-ONafhankelijk (M6 uit de vorige
+    ronde) — terecht, want de kaart is dat ook. Maar ``next_offset`` bleef in de
+    parenlijst van de DRAAIENDE scope wijzen. Een handmatige debugrun met
+    ``DECLARED_HARVEST_CODES=FSC`` bouwde zijn teller op in een lijst van dertig
+    paren en schreef die over de nachtelijke teller heen, die er 1349 heeft.
+    Vóór die wijziging viel dat nog op (de vingerafdruk veranderde, de teller
+    ging terug); daarna bleef het stil, en de voorste paren van de volledige
+    lijst werden overgeslagen tot de kaart toevallig veranderde.
+
+    Elke scope houdt daarom zijn eigen teller én zijn eigen vingerafdruk. Het
+    SLOT blijft gedeeld — de container is dat ook, en twee oogsten naast elkaar
+    blijft een OOM-recept.
+    """
+    if not HARVEST_CODES:
+        return ""
+    return ":" + ",".join(sorted(HARVEST_CODES))
+
+
+def _total_field(offset_field: str) -> str:
+    """Bij de teller horende naam voor het aantal paren in dezelfde scope."""
+    return "total_pairs" + offset_field[len("next_offset") :]
 
 
 def _scoped_pairs(declared_map: dict) -> list:
@@ -241,6 +567,33 @@ def _scoped_pairs(declared_map: dict) -> list:
         for gtin in declared_map[code]:
             pairs.append((code, gtin))
     return pairs
+
+
+def _all_pairs(declared_map: dict) -> list:
+    """Deterministische (code, gtin)-parenlijst over de HELE kaart.
+
+    LOS van ``DECLARED_HARVEST_CODES``. De vingerafdruk van de kaart hoort niet
+    van de scope van de draaiende run af te hangen: één handmatige debugrun met
+    ``DECLARED_HARVEST_CODES=FSC`` legde anders de vingerafdruk van dat ene
+    stukje vast, waarna de eerstvolgende nachtelijke run zijn teller om niets
+    terugzette — en de nacht daarna opnieuw.
+    """
+    return [
+        (code, gtin) for code in sorted(declared_map) for gtin in declared_map[code]
+    ]
+
+
+def _map_signature(declared_map: dict) -> str:
+    """Exacte vingerafdruk van de parenlijst in de kaart (AC5).
+
+    Vorm ``"<aantal>|<md5 over de paren>"``: het aantal blijft leesbaar in de
+    logs, het digest maakt "verandert" exact in plaats van benaderd.
+    """
+    pairs = _all_pairs(declared_map)
+    digest = hashlib.md5(
+        "\n".join(f"{c}\t{g}" for c, g in pairs).encode("utf-8")
+    ).hexdigest()
+    return f"{len(pairs)}|{digest}"
 
 
 def page_order(groups: dict) -> list:
@@ -302,8 +655,27 @@ async def _flush(queue: dict, db_service, storage_service) -> int:
     return n
 
 
+async def _flush_checks(pending: list, db_service) -> int:
+    """Story 20.20 (AC4) — leg de nagekeken paren vast en LEEG de lijst.
+
+    Meelopend met ``_flush`` zodat de vastlegging nooit ver voor of achter de
+    ingevoegde rijen aan loopt. In DRY_RUN wordt er niets geschreven: een
+    droogloop moet de echte run voorspellen, niet veranderen.
+    """
+    if DRY_RUN or not pending:
+        return 0
+    n = await db_service.record_declared_harvest_checks(list(pending))
+    pending.clear()
+    return n
+
+
 def _checkpoint(
-    state: dict, storage_service, reached: int, total: int, done: bool = False
+    state: dict,
+    storage_service,
+    reached: int,
+    total: int,
+    done: bool = False,
+    offset_field: str = "next_offset",
 ) -> None:
     """
     Story 20.11 (AC3) — offset wegschrijven. ALTIJD ná een flush aanroepen, nooit
@@ -313,17 +685,123 @@ def _checkpoint(
     """
     if DRY_RUN:
         return
-    state["next_offset"] = reached
-    state["total_pairs"] = total
+    state[offset_field] = reached
+    state[_total_field(offset_field)] = total
     if done:
-        state.pop("in_progress", None)
-        state.pop("run_started_at", None)
+        _clear_lock_fields(state)
     storage_service.put_training_image(
         STATE_KEY, json.dumps(state).encode("utf-8"), "application/json"
     )
 
 
+def _clear_lock_fields(state: dict) -> None:
+    """Haal de run-marker uit de stand (in-memory; schrijven doet de aanroeper)."""
+    state.pop("in_progress", None)
+    state.pop("run_started_at", None)
+    state.pop("lock_max_age_seconds", None)
+
+
+def _claim_lock(state: dict, storage_service) -> None:
+    """Story 20.20 (AC8) — zet de run-marker en schrijf hem METEEN weg.
+
+    ONMIDDELLIJK ná de slotcontrole, en bewust niet ná het dure voorwerk. Tussen
+    de controle en de marker zaten voorheen de volledige sleutellijst van de
+    objectopslag (op acceptatie tienduizenden sleutels), de opbouw van de
+    parenlijst, de groepering en twee databaserondgangen: twee runs die binnen
+    dat raam van tientallen seconden startten zagen allebei geen marker en
+    draaiden allebei door. Het raam is nu een lezen-en-schrijven van hetzelfde
+    kleine bestand.
+
+    Dit blijft geen ATOMAIR slot — de objectopslag krijgt hier geen
+    voorwaardelijke schrijfactie — maar het raam is zo klein als het zonder
+    zo'n schrijfactie kan. De prijs is dat een run die vroeg strandt een marker
+    achterlaat; daarom ruimt élk pad hem op (zie ``_release_lock``), inclusief
+    het pad waarop de vastlegging onleesbaar blijkt.
+    """
+    if DRY_RUN:
+        return
+    state["in_progress"] = True
+    state["run_started_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    state["lock_max_age_seconds"] = _lock_max_age_for_run()
+    storage_service.put_training_image(
+        STATE_KEY, json.dumps(state).encode("utf-8"), "application/json"
+    )
+
+
+def _release_lock(state: dict, storage_service) -> None:
+    """Ruim de run-marker op zonder de teller aan te raken (AC8).
+
+    Voor de paden die vóór het eerste checkpoint bewust teruggeven: een run die
+    nog niets gedaan heeft mag de volgende start niet blokkeren.
+
+    NIET voor een onverwachte crash. Dáár hoort de marker juist te blijven
+    staan — dat is zijn hele functie: een offset alleen is niet te onderscheiden
+    van "er is nooit een run geweest". Zo'n achtergebleven marker vervalt vanzelf
+    (``lock_max_age_seconds``), en SIGKILL kent sowieso geen handler.
+    """
+    if DRY_RUN:
+        return
+    _clear_lock_fields(state)
+    try:
+        storage_service.put_training_image(
+            STATE_KEY, json.dumps(state).encode("utf-8"), "application/json"
+        )
+    except Exception:  # pragma: no cover - opruimen mag nooit de oorzaak maskeren
+        logger.warning("Run-marker kon niet opgeruimd worden", extra={"key": STATE_KEY})
+
+
+# Statussen waarop de oogst NIETS gedaan heeft en dat iemand moet merken. De
+# cron schreef de regel netjes in het logbestand, maar niets keek naar een
+# exitcode — en precies zo bleef 20.2 wekenlang stil "draaien". Een niet-nul
+# exitcode zet de cron-mail én elke bewaking in beweging.
+#
+# `locked` hoort er BEWUST niet bij (her-review ronde 3, L3). Dat is de enige
+# status uit dit rijtje waarop het systeem precies doet wat het moet doen: er
+# loopt al een oogst, dus deze stopt. De runbook schrijft een eenmalige
+# inhaalronde van tien uur voor; elke nacht dat die nog loopt zou de cron een
+# mail "mislukt" sturen voor een run die correct wijkt. Alarm bij correct gedrag
+# leert mensen de mail weg te klikken, en dan mist ook `map_unavailable`.
+# Een marker die te LANG blijft staan valt hier niet onder: zo'n marker vervalt
+# vanzelf (`lock_max_age_seconds`), waarna de volgende run gewoon draait — er is
+# dus geen bereikbare "verlopen marker"-tak om op te alarmeren.
+ALERT_STATUSES = frozenset(
+    {
+        "map_unavailable",
+        "state_unavailable",
+        "checks_unavailable",
+        "cap_disabled",
+    }
+)
+
+
+def exit_code_for(result: dict) -> int:
+    """Exitcode van een run, afgeleid uit zijn status (her-review, L2)."""
+    return 1 if (result or {}).get("status") in ALERT_STATUSES else 0
+
+
 async def run_batch() -> dict:
+    # Story 20.20 (her-review) — een cap van nul of lager betekent "lever deze
+    # run niets". Zonder eigen tak stond de oogst dan PERMANENT stil: elk paar
+    # ketste af op de cap, geen enkel paar telde als afgehandeld, de teller
+    # schoof nooit op en de run eindigde nooit op `complete` — elke nacht
+    # dezelfde paren, elke nacht hetzelfde niets. Nu stopt de run meteen, vóór
+    # het model, de kaart, het slot en de teller, en meldt hij het met een
+    # niet-nul exitcode zodat "de oogst staat uit" niet stil blijft.
+    if PER_CODE_CAP <= 0:
+        result = {
+            "status": "cap_disabled",
+            "per_code_cap": PER_CODE_CAP,
+            "candidates": 0,
+            "inserted": 0,
+        }
+        logger.warning(
+            "Declaratie-oogst gestopt: DECLARED_HARVEST_PER_CODE_CAP staat op "
+            "nul of lager, dus er kan niets uitkomen. De teller blijft staan.",
+            extra=result,
+        )
+        print(json.dumps(result))
+        return result
+
     from app.ml.model_manager import model_manager
     from app.services.classification import _to_pil
     from app.services.database import db_service
@@ -336,15 +814,106 @@ async def run_batch() -> dict:
     storage_service.connect()
     await db_service.connect()
 
-    declared_map = _load_declared_map(storage_service)
-
+    # Story 20.20 (AC5) — geen kaart, geen run. Een onleesbare of lege kaart is
+    # een STORING en geen kaart van nul paren: stil doorgaan zou de vingerafdruk
+    # op "leeg" zetten, de teller wissen en `complete` melden — hetzelfde woord
+    # als een geslaagde volledige ronde. De teller blijft hier onaangeroerd.
     try:
-        state = json.loads(
-            storage_service.get_training_image(STATE_KEY).decode("utf-8")
+        declared_map = _load_declared_map(storage_service)
+    except DeclaredMapUnavailable as exc:
+        result = {
+            "status": "map_unavailable",
+            "reason": exc.reason,
+            "key": DECLARED_MAP_KEY,
+            "candidates": 0,
+            "inserted": 0,
+        }
+        logger.error(
+            "Declaratie-oogst gestopt: de kaart is niet bruikbaar. De teller blijft "
+            "staan; er wordt niets teruggezet.",
+            extra=result,
         )
-    except Exception:
-        state = {"next_offset": 0}
-    next_offset = int(state.get("next_offset", 0))
+        print(json.dumps(result))
+        return result
+
+    # Story 20.20 (her-review) — ontbreken is een verse start, onleesbaar is een
+    # storing. De marker gaat hierna METEEN op de stand; met de oude fail-safe
+    # schreef één leesfout dus gegarandeerd een verse stand over de echte heen.
+    try:
+        state = _load_state(storage_service)
+    except StateUnavailable as exc:
+        result = {
+            "status": "state_unavailable",
+            "reason": exc.reason,
+            "key": STATE_KEY,
+            "candidates": 0,
+            "inserted": 0,
+        }
+        logger.error(
+            "Declaratie-oogst gestopt: het voortgangsbestand is er wél maar niet "
+            "leesbaar. Er wordt niets overschreven.",
+            extra=result,
+        )
+        print(json.dumps(result))
+        return result
+
+    # Story 20.20 (AC8) — één oogst tegelijk. De volume-oogst en deze oogst delen
+    # dezelfde ml-service-container van 8 GiB; twee declaratie-runs naast elkaar
+    # halen die limiet gegarandeerd. Een run die het slot niet krijgt STOPT met
+    # een melding — hij wacht niet en hij draait niet alsnog.
+    if _lock_held(state, time.time(), LOCK_MAX_AGE_SECONDS):
+        result = {
+            "status": "locked",
+            "run_started_at": state.get("run_started_at"),
+            # De vervaltijd die de LOPENDE run in zijn marker legde — dat is de
+            # grens waarop geweigerd wordt, niet de constante van deze run.
+            "lock_max_age_seconds": state.get(
+                "lock_max_age_seconds", LOCK_MAX_AGE_SECONDS
+            ),
+            "candidates": 0,
+            "inserted": 0,
+        }
+        logger.warning("Declaratie-oogst geweigerd: er loopt er al een", extra=result)
+        print(json.dumps(result))
+        return result
+
+    # Story 20.11 — stond er een marker van een hard afgebroken run? Dat moet
+    # vastgelegd worden vóór deze run zijn eigen marker zet.
+    stale_marker = bool(state.get("in_progress"))
+
+    # Story 20.20 (AC8) — de marker gaat er METEEN op, vóór het dure voorwerk;
+    # zie `_claim_lock` voor waarom dat raam anders tientallen seconden was.
+    _claim_lock(state, storage_service)
+
+    # Story 20.20 (AC5) — de teller draagt niet langer "al gedaan"; die rol ligt
+    # bij de vastlegging. Wel moet hij terug zodra hij naar een ANDERE parenlijst
+    # wijst. Gemeten op de PARENLIJST in de KAART — niet op een telling (twee
+    # kaarten met evenveel maar andere paren lieten de teller staan terwijl de
+    # offset in een andere lijst wees), en niet op de door artwork gefilterde
+    # paren (die hangen af van wat er die nacht in de opslag staat).
+    # De teller hoort bij de SCOPE die hem opbouwde — zie `_scope_suffix`. De
+    # vingerafdruk van de kaart is scope-onafhankelijk, maar hij wordt per scope
+    # bewaard: anders meldt een gescopete debugrun "kaart ongewijzigd" en laat
+    # hij de nachtelijke teller in een oude parenlijst staan.
+    offset_field = f"next_offset{_scope_suffix()}"
+    signature_field = f"map_signature{_scope_suffix()}"
+
+    map_signature = _map_signature(declared_map)
+    map_pairs = len(_all_pairs(declared_map))
+    if _counter_reset_needed(state, map_signature, signature_field):
+        logger.info(
+            "Declaratie-oogst zet de teller terug: de kaart heeft een andere parenlijst",
+            extra={
+                "was": state.get(signature_field),
+                "nu": map_signature,
+                "scope": sorted(HARVEST_CODES) or "hele kaart",
+            },
+        )
+        state[offset_field] = 0
+    state[signature_field] = map_signature
+    state["map_pairs"] = map_pairs
+
+    next_offset = int(state.get(offset_field, 0))
 
     keys = [
         k
@@ -366,23 +935,25 @@ async def run_batch() -> dict:
             "Declaratie-oogst compleet — alle scoped (code, GTIN)-paren gedekt",
             extra={"total": total},
         )
-        # Story 20.11 — een achtergebleven run-marker van een hard afgebroken run
-        # hoort hier ook opgeruimd te worden; anders blijft hij eeuwig staan en
-        # suggereert hij ten onrechte een lopende run.
-        had_marker = bool(state.get("in_progress"))
-        if had_marker and not DRY_RUN:
-            state.pop("in_progress", None)
-            state.pop("run_started_at", None)
-            storage_service.put_training_image(
-                STATE_KEY, json.dumps(state).encode("utf-8"), "application/json"
-            )
+        # Story 20.11/20.20 — de eigen marker (en een eventueel achtergebleven
+        # marker van een hard afgebroken run) hoort hier opgeruimd te worden;
+        # anders blijft hij staan en suggereert hij ten onrechte een lopende run.
+        # De verse `map_signature` gaat mee, anders vergeet de oogst waarop zijn
+        # teller sloeg zodra hij klaar is.
+        _release_lock(state, storage_service)
         result = {
             "status": "complete",
+            "map_pairs": map_pairs,
+            "map_signature": map_signature,
             "total_pairs": total,
             "next_offset": next_offset,
             "candidates": 0,
             "inserted": 0,
-            "stale_marker_cleared": had_marker,
+            # In DRY_RUN keert `_release_lock` meteen terug en is er niets
+            # opgeruimd; "true" melden zou een onwaar veld zijn in een uitvoer
+            # die als bewijs gelezen wordt.
+            "stale_marker_cleared": stale_marker and not DRY_RUN,
+            "scope": sorted(HARVEST_CODES) or None,
         }
         print(json.dumps(result))
         return result
@@ -400,16 +971,6 @@ async def run_batch() -> dict:
     per_code_counts: dict = defaultdict(int)
     t0 = time.perf_counter()
 
-    # Story 20.11 (AC3) — run-marker: blijft staan als de run hard wordt afgebroken
-    # (SIGKILL kent geen handler), en wordt bij een nette afsluiting opgeruimd. Een
-    # offset alleen is niet te onderscheiden van "er is nooit een run geweest".
-    if not DRY_RUN:
-        state["in_progress"] = True
-        state["run_started_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-        storage_service.put_training_image(
-            STATE_KEY, json.dumps(state).encode("utf-8"), "application/json"
-        )
-
     # Story 20.11 (AC2) — GROEPEREN PER BRONPAGINA. Voorheen liep de lus de paren in
     # volgorde af met een onbegrensde page-cache: die groeide met het aantal unieke
     # pagina's in de batch (7 GB bij 173 paren -> OOM). Door alle codes van dezelfde
@@ -418,13 +979,50 @@ async def run_batch() -> dict:
     # multi-code-GTINs) volledig intact. Geheugen wordt zo batch-ONafhankelijk.
     window = list(range(next_offset, end))
     groups: dict = defaultdict(list)
+    src_by_idx: dict = {}
     for idx in window:
         code, gtin = pairs[idx]
         src = _pick_page(by_gtin[gtin])
         if src:
             groups[src].append(idx)
-    # Zie `page_order` — de volgorde is bepalend voor de offset-voortgang.
-    ordered_pages = page_order(groups)
+            src_by_idx[idx] = src
+
+    # Story 20.20 (AC4/AC5) — de vastlegging IN BULK ophalen, vóór de paginalus.
+    # Per paar opzoeken zou dure beeldanalyse vervangen door duizenden losse
+    # database-opzoekingen; dan verplaats je de kosten in plaats van ze weg te nemen.
+    #
+    # En dit is een HARDE afhankelijkheid: ontbreekt de tabel of is hij onleesbaar,
+    # dan stopt de run met een melding. Fail-safe terugvallen op "niets onthouden"
+    # zou ~8,5 uur rekenwerk opleveren dat niemand heeft gevraagd, en het zou als
+    # "traag" gelezen worden in plaats van als "kapot".
+    try:
+        recorded_checks = await db_service.fetch_declared_harvest_checks(
+            [(pairs[i][0], pairs[i][1], src_by_idx[i]) for i in window if i in src_by_idx]
+        )
+        pool_fingerprints = await db_service.reference_pool_fingerprints(
+            {pairs[i][0] for i in window}
+        )
+    except Exception as exc:
+        # Story 20.20 (AC8) — de marker staat er al (hij gaat er vóór het dure
+        # voorwerk op); een run die hier strandt mag er geen achterlaten die de
+        # volgende start blokkeert. De teller blijft ongemoeid.
+        _release_lock(state, storage_service)
+        result = {
+            "status": "checks_unavailable",
+            "error": str(exc),
+            "candidates": 0,
+            "inserted": 0,
+            "total_pairs": total,
+            "from_offset": next_offset,
+            "to_offset": next_offset,
+        }
+        logger.error(
+            "Declaratie-oogst gestopt: de vastlegging van nagekeken paren is niet "
+            "leesbaar (tabel declared_harvest_checks). De run begint NIET stil opnieuw.",
+            extra=result,
+        )
+        print(json.dumps(result))
+        return result
 
     # De offset slaat op de OORSPRONKELIJKE parenlijst, niet op de hergroepeerde
     # volgorde: we schuiven alleen op tot waar het aaneengesloten voorste deel af is.
@@ -432,14 +1030,65 @@ async def run_batch() -> dict:
     # Paren zonder bruikbare pagina tellen als afgehandeld (ze werden ook voorheen
     # overgeslagen met i += 1).
     for idx in window:
-        if not _pick_page(by_gtin[pairs[idx][1]]):
+        if idx not in src_by_idx:
             done_idx.add(idx)
+
+    # Story 20.20 (AC4) — welke paren zijn al nagekeken, gegeven de referentiepool
+    # van NU? Een blijvend oordeel telt altijd; een voorlopig oordeel alleen zolang
+    # de vingerafdruk van de pool gelijk is.
+    already_checked: set = set()
+    for idx in window:
+        src = src_by_idx.get(idx)
+        if not src:
+            continue
+        code, gtin = pairs[idx]
+        if _already_checked(
+            recorded_checks.get((code, gtin, src)), pool_fingerprints.get(code)
+        ):
+            already_checked.add(idx)
+
+    # Story 20.20 (AC4) — HELE PAGINAGROEPEN wegfilteren. De pagina wordt per groep
+    # één keer opgehaald, gedecodeerd en gelokaliseerd (`page_loaded`); een overslag
+    # per páár bespaart dat niet. Alleen als ELK paar van de groep al is nagekeken
+    # mag de pagina ongemoeid blijven — daar komen de ~8,5 uur vandaan.
+    skipped_already_checked = 0
+    for src in [s for s in groups if all(i in already_checked for i in groups[s])]:
+        for i in groups[src]:
+            done_idx.add(i)
+            skipped_already_checked += 1
+        del groups[src]
+
+    # Zie `page_order` — de volgorde is bepalend voor de offset-voortgang.
+    ordered_pages = page_order(groups)
 
     def _reached() -> int:
         r = next_offset
         while r in done_idx:
             r += 1
         return r
+
+    # Story 20.20 (AC4) — paren die op het runbudget (de cap) zijn afgeketst. Ze
+    # worden niet vastgelegd én niet als afgehandeld geteld: de volgende run
+    # biedt ze opnieuw aan.
+    cap_deferred: set = set()
+
+    # Story 20.20 (AC4) — nagekeken paren, met hun houdbaarheid, tot de eerstvolgende
+    # flush. Cap-overslagen komen hier NOOIT in.
+    pending_checks: list = []
+    checks_recorded = 0
+
+    def _note(code: str, gtin: str, src: str, outcome: str) -> None:
+        blijvend = _is_permanent(outcome)
+        pending_checks.append(
+            (
+                code,
+                gtin,
+                src,
+                outcome,
+                blijvend,
+                None if blijvend else pool_fingerprints.get(code),
+            )
+        )
 
     stopped_reason = None
     processed_since_flush = 0
@@ -463,6 +1112,34 @@ async def run_batch() -> dict:
 
         for i in groups[src]:
             code, gtin = pairs[i]
+
+            # Story 20.20 (AC4) — dit paar is al nagekeken; de groep als geheel was
+            # dat niet, dus de pagina komt verderop alsnog. Wel het analysewerk voor
+            # dit paar overslaan, en het oordeel niet opnieuw vastleggen.
+            if i in already_checked:
+                done_idx.add(i)
+                skipped_already_checked += 1
+                continue
+
+            # Story 20.20 (her-review) — de cap VÓÓR het laden van de pagina. Hij
+            # stond alleen ná de hele analyse, dus een paar dat op het dagbudget
+            # afketst was al gedecodeerd, gelokaliseerd, geëmbed en gematcht voordat
+            # het werd afgewezen — en het wordt bewust niet vastgelegd, dus dat
+            # rekenwerk werd élke ronde opnieuw gedaan. Met de cap op nul stond de
+            # oogst zelfs permanent stil. Dat is precies het herhaalwerk dat deze
+            # story wegneemt.
+            #
+            # Hier alleen dit PAAR overslaan, niet de groep: een andere code op
+            # dezelfde pagina kan nog wél ruimte hebben, en dan hoort de pagina
+            # gewoon geladen te worden.
+            if per_code_counts[code] >= PER_CODE_CAP:
+                skipped_cap += 1
+                # Zelfde redenering als bij de late cap-controle hieronder: geen
+                # `_note` (de cap is een runbudget, geen oordeel) en niet als
+                # afgehandeld tellen, zodat de volgende run dit paar opnieuw aanbiedt.
+                done_idx.discard(i)
+                cap_deferred.add(i)
+                continue
 
             # De pagina wordt per GROEP één keer geladen en gelokaliseerd — dat is
             # exact de 20.2-winst, nu zonder onbegrensde cache.
@@ -494,6 +1171,9 @@ async def run_batch() -> dict:
             # Story 20.9 — keyline-pagina levert geen bruikbare crops (lege panelen).
             if is_keyline:
                 skipped_keyline += 1
+                # Blijvend: keyline-zijn is een eigenschap van de pagina zelf, niet
+                # van de referentiepool — dat oordeel draait nooit om.
+                _note(code, gtin, src, OUTCOME_KEYLINE)
                 continue
 
             # AC3: alleen de BESTE regio per paar; de declaratie garandeert de CODE,
@@ -523,6 +1203,9 @@ async def run_batch() -> dict:
 
             if best is None:
                 skipped_below_floor += 1
+                # Voorlopig: geoordeeld tegen de referentiepool van dit moment. Komt
+                # er een referentie bij, dan wordt dit paar opnieuw bekeken.
+                _note(code, gtin, src, OUTCOME_BELOW_FLOOR)
                 continue
 
             sim, crop, bbox, best_emb = best
@@ -534,15 +1217,17 @@ async def run_batch() -> dict:
             )
             if _cross_code_rejected(code, sim, open_matches, CROSS_CODE_MARGIN):
                 skipped_cross_code += 1
+                # Voorlopig: de vergelijking loopt over referenties, dus ook dit
+                # oordeel kan omdraaien zodra de pool verandert.
+                _note(code, gtin, src, OUTCOME_CROSS_CODE)
                 continue
 
-            # Story 20.11 — tel op `per_code_counts`, NIET op `len(queue[code])`:
-            # de queue wordt tussentijds geleegd door de flush, dus daarop tellen zou
-            # de cap per flush laten resetten i.p.v. per run. PER_CODE_CAP houdt
-            # daarmee exact zijn oude, run-brede betekenis.
-            if per_code_counts[code] >= PER_CODE_CAP:
-                skipped_cap += 1
-                continue
+            # Story 20.20 (her-review ronde 3) — de LATE cap-tak stond hier en is
+            # verwijderd: sinds de controle bovenaan de paren-lus staat is hij
+            # aantoonbaar onbereikbaar (bewezen met een mutatie: een `raise` erin
+            # liet de hele suite groen). Dode code die een vangnet suggereert dat er
+            # niet is, is erger dan geen vangnet. De cap wordt uitsluitend nog
+            # bovenaan de lus beoordeeld, vóór het dure werk.
 
             # AC2/AC4 — idempotentie per code: READ, draait ook in DRY_RUN mee.
             exists = await db_service.review_item_exists(
@@ -550,6 +1235,13 @@ async def run_batch() -> dict:
             )
             if exists:
                 skipped_duplicate += 1
+                # Blijvend, en dezelfde houdbaarheid als "kandidaat aangemaakt":
+                # er stáát al een item voor dit paar. Zonder deze regel zou de
+                # pagina elke ronde opnieuw geladen worden voor een paar dat
+                # allang af is. Wel een EIGEN uitkomstwaarde: "er stond al iets"
+                # is een andere herkomst dan "ik heb zojuist iets aangemaakt", en
+                # met één gedeelde waarde is dat later niet meer te verklaren.
+                _note(code, gtin, src, OUTCOME_EXISTING_ITEM)
                 continue
 
             queue[code].append(
@@ -569,6 +1261,8 @@ async def run_batch() -> dict:
             )
             candidate_total += 1
             per_code_counts[code] += 1
+            # Blijvend: het item komt in de wachtrij; opnieuw aanmaken is een duplicaat.
+            _note(code, gtin, src, OUTCOME_CANDIDATE)
         # Story 20.11 (AC2) — pagina expliciet loslaten zodra de groep klaar is.
         # Zonder dit bleef hij in de (voorheen onbegrensde) cache staan.
         img = boxes = None
@@ -579,14 +1273,20 @@ async def run_batch() -> dict:
         if processed_since_flush >= FLUSH_EVERY:
             n = await _flush(queue, db_service, storage_service)
             inserted_total += n
-            _checkpoint(state, storage_service, _reached(), total)
+            checks_recorded += await _flush_checks(pending_checks, db_service)
+            _checkpoint(
+                state, storage_service, _reached(), total, offset_field=offset_field
+            )
             processed_since_flush = 0
 
     reached = _reached()
 
     # Slot-flush + checkpoint voor de rest van de queue.
     inserted_total += await _flush(queue, db_service, storage_service)
-    _checkpoint(state, storage_service, reached, total, done=True)
+    checks_recorded += await _flush_checks(pending_checks, db_service)
+    _checkpoint(
+        state, storage_service, reached, total, done=True, offset_field=offset_field
+    )
 
     candidate_count = candidate_total
     inserted = inserted_total
@@ -603,6 +1303,15 @@ async def run_batch() -> dict:
         "skipped_cap": skipped_cap,
         "skipped_cross_code": skipped_cross_code,
         "skipped_keyline": skipped_keyline,
+        # Story 20.20 — paren die niet opnieuw doorgerekend hoefden te worden, en
+        # oordelen die deze run heeft vastgelegd.
+        "skipped_already_checked": skipped_already_checked,
+        # Paren die op de cap afketsten en bewust opnieuw aangeboden worden.
+        "cap_deferred": len(cap_deferred),
+        "checks_recorded": checks_recorded,
+        "map_pairs": map_pairs,
+        "map_signature": map_signature,
+        "scope": sorted(HARVEST_CODES) or None,
         "total_pairs": total,
         "from_offset": next_offset,
         "to_offset": reached,
@@ -616,4 +1325,4 @@ async def run_batch() -> dict:
 
 
 if __name__ == "__main__":
-    asyncio.run(run_batch())
+    sys.exit(exit_code_for(asyncio.run(run_batch())))

@@ -16,7 +16,8 @@ Dekt:
     meerdere regio's wint alleen de beste (hoogste similarity).
   * AC4 — per-code-cap (flood-guard), idempotentie via review_item_exists,
     DRY_RUN muteert niets maar telt wel kandidaten; env-code-filter begrenst
-    de scope; ontbrekende/misvormde map -> 0 kandidaten, geen crash.
+    de scope; ontbrekende/misvormde map -> de run STOPT met een melding
+    (`map_unavailable`, sinds Story 20.20 fail-loud i.p.v. fail-safe).
 
 Mock-patroon: identiek aan test_queue_harvest_nutriscore_declared_12_15.py
 (verse module-load met gestubde app-pakketten + fake cv2).
@@ -148,6 +149,21 @@ class _FakeDB:
     async def review_item_exists(self, gtin, reason, source_file):
         self.exists_calls.append((gtin, reason, source_file))
         return (gtin, reason, source_file) in self._existing
+
+    # Story 20.20 — de oogst legt sinds 20.20 vast WAT hij nakeek. Dit dubbel
+    # onthoudt niets over runs heen: elk scenario hier begint dus met een schone
+    # lei, precies zoals deze suites het altijd al bedoelden. De 20.20-suite
+    # heeft een eigen dubbel dat er wél mee rekent.
+    async def fetch_declared_harvest_checks(self, pairs):
+        return {}
+
+    async def reference_pool_fingerprints(self, codes):
+        return {c: "0|" for c in codes}
+
+    async def record_declared_harvest_checks(self, rows):
+        self.recorded_checks = getattr(self, "recorded_checks", [])
+        self.recorded_checks.extend([tuple(r) for r in rows])
+        return len(rows)
 
 
 class _FakeModelManager:
@@ -423,14 +439,26 @@ def test_ac4_dry_run_meet_kandidaten_maar_muteert_niets(harness):
     assert [k for k in h.storage.puts] == []
 
 
-def test_ac4_misvormde_map_geeft_nul_kandidaten_geen_crash(harness):
+def test_ac4_misvormde_map_stopt_de_run_met_een_melding(harness):
+    """Story 20.20 wijzigde dit bewust van fail-SAFE naar fail-LOUD.
+
+    Tot dan gaf een onleesbare kaart een lege kaart terug ("0 kandidaten"). Sinds
+    de teller op de PARENLIJST van de kaart let, liep dat door in een lege
+    vingerafdruk: de oogst zette zijn teller op 0 en meldde `complete` —
+    hetzelfde woord als een geslaagde volledige ronde. Eén hikje in de
+    objectopslag gooide zo de voortgang weg. Nu stopt de run met een eigen
+    status, doet hij niets, en blijft de teller staan.
+    """
     h = harness.run(
         [_page("771", _region(sim=0.9))],
         {},
         map_override=b"geen json {",
     )
+    assert h.result["status"] == "map_unavailable"
+    assert h.result["reason"] == "unreadable"
     assert h.result["inserted"] == 0
     assert h.conn.executes == []
+    assert h.storage.puts == [], "een onbruikbare kaart mag de stand niet raken"
 
 
 # =========================================================================== #
