@@ -839,3 +839,45 @@ def test_ac8_een_gestrande_run_laat_geen_slot_achter(harness):
     assert "lock_max_age_seconds" not in stand
     # En de teller is niet aangeraakt.
     assert stand.get("next_offset", 0) == 0
+
+
+
+# ---------------------------------------------------------------------------
+# Her-review 20.20 — het dagbudget mag geen rekenwerk kosten
+# ---------------------------------------------------------------------------
+
+
+def test_cap_kost_geen_pagina_laden_en_geen_analyse(harness):
+    """Een paar dat op het dagbudget afketst mag de pagina niet eens laden.
+
+    De cap-controle stond alleen NA de hele analyse: de pagina werd opgehaald,
+    gedecodeerd en gelokaliseerd, het gebied geëmbed en gematcht — en pas daarna
+    kwam de afwijzing. Omdat een cap-overslag bewust niet wordt vastgelegd (het is
+    een runbudget, geen oordeel) gebeurde datzelfde werk élke ronde opnieuw. Dat is
+    precies het herhaalwerk dat deze story wegneemt.
+    """
+    codes_map = {"A": ["111", "222"]}
+    out = harness.run(
+        [_page("111", _region()), _page("222", _region())],
+        codes_map,
+        per_code_cap=1,
+    )
+
+    assert out.result["skipped_cap"] == 1
+    # Het eerste paar mag alles kosten; het tweede ketst af op de cap en hoort dan
+    # geen enkele dure stap meer te raken.
+    assert _src("222") not in out.propose_calls, "regio-analyse tóch gedraaid voor een afgeketst paar"
+    assert _src("222") not in out.storage.gets, "pagina tóch gedownload voor een afgeketst paar"
+
+
+def test_cap_op_nul_laat_de_oogst_niet_permanent_rekenen(harness):
+    """Met de cap op nul komt er niets uit — en het mag ook niets kosten."""
+    codes_map = {"A": ["111"]}
+    out = harness.run([_page("111", _region())], codes_map, per_code_cap=0)
+
+    assert out.result["candidates"] == 0
+    assert out.propose_calls == [], "de oogst rekent door terwijl er niets uit kan komen"
+    # De kaart en het voortgangsbestand worden terecht wél gelezen; het gaat om de
+    # ARTWORK-pagina's, want die kosten het echte werk.
+    paginas = [k for k in out.storage.gets if k.startswith("artwork/")]
+    assert paginas == [], f"artwork tóch gedownload terwijl er niets uit kan komen: {paginas}"

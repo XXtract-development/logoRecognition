@@ -919,6 +919,26 @@ async def run_batch() -> dict:
                 skipped_already_checked += 1
                 continue
 
+            # Story 20.20 (her-review) — de cap VÓÓR het laden van de pagina. Hij
+            # stond alleen ná de hele analyse, dus een paar dat op het dagbudget
+            # afketst was al gedecodeerd, gelokaliseerd, geëmbed en gematcht voordat
+            # het werd afgewezen — en het wordt bewust niet vastgelegd, dus dat
+            # rekenwerk werd élke ronde opnieuw gedaan. Met de cap op nul stond de
+            # oogst zelfs permanent stil. Dat is precies het herhaalwerk dat deze
+            # story wegneemt.
+            #
+            # Hier alleen dit PAAR overslaan, niet de groep: een andere code op
+            # dezelfde pagina kan nog wél ruimte hebben, en dan hoort de pagina
+            # gewoon geladen te worden.
+            if per_code_counts[code] >= PER_CODE_CAP:
+                skipped_cap += 1
+                # Zelfde redenering als bij de late cap-controle hieronder: geen
+                # `_note` (de cap is een runbudget, geen oordeel) en niet als
+                # afgehandeld tellen, zodat de volgende run dit paar opnieuw aanbiedt.
+                done_idx.discard(i)
+                cap_deferred.add(i)
+                continue
+
             # De pagina wordt per GROEP één keer geladen en gelokaliseerd — dat is
             # exact de 20.2-winst, nu zonder onbegrensde cache.
             if not page_loaded:
