@@ -297,6 +297,24 @@ en is alle kennis over "al nagekeken" verdwenen.
 - [Source: _bmad-output/implementation-artifacts/20-19-declaraties-uit-de-tradeitem-database.md — de story die de index liet groeien]
 - [Source: `/usr/local/bin/keurmerk-harvest.sh` op vanilla — de enige planning, en hij start de volume-oogst]
 
+## Aandachtspunt voor een eigen story: de suites zijn belastinggevoelig
+
+`VERIFIED`, meerdere metingen op 20 augustus 2026. Beide testsuites laten onder belasting toetsen
+omvallen op een **tijdslimiet** — de api-suite op 5.000 ms, de web-suite op 10.000 ms — terwijl
+diezelfde toetsen los altijd slagen. Dat is niet van deze story:
+
+- `artwork-detection-orchestration › gln on import (S3/D1)` valt ook om op `origin/acc`.
+- De web-suite valt om op deze tak terwijl de tak **geen enkel webbestand aanraakt** (`git diff
+  --name-only origin/acc..HEAD` geeft nul treffers onder `apps/web`). Oorzakelijk verband is
+  daarmee uitgesloten; wat deze tak wél doet is 55 api-toetsen toevoegen, waardoor de machine
+  drukker is wanneer de web-suite erna draait.
+
+**Waarom dit hier staat en niet als "flaky" is weggeschreven:** een tijdslimiet die van de
+machinebelasting afhangt maakt élke groene run een gelukkige run, en verbergt op termijn een echte
+regressie. Twee keer in dit dossier is een uitvaller eerst als "flaky" bestempeld en bleek er iets
+anders aan de hand (de ene keer terecht, de andere keer niet — zie hierboven). Een eigen story die
+de tijdslimieten verhoogt of de traagste toetsen isoleert, is dat waard.
+
 ## Onderzocht en weerlegd
 
 **"Een gescopete debugrun vervuilt `map_pairs`"** — gemeld tijdens de bouw, nagemeten en
