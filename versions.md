@@ -30,6 +30,27 @@ Wat er nu is:
 Voor de wachtrij betekent dit: eenmalig een inhaalronde van ongeveer achtenhalf uur, en daarna
 elke nacht alleen nog het verschil. Het aanzetten zelf gebeurt pas na akkoord.
 
+**Na tegenlezen bijgesteld — vijf dingen die anders niet zouden werken**
+
+- Het wekelijkse bijwerken van de werklijst startte een programma dat op de acceptatie-omgeving
+  helemaal niet aanwezig is. Het zou dus meteen de eerste keer zijn mislukt. Nu draait het het
+  juiste programma, en zoekt het zelf op waar het moet draaien.
+- De bescherming tegen twee oogsten tegelijk hield het maar zes uur vol, terwijl de inhaalronde
+  tien uur mag duren. Er kon dus midden in die inhaalronde alsnog een tweede starten. De
+  bescherming duurt nu net zo lang als de ronde zelf.
+- "Er is een nieuw voorbeeld bijgekomen" werd op de verkeerde plek gemeten: op de voorbeelden
+  zoals ze geregistreerd staan, niet op de voorbeelden waarmee werkelijk vergeleken wordt. Een
+  product bleef daardoor onbekeken terwijl er wél iets veranderd was.
+- "De werklijst is veranderd" werd op het aantal producten vastgesteld. Ging er één af en kwam
+  er één bij, dan merkte de oogst dat niet en las hij vanaf dat moment de verkeerde plek in de
+  lijst. Dat gaat nu op de lijst zelf.
+- Raakt de werklijst zoek, dan meldt de oogst dat als storing in plaats van te doen alsof de
+  lijst leeg is — dat wiste eerder de voortgang.
+
+Verder: een product dat vanwege het dagbudget wordt overgeslagen komt de volgende ronde echt
+terug, de meldingen van de nachtelijke starts komen voortaan ergens aan in plaats van te
+verdwijnen, en een proefdraai meldt niet langer een fout terwijl er niets mis is.
+
 ## 19 augustus 2026
 
 **Producten waarvan het gegevensbestand ontbreekt komen weer in de beoordeelwachtrij**

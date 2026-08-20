@@ -573,11 +573,13 @@ model ArtworkReviewItem {
 /// vallen op "niets onthouden".
 ///
 /// `permanent` scheidt de twee soorten oordeel: blijvend (kandidaat aangemaakt,
-/// keyline-pagina) tegenover voorlopig (onder de drempel, cross-code afgewezen).
-/// Een voorlopig oordeel telt alleen zolang `refPoolFingerprint` gelijk is aan
-/// de huidige referentiepool van de code — anders zou de oogst zichzelf
-/// afsluiten voor precies de referenties die het vliegwiel zelf oplevert.
-/// "Cap bereikt" is een runbudget en komt hier nooit in.
+/// er stond al een item, keyline-pagina) tegenover voorlopig (onder de drempel,
+/// cross-code afgewezen). Een voorlopig oordeel telt alleen zolang
+/// `refPoolFingerprint` gelijk is aan de huidige MATCHBARE referentiepool van de
+/// code — anders zou de oogst zichzelf afsluiten voor precies de referenties die
+/// het vliegwiel zelf oplevert.
+/// "Cap bereikt" is een runbudget en komt hier nooit in; zo'n paar telt ook niet
+/// als afgehandeld, zodat de volgende run het opnieuw aanbiedt.
 ///
 /// Geschreven door de ml-service (`queue_harvest_declared.py`), nooit door de
 /// kaartbouwer.
@@ -586,10 +588,11 @@ model DeclaredHarvestCheck {
   t3777Code          String   @map("t3777_code") @db.VarChar(100)
   gtin               String   @db.VarChar(50)
   sourceFile         String   @map("source_file") @db.VarChar(500)
-  /// candidate | keyline | below_floor | cross_code
+  /// candidate | existing_item | keyline | below_floor | cross_code
   outcome            String   @db.VarChar(30)
   permanent          Boolean
-  /// Vingerafdruk van de referentiepool waartegen geoordeeld is (alleen voorlopig).
+  /// Vingerafdruk van de MATCHBARE referentiepool waartegen geoordeeld is
+  /// (aantal + md5 over de embedding-id's; alleen voorlopig gevuld).
   refPoolFingerprint String?  @map("ref_pool_fingerprint")
   checkedAt          DateTime @default(now()) @map("checked_at") @db.Timestamptz
 

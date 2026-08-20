@@ -274,6 +274,34 @@ en is alle kennis over "al nagekeken" verdwenen.
 
 ## Change Log
 
+- 2026-08-20 (later die dag): **De code-review verwerkt** (`review-20-20-code.md`, FAIL, 4 hoog /
+  6 middel / 5 laag). Alle vijftien punten doorgevoerd, geen waivers.
+
+  **De vier hoge, elk met terugdraai-bewijs:** het kaartherbouwscript riep `npx tsx src/…` aan —
+  een commando dat in het beeld op acceptatie niet kán draaien (alleen `dist` zit erin, en `tsx`
+  staat in geen enkele `package.json`), dus de wekelijkse herbouw zou bij de eerste uitvoering
+  gefaald hebben; het draait nu `node dist/scripts/build-declared-harvest-map.js --apply` en zoekt
+  de containernaam op zijn voorste deel op in plaats van hem te raden. Het slot vervalt niet meer
+  na een vaste zes uur maar draagt de vervaltijd van de run die het zette (tijdsbudget + marge),
+  zodat de inhaalronde van tien uur gedekt is. De vingerafdruk van de referentiepool gaat over
+  dezelfde bron als de match. En "de parenlijst verandert" is exact geworden: een digest over de
+  paren, over de HELE kaart, in plaats van een telling binnen de env-scope.
+
+  **De zes middelen:** de run-marker gaat er nu vóór het dure voorwerk op (het raam was tientallen
+  seconden) en wordt op elk bewust stoppad opgeruimd; een paar dat op de cap afketst telt niet meer
+  als afgehandeld, zodat de volgende run het echt opnieuw aanbiedt; een onbruikbare kaart is een
+  storing (`map_unavailable`) in plaats van een kaart van nul paren die de teller wist en
+  `complete` meldt; beide startscripts schrijven hun melding naar een logbestand én naar stdout;
+  de AC7-toetsen leggen de commando's uit de scripts naast de werkelijke beschikbaarheid in plaats
+  van naast dit document; en de kaartvingerafdruk hangt niet meer van `DECLARED_HARVEST_CODES` af.
+
+  **De vijf lagen:** een uitgesloten paar dat via een andere veldsoort tóch in de kaart staat telt
+  niet meer als uitgesloten; "er stond al een item" heeft een eigen uitkomstwaarde
+  (`existing_item`); de bouwer vergelijkt referentiecodes hoofdlettergevoelig, net als de
+  matchquery, zodat een afwijkend geschreven code zichtbaar op de wachtlijst landt in plaats van
+  onzichtbaar in de kaart; de droogloop geeft geen exitcode 1 meer bij een geblokkeerde krimp; en
+  de tabelcommentaar zegt nu dat verweesde rijen blijven staan.
+
 - 2026-08-20: **Deel A gebouwd** op tak `epic-20-declaratie-oogst`, alle tien criteria van deel A
   afgedekt met falende toetsen vooraf (ATDD) en daarna groen gemaakt. Nieuw: de kaartbouwer
   `apps/api/src/scripts/build-declared-harvest-map.ts` (droogloop als standaard, `--apply`
@@ -285,9 +313,20 @@ en is alle kennis over "al nagekeken" verdwenen.
   **Eén afwijking van de spec, bewust en gemeld:** AC4 vraagt een vingerafdruk van
   "het aantal actieve referenties plus de hoogste `updated_at`". `reference_logos` heeft geen
   `updated_at`-kolom (migratie 0004 kent alleen `created_at`). De vingerafdruk is daarom
-  `<aantal actieve referenties>|<hoogste created_at>`. Het aantal vangt wat er wegvalt (een
-  gedeactiveerde referentie verlaagt de telling), `created_at` vangt wat erbij komt — samen
-  dekken ze allebei de bewegingen die een voorlopig oordeel kunnen omdraaien.
+  `<aantal>|<md5 over de id's>`, gemeten over `reference_embeddings` gejoind op ACTIEVE
+  `reference_logos` — precies de verzameling waarop de match draait
+  (`find_similar_references_by_codes`).
+
+  *Deze onderbouwing verving na de code-review van 20 augustus de eerdere
+  (`<aantal actieve referenties>|<hoogste created_at>`, gemeten over `reference_logos`), die
+  aantoonbaar niet dekte wat ze beloofde. Twee gaten:* **(1)** *de match draait op de
+  embeddings, niet op de referentierijen: een actieve rij zónder embedding telde mee zonder
+  iets bij te dragen, en kreeg hij er later één, dan veranderde de matchbare pool volledig
+  terwijl de vingerafdruk gelijk bleef. Precies de toestand die in dit dossier al gemeten is —
+  RECYCLABLE had 26 actieve referentierijen met nul embeddings.* **(2)** *een
+  netto-nul-wisseling (één erbij, één eraf, met een oudere `created_at`) liet aantal én jongste
+  tijdstempel ongemoeid. Het digest over de id's vangt beide, plus deactivatie en
+  code-wisseling — dus méér dan een `updated_at` zou.*
 
   **Twee toevoegingen binnen de geest van de criteria:** een paar dat al een review-item heeft
   (`review_item_exists`) wordt nu óók vastgelegd, als blijvend — het is dezelfde klasse als

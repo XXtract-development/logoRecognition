@@ -21,9 +21,19 @@
  * dit script schrijft de brandstof voor een run van uren, en dan hoort de
  * onschuldige stand de standaard te zijn.)
  *
+ * LOKAAL (de bronbestanden staan er, tsx via npx):
+ *
  *   DATABASE_URL=... npx tsx src/scripts/build-declared-harvest-map.ts            # droogloop
  *   DATABASE_URL=... npx tsx src/scripts/build-declared-harvest-map.ts --apply    # schrijft
  *   ... --apply --force                                                          # negeert de krimpgrens
+ *
+ * OP DE OMGEVING (in de api-container, via scripts/deployment/build-declared-harvest-map.sh):
+ *
+ *   node dist/scripts/build-declared-harvest-map.js --apply
+ *
+ * Het beeld bevat alleen `dist` — de runtime-laag van de root-Dockerfile kopieert
+ * geen `src/` — en `tsx` staat in geen enkele package.json van deze repository.
+ * `npx tsx src/...` kán daar dus niet draaien.
  *
  * EIGENAARSCHAP VAN BESTANDEN (AC5): dit script schrijft UITSLUITEND de kaart.
  * Het voortgangsbestand `keurmerk-harvest/declared-harvest-state.json` — met de
@@ -179,14 +189,29 @@ export function buildDeclaredHarvestMap(
   activeReferenceCodes: Iterable<string>,
   now: Date = new Date(),
 ): DeclaredHarvestMap {
+  // BEWUST GEEN toUpperCase op de referentiecodes. De kaart draagt hoofdletters
+  // (`code.toUpperCase()` hieronder), en de oogst vergelijkt daarmee
+  // HOOFDLETTERGEVOELIG: `rl.t3777_code = ANY($3::text[])` in
+  // `find_similar_references_by_codes`. Een referentierij met een
+  // niet-hoofdletter-code matcht daar dus nooit. Zou deze bouwer hem wél
+  // meetellen als "heeft een actieve referentie", dan kwam de code in de kaart
+  // en leverde hij per definitie stil nul matches op — precies de dure lege
+  // ronde die deze story wegneemt. Door hier exact te vergelijken landt zo'n
+  // code zichtbaar op de wachtlijst in plaats van onzichtbaar in de kaart.
   const active = new Set<string>();
   for (const c of activeReferenceCodes) {
-    const t = (c ?? "").trim().toUpperCase();
+    const t = (c ?? "").trim();
     if (t) active.add(t);
   }
 
   const veldsoortCodes = new Set<string>();
-  let veldsoortParen = 0;
+  // Per code de GTIN's die via een UITGESLOTEN veldsoort binnenkwamen. Pas ná
+  // het samenvoegen is te zeggen hoeveel paren er werkelijk wegvallen: staat
+  // dezelfde code óók onder een andere veldsoort, dan blijft het paar gewoon in
+  // de kaart en is het geen uitsluiting. Naïef optellen tijdens de lus telde die
+  // paren twee keer — onschuldig in de kaart zelf, misleidend als getal in een
+  // rapportage.
+  const veldsoortByCode = new Map<string, Set<string>>();
 
   // code → GTIN-verzameling, samengevoegd over veldsoorten heen (AC3).
   const byCode = new Map<string, Set<string>>();
@@ -205,7 +230,12 @@ export function buildDeclaredHarvestMap(
 
     if (EXCLUDED_FIELD_TYPES.has(fieldType)) {
       veldsoortCodes.add(codeU);
-      veldsoortParen += gtins.size;
+      let uitgesloten = veldsoortByCode.get(codeU);
+      if (!uitgesloten) {
+        uitgesloten = new Set<string>();
+        veldsoortByCode.set(codeU, uitgesloten);
+      }
+      for (const g of gtins) uitgesloten.add(g);
       continue;
     }
 
@@ -215,6 +245,17 @@ export function buildDeclaredHarvestMap(
       byCode.set(codeU, bestaand);
     }
     for (const g of gtins) bestaand.add(g);
+  }
+
+  // Tel per uitgesloten veldsoort-sleutel alleen de paren die er ECHT uitvallen:
+  // een GTIN die voor dezelfde code ook onder een toegelaten veldsoort staat,
+  // blijft in de kaart en is dus niet uitgesloten.
+  let veldsoortParen = 0;
+  for (const [codeU, uitgesloten] of veldsoortByCode) {
+    const behouden = byCode.get(codeU);
+    for (const g of uitgesloten) {
+      if (!behouden || !behouden.has(g)) veldsoortParen += 1;
+    }
   }
 
   const overstromingCodes: string[] = [];
@@ -262,7 +303,10 @@ export function buildDeclaredHarvestMap(
       zonderActieveReferentie: {
         reden:
           "de oogst zoekt strikt binnen de eigen referentiepool van een code; " +
-          "zonder actieve referentie levert dat per definitie niets op",
+          "zonder actieve referentie levert dat per definitie niets op. De " +
+          "vergelijking is HOOFDLETTERGEVOELIG, net als de matchquery van de " +
+          "oogst: een referentiecode met een andere schrijfwijze telt hier " +
+          "bewust niet mee, want hij zou daar ook nooit matchen",
         codes: zonderRefCodes,
         paren: zonderRefParen,
       },
@@ -572,6 +616,24 @@ export async function runBuild(
   });
   console.log(`  Teller van de oogst: ${plan.message}`);
 
+  // De droogloop MELDT de blokkade, maar rapporteert geen mislukking. Een run
+  // die per definitie niets schrijft is niet kapot omdat het schrijven zou zijn
+  // tegengehouden; exitcode 1 leest in een cron-keten of in CI als "stuk" en dat
+  // is precies de verkeerde melding. Vandaar dat de droogloop-tak vóór de
+  // blokkade-tak staat.
+  if (!opts.apply) {
+    /* eslint-enable no-console */
+    // eslint-disable-next-line no-console
+    console.log(
+      shrink.blocked
+        ? "Droge run — er is niets naar de opslag geschreven. LET OP: met --apply zou de " +
+            "krimpbescherming dit schrijven blokkeren; bewust doorzetten kan met --force."
+        : "Droge run — er is niets naar de opslag geschreven. Schrijven doe je met --apply.",
+    );
+    return 0;
+  }
+
+  /* eslint-disable no-console */
   if (shrink.blocked) {
     console.error(
       "KRIMPBESCHERMING BLOKKEERT — de bestaande kaart blijft ongewijzigd.",
@@ -579,14 +641,6 @@ export async function runBuild(
     console.error("  Bewust doorzetten kan met --force.");
     /* eslint-enable no-console */
     return 1;
-  }
-
-  if (!opts.apply) {
-    // eslint-disable-next-line no-console
-    console.log(
-      "Droge run — er is niets naar de opslag geschreven. Schrijven doe je met --apply.",
-    );
-    return 0;
   }
 
   await deps.writeMap(Buffer.from(serializeDeclaredHarvestMap(map), "utf-8"));

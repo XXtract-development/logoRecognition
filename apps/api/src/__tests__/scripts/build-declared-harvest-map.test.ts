@@ -11,12 +11,15 @@
  *   AC5  wanneer de teller van de oogst terug moet, en wat er gebeurt als er een
  *        run loopt
  *   AC6  krimpbescherming met een getal, --force, eerste run en droogloop
- *   AC7  de aandrijving ligt vastgelegd — inhalen en bijhouden apart, de kaart
- *        wordt periodiek herbouwd, en de starttijd botst niet met de volume-oogst
+ *   AC7  de aandrijving is UITVOERBAAR — de commando's in de startscripts worden
+ *        naast de werkelijke beschikbaarheid gelegd (het gecompileerde bestand,
+ *        de inhoud van het beeld, de bestaande python-module), niet naast een
+ *        markdownbestand
  *
  * AC7 staat in DEZE suite en niet in de ml-suite: vitest draait vanuit de
  * repository, terwijl de Python-toetsen in een container draaien waarin alleen
- * `app/` en `tests/` gekoppeld zijn — `_bmad-output/` is daar onbereikbaar.
+ * `app/` en `tests/` gekoppeld zijn — `_bmad-output/`, `scripts/` en de
+ * `Dockerfile` zijn daar onbereikbaar.
  *
  * Alle helpers zijn puur en doen geen I/O — precies zoals
  * build-nutriscore-declared-map.ts en build-keurmerk-index.ts (`require.main`-
@@ -24,7 +27,7 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import {
@@ -188,6 +191,42 @@ describe('AC2 — kansloos rekenwerk gaat eruit, met de reden erbij', () => {
     ]);
   });
 
+  it('telt een uitgesloten paar niet mee als het via een andere veldsoort tóch in de kaart staat', () => {
+    // Dezelfde code onder twee veldsoorten, met een overlappend product. Het
+    // paar (A, 111) BLIJFT in de kaart — de uitsluiting geldt de sleutel, niet
+    // de code — dus het als "uitgesloten" tellen zou hetzelfde paar twee keer
+    // meetellen en het uitsluitingscijfer misleidend maken.
+    const map = buildDeclaredHarvestMap(
+      index({
+        'NutritionalScore/A': ['111', '222'],
+        'PackagingMarkedLabelAccreditationCode/A': ['111'],
+      }),
+      ['A'],
+      NOW
+    );
+
+    expect(map.codes).toEqual({ A: ['111'] });
+    // Alleen 222 valt er echt uit; 111 staat gewoon in de kaart.
+    expect(map.exclusions.veldsoort.paren).toBe(1);
+    expect(map.exclusions.veldsoort.codes).toEqual(['A']);
+  });
+
+  it('rekent een referentiecode met een andere schrijfwijze niet als actief', () => {
+    // De kaart draagt hoofdletters en de matchquery van de oogst vergelijkt
+    // HOOFDLETTERGEVOELIG (`rl.t3777_code = ANY($3::text[])`). Zou de bouwer
+    // `fsc` als actief voor `FSC` tellen, dan kwam FSC in de kaart en leverde
+    // hij daar per definitie stil nul matches op — de dure lege ronde die deze
+    // story juist wegneemt. Nu staat hij zichtbaar op de wachtlijst.
+    const map = buildDeclaredHarvestMap(
+      index({ 'PackagingMarkedLabelAccreditationCode/FSC': ['111'] }),
+      ['fsc'],
+      NOW
+    );
+
+    expect(map.codes).toEqual({});
+    expect(map.awaitingFirstReference).toEqual(['FSC']);
+  });
+
   it('zet een overstromingscode nooit op de wachtlijst voor een eerste referentie', () => {
     // De overstroming is een absolute uitsluiting; hem als "wacht op een eerste
     // referentie" tonen zou beloven dat hij ooit terugkomt.
@@ -313,23 +352,139 @@ describe('AC5 — wanneer de teller terug moet', () => {
 // AC7 — de aandrijving
 // ===========================================================================
 
-describe('AC7 — de aandrijving ligt vastgelegd', () => {
+describe('AC7 — de aandrijving is uitvoerbaar, niet alleen opgeschreven', () => {
   const repoRoot = resolve(__dirname, '../../../../..');
   const runbook = resolve(repoRoot, '_bmad-output/implementation-artifacts/20-20-aandrijving.md');
+  const mapScript = resolve(repoRoot, 'scripts/deployment/build-declared-harvest-map.sh');
+  const harvestScript = resolve(repoRoot, 'scripts/deployment/declared-harvest.sh');
+  const harvestModule = resolve(
+    repoRoot,
+    'apps/ml-service/app/services/queue_harvest_declared.py'
+  );
 
-  it('beschrijft wie start, hoe vaak en met welk tijdsbudget', () => {
-    expect(existsSync(runbook)).toBe(true);
+  /**
+   * DE KERN VAN DEZE BESCHRIJVING (code-review 20 aug 2026): de vorige AC7-toetsen
+   * lazen `20-20-aandrijving.md` en controleerden of daar een paar woorden in
+   * stonden. Zo'n toets houdt het artefact tegen zichzelf en bewijst niets: het
+   * herbouwscript riep `npx tsx src/scripts/…` aan, een commando dat in het
+   * beeld op acceptatie NIET kan draaien (de runtime-laag kopieert alleen `dist`,
+   * en `tsx` staat in geen enkele package.json), en de toetsen kwamen er
+   * ongehinderd doorheen. Wat hieronder staat legt elk commando uit de scripts
+   * naast wat er werkelijk beschikbaar is.
+   */
+
+  it('roept het GECOMPILEERDE bestand aan, en dat bestand komt uit een bron die bestaat', () => {
+    const script = readFileSync(mapScript, 'utf8');
+    // Alleen de UITVOERBARE regels tellen; de kop legt bewust uit dat
+    // `npx tsx src/…` de LOKALE route is en waarom hij op de omgeving niet werkt.
+    const uitvoerbaar = script
+      .split('\n')
+      .filter((r) => !r.trimStart().startsWith('#'))
+      .join('\n');
+
+    // 1. Het commando zelf, letterlijk uit het script gehaald.
+    const commando = uitvoerbaar.match(/docker exec[^\n]*\n?[^\n]*node\s+(\S+\.js)/);
+    expect(commando, 'het script moet een node-commando met een .js-pad bevatten').not.toBeNull();
+    const jsPad = commando![1];
+
+    // 2. `npx tsx` en `src/` mogen er niet meer in staan — die route bestaat in
+    //    het beeld niet.
+    expect(uitvoerbaar).not.toContain('npx tsx');
+    expect(uitvoerbaar).not.toMatch(/\bsrc\/scripts\//);
+
+    // 3. Het aangeroepen dist-pad moet terug te voeren zijn op een bestaand
+    //    bronbestand, via outDir/rootDir uit de echte tsconfig.
+    const tsconfig = JSON.parse(
+      readFileSync(resolve(repoRoot, 'apps/api/tsconfig.json'), 'utf8')
+    ) as { compilerOptions: { outDir: string; rootDir: string } };
+    const outDir = tsconfig.compilerOptions.outDir.replace(/^\.\//, '');
+    const rootDir = tsconfig.compilerOptions.rootDir.replace(/^\.\//, '');
+    expect(jsPad.startsWith(`${outDir}/`)).toBe(true);
+    const bronPad = resolve(
+      repoRoot,
+      'apps/api',
+      jsPad.replace(new RegExp(`^${outDir}/`), `${rootDir}/`).replace(/\.js$/, '.ts')
+    );
+    expect(existsSync(bronPad), `${jsPad} heeft geen bron ${bronPad}`).toBe(true);
+
+    // 4. En dat `dist` zit ook echt in het beeld dat op acceptatie draait.
+    const dockerfile = readFileSync(resolve(repoRoot, 'Dockerfile'), 'utf8');
+    const runtime = dockerfile.slice(dockerfile.lastIndexOf('FROM '));
+    expect(runtime).toMatch(/COPY[^\n]*\/dist \.\/dist/);
+    // Het tegenbewijs: er wordt géén src gekopieerd.
+    expect(runtime).not.toMatch(/COPY[^\n]*\/src /);
+  });
+
+  it('kan niet op `tsx` leunen, want dat pakket staat in geen enkele package.json', () => {
+    // Dit is de reden dat de vorige route ook met een gemount `src/` niet werkte:
+    // `npx` zou tsx tijdens de cron-run van het net moeten halen, als appuser,
+    // met NODE_ENV=production.
+    for (const pkg of ['package.json', 'apps/api/package.json', 'apps/web/package.json']) {
+      const inhoud = JSON.parse(readFileSync(resolve(repoRoot, pkg), 'utf8')) as {
+        dependencies?: Record<string, string>;
+        devDependencies?: Record<string, string>;
+      };
+      const alles = { ...(inhoud.dependencies ?? {}), ...(inhoud.devDependencies ?? {}) };
+      expect(Object.keys(alles), `${pkg} zou tsx moeten missen`).not.toContain('tsx');
+    }
+  });
+
+  it('zoekt de containernaam op in plaats van hem te raden', () => {
+    const script = readFileSync(mapScript, 'utf8');
+    const uitvoerbaar = script
+      .split('\n')
+      .filter((r) => !r.trimStart().startsWith('#'))
+      .join('\n');
+    // Coolify zet bij elke deploy een nieuw tijdstempel achter de naam, dus een
+    // vaste naam klopt na de eerstvolgende deploy niet meer.
+    expect(uitvoerbaar).toMatch(/docker ps[^\n]*--filter[^\n]*name=\^/);
+    expect(uitvoerbaar).not.toContain('logo-recognition-api');
+    // En als er niets gevonden wordt: stoppen met een melding, niet doorgaan.
+    expect(uitvoerbaar).toMatch(/exit 1/);
+  });
+
+  it('start een oogstmodule die bestaat', () => {
+    const script = readFileSync(harvestScript, 'utf8');
+    const m = script.match(/python -m (\S+)/);
+    expect(m, 'het script moet een python-module starten').not.toBeNull();
+    const pad = resolve(repoRoot, 'apps/ml-service', `${m![1].replace(/\./g, '/')}.py`);
+    expect(existsSync(pad), `${m![1]} bestaat niet als ${pad}`).toBe(true);
+  });
+
+  it('levert twee startscripts die uitvoerbaar zijn en een shebang hebben', () => {
+    for (const pad of [harvestScript, mapScript]) {
+      expect(existsSync(pad), `${pad} ontbreekt`).toBe(true);
+      expect(readFileSync(pad, 'utf8').startsWith('#!')).toBe(true);
+      // eslint-disable-next-line no-bitwise
+      expect(statSync(pad).mode & 0o111, `${pad} is niet uitvoerbaar`).toBeGreaterThan(0);
+    }
+  });
+
+  it('laat allebei de scripts hun melding ergens aankomen', () => {
+    // AC6 wil dat een geblokkeerde krimp "gemeld" wordt en AC8 dat een geweigerde
+    // run "stopt met een melding". Een cron-proces heeft geen terminal: zonder
+    // logbestemming is dat geen melding maar een geluidloze mislukking.
+    for (const pad of [harvestScript, mapScript]) {
+      const script = readFileSync(pad, 'utf8');
+      expect(script, `${pad} schrijft nergens naartoe`).toMatch(/tee -a/);
+      expect(script).toMatch(/LOG_FILE=/);
+    }
+  });
+
+  it('geeft de inhaalronde een slot dat lánger meegaat dan zijn eigen tijdsbudget', () => {
+    // De runbook schrijft een tijdsbudget voor; de oogstcode bepaalt hoe lang de
+    // marker een tweede start tegenhoudt. Die twee moeten bij elkaar passen,
+    // anders start de nachtelijke cron een tweede oogst midden in de inhaalronde.
     const tekst = readFileSync(runbook, 'utf8');
+    const budget = Number(tekst.match(/DECLARED_HARVEST_MAX_SECONDS=(\d+)/)![1]);
+    expect(budget).toBe(36000);
 
-    // Inhalen en bijhouden zijn twee verschillende dingen met twee budgetten.
-    expect(tekst).toContain('DECLARED_HARVEST_MAX_SECONDS');
-    expect(tekst).toContain('36000'); // de eenmalige inhaalronde
-    expect(tekst).toContain('1000'); // het nachtelijke budget
-    // Wat er gestart wordt, en waar.
-    expect(tekst).toContain('queue_harvest_declared');
-    expect(tekst).toContain('vanilla');
-    // De kaart wordt óók periodiek herbouwd, niet alleen de oogst gestart.
-    expect(tekst).toContain('build-declared-harvest-map');
+    const py = readFileSync(harvestModule, 'utf8');
+    const lock = Number(py.match(/DECLARED_HARVEST_LOCK_MAX_AGE_SECONDS", "(\d+)"/)![1]);
+    const grace = Number(py.match(/DECLARED_HARVEST_LOCK_GRACE_SECONDS", "(\d+)"/)![1]);
+    // Dit is precies wat `_lock_max_age_for_run()` rekent.
+    const vervaltijd = Math.max(lock, budget + grace);
+    expect(vervaltijd).toBeGreaterThan(budget);
   });
 
   it('laat de declaratie-oogst niet op 3:37 starten — dat is de volume-oogst', () => {
@@ -355,13 +510,6 @@ describe('AC7 — de aandrijving ligt vastgelegd', () => {
     const tekst = readFileSync(runbook, 'utf8');
     expect(tekst).toContain('declared-harvest-state.json');
     expect(tekst).toMatch(/declared-harvest-state\.json[^|]*\|[^|]*ml-service/);
-  });
-
-  it('levert de twee startscripts mee, zodat plaatsen een kopieeractie is', () => {
-    for (const naam of ['declared-harvest.sh', 'build-declared-harvest-map.sh']) {
-      const pad = resolve(repoRoot, 'scripts/deployment', naam);
-      expect(existsSync(pad), `${naam} ontbreekt`).toBe(true);
-    }
   });
 });
 
@@ -416,6 +564,15 @@ describe('AC1 — droogloop is de standaard', () => {
     const d = deps({ readExistingPairs: vi.fn().mockResolvedValue(100) });
     expect(await runBuild(d, { apply: true, force: true }, NOW)).toBe(0);
     expect(d.writeMap).toHaveBeenCalledTimes(1);
+  });
+
+  it('AC6 — de droogloop geeft GEEN foutcode bij een geblokkeerde krimp', async () => {
+    // Een run die per definitie niets schrijft is niet kapot omdat het schrijven
+    // zou zijn tegengehouden. Exitcode 1 leest in een cron-keten of in CI als
+    // "stuk" in plaats van als "let op".
+    const d = deps({ readExistingPairs: vi.fn().mockResolvedValue(100) });
+    expect(await runBuild(d, { apply: false, force: false }, NOW)).toBe(0);
+    expect(d.writeMap).not.toHaveBeenCalled();
   });
 
   it('AC6 — de droogloop MELDT de krimp, zodat je hem niet pas bij het schrijven ontdekt', async () => {

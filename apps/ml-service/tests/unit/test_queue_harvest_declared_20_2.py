@@ -16,7 +16,8 @@ Dekt:
     meerdere regio's wint alleen de beste (hoogste similarity).
   * AC4 — per-code-cap (flood-guard), idempotentie via review_item_exists,
     DRY_RUN muteert niets maar telt wel kandidaten; env-code-filter begrenst
-    de scope; ontbrekende/misvormde map -> 0 kandidaten, geen crash.
+    de scope; ontbrekende/misvormde map -> de run STOPT met een melding
+    (`map_unavailable`, sinds Story 20.20 fail-loud i.p.v. fail-safe).
 
 Mock-patroon: identiek aan test_queue_harvest_nutriscore_declared_12_15.py
 (verse module-load met gestubde app-pakketten + fake cv2).
@@ -438,14 +439,26 @@ def test_ac4_dry_run_meet_kandidaten_maar_muteert_niets(harness):
     assert [k for k in h.storage.puts] == []
 
 
-def test_ac4_misvormde_map_geeft_nul_kandidaten_geen_crash(harness):
+def test_ac4_misvormde_map_stopt_de_run_met_een_melding(harness):
+    """Story 20.20 wijzigde dit bewust van fail-SAFE naar fail-LOUD.
+
+    Tot dan gaf een onleesbare kaart een lege kaart terug ("0 kandidaten"). Sinds
+    de teller op de PARENLIJST van de kaart let, liep dat door in een lege
+    vingerafdruk: de oogst zette zijn teller op 0 en meldde `complete` —
+    hetzelfde woord als een geslaagde volledige ronde. Eén hikje in de
+    objectopslag gooide zo de voortgang weg. Nu stopt de run met een eigen
+    status, doet hij niets, en blijft de teller staan.
+    """
     h = harness.run(
         [_page("771", _region(sim=0.9))],
         {},
         map_override=b"geen json {",
     )
+    assert h.result["status"] == "map_unavailable"
+    assert h.result["reason"] == "unreadable"
     assert h.result["inserted"] == 0
     assert h.conn.executes == []
+    assert h.storage.puts == [], "een onbruikbare kaart mag de stand niet raken"
 
 
 # =========================================================================== #

@@ -822,21 +822,34 @@ class DatabaseService:
         }
 
     async def reference_pool_fingerprints(self, codes) -> Dict[str, str]:
-        """Vingerafdruk van de ACTIEVE referentiepool per code (Story 20.20, AC4).
+        """Vingerafdruk van de MATCHBARE referentiepool per code (Story 20.20, AC4).
 
-        Vorm: ``"<aantal>|<jongste tijdstempel>"``. Een VOORLOPIG oordeel (onder
-        de drempel, cross-code afgewezen) telt alleen zolang deze vingerafdruk
-        gelijk blijft: het hele punt van het vliegwiel is dat de referentiepool
-        groeit, en een paar dat vandaag onder de drempel blijft kan morgen wél
-        matchen zodra er een referentie bij komt.
+        Vorm: ``"<aantal>|<digest over de embedding-id's>"``. Een VOORLOPIG
+        oordeel (onder de drempel, cross-code afgewezen) telt alleen zolang deze
+        vingerafdruk gelijk blijft: het hele punt van het vliegwiel is dat de
+        referentiepool groeit, en een paar dat vandaag onder de drempel blijft
+        kan morgen wél matchen zodra er een referentie bij komt.
 
-        ``created_at`` en niet ``updated_at``: ``reference_logos`` heeft geen
-        ``updated_at``-kolom (migratie 0004). Het aantal vangt wat er wegvalt —
-        een gedeactiveerde referentie verlaagt de telling — en ``created_at``
-        vangt wat erbij komt. Samen dekken ze allebei de bewegingen die het
-        oordeel kunnen omdraaien.
+        GEMETEN OVER DEZELFDE BRON ALS DE MATCH: ``reference_embeddings``
+        gejoind op actieve ``reference_logos`` — exact de verzameling waarop
+        ``find_similar_references_by_codes`` draait. De eerste opzet telde
+        uitsluitend rijen in ``reference_logos`` en keek daarmee langs de
+        embeddings heen: een actieve referentierij zónder embedding telde mee
+        zonder iets bij te dragen, en kreeg hij er later één, dan veranderde de
+        matchbare pool volledig terwijl de vingerafdruk gelijk bleef. Dat is
+        geen bedacht geval — RECYCLABLE had 26 actieve referentierijen met nul
+        embeddings, precies de toestand die het vliegwiel moet losmaken.
 
-        Codes zonder ook maar één actieve referentie krijgen ``"0|"`` — een
+        EEN DIGEST EN GEEN ``max(created_at)``: een netto-nul-wisseling (één
+        referentie erbij, één eraf) laat zowel het aantal als de jongste
+        tijdstempel ongemoeid terwijl de pool wél veranderd is. Een ``md5`` over
+        de gesorteerde id's vangt élke toevoeging, verwijdering, deactivatie,
+        code-wisseling en netto-nul-wisseling. Daarmee vervalt ook de afwijking
+        van de spec (die vroeg om ``updated_at``, een kolom die
+        ``reference_logos`` niet heeft): het digest dekt meer dan een
+        tijdstempel zou.
+
+        Codes zonder ook maar één matchbare referentie krijgen ``"0|"`` — een
         geldige, vergelijkbare waarde, geen ontbrekende sleutel.
         """
         wanted = sorted({str(c).strip().upper() for c in codes if str(c).strip()})
@@ -845,17 +858,19 @@ class DatabaseService:
         async with self.get_connection() as conn:
             rows = await conn.fetch(
                 """
-                SELECT t3777_code, count(*) AS n, max(created_at) AS latest
-                FROM reference_logos
-                WHERE active = true AND t3777_code = ANY($1::text[])
-                GROUP BY t3777_code
+                SELECT rl.t3777_code AS t3777_code,
+                       count(*) AS n,
+                       md5(string_agg(re.id::text, ',' ORDER BY re.id)) AS digest
+                FROM reference_embeddings re
+                JOIN reference_logos rl ON re.reference_logo_id = rl.id
+                WHERE rl.active = true AND rl.t3777_code = ANY($1::text[])
+                GROUP BY rl.t3777_code
                 """,
                 wanted,
             )
         out = {c: "0|" for c in wanted}
         for r in rows:
-            latest = r["latest"]
-            out[r["t3777_code"]] = f"{int(r['n'])}|{latest.isoformat() if latest else ''}"
+            out[r["t3777_code"]] = f"{int(r['n'])}|{r['digest'] or ''}"
         return out
 
     async def record_declared_harvest_checks(self, rows) -> int:

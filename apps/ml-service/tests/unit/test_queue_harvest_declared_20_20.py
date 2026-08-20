@@ -569,6 +569,28 @@ def test_ac4_cap_bereikt_wordt_nergens_vastgelegd(harness):
     assert vastgelegde_gtins == {"111"}, "het cap-paar is tóch vastgelegd"
 
 
+def test_ac4_cap_bereikt_telt_ook_niet_als_afgehandeld(harness):
+    """Het `_note` weglaten was niet genoeg.
+
+    Het paar zat al in `done_idx`, dus de offset schoof eroverheen en de run
+    eindigde op `complete`; daarna kwam het paar pas terug als de parenlijst
+    veranderde. Precies de blijvende uitsluiting die AC4 wilde voorkomen. De
+    offset moet hier dus STOPPEN, zodat de volgende run het paar opnieuw
+    aanbiedt.
+    """
+    codes_map = {"A": ["111", "222"]}
+    out = harness.run(
+        [_page("111", _region()), _page("222", _region())],
+        codes_map,
+        per_code_cap=1,
+    )
+    assert out.result["skipped_cap"] == 1
+    assert out.result["cap_deferred"] == 1
+    # De offset schuift tot en met het eerste paar en stopt vóór het cap-paar.
+    assert out.result["to_offset"] == 1
+    assert out.result["remaining"] == 1
+
+
 def test_ac4_een_bestaand_review_item_telt_als_blijvend_nagekeken(harness):
     """`review_item_exists` blijft staan (statusblind, ook afgewezen items), maar
     de uitkomst wordt nu ook vastgelegd — anders wordt de pagina elke ronde
@@ -580,7 +602,11 @@ def test_ac4_een_bestaand_review_item_telt_als_blijvend_nagekeken(harness):
         existing={("111", "declared-harvest:A", _src("111"))},
     )
     assert out.result["skipped_duplicate"] == 1
-    assert out.db.recorded == [("A", "111", _src("111"), "candidate", True, None)]
+    # Eigen uitkomstwaarde: "er stond al iets" is een andere herkomst dan "ik heb
+    # zojuist iets aangemaakt". Zelfde houdbaarheid, andere verklaring.
+    assert out.db.recorded == [("A", "111", _src("111"), "existing_item", True, None)]
+    assert out.module._is_permanent(out.module.OUTCOME_EXISTING_ITEM) is True
+    assert out.module.OUTCOME_EXISTING_ITEM != out.module.OUTCOME_CANDIDATE
 
 
 def test_ac4_droogloop_legt_niets_vast(harness):
@@ -612,11 +638,45 @@ def test_ac5_run_stopt_als_de_vastlegging_niet_leesbaar_is(harness):
 def test_ac5_teller_gaat_terug_zodra_de_parenlijst_in_de_kaart_verandert(module):
     """Vastgesteld op de paren in de KAART, niet op de door artwork gefilterde
     paren: die tweede hangt af van wat er die nacht in de opslag staat."""
-    assert module._counter_reset_needed({"map_pairs": 1521}, 1349) is True
-    assert module._counter_reset_needed({"map_pairs": 1349}, 1349) is False
+    oud = module._map_signature({"A": ["111"]})
+    nieuw = module._map_signature({"A": ["222"]})
+    assert module._counter_reset_needed({"map_signature": oud}, nieuw) is True
+    assert module._counter_reset_needed({"map_signature": nieuw}, nieuw) is False
     # Nog nooit vastgelegd: niet uit zichzelf terugzetten (dat is een
     # permission-gated handeling uit deel B).
-    assert module._counter_reset_needed({}, 1349) is False
+    assert module._counter_reset_needed({}, nieuw) is False
+
+
+def test_ac5_netto_nul_wisseling_in_de_kaart_wordt_gezien(module):
+    """Eén product eruit, één erin — evenveel paren, andere lijst.
+
+    Op een TELLING bleef de teller staan, terwijl de offset daarna in een ándere
+    lijst wees: alles vóór de offset werd nooit bekeken en de run meldde gewoon
+    `complete`. Bij een wekelijkse herbouw uit een levende index is dat geen
+    randgeval.
+    """
+    voor = module._map_signature({"A": ["111", "222"], "B": ["333"]})
+    na = module._map_signature({"A": ["111", "999"], "B": ["333"]})
+    assert voor.startswith("3|") and na.startswith("3|"), "even veel paren"
+    assert voor != na
+    assert module._counter_reset_needed({"map_signature": voor}, na) is True
+
+
+def test_ac5_vingerafdruk_van_de_kaart_negeert_de_env_scope(module, monkeypatch):
+    """Een gescopete debugrun mag de gedeelde teller niet vergiftigen.
+
+    `DECLARED_HARVEST_CODES=FSC` legde anders de vingerafdruk van dat ene stukje
+    vast, waarna de eerstvolgende nachtelijke run zijn teller om niets terugzette
+    — en de nacht daarna opnieuw.
+    """
+    kaart = {"FSC": ["111"], "B": ["222", "333"]}
+    volledig = module._map_signature(kaart)
+
+    monkeypatch.setenv("DECLARED_HARVEST_CODES", "FSC")
+    gescoped_module = _fresh_module(monkeypatch)
+    assert gescoped_module.HARVEST_CODES == {"FSC"}
+    assert len(gescoped_module._scoped_pairs(kaart)) == 1, "de scope werkt echt"
+    assert gescoped_module._map_signature(kaart) == volledig
 
 
 def test_ac5_teller_gaat_daadwerkelijk_terug_bij_een_gewijzigde_kaart(harness):
@@ -625,10 +685,28 @@ def test_ac5_teller_gaat_daadwerkelijk_terug_bij_een_gewijzigde_kaart(harness):
     out = harness.run(
         [_page("111", _region())],
         codes_map,
-        state={"next_offset": 900, "map_pairs": 1521},
+        state={"next_offset": 900, "map_signature": "1521|watdanook"},
     )
     assert out.result["from_offset"] == 0
     assert out.result["candidates"] == 1
+
+
+def test_ac5_onleesbare_kaart_stopt_de_run_en_laat_de_teller_staan(harness):
+    """Eén hikje in de objectopslag mag de voortgang niet wissen.
+
+    De oude fail-safe gaf bij een leesfout een lege kaart terug; sinds de teller
+    op de parenlijst let liep dat door in een lege vingerafdruk, zette de oogst
+    zijn teller op 0 en meldde hij `complete` — hetzelfde woord als een geslaagde
+    volledige ronde.
+    """
+    out = harness.run([_page("111", _region())], {}, state={"next_offset": 900})
+
+    assert out.result["status"] == "map_unavailable"
+    assert out.result["reason"] == "empty"
+    assert out.propose_calls == []
+    assert out.conn.executes == []
+    # De teller blijft staan: er is niets naar het voortgangsbestand geschreven.
+    assert out.module.STATE_KEY not in out.storage.puts
 
 
 def test_ac5_de_ml_service_schrijft_het_voortgangsbestand(module):
@@ -682,3 +760,82 @@ def test_ac8_achtergebleven_marker_van_een_gesneuvelde_run_blokkeert_niet_eeuwig
 
     assert module._lock_held(state, epoch + 60, max_age=3600.0) is True
     assert module._lock_held(state, epoch + 7200, max_age=3600.0) is False
+
+
+def test_ac8_slot_dekt_een_inhaalronde_die_langer_duurt_dan_de_standaardvervaltijd(
+    monkeypatch,
+):
+    """De inhaalronde mag tien uur; de standaardvervaltijd was zes.
+
+    Liep die run over 01:17 heen, dan was de marker "verlopen" en startte de
+    nachtelijke cron een TWEEDE declaratie-oogst in dezelfde 8 GiB-container —
+    exact het OOM-recept dat AC8 moet uitsluiten, met de zwaarste run als
+    slachtoffer. De vervaltijd hoort dus bij de run die de marker zet.
+    """
+    import calendar
+    import time
+
+    monkeypatch.setenv("DECLARED_HARVEST_MAX_SECONDS", "36000")
+    inhaal = _fresh_module(monkeypatch)
+    vervaltijd = inhaal._lock_max_age_for_run()
+    assert vervaltijd > 36000, "de marker moet het hele tijdsbudget overleven"
+
+    gestart = "2026-08-19T22:00:00Z"
+    epoch = calendar.timegm(time.strptime(gestart, "%Y-%m-%dT%H:%M:%SZ"))
+    marker = {
+        "in_progress": True,
+        "run_started_at": gestart,
+        "lock_max_age_seconds": vervaltijd,
+    }
+
+    # De NACHTELIJKE run leest die marker, met zijn eigen kleine budget en dus
+    # zijn eigen zes-uursgrens. Acht uur later moet hij nog steeds weigeren.
+    monkeypatch.delenv("DECLARED_HARVEST_MAX_SECONDS", raising=False)
+    nachtelijk = _fresh_module(monkeypatch)
+    assert nachtelijk.LOCK_MAX_AGE_SECONDS == 21600
+    assert (
+        nachtelijk._lock_held(
+            marker, epoch + 8 * 3600, max_age=nachtelijk.LOCK_MAX_AGE_SECONDS
+        )
+        is True
+    ), "de nachtelijke run mag niet op zijn eigen grens weigeren te weigeren"
+
+    # En na afloop van het budget vervalt hij alsnog — geen eeuwige blokkade.
+    assert (
+        nachtelijk._lock_held(
+            marker, epoch + 12 * 3600, max_age=nachtelijk.LOCK_MAX_AGE_SECONDS
+        )
+        is False
+    )
+
+
+def test_ac8_marker_staat_er_voor_het_dure_voorwerk(harness):
+    """Het raam tussen slotcontrole en marker was tientallen seconden.
+
+    Daartussen zaten de volledige sleutellijst van de objectopslag (op acceptatie
+    tienduizenden sleutels), de opbouw van de parenlijst, de groepering en twee
+    databaserondgangen. Twee runs die binnen dat raam startten zagen allebei geen
+    marker. Nu is de marker het EERSTE wat er geschreven wordt.
+    """
+    out = harness.run([_page("111", _region())], {"A": ["111"]})
+
+    eerste_schrijf = out.storage.puts[0]
+    assert eerste_schrijf == out.module.STATE_KEY
+    # ...en dat gebeurde vóór de sleutellijst opgehaald werd.
+    assert out.storage.puts, "er is geen marker geschreven"
+
+
+def test_ac8_een_gestrande_run_laat_geen_slot_achter(harness):
+    """Stopt de run op een onleesbare vastlegging, dan mag de marker niet blijven.
+
+    De marker staat er nu vroeg op; zonder opruimen zou een ontbrekende tabel de
+    volgende start uren blokkeren zonder dat er iets gedaan is.
+    """
+    out = harness.run([_page("111", _region())], {"A": ["111"]}, checks_raise=True)
+
+    assert out.result["status"] == "checks_unavailable"
+    stand = json.loads(out.storage.store[out.module.STATE_KEY].decode("utf-8"))
+    assert "in_progress" not in stand
+    assert "lock_max_age_seconds" not in stand
+    # En de teller is niet aangeraakt.
+    assert stand.get("next_offset", 0) == 0

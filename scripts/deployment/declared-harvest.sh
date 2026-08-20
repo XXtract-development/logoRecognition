@@ -21,11 +21,23 @@ set -euo pipefail
 
 CONTAINER="${ML_CONTAINER:-logo-recognition-ml}"
 
+# Het cron-proces heeft geen terminal. AC6 wil dat een geblokkeerde krimp
+# "gemeld" wordt en AC8 dat een geweigerde run "stopt met een melding" — zonder
+# logbestemming zijn `status: locked`, `map_unavailable` en `checks_unavailable`
+# geen melding maar een geluidloze mislukking. `tee` houdt de uitvoer óók op
+# stdout zodat de cron-mail hem meekrijgt; `pipefail` (hierboven) laat de
+# exitcode van de oogst staan.
+LOG_FILE="${DECLARED_HARVEST_LOG:-/var/log/declared-harvest.log}"
+mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null || true
+
 # Het tijdsbudget staat hier en niet in de container-omgeving: de eenmalige
 # inhaalronde gebruikt een heel ander budget (36000) en die twee mogen elkaar
 # niet overschrijven.
-docker exec \
-  -e DECLARED_HARVEST_MAX_SECONDS="${DECLARED_HARVEST_MAX_SECONDS:-1000}" \
-  -e DECLARED_HARVEST_BATCH="${DECLARED_HARVEST_BATCH:-400}" \
-  "$CONTAINER" \
-  python -m app.services.queue_harvest_declared
+{
+  echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] declaratie-oogst start in ${CONTAINER}"
+  docker exec \
+    -e DECLARED_HARVEST_MAX_SECONDS="${DECLARED_HARVEST_MAX_SECONDS:-1000}" \
+    -e DECLARED_HARVEST_BATCH="${DECLARED_HARVEST_BATCH:-400}" \
+    "$CONTAINER" \
+    python -m app.services.queue_harvest_declared
+} 2>&1 | tee -a "$LOG_FILE"
