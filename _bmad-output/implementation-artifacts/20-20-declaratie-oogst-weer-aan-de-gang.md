@@ -1,6 +1,6 @@
 # Story 20.20: De declaratie-oogst weer aan de gang, en goedkoop houden
 
-Status: **spec versie 2 — wacht op her-review.**
+Status: **deel A gebouwd (AC1 t/m AC10) — wacht op code review. Deel B (AC11, AC12) is permission-gated en NIET uitgevoerd.**
 
 > **Eigen nummer, met opzet.** Nummer 20.2 is al bezet door de oogster zelf (`queue_harvest_declared.py`,
 > zijn toetsen en het crop-voorvoegsel `20_2_`). Deze story maakt af wat daar open bleef en verwijst
@@ -274,6 +274,29 @@ en is alle kennis over "al nagekeken" verdwenen.
 
 ## Change Log
 
+- 2026-08-20: **Deel A gebouwd** op tak `epic-20-declaratie-oogst`, alle tien criteria van deel A
+  afgedekt met falende toetsen vooraf (ATDD) en daarna groen gemaakt. Nieuw: de kaartbouwer
+  `apps/api/src/scripts/build-declared-harvest-map.ts` (droogloop als standaard, `--apply`
+  schrijft, `--force` passeert de krimpgrens), de tabel `declared_harvest_checks` (migratie 0021)
+  met de bulk-ophaal en het groepsfilter in `queue_harvest_declared.py`, het slot tegen een
+  tweede gelijktijdige oogst, en de vastgelegde aandrijving in `20-20-aandrijving.md` met twee
+  startscripts onder `scripts/deployment/`.
+
+  **Eén afwijking van de spec, bewust en gemeld:** AC4 vraagt een vingerafdruk van
+  "het aantal actieve referenties plus de hoogste `updated_at`". `reference_logos` heeft geen
+  `updated_at`-kolom (migratie 0004 kent alleen `created_at`). De vingerafdruk is daarom
+  `<aantal actieve referenties>|<hoogste created_at>`. Het aantal vangt wat er wegvalt (een
+  gedeactiveerde referentie verlaagt de telling), `created_at` vangt wat erbij komt — samen
+  dekken ze allebei de bewegingen die een voorlopig oordeel kunnen omdraaien.
+
+  **Twee toevoegingen binnen de geest van de criteria:** een paar dat al een review-item heeft
+  (`review_item_exists`) wordt nu óók vastgelegd, als blijvend — het is dezelfde klasse als
+  "kandidaat aangemaakt", en zonder die regel werd de pagina elke ronde opnieuw geladen voor een
+  paar dat allang af was. En de run-marker wordt pas gezet ná de bulk-ophaal, zodat een run die
+  op een ontbrekende tabel strandt geen slot achterlaat.
+
+  Deel B (AC11, AC12) is niet uitgevoerd: geen kaart geschreven, geen teller teruggezet, geen
+  inhaalronde gedraaid en geen planning op `vanilla` geplaatst.
 - 2026-08-19: **Versie 2** na `review-20-20.md` (FAIL, 4 hoog / 10 middel / 4 laag). Alle dertien
   punten verwerkt. Twee daarvan veranderden de story wezenlijk:
 

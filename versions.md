@@ -1,5 +1,35 @@
 # Versiegeschiedenis
 
+## 20 augustus 2026
+
+**De declaratie-oogst kan weer draaien, en rekent niet meer nachtenlang aan kansloze producten**
+
+De beoordeelwachtrij liep leeg: sinds 27 juli kwam er niets meer bij. Er waren drie oorzaken,
+en ze stapelden. De lijst met producten waaraan de oogst rekent werd met de hand gemaakt en
+stond daarom sinds 16 juli stil, terwijl het overzicht waaruit die lijst komt gewoon
+doorgroeide. Er was ook niets dat de oogst startte. En de oogst rekende elke ronde opnieuw
+aan producten die hij al eens had bekeken, omdat hij alleen onthield wat íets opleverde.
+
+Wat er nu is:
+
+- Een programma dat de werklijst automatisch afleidt uit het keurmerkoverzicht, in plaats van
+  met de hand. Het laat eerst zien wat het zou doen; pas op uitdrukkelijk verzoek schrijft het
+  de lijst weg.
+- Drie soorten kansloos rekenwerk gaan eruit — met de reden erbij, zodat naderhand te zien is
+  waarom iets is overgeslagen. Keurmerken die nog helemaal geen voorbeeldafbeelding hebben,
+  krijgen een eigen lijstje: die wachten alleen op hun eerste voorbeeld.
+- De oogst onthoudt voortaan wát hij heeft bekeken, niet alleen wat het opleverde. Een oordeel
+  dat "dit lijkt er niet genoeg op" is bewust tijdelijk: komt er later een nieuw voorbeeld bij,
+  dan wordt dat product opnieuw bekeken. Zo blijft de winst behouden zonder dat het systeem
+  zichzelf afsluit voor zijn eigen verbeteringen.
+- Twee oogsten kunnen elkaar niet meer in de weg lopen. Start er een terwijl er al een draait,
+  dan stopt de tweede met een melding.
+- Raakt de administratie van "al bekeken" zoek, dan stopt de oogst met een duidelijke melding
+  in plaats van stilletjes uren opnieuw te beginnen.
+
+Voor de wachtrij betekent dit: eenmalig een inhaalronde van ongeveer achtenhalf uur, en daarna
+elke nacht alleen nog het verschil. Het aanzetten zelf gebeurt pas na akkoord.
+
 ## 19 augustus 2026
 
 **Producten waarvan het gegevensbestand ontbreekt komen weer in de beoordeelwachtrij**

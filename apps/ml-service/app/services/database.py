@@ -775,6 +775,116 @@ class DatabaseService:
             )
             return row is not None
 
+    # -----------------------------------------------------------------
+    # Story 20.20 — de declaratie-oogst onthoudt WAT hij nakeek
+    # -----------------------------------------------------------------
+
+    async def fetch_declared_harvest_checks(self, pairs) -> Dict[tuple, Dict[str, Any]]:
+        """Haal de vastlegging van al-nagekeken paren op — IN BULK (Story 20.20, AC4).
+
+        ``pairs`` is een reeks ``(t3777_code, gtin, source_file)``-tripels; het
+        resultaat is ``{tripel: {"outcome", "permanent", "fingerprint"}}`` voor
+        de tripels die al vastliggen.
+
+        Bewust één query voor de hele batch en niet één per paar: de winst van
+        deze story is dat de controle VOOR het dure beeldwerk staat, en die winst
+        verdampt als je dure beeldanalyse vervangt door duizenden losse
+        database-opzoekingen.
+
+        Geen fail-safe lege dict bij een fout: de aanroeper moet een ontbrekende
+        of onleesbare tabel als STORING kunnen zien, niet als "niets onthouden"
+        (AC5). Een uitzondering hoort hier dus naar buiten te komen.
+        """
+        keys = [tuple(p) for p in pairs]
+        if not keys:
+            return {}
+        async with self.get_connection() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT t3777_code, gtin, source_file, outcome, permanent,
+                       ref_pool_fingerprint
+                FROM declared_harvest_checks
+                WHERE (t3777_code, gtin, source_file) IN (
+                    SELECT * FROM unnest($1::text[], $2::text[], $3::text[])
+                )
+                """,
+                [k[0] for k in keys],
+                [k[1] for k in keys],
+                [k[2] for k in keys],
+            )
+        return {
+            (r["t3777_code"], r["gtin"], r["source_file"]): {
+                "outcome": r["outcome"],
+                "permanent": bool(r["permanent"]),
+                "fingerprint": r["ref_pool_fingerprint"],
+            }
+            for r in rows
+        }
+
+    async def reference_pool_fingerprints(self, codes) -> Dict[str, str]:
+        """Vingerafdruk van de ACTIEVE referentiepool per code (Story 20.20, AC4).
+
+        Vorm: ``"<aantal>|<jongste tijdstempel>"``. Een VOORLOPIG oordeel (onder
+        de drempel, cross-code afgewezen) telt alleen zolang deze vingerafdruk
+        gelijk blijft: het hele punt van het vliegwiel is dat de referentiepool
+        groeit, en een paar dat vandaag onder de drempel blijft kan morgen wél
+        matchen zodra er een referentie bij komt.
+
+        ``created_at`` en niet ``updated_at``: ``reference_logos`` heeft geen
+        ``updated_at``-kolom (migratie 0004). Het aantal vangt wat er wegvalt —
+        een gedeactiveerde referentie verlaagt de telling — en ``created_at``
+        vangt wat erbij komt. Samen dekken ze allebei de bewegingen die het
+        oordeel kunnen omdraaien.
+
+        Codes zonder ook maar één actieve referentie krijgen ``"0|"`` — een
+        geldige, vergelijkbare waarde, geen ontbrekende sleutel.
+        """
+        wanted = sorted({str(c).strip().upper() for c in codes if str(c).strip()})
+        if not wanted:
+            return {}
+        async with self.get_connection() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT t3777_code, count(*) AS n, max(created_at) AS latest
+                FROM reference_logos
+                WHERE active = true AND t3777_code = ANY($1::text[])
+                GROUP BY t3777_code
+                """,
+                wanted,
+            )
+        out = {c: "0|" for c in wanted}
+        for r in rows:
+            latest = r["latest"]
+            out[r["t3777_code"]] = f"{int(r['n'])}|{latest.isoformat() if latest else ''}"
+        return out
+
+    async def record_declared_harvest_checks(self, rows) -> int:
+        """Leg nagekeken paren vast (Story 20.20, AC4).
+
+        ``rows`` is een reeks ``(code, gtin, source_file, outcome, permanent,
+        fingerprint)``. Upsert op de paar-sleutel: een voorlopig oordeel dat
+        opnieuw geveld wordt overschrijft zichzelf met de verse vingerafdruk, en
+        een blijvend oordeel blijft blijvend.
+        """
+        batch = [tuple(r) for r in rows]
+        if not batch:
+            return 0
+        async with self.get_connection() as conn:
+            await conn.executemany(
+                """
+                INSERT INTO declared_harvest_checks
+                  (t3777_code, gtin, source_file, outcome, permanent, ref_pool_fingerprint, checked_at)
+                VALUES ($1, $2, $3, $4, $5, $6, now())
+                ON CONFLICT (t3777_code, gtin, source_file) DO UPDATE
+                  SET outcome = EXCLUDED.outcome,
+                      permanent = EXCLUDED.permanent,
+                      ref_pool_fingerprint = EXCLUDED.ref_pool_fingerprint,
+                      checked_at = now()
+                """,
+                batch,
+            )
+        return len(batch)
+
     async def get_active_reference_logos(self) -> List[Dict[str, Any]]:
         """Return all active reference keurmerk variants (one row per variant)."""
         async with self.get_connection() as conn:

@@ -149,6 +149,21 @@ class _FakeDB:
         self.exists_calls.append((gtin, reason, source_file))
         return (gtin, reason, source_file) in self._existing
 
+    # Story 20.20 — de oogst legt sinds 20.20 vast WAT hij nakeek. Dit dubbel
+    # onthoudt niets over runs heen: elk scenario hier begint dus met een schone
+    # lei, precies zoals deze suites het altijd al bedoelden. De 20.20-suite
+    # heeft een eigen dubbel dat er wél mee rekent.
+    async def fetch_declared_harvest_checks(self, pairs):
+        return {}
+
+    async def reference_pool_fingerprints(self, codes):
+        return {c: "0|" for c in codes}
+
+    async def record_declared_harvest_checks(self, rows):
+        self.recorded_checks = getattr(self, "recorded_checks", [])
+        self.recorded_checks.extend([tuple(r) for r in rows])
+        return len(rows)
+
 
 class _FakeModelManager:
     is_loaded = True

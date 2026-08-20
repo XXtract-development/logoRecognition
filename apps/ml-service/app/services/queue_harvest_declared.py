@@ -33,7 +33,31 @@ Env (namespace ``DECLARED_HARVEST_``):
   DECLARED_HARVEST_PER_CODE_CAP  max kandidaten per code per run (default 15)
   DECLARED_HARVEST_MAX_SECONDS   tijd-box (default 1000)
   DECLARED_HARVEST_DRY_RUN       1/true/yes -> geen crop-upload, geen INSERT,
-                                  geen state-write; kandidaten wel geteld
+                                  geen state-write, GEEN vastlegging; kandidaten
+                                  wel geteld
+  DECLARED_HARVEST_LOCK_MAX_AGE_SECONDS
+                                  hoe lang een achtergebleven run-marker een
+                                  tweede start blokkeert (default 21600 = 6 uur;
+                                  <= 0 laat hem nooit vervallen)
+
+Story 20.20 — wat deze oogst sinds 20.20 ONTHOUDT (AC4/AC5):
+  De ontdubbeling via ``review_item_exists`` onthield alleen paren die een item
+  OPLEVERDEN. De paren die zijn nagekeken en niets opleverden stonden nergens en
+  werden elke ronde opnieuw doorgerekend (~28 s per paar). De tabel
+  ``declared_harvest_checks`` vult dat gat, met onderscheid tussen een BLIJVEND
+  oordeel (kandidaat aangemaakt, keyline-pagina) en een VOORLOPIG oordeel (onder
+  de drempel, cross-code afgewezen) dat alleen telt zolang de referentiepool van
+  de code niet veranderd is. "Cap bereikt" is een runbudget en wordt nooit
+  vastgelegd.
+
+  De controle staat VOOR het dure werk en filtert de HELE paginagroep: de pagina
+  wordt per groep één keer geladen en gelokaliseerd, dus een overslag per paar
+  zou het decoderen niet besparen.
+
+EIGENAARSCHAP VAN BESTANDEN (AC5): deze module — de ml-service — is de enige
+schrijver van ``keurmerk-harvest/declared-harvest-state.json``. De kaartbouwer
+(``apps/api/src/scripts/build-declared-harvest-map.ts``) schrijft uitsluitend de
+kaart en LEEST dit bestand alleen om te melden wat er staat te gebeuren.
 """
 
 from __future__ import annotations
@@ -51,6 +75,9 @@ import numpy as np
 from app.core.logging import logger
 
 STATE_KEY = "keurmerk-harvest/declared-harvest-state.json"
+# Story 20.20 (AC5) — vastgelegd eigenaarschap: dit bestand wordt door de
+# ml-service geschreven, nooit door de kaartbouwer aan de api-kant.
+STATE_OWNER = "ml-service (app.services.queue_harvest_declared)"
 DECLARED_MAP_KEY = os.environ.get(
     "DECLARED_HARVEST_MAP_KEY", "flywheel-index/declared-harvest-map.json"
 )
@@ -119,6 +146,104 @@ def _cross_code_rejected(declared_code, declared_sim, open_matches, margin) -> b
         ):
             return True
     return False
+
+
+# ---------------------------------------------------------------------------
+# Story 20.20 — onthouden wat er is nagekeken, en één oogst tegelijk
+# ---------------------------------------------------------------------------
+
+# De vier uitkomsten die vastgelegd worden. "Cap bereikt" staat er bewust NIET
+# bij: dat is een runbudget en geen oordeel — vastleggen zou het paar voorgoed
+# uitsluiten omdat er die nacht toevallig genoeg andere waren.
+OUTCOME_CANDIDATE = "candidate"
+OUTCOME_KEYLINE = "keyline"
+OUTCOME_BELOW_FLOOR = "below_floor"
+OUTCOME_CROSS_CODE = "cross_code"
+
+# BLIJVEND: een aangemaakte kandidaat staat al in de wachtrij (opnieuw aanmaken
+# is een duplicaat), en of een pagina een technische keyline-sheet is (20.9) is
+# een eigenschap van die pagina zelf — geen van beide draait ooit om.
+PERMANENT_OUTCOMES = frozenset({OUTCOME_CANDIDATE, OUTCOME_KEYLINE})
+# VOORLOPIG: allebei oordelen tegen de referentiepool van DAT moment. Het hele
+# punt van het vliegwiel is dat die pool groeit — een menselijk akkoord levert een
+# nieuwe referentie op — dus een paar dat vandaag onder de drempel blijft kan
+# morgen wél matchen. Blijvend onthouden zou de oogst afsluiten voor precies de
+# verbetering die hij zelf voortbrengt.
+PROVISIONAL_OUTCOMES = frozenset({OUTCOME_BELOW_FLOOR, OUTCOME_CROSS_CODE})
+
+# Story 20.20 (AC8) — hoe lang een achtergebleven run-marker een tweede start
+# tegenhoudt. SIGKILL kent geen handler, dus een OOM laat de marker staan; zonder
+# verval zou één gesneuvelde run de oogst voorgoed stoppen. <= 0 laat de marker
+# nooit vervallen.
+LOCK_MAX_AGE_SECONDS = float(
+    os.environ.get("DECLARED_HARVEST_LOCK_MAX_AGE_SECONDS", "21600")
+)
+
+
+def _is_permanent(outcome: str) -> bool:
+    """True als deze uitkomst blijvend waar is (Story 20.20, AC4)."""
+    return outcome in PERMANENT_OUTCOMES
+
+
+def _already_checked(record, current_fingerprint) -> bool:
+    """Telt een eerder oordeel nog, gegeven de referentiepool van nu?
+
+    Geen vastlegging -> nooit overslaan. Blijvend -> altijd overslaan. Voorlopig
+    -> alleen overslaan zolang de vingerafdruk van de referentiepool ongewijzigd
+    is; is hij veranderd (of onbekend), dan wordt het paar opnieuw bekeken.
+    """
+    if not record:
+        return False
+    if record.get("permanent"):
+        return True
+    fp = record.get("fingerprint")
+    return bool(fp) and bool(current_fingerprint) and fp == current_fingerprint
+
+
+def _lock_held(state: dict, now: float, max_age: float) -> bool:
+    """True als er een oogstrun loopt die een tweede start moet weigeren (AC8).
+
+    De twee oogsters delen één ml-service-container van 8 GiB en de declaratie-
+    oogst breekt zichzelf af boven 75% daarvan; twee tegelijk is dus een
+    OOM-recept. Een run die het slot niet krijgt STOPT — hij wacht niet.
+
+    Een marker zonder leesbaar starttijdstip telt als "vast": liever een run te
+    veel geweigerd dan twee tegelijk gedraaid.
+    """
+    if not state.get("in_progress"):
+        return False
+    if max_age <= 0:
+        return True
+    started = state.get("run_started_at")
+    if not started:
+        return True
+    try:
+        import calendar
+
+        epoch = calendar.timegm(time.strptime(str(started), "%Y-%m-%dT%H:%M:%SZ"))
+    except Exception:
+        return True
+    return (now - epoch) < max_age
+
+
+def _counter_reset_needed(state: dict, map_pairs: int) -> bool:
+    """Moet de teller terug omdat de parenlijst in de KAART veranderd is? (AC5)
+
+    Vastgesteld op de paren in de KAART en niet op de door artwork gefilterde
+    paren: die tweede hangt af van wat er die nacht in de opslag staat en zou de
+    teller om niets laten terugspringen.
+
+    Draagt het voortgangsbestand nog geen parenaantal, dan doet deze oogst geen
+    uitspraak — dat is de eerste run ná 20.20, en het eenmalig terugzetten van de
+    teller is daar een bewuste, toestemmingsplichtige handeling (deel B).
+    """
+    recorded = state.get("map_pairs")
+    if recorded is None:
+        return False
+    try:
+        return int(recorded) != int(map_pairs)
+    except (TypeError, ValueError):
+        return False
 
 
 # ---------------------------------------------------------------------------
@@ -302,6 +427,20 @@ async def _flush(queue: dict, db_service, storage_service) -> int:
     return n
 
 
+async def _flush_checks(pending: list, db_service) -> int:
+    """Story 20.20 (AC4) — leg de nagekeken paren vast en LEEG de lijst.
+
+    Meelopend met ``_flush`` zodat de vastlegging nooit ver voor of achter de
+    ingevoegde rijen aan loopt. In DRY_RUN wordt er niets geschreven: een
+    droogloop moet de echte run voorspellen, niet veranderen.
+    """
+    if DRY_RUN or not pending:
+        return 0
+    n = await db_service.record_declared_harvest_checks(list(pending))
+    pending.clear()
+    return n
+
+
 def _checkpoint(
     state: dict, storage_service, reached: int, total: int, done: bool = False
 ) -> None:
@@ -344,6 +483,37 @@ async def run_batch() -> dict:
         )
     except Exception:
         state = {"next_offset": 0}
+
+    # Story 20.20 (AC8) — één oogst tegelijk. De volume-oogst en deze oogst delen
+    # dezelfde ml-service-container van 8 GiB; twee declaratie-runs naast elkaar
+    # halen die limiet gegarandeerd. Een run die het slot niet krijgt STOPT met
+    # een melding — hij wacht niet en hij draait niet alsnog.
+    if _lock_held(state, time.time(), LOCK_MAX_AGE_SECONDS):
+        result = {
+            "status": "locked",
+            "run_started_at": state.get("run_started_at"),
+            "lock_max_age_seconds": LOCK_MAX_AGE_SECONDS,
+            "candidates": 0,
+            "inserted": 0,
+        }
+        logger.warning("Declaratie-oogst geweigerd: er loopt er al een", extra=result)
+        print(json.dumps(result))
+        return result
+
+    # Story 20.20 (AC5) — de teller draagt niet langer "al gedaan"; die rol ligt
+    # bij de vastlegging. Wel moet hij terug zodra hij naar een ANDERE parenlijst
+    # wijst. Gemeten op de paren in de KAART, niet op de door artwork gefilterde
+    # paren: die tweede hangt af van wat er die nacht in de opslag staat en zou de
+    # teller om niets laten terugspringen.
+    map_pairs = len(_scoped_pairs(declared_map))
+    if _counter_reset_needed(state, map_pairs):
+        logger.info(
+            "Declaratie-oogst zet de teller terug: de kaart heeft een andere parenlijst",
+            extra={"was": state.get("map_pairs"), "nu": map_pairs},
+        )
+        state["next_offset"] = 0
+    state["map_pairs"] = map_pairs
+
     next_offset = int(state.get("next_offset", 0))
 
     keys = [
@@ -370,7 +540,9 @@ async def run_batch() -> dict:
         # hoort hier ook opgeruimd te worden; anders blijft hij eeuwig staan en
         # suggereert hij ten onrechte een lopende run.
         had_marker = bool(state.get("in_progress"))
-        if had_marker and not DRY_RUN:
+        # Story 20.20 — ook het verse `map_pairs` hoort hier vastgelegd te worden,
+        # anders vergeet de oogst waarop zijn teller sloeg zodra hij klaar is.
+        if not DRY_RUN:
             state.pop("in_progress", None)
             state.pop("run_started_at", None)
             storage_service.put_training_image(
@@ -378,6 +550,7 @@ async def run_batch() -> dict:
             )
         result = {
             "status": "complete",
+            "map_pairs": map_pairs,
             "total_pairs": total,
             "next_offset": next_offset,
             "candidates": 0,
@@ -400,16 +573,6 @@ async def run_batch() -> dict:
     per_code_counts: dict = defaultdict(int)
     t0 = time.perf_counter()
 
-    # Story 20.11 (AC3) — run-marker: blijft staan als de run hard wordt afgebroken
-    # (SIGKILL kent geen handler), en wordt bij een nette afsluiting opgeruimd. Een
-    # offset alleen is niet te onderscheiden van "er is nooit een run geweest".
-    if not DRY_RUN:
-        state["in_progress"] = True
-        state["run_started_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-        storage_service.put_training_image(
-            STATE_KEY, json.dumps(state).encode("utf-8"), "application/json"
-        )
-
     # Story 20.11 (AC2) — GROEPEREN PER BRONPAGINA. Voorheen liep de lus de paren in
     # volgorde af met een onbegrensde page-cache: die groeide met het aantal unieke
     # pagina's in de batch (7 GB bij 173 paren -> OOM). Door alle codes van dezelfde
@@ -418,13 +581,58 @@ async def run_batch() -> dict:
     # multi-code-GTINs) volledig intact. Geheugen wordt zo batch-ONafhankelijk.
     window = list(range(next_offset, end))
     groups: dict = defaultdict(list)
+    src_by_idx: dict = {}
     for idx in window:
         code, gtin = pairs[idx]
         src = _pick_page(by_gtin[gtin])
         if src:
             groups[src].append(idx)
-    # Zie `page_order` — de volgorde is bepalend voor de offset-voortgang.
-    ordered_pages = page_order(groups)
+            src_by_idx[idx] = src
+
+    # Story 20.20 (AC4/AC5) — de vastlegging IN BULK ophalen, vóór de paginalus.
+    # Per paar opzoeken zou dure beeldanalyse vervangen door duizenden losse
+    # database-opzoekingen; dan verplaats je de kosten in plaats van ze weg te nemen.
+    #
+    # En dit is een HARDE afhankelijkheid: ontbreekt de tabel of is hij onleesbaar,
+    # dan stopt de run met een melding. Fail-safe terugvallen op "niets onthouden"
+    # zou ~8,5 uur rekenwerk opleveren dat niemand heeft gevraagd, en het zou als
+    # "traag" gelezen worden in plaats van als "kapot".
+    try:
+        recorded_checks = await db_service.fetch_declared_harvest_checks(
+            [(pairs[i][0], pairs[i][1], src_by_idx[i]) for i in window if i in src_by_idx]
+        )
+        pool_fingerprints = await db_service.reference_pool_fingerprints(
+            {pairs[i][0] for i in window}
+        )
+    except Exception as exc:
+        result = {
+            "status": "checks_unavailable",
+            "error": str(exc),
+            "candidates": 0,
+            "inserted": 0,
+            "total_pairs": total,
+            "from_offset": next_offset,
+            "to_offset": next_offset,
+        }
+        logger.error(
+            "Declaratie-oogst gestopt: de vastlegging van nagekeken paren is niet "
+            "leesbaar (tabel declared_harvest_checks). De run begint NIET stil opnieuw.",
+            extra=result,
+        )
+        print(json.dumps(result))
+        return result
+
+    # Story 20.11 (AC3) — run-marker: blijft staan als de run hard wordt afgebroken
+    # (SIGKILL kent geen handler), en wordt bij een nette afsluiting opgeruimd. Een
+    # offset alleen is niet te onderscheiden van "er is nooit een run geweest".
+    # Story 20.20 — bewust ná de bulk-ophaal: een run die op een ontbrekende tabel
+    # strandt mag geen marker achterlaten die de volgende start blokkeert.
+    if not DRY_RUN:
+        state["in_progress"] = True
+        state["run_started_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        storage_service.put_training_image(
+            STATE_KEY, json.dumps(state).encode("utf-8"), "application/json"
+        )
 
     # De offset slaat op de OORSPRONKELIJKE parenlijst, niet op de hergroepeerde
     # volgorde: we schuiven alleen op tot waar het aaneengesloten voorste deel af is.
@@ -432,14 +640,60 @@ async def run_batch() -> dict:
     # Paren zonder bruikbare pagina tellen als afgehandeld (ze werden ook voorheen
     # overgeslagen met i += 1).
     for idx in window:
-        if not _pick_page(by_gtin[pairs[idx][1]]):
+        if idx not in src_by_idx:
             done_idx.add(idx)
+
+    # Story 20.20 (AC4) — welke paren zijn al nagekeken, gegeven de referentiepool
+    # van NU? Een blijvend oordeel telt altijd; een voorlopig oordeel alleen zolang
+    # de vingerafdruk van de pool gelijk is.
+    already_checked: set = set()
+    for idx in window:
+        src = src_by_idx.get(idx)
+        if not src:
+            continue
+        code, gtin = pairs[idx]
+        if _already_checked(
+            recorded_checks.get((code, gtin, src)), pool_fingerprints.get(code)
+        ):
+            already_checked.add(idx)
+
+    # Story 20.20 (AC4) — HELE PAGINAGROEPEN wegfilteren. De pagina wordt per groep
+    # één keer opgehaald, gedecodeerd en gelokaliseerd (`page_loaded`); een overslag
+    # per páár bespaart dat niet. Alleen als ELK paar van de groep al is nagekeken
+    # mag de pagina ongemoeid blijven — daar komen de ~8,5 uur vandaan.
+    skipped_already_checked = 0
+    for src in [s for s in groups if all(i in already_checked for i in groups[s])]:
+        for i in groups[src]:
+            done_idx.add(i)
+            skipped_already_checked += 1
+        del groups[src]
+
+    # Zie `page_order` — de volgorde is bepalend voor de offset-voortgang.
+    ordered_pages = page_order(groups)
 
     def _reached() -> int:
         r = next_offset
         while r in done_idx:
             r += 1
         return r
+
+    # Story 20.20 (AC4) — nagekeken paren, met hun houdbaarheid, tot de eerstvolgende
+    # flush. Cap-overslagen komen hier NOOIT in.
+    pending_checks: list = []
+    checks_recorded = 0
+
+    def _note(code: str, gtin: str, src: str, outcome: str) -> None:
+        blijvend = _is_permanent(outcome)
+        pending_checks.append(
+            (
+                code,
+                gtin,
+                src,
+                outcome,
+                blijvend,
+                None if blijvend else pool_fingerprints.get(code),
+            )
+        )
 
     stopped_reason = None
     processed_since_flush = 0
@@ -463,6 +717,14 @@ async def run_batch() -> dict:
 
         for i in groups[src]:
             code, gtin = pairs[i]
+
+            # Story 20.20 (AC4) — dit paar is al nagekeken; de groep als geheel was
+            # dat niet, dus de pagina komt verderop alsnog. Wel het analysewerk voor
+            # dit paar overslaan, en het oordeel niet opnieuw vastleggen.
+            if i in already_checked:
+                done_idx.add(i)
+                skipped_already_checked += 1
+                continue
 
             # De pagina wordt per GROEP één keer geladen en gelokaliseerd — dat is
             # exact de 20.2-winst, nu zonder onbegrensde cache.
@@ -494,6 +756,9 @@ async def run_batch() -> dict:
             # Story 20.9 — keyline-pagina levert geen bruikbare crops (lege panelen).
             if is_keyline:
                 skipped_keyline += 1
+                # Blijvend: keyline-zijn is een eigenschap van de pagina zelf, niet
+                # van de referentiepool — dat oordeel draait nooit om.
+                _note(code, gtin, src, OUTCOME_KEYLINE)
                 continue
 
             # AC3: alleen de BESTE regio per paar; de declaratie garandeert de CODE,
@@ -523,6 +788,9 @@ async def run_batch() -> dict:
 
             if best is None:
                 skipped_below_floor += 1
+                # Voorlopig: geoordeeld tegen de referentiepool van dit moment. Komt
+                # er een referentie bij, dan wordt dit paar opnieuw bekeken.
+                _note(code, gtin, src, OUTCOME_BELOW_FLOOR)
                 continue
 
             sim, crop, bbox, best_emb = best
@@ -534,6 +802,9 @@ async def run_batch() -> dict:
             )
             if _cross_code_rejected(code, sim, open_matches, CROSS_CODE_MARGIN):
                 skipped_cross_code += 1
+                # Voorlopig: de vergelijking loopt over referenties, dus ook dit
+                # oordeel kan omdraaien zodra de pool verandert.
+                _note(code, gtin, src, OUTCOME_CROSS_CODE)
                 continue
 
             # Story 20.11 — tel op `per_code_counts`, NIET op `len(queue[code])`:
@@ -542,6 +813,9 @@ async def run_batch() -> dict:
             # daarmee exact zijn oude, run-brede betekenis.
             if per_code_counts[code] >= PER_CODE_CAP:
                 skipped_cap += 1
+                # Story 20.20 (AC4) — BEWUST GEEN `_note`. De cap is een runbudget en
+                # geen oordeel; vastleggen zou dit paar voorgoed uitsluiten omdat er
+                # die nacht toevallig genoeg andere waren.
                 continue
 
             # AC2/AC4 — idempotentie per code: READ, draait ook in DRY_RUN mee.
@@ -550,6 +824,10 @@ async def run_batch() -> dict:
             )
             if exists:
                 skipped_duplicate += 1
+                # Blijvend, en dezelfde klasse als "kandidaat aangemaakt": er stáát
+                # al een item voor dit paar. Zonder deze regel zou de pagina elke
+                # ronde opnieuw geladen worden voor een paar dat allang af is.
+                _note(code, gtin, src, OUTCOME_CANDIDATE)
                 continue
 
             queue[code].append(
@@ -569,6 +847,8 @@ async def run_batch() -> dict:
             )
             candidate_total += 1
             per_code_counts[code] += 1
+            # Blijvend: het item komt in de wachtrij; opnieuw aanmaken is een duplicaat.
+            _note(code, gtin, src, OUTCOME_CANDIDATE)
         # Story 20.11 (AC2) — pagina expliciet loslaten zodra de groep klaar is.
         # Zonder dit bleef hij in de (voorheen onbegrensde) cache staan.
         img = boxes = None
@@ -579,6 +859,7 @@ async def run_batch() -> dict:
         if processed_since_flush >= FLUSH_EVERY:
             n = await _flush(queue, db_service, storage_service)
             inserted_total += n
+            checks_recorded += await _flush_checks(pending_checks, db_service)
             _checkpoint(state, storage_service, _reached(), total)
             processed_since_flush = 0
 
@@ -586,6 +867,7 @@ async def run_batch() -> dict:
 
     # Slot-flush + checkpoint voor de rest van de queue.
     inserted_total += await _flush(queue, db_service, storage_service)
+    checks_recorded += await _flush_checks(pending_checks, db_service)
     _checkpoint(state, storage_service, reached, total, done=True)
 
     candidate_count = candidate_total
@@ -603,6 +885,11 @@ async def run_batch() -> dict:
         "skipped_cap": skipped_cap,
         "skipped_cross_code": skipped_cross_code,
         "skipped_keyline": skipped_keyline,
+        # Story 20.20 — paren die niet opnieuw doorgerekend hoefden te worden, en
+        # oordelen die deze run heeft vastgelegd.
+        "skipped_already_checked": skipped_already_checked,
+        "checks_recorded": checks_recorded,
+        "map_pairs": map_pairs,
         "total_pairs": total,
         "from_offset": next_offset,
         "to_offset": reached,
