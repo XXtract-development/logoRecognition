@@ -997,7 +997,11 @@ async def run_batch() -> dict:
     # "traag" gelezen worden in plaats van als "kapot".
     try:
         recorded_checks = await db_service.fetch_declared_harvest_checks(
-            [(pairs[i][0], pairs[i][1], src_by_idx[i]) for i in window if i in src_by_idx]
+            [
+                (pairs[i][0], pairs[i][1], src_by_idx[i])
+                for i in window
+                if i in src_by_idx
+            ]
         )
         pool_fingerprints = await db_service.reference_pool_fingerprints(
             {pairs[i][0] for i in window}
