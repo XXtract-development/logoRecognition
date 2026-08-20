@@ -19,7 +19,14 @@
 # een schrijfactie op de acceptatie-omgeving en wacht op expliciete toestemming.
 set -euo pipefail
 
-CONTAINER="${ML_CONTAINER:-logo-recognition-ml}"
+# De containernaam draagt een deploy-tijdstempel en verandert dus bij ELKE uitrol
+# (gemeten: `ml-service-qsookwow8koko0kwg00g0cwk-203251989081`). Een vaste naam
+# raden levert "no such container" op — precies de fout die de code review in het
+# kaartherbouwscript vond, en die daar een week lang als "er gebeurt niets" zou
+# hebben gelezen. Zoek daarom op prefix, net als het bestaande
+# `/usr/local/bin/keurmerk-harvest.sh` op vanilla al doet.
+CONTAINER_PREFIX="${ML_CONTAINER_PREFIX:-ml-service-qsookwow8koko0kwg00g0cwk-}"
+CONTAINER="${ML_CONTAINER:-}"
 
 # Het cron-proces heeft geen terminal. AC6 wil dat een geblokkeerde krimp
 # "gemeld" wordt en AC8 dat een geweigerde run "stopt met een melding" — zonder
@@ -29,6 +36,15 @@ CONTAINER="${ML_CONTAINER:-logo-recognition-ml}"
 # exitcode van de oogst staan.
 LOG_FILE="${DECLARED_HARVEST_LOG:-/var/log/declared-harvest.log}"
 mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null || true
+
+if [ -z "$CONTAINER" ]; then
+  CONTAINER="$(docker ps --filter "name=^${CONTAINER_PREFIX}" --format '{{.Names}}' | head -n 1)"
+fi
+if [ -z "$CONTAINER" ]; then
+  echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] GEEN ml-container gevonden met prefix '${CONTAINER_PREFIX}' — oogst NIET gedraaid." \
+    | tee -a "$LOG_FILE" >&2
+  exit 1
+fi
 
 # Het tijdsbudget staat hier en niet in de container-omgeving: de eenmalige
 # inhaalronde gebruikt een heel ander budget (36000) en die twee mogen elkaar

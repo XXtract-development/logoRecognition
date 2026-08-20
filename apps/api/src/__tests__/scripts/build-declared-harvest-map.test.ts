@@ -48,7 +48,10 @@ import {
 const NOW = new Date('2026-08-20T09:00:00.000Z');
 
 /** Minimale index-vorm: sleutel `<veldsoort>/<code>` → vermeldingen met gtin. */
-function index(entries: Record<string, string[]>, extra: Partial<SourceIndexLike> = {}): SourceIndexLike {
+function index(
+  entries: Record<string, string[]>,
+  extra: Partial<SourceIndexLike> = {}
+): SourceIndexLike {
   const built: SourceIndexLike['entries'] = {};
   for (const [key, gtins] of Object.entries(entries)) {
     built[key] = gtins.map((gtin) => ({ gtin, gln: '8712345000000', labels: [`${gtin}.pdf`] }));
@@ -181,14 +184,8 @@ describe('AC2 — kansloos rekenwerk gaat eruit, met de reden erbij', () => {
 
     expect(map.codes).toEqual({ FSC: ['333'] });
     expect(map.exclusions.overstroming.paren).toBe(3);
-    expect(map.exclusions.overstroming.codes).toEqual([
-      'RECYCLABLE_GENERAL_CLAIM',
-      'TRIMAN',
-    ]);
-    expect([...FLOOD_EXCLUDED_CODES].sort()).toEqual([
-      'RECYCLABLE_GENERAL_CLAIM',
-      'TRIMAN',
-    ]);
+    expect(map.exclusions.overstroming.codes).toEqual(['RECYCLABLE_GENERAL_CLAIM', 'TRIMAN']);
+    expect([...FLOOD_EXCLUDED_CODES].sort()).toEqual(['RECYCLABLE_GENERAL_CLAIM', 'TRIMAN']);
   });
 
   it('telt een uitgesloten paar niet mee als het via een andere veldsoort tóch in de kaart staat', () => {
@@ -357,10 +354,7 @@ describe('AC7 — de aandrijving is uitvoerbaar, niet alleen opgeschreven', () =
   const runbook = resolve(repoRoot, '_bmad-output/implementation-artifacts/20-20-aandrijving.md');
   const mapScript = resolve(repoRoot, 'scripts/deployment/build-declared-harvest-map.sh');
   const harvestScript = resolve(repoRoot, 'scripts/deployment/declared-harvest.sh');
-  const harvestModule = resolve(
-    repoRoot,
-    'apps/ml-service/app/services/queue_harvest_declared.py'
-  );
+  const harvestModule = resolve(repoRoot, 'apps/ml-service/app/services/queue_harvest_declared.py');
 
   /**
    * DE KERN VAN DEZE BESCHRIJVING (code-review 20 aug 2026): de vorige AC7-toetsen
@@ -521,9 +515,9 @@ describe('AC1 — droogloop is de standaard', () => {
   /** Alle I/O geïnjecteerd; deze suite raakt nooit de echte opslag of database. */
   function deps(over: Partial<Parameters<typeof runBuild>[0]> = {}) {
     return {
-      readIndex: vi.fn().mockResolvedValue(
-        index({ 'PackagingMarkedLabelAccreditationCode/FSC': ['111', '222'] })
-      ),
+      readIndex: vi
+        .fn()
+        .mockResolvedValue(index({ 'PackagingMarkedLabelAccreditationCode/FSC': ['111', '222'] })),
       listActiveReferenceCodes: vi.fn().mockResolvedValue(['FSC']),
       readExistingPairs: vi.fn().mockResolvedValue(null),
       readHarvestState: vi.fn().mockResolvedValue({ pairs: null, inProgress: false }),
@@ -585,5 +579,47 @@ describe('AC1 — droogloop is de standaard', () => {
     log.mockRestore();
     expect(gemeld.join('\n')).toContain('krimp');
     expect(d.writeMap).not.toHaveBeenCalled();
+  });
+});
+
+describe('AC7 — ook het OOGST-script moet zijn container kunnen vinden', () => {
+  // Dezelfde fout als in het kaartscript, alleen niet door de code review genoemd:
+  // de containernaam draagt een deploy-tijdstempel en verandert bij elke uitrol.
+  // Gemeten op acceptatie: `ml-service-qsookwow8koko0kwg00g0cwk-203251989081`.
+  // Een vaste naam raden geeft "no such container" — en dat leest een week lang
+  // als "er gebeurt niets" in plaats van als een fout.
+  const oogstScript = resolve(
+    __dirname,
+    '../../../../..',
+    'scripts/deployment/declared-harvest.sh'
+  );
+
+  const uitvoerbaar = (): string =>
+    readFileSync(oogstScript, 'utf8')
+      .split('\n')
+      .filter((r) => !r.trimStart().startsWith('#'))
+      .join('\n');
+
+  it('zoekt de container op prefix in plaats van een vaste naam te raden', () => {
+    const bron = uitvoerbaar();
+    expect(bron).toMatch(/docker ps --filter "name=\^\$\{CONTAINER_PREFIX\}"/);
+    // Geen hardgecodeerde naam meer als standaardwaarde.
+    expect(bron).not.toMatch(/ML_CONTAINER:-logo-recognition-ml/);
+  });
+
+  it('stopt met een melding als er geen container gevonden wordt', () => {
+    const bron = uitvoerbaar();
+    expect(bron).toMatch(/GEEN ml-container gevonden/);
+    expect(bron).toMatch(/exit 1/);
+  });
+
+  it('de prefix die het script gebruikt hoort bij de echte containernaamgeving', () => {
+    // De naam is `ml-service-<stack>-<tijdstempel>`; de prefix moet daar op passen
+    // en mag niet per ongeluk de api-container vangen.
+    const bron = uitvoerbaar();
+    const prefix = bron.match(/ML_CONTAINER_PREFIX:-([^}"]+)/)?.[1];
+    expect(prefix, 'het script moet een prefix als standaardwaarde hebben').toBeTruthy();
+    expect('ml-service-qsookwow8koko0kwg00g0cwk-203251989081'.startsWith(prefix!)).toBe(true);
+    expect('app-qsookwow8koko0kwg00g0cwk-172947820858'.startsWith(prefix!)).toBe(false);
   });
 });
