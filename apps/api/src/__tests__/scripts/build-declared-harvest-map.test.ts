@@ -544,9 +544,7 @@ describe('AC7 — de aandrijving is uitvoerbaar, niet alleen opgeschreven', () =
       expect(gemeten.startsWith(prefix!), `${gemeten} valt buiten de prefix`).toBe(true);
     }
     // En hij mag de ML-container niet vangen: die draait een ander commando.
-    expect(
-      'ml-service-qsookwow8koko0kwg00g0cwk-203251989081'.startsWith(prefix!)
-    ).toBe(false);
+    expect('ml-service-qsookwow8koko0kwg00g0cwk-203251989081'.startsWith(prefix!)).toBe(false);
   });
 
   it('stopt allebei de scripts bij MEER DAN EEN treffer in plaats van er een te gokken', () => {
@@ -655,7 +653,7 @@ describe('AC1 — droogloop is de standaard', () => {
         .fn()
         .mockResolvedValue(index({ 'PackagingMarkedLabelAccreditationCode/FSC': ['111', '222'] })),
       listActiveReferenceCodes: vi.fn().mockResolvedValue(['FSC']),
-      readExistingPairs: vi.fn().mockResolvedValue(null),
+      readExistingPairs: vi.fn().mockResolvedValue({ soort: 'geen' }),
       readHarvestState: vi
         .fn()
         .mockResolvedValue({ pairs: null, signature: null, inProgress: false }),
@@ -687,13 +685,17 @@ describe('AC1 — droogloop is de standaard', () => {
   });
 
   it('AC6 — een geblokkeerde krimp schrijft niet en geeft een foutcode', async () => {
-    const d = deps({ readExistingPairs: vi.fn().mockResolvedValue(100) });
+    const d = deps({
+      readExistingPairs: vi.fn().mockResolvedValue({ soort: 'gelezen', paren: 100 }),
+    });
     expect(await runBuild(d, { apply: true, force: false }, NOW)).toBe(1);
     expect(d.writeMap).not.toHaveBeenCalled();
   });
 
   it('AC6 — --force zet de blokkade bewust opzij en schrijft wél', async () => {
-    const d = deps({ readExistingPairs: vi.fn().mockResolvedValue(100) });
+    const d = deps({
+      readExistingPairs: vi.fn().mockResolvedValue({ soort: 'gelezen', paren: 100 }),
+    });
     expect(await runBuild(d, { apply: true, force: true }, NOW)).toBe(0);
     expect(d.writeMap).toHaveBeenCalledTimes(1);
   });
@@ -702,13 +704,17 @@ describe('AC1 — droogloop is de standaard', () => {
     // Een run die per definitie niets schrijft is niet kapot omdat het schrijven
     // zou zijn tegengehouden. Exitcode 1 leest in een cron-keten of in CI als
     // "stuk" in plaats van als "let op".
-    const d = deps({ readExistingPairs: vi.fn().mockResolvedValue(100) });
+    const d = deps({
+      readExistingPairs: vi.fn().mockResolvedValue({ soort: 'gelezen', paren: 100 }),
+    });
     expect(await runBuild(d, { apply: false, force: false }, NOW)).toBe(0);
     expect(d.writeMap).not.toHaveBeenCalled();
   });
 
   it('AC6 — de droogloop MELDT de krimp, zodat je hem niet pas bij het schrijven ontdekt', async () => {
-    const d = deps({ readExistingPairs: vi.fn().mockResolvedValue(100) });
+    const d = deps({
+      readExistingPairs: vi.fn().mockResolvedValue({ soort: 'gelezen', paren: 100 }),
+    });
     const gemeld: string[] = [];
     const err = vi.spyOn(console, 'error').mockImplementation((m) => gemeld.push(String(m)));
     const log = vi.spyOn(console, 'log').mockImplementation((m) => gemeld.push(String(m)));
@@ -759,5 +765,84 @@ describe('AC7 — ook het OOGST-script moet zijn container kunnen vinden', () =>
     expect(prefix, 'het script moet een prefix als standaardwaarde hebben').toBeTruthy();
     expect('ml-service-qsookwow8koko0kwg00g0cwk-203251989081'.startsWith(prefix!)).toBe(true);
     expect('app-qsookwow8koko0kwg00g0cwk-172947820858'.startsWith(prefix!)).toBe(false);
+  });
+});
+
+describe('her-review ronde 3 — een ONLEESBARE kaart is geen eerste run', () => {
+  // `readExistingPairs` gaf `null` voor "bestaat niet" én "onleesbaar". Bij `null`
+  // slaat de krimpbescherming van AC6 over, dus één leesfout tijdens de onbewaakte
+  // wekelijkse `--apply` zou de kaart ongecontroleerd overschrijven. Precies het
+  // onderscheid dat in de oogst al twee keer wél is aangebracht.
+  function deps(over: Partial<Parameters<typeof runBuild>[0]> = {}) {
+    return {
+      readIndex: vi
+        .fn()
+        .mockResolvedValue(index({ 'PackagingMarkedLabelAccreditationCode/FSC': ['111', '222'] })),
+      listActiveReferenceCodes: vi.fn().mockResolvedValue(['FSC']),
+      readExistingPairs: vi.fn().mockResolvedValue({ soort: 'geen' }),
+      readHarvestState: vi
+        .fn()
+        .mockResolvedValue({ pairs: null, signature: null, inProgress: false }),
+      writeMap: vi.fn().mockResolvedValue(undefined),
+      ...over,
+    };
+  }
+
+  const onleesbaar = { soort: 'onleesbaar' as const, reden: 'onleesbare JSON' };
+
+  it('weigert te schrijven en geeft een foutcode', async () => {
+    const d = deps({ readExistingPairs: vi.fn().mockResolvedValue(onleesbaar) });
+    expect(await runBuild(d, { apply: true, force: false })).not.toBe(0);
+    expect(d.writeMap).not.toHaveBeenCalled();
+  });
+
+  it('gaat wél door met --force, want dan is het een bewuste keuze', async () => {
+    const d = deps({ readExistingPairs: vi.fn().mockResolvedValue(onleesbaar) });
+    expect(await runBuild(d, { apply: true, force: true })).toBe(0);
+    expect(d.writeMap).toHaveBeenCalled();
+  });
+
+  it('een ECHTE eerste run (geen kaart) mag gewoon schrijven', async () => {
+    const d = deps({ readExistingPairs: vi.fn().mockResolvedValue({ soort: 'geen' }) });
+    expect(await runBuild(d, { apply: true, force: false })).toBe(0);
+    expect(d.writeMap).toHaveBeenCalled();
+  });
+
+  it('een onleesbaar voortgangsbestand laat de bouwer niets voorspellen', async () => {
+    // De oogst zet de teller bij een leesfout terug; voorspellen dat hij blijft
+    // staan is dan het tegenovergestelde van wat er gebeurt.
+    const logs: string[] = [];
+    const spy = vi.spyOn(console, 'log').mockImplementation((m) => logs.push(String(m)));
+    const d = deps({
+      readHarvestState: vi.fn().mockResolvedValue({
+        pairs: null,
+        signature: null,
+        inProgress: false,
+        unavailable: 'leesfout',
+      }),
+    });
+    await runBuild(d, { apply: false, force: false });
+    spy.mockRestore();
+
+    const regel = logs.find((l) => l.includes('Teller van de oogst'));
+    expect(regel).toMatch(/ONLEESBAAR/);
+    expect(regel).not.toMatch(/blijft staan/);
+  });
+});
+
+describe('her-review ronde 3 — de nachtelijke oogst mag niet in een zijteller belanden', () => {
+  it('maakt DECLARED_HARVEST_CODES expliciet leeg', () => {
+    // Sinds de teller scope-bewust is, schrijft een gescopete run zijn voortgang
+    // onder een eigen veld. Een blijvende debug-instelling in de container zou de
+    // nachtelijke voortgang daar stil in parkeren.
+    const bron = readFileSync(
+      resolve(__dirname, '../../../../..', 'scripts/deployment/declared-harvest.sh'),
+      'utf8'
+    )
+      .split('\n')
+      .filter((r) => !r.trimStart().startsWith('#'))
+      .join('\n');
+
+    expect(bron).toMatch(/-e DECLARED_HARVEST_CODES=""/);
   });
 });

@@ -73,6 +73,12 @@ set +e
   docker exec \
     -e DECLARED_HARVEST_MAX_SECONDS="${DECLARED_HARVEST_MAX_SECONDS:-1000}" \
     -e DECLARED_HARVEST_BATCH="${DECLARED_HARVEST_BATCH:-400}" \
+    `# Her-review ronde 3: DECLARED_HARVEST_CODES expliciet LEEGMAKEN. Sinds de` \
+    `# teller scope-bewust is, schrijft een gescopete run zijn voortgang onder een` \
+    `# eigen veld. Bleef er ooit een debug-instelling in de container-omgeving` \
+    `# staan, dan parkeerde de NACHTELIJKE run zijn voortgang stil in die zijteller` \
+    `# en bleef de echte teller eeuwig staan — zonder dat iemand het ziet.` \
+    -e DECLARED_HARVEST_CODES="" \
     "$CONTAINER" \
     python -m app.services.queue_harvest_declared
 } 2>&1 | tee -a "$LOG_FILE"

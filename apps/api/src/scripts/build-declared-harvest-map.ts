@@ -481,8 +481,12 @@ export interface DeclaredHarvestMapDeps {
   readIndex: () => Promise<SourceIndexLike | null>;
   /** Codes met minstens één ACTIEVE referentie. */
   listActiveReferenceCodes: () => Promise<string[]>;
-  /** Het aantal paren in de bestaande kaart, of `null` als er geen kaart is. */
-  readExistingPairs: () => Promise<number | null>;
+  /**
+   * De bestaande kaart. `geen` = er is er nog geen (eerste run, krimpbescherming
+   * niet van toepassing); `onleesbaar` = er staat er wél een maar we konden hem
+   * niet lezen, en dan mag hij NOOIT ongecontroleerd overschreven worden.
+   */
+  readExistingPairs: () => Promise<BestaandeKaart>;
   /**
    * `{pairs, signature, inProgress}` uit het voortgangsbestand van de oogst
    * (alleen lezen). `signature` is de vingerafdruk die de oogst er laatst in
@@ -492,6 +496,8 @@ export interface DeclaredHarvestMapDeps {
     pairs: number | null;
     signature: string | null;
     inProgress: boolean;
+    /** Gezet bij een LEESFOUT; "bestaat niet" laat dit leeg. Zie her-review ronde 3. */
+    unavailable?: string;
   }>;
   /** Schrijf de kaart (alleen aangeroepen bij `--apply` en een doorlaatbare poort). */
   writeMap: (body: Buffer) => Promise<void>;
@@ -525,21 +531,52 @@ async function listActiveReferenceCodes(): Promise<string[]> {
   return rows.map((r) => r.t3777Code);
 }
 
-async function readExistingPairs(): Promise<number | null> {
+/**
+ * Story 20.20 (her-review ronde 3) — "bestaat niet" en "onleesbaar" zijn NIET
+ * hetzelfde, en ze mochten niet allebei `null` opleveren.
+ *
+ * `null` betekende "eerste run", en dan blokkeert de krimpbescherming van AC6
+ * niets. Eén leesfout tijdens de onbewaakte wekelijkse `--apply` zou de kaart dus
+ * ongecontroleerd overschrijven — precies het onderscheid dat in de oogst al twee
+ * keer wél is aangebracht (`map_unavailable`, `state_unavailable`).
+ */
+type BestaandeKaart =
+  | { soort: "geen" }
+  | { soort: "onleesbaar"; reden: string }
+  | { soort: "gelezen"; paren: number };
+
+async function readExistingPairs(): Promise<BestaandeKaart> {
+  let buf: Buffer | null;
   try {
-    const buf = await downloadTrainingObject(DECLARED_HARVEST_MAP_OBJECT_KEY);
-    if (!buf) return null;
+    buf = await downloadTrainingObject(DECLARED_HARVEST_MAP_OBJECT_KEY);
+  } catch (err) {
+    return {
+      soort: "onleesbaar",
+      reden: err instanceof Error ? err.message : "onbekende leesfout",
+    };
+  }
+  if (!buf) return { soort: "geen" };
+
+  try {
     const parsed = JSON.parse(buf.toString("utf8")) as {
       codes?: Record<string, string[]>;
     };
     const codes = parsed?.codes;
-    if (!codes || typeof codes !== "object") return null;
-    return Object.values(codes).reduce(
-      (n, list) => n + (Array.isArray(list) ? list.length : 0),
-      0,
-    );
-  } catch {
-    return null;
+    if (!codes || typeof codes !== "object") {
+      return { soort: "onleesbaar", reden: "geen `codes`-object in de kaart" };
+    }
+    return {
+      soort: "gelezen",
+      paren: Object.values(codes).reduce(
+        (n, list) => n + (Array.isArray(list) ? list.length : 0),
+        0,
+      ),
+    };
+  } catch (err) {
+    return {
+      soort: "onleesbaar",
+      reden: err instanceof Error ? err.message : "onleesbare JSON",
+    };
   }
 }
 
@@ -547,6 +584,8 @@ async function readHarvestState(): Promise<{
   pairs: number | null;
   signature: string | null;
   inProgress: boolean;
+  /** Gezet bij een LEESFOUT; "bestaat niet" laat dit veld leeg. */
+  unavailable?: string;
 }> {
   try {
     const buf = await downloadTrainingObject(HARVEST_STATE_OBJECT_KEY);
@@ -564,8 +603,17 @@ async function readHarvestState(): Promise<{
         typeof parsed?.map_signature === "string" ? parsed.map_signature : null,
       inProgress: Boolean(parsed?.in_progress),
     };
-  } catch {
-    return { pairs: null, signature: null, inProgress: false };
+  } catch (err) {
+    // Her-review ronde 3: dezelfde stille terugval als bij de kaart. Bij een
+    // LEESFOUT weet de bouwer niets, en dan mag hij niet voorspellen dat de teller
+    // blijft staan — de oogst zet hem juist terug. Het verschil met "bestaat niet"
+    // (verse start) staat in `unavailable`.
+    return {
+      pairs: null,
+      signature: null,
+      inProgress: false,
+      unavailable: err instanceof Error ? err.message : "onbekende leesfout",
+    };
   }
 }
 
@@ -645,16 +693,34 @@ export async function runBuild(
   const map = buildDeclaredHarvestMap(index, activeCodes, now);
   printPlan(map, opts.apply);
 
-  const existingPairs = await deps.readExistingPairs();
+  const bestaand = await deps.readExistingPairs();
+  const existingPairs = bestaand.soort === "gelezen" ? bestaand.paren : null;
   const shrink = evaluateShrink({
     freshPairs: map.summary.pairs,
     existingPairs,
     force: opts.force,
   });
+
+  // Her-review ronde 3: een ONLEESBARE kaart is geen eerste run. Overschrijven zou
+  // de krimpbescherming van AC6 stilzwijgend overslaan, en juist de wekelijkse
+  // `--apply` draait onbewaakt. Stoppen, tenzij iemand bewust `--force` meegeeft.
+  if (bestaand.soort === "onleesbaar" && opts.apply && !opts.force) {
+    // eslint-disable-next-line no-console
+    console.error(
+      `  Krimpbescherming   : bestaande kaart ONLEESBAAR (${bestaand.reden}) — niets geschreven. ` +
+        "Dit is geen eerste run: overschrijven zou de krimpgrens overslaan. Bewust doorzetten kan met --force.",
+    );
+    return 1;
+  }
+
   /* eslint-disable no-console */
-  if (existingPairs === null) {
+  if (bestaand.soort === "onleesbaar") {
     console.log(
-      "  Krimpbescherming   : geen leesbare bestaande kaart — niet van toepassing (eerste run).",
+      `  Krimpbescherming   : bestaande kaart ONLEESBAAR (${bestaand.reden}) — grens niet te bepalen.`,
+    );
+  } else if (bestaand.soort === "geen") {
+    console.log(
+      "  Krimpbescherming   : nog geen bestaande kaart — niet van toepassing (eerste run).",
     );
   } else if (shrink.message) {
     console.log(`  Krimpbescherming   : ${shrink.message}`);
@@ -672,7 +738,12 @@ export async function runBuild(
     stateSignature: state.signature,
     inProgress: state.inProgress,
   });
-  console.log(`  Teller van de oogst: ${plan.message}`);
+  console.log(
+    state.unavailable
+      ? `  Teller van de oogst: voortgangsbestand ONLEESBAAR (${state.unavailable}) — ` +
+          "niet te voorspellen. De oogst zet de teller bij een leesfout terug."
+      : `  Teller van de oogst: ${plan.message}`,
+  );
 
   // De droogloop MELDT de blokkade, maar rapporteert geen mislukking. Een run
   // die per definitie niets schrijft is niet kapot omdat het schrijven zou zijn

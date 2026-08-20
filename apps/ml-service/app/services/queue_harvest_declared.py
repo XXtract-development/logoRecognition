@@ -1194,27 +1194,12 @@ async def run_batch() -> dict:
                 _note(code, gtin, src, OUTCOME_CROSS_CODE)
                 continue
 
-            # Story 20.11 — tel op `per_code_counts`, NIET op `len(queue[code])`:
-            # de queue wordt tussentijds geleegd door de flush, dus daarop tellen zou
-            # de cap per flush laten resetten i.p.v. per run. PER_CODE_CAP houdt
-            # daarmee exact zijn oude, run-brede betekenis.
-            if per_code_counts[code] >= PER_CODE_CAP:
-                skipped_cap += 1
-                # Story 20.20 (AC4) — BEWUST GEEN `_note`. De cap is een runbudget en
-                # geen oordeel; vastleggen zou dit paar voorgoed uitsluiten omdat er
-                # die nacht toevallig genoeg andere waren.
-                #
-                # En het paar telt ook NIET als afgehandeld. Alleen het `_note`
-                # weglaten was niet genoeg: het paar zat al in `done_idx`, dus de
-                # offset schoof eroverheen en de run eindigde op `complete` — waarna
-                # het paar pas terugkwam als de parenlijst veranderde. Precies de
-                # blijvende uitsluiting die deze regel wilde voorkomen. Door het uit
-                # `done_idx` te halen stopt de offset hier en biedt de volgende run
-                # dit paar opnieuw aan; de al nagekeken paren erachter zijn dan
-                # goedkoop, want die staan vastgelegd.
-                done_idx.discard(i)
-                cap_deferred.add(i)
-                continue
+            # Story 20.20 (her-review ronde 3) — de LATE cap-tak stond hier en is
+            # verwijderd: sinds de controle bovenaan de paren-lus staat is hij
+            # aantoonbaar onbereikbaar (bewezen met een mutatie: een `raise` erin
+            # liet de hele suite groen). Dode code die een vangnet suggereert dat er
+            # niet is, is erger dan geen vangnet. De cap wordt uitsluitend nog
+            # bovenaan de lus beoordeeld, vóór het dure werk.
 
             # AC2/AC4 — idempotentie per code: READ, draait ook in DRY_RUN mee.
             exists = await db_service.review_item_exists(
