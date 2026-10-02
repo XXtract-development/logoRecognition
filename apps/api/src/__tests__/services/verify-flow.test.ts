@@ -16,7 +16,7 @@
  * prisma / ioredis / bullmq / mlClient are mocked in setup.ts.
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import prisma from '../../core/db';
 import { getRedisConnection } from '../../services/pipeline/queue';
 import { mlClient } from '../../services/ml-client';
@@ -37,6 +37,32 @@ function installFreshRedisCache(): Map<string, string> {
   });
   return store;
 }
+
+// A rejected catalog request is fail-open in the service: assert zero calls
+// explicitly so missing unit-test fixtures cannot silently use real transport.
+let catalogFetch: ReturnType<typeof vi.fn>;
+beforeEach(async () => {
+  catalogFetch = vi.fn(async () => { throw new Error('Catalog network forbidden in verify-flow unit tests'); });
+  vi.stubGlobal('fetch', catalogFetch);
+  // Only these keys are mutated by this file; restore their original values.
+  vi.stubEnv('CATALOG_API_KEY', process.env.CATALOG_API_KEY);
+  vi.stubEnv('FLYWHEEL_NOMINATION_ENABLED', undefined);
+  vi.stubEnv('FLYWHEEL_KRUISCHECK_NOMINATION_ENABLED', undefined);
+  const declarations = await import('../../services/t3777-declarations');
+  // Preserve the real no-GLN fail-safe in AC2; individual verdict cases override
+  // this fresh call-through spy. The parallel marks path is explicitly offline.
+  vi.spyOn(declarations, 'resolveDeclarations');
+  vi.spyOn(declarations, 'resolveDeclaredMarks').mockResolvedValue({ marks: [], reason: 'lege-declaratie' });
+});
+afterEach(() => {
+  try {
+    expect(catalogFetch).not.toHaveBeenCalled();
+  } finally {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+  }
+});
 
 const GTIN = '08718989912451';
 

@@ -5,6 +5,7 @@
 **Betrouwbaardere controles vóór een nieuwe versie**
 - De controles gebruiken weer een eigen tijdelijke opslagomgeving.
 - Fouten in de herkenningscontroles houden een nieuwe versie tegen.
+- Een trage catalogus houdt de controles vóór een vrijgave niet meer op.
 
 ---
 
