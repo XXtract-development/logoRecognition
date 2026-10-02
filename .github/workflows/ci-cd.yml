@@ -393,7 +393,7 @@ jobs:
             context: .
             dockerfile: apps/web/Dockerfile
           - name: ml-service
-            context: apps/ml-service
+            context: .
             dockerfile: apps/ml-service/Dockerfile
 
     steps:

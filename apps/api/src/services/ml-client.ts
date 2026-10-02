@@ -5,6 +5,7 @@
 
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import { logger } from '../core/logger';
+import { resolveFieldType } from './field-type-mapping';
 
 // ============================================
 // Types
@@ -456,9 +457,13 @@ export class MLClient {
     cropPath: string,
     t3777Code: string
   ): Promise<{ added: boolean; reason: string; reference_logo_id?: string }> {
+    const category = resolveFieldType(t3777Code);
+    if (!category.fieldType || !category.gs1Field) throw new Error('Unresolved reference category');
     const res = await this.client.post('/ml/artwork/register-reference', {
       crop_path: cropPath,
-      t3777_code: t3777Code,
+      t3777_code: category.code,
+      field_type: category.fieldType,
+      gs1_field: category.gs1Field,
     });
     return res.data as { added: boolean; reason: string; reference_logo_id?: string };
   }

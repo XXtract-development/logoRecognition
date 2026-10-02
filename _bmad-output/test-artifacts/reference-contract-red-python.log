@@ -1,0 +1,699 @@
+FFFFFFFFFFFFFFFFFFFFF...FFFFFFFFFFFFFFFFFF                               [100%]
+=================================== FAILURES ===================================
+_ test_new_reference_persists_canonical_pair[NUTRISCORE_A-NutritionalScore-nutritionalScore] _
+
+runtime = (<app.services.similarity.SimilarityService object at 0x109dade80>, <module 'app.api.artwork' from '/Users/frisovanwee...e/app/api/artwork.py'>, <Mock id='4453677248'>, <Mock id='4453677920'>, <Mock id='4460298320'>, <Mock id='4460304368'>)
+code = 'NUTRISCORE_A', field = 'NutritionalScore', gs1 = 'nutritionalScore'
+
+    @pytest.mark.parametrize("code,field,gs1", CATEGORIES)
+    def test_new_reference_persists_canonical_pair(runtime, code, field, gs1):
+        service, _, conn, _, model, _ = runtime
+        result = asyncio.run(service.register_crop_as_reference("crop.png", f" {code.lower()} "))
+        assert result["added"] is True
+        query, *args = conn.fetchrow.call_args.args
+>       assert "field_type" in query and "gs1_field" in query
+E       AssertionError: assert ('field_type' in '\n                    INSERT INTO reference_logos (t3777_code, variant_label, storage_path, source, active)\n                    VALUES ($1, $2, $3, $4, true)\n                    RETURNING id\n                    ')
+
+apps/ml-service/tests/unit/test_reference_registration_contract.py:66: AssertionError
+_ test_new_reference_persists_canonical_pair[NUTRISCORE_B-NutritionalScore-nutritionalScore] _
+
+runtime = (<app.services.similarity.SimilarityService object at 0x10b0297f0>, <module 'app.api.artwork' from '/Users/frisovanwee...e/app/api/artwork.py'>, <Mock id='4479682608'>, <Mock id='4479683280'>, <Mock id='4479684288'>, <Mock id='4479684960'>)
+code = 'NUTRISCORE_B', field = 'NutritionalScore', gs1 = 'nutritionalScore'
+
+    @pytest.mark.parametrize("code,field,gs1", CATEGORIES)
+    def test_new_reference_persists_canonical_pair(runtime, code, field, gs1):
+        service, _, conn, _, model, _ = runtime
+        result = asyncio.run(service.register_crop_as_reference("crop.png", f" {code.lower()} "))
+        assert result["added"] is True
+        query, *args = conn.fetchrow.call_args.args
+>       assert "field_type" in query and "gs1_field" in query
+E       AssertionError: assert ('field_type' in '\n                    INSERT INTO reference_logos (t3777_code, variant_label, storage_path, source, active)\n                    VALUES ($1, $2, $3, $4, true)\n                    RETURNING id\n                    ')
+
+apps/ml-service/tests/unit/test_reference_registration_contract.py:66: AssertionError
+_ test_new_reference_persists_canonical_pair[NUTRISCORE_C-NutritionalScore-nutritionalScore] _
+
+runtime = (<app.services.similarity.SimilarityService object at 0x10b098440>, <module 'app.api.artwork' from '/Users/frisovanwee...e/app/api/artwork.py'>, <Mock id='4479693696'>, <Mock id='4479694368'>, <Mock id='4479695376'>, <Mock id='4479696048'>)
+code = 'NUTRISCORE_C', field = 'NutritionalScore', gs1 = 'nutritionalScore'
+
+    @pytest.mark.parametrize("code,field,gs1", CATEGORIES)
+    def test_new_reference_persists_canonical_pair(runtime, code, field, gs1):
+        service, _, conn, _, model, _ = runtime
+        result = asyncio.run(service.register_crop_as_reference("crop.png", f" {code.lower()} "))
+        assert result["added"] is True
+        query, *args = conn.fetchrow.call_args.args
+>       assert "field_type" in query and "gs1_field" in query
+E       AssertionError: assert ('field_type' in '\n                    INSERT INTO reference_logos (t3777_code, variant_label, storage_path, source, active)\n                    VALUES ($1, $2, $3, $4, true)\n                    RETURNING id\n                    ')
+
+apps/ml-service/tests/unit/test_reference_registration_contract.py:66: AssertionError
+_ test_new_reference_persists_canonical_pair[NUTRISCORE_D-NutritionalScore-nutritionalScore] _
+
+runtime = (<app.services.similarity.SimilarityService object at 0x10b09ae40>, <module 'app.api.artwork' from '/Users/frisovanwee...e/app/api/artwork.py'>, <Mock id='4480147072'>, <Mock id='4480147744'>, <Mock id='4480148752'>, <Mock id='4480149424'>)
+code = 'NUTRISCORE_D', field = 'NutritionalScore', gs1 = 'nutritionalScore'
+
+    @pytest.mark.parametrize("code,field,gs1", CATEGORIES)
+    def test_new_reference_persists_canonical_pair(runtime, code, field, gs1):
+        service, _, conn, _, model, _ = runtime
+        result = asyncio.run(service.register_crop_as_reference("crop.png", f" {code.lower()} "))
+        assert result["added"] is True
+        query, *args = conn.fetchrow.call_args.args
+>       assert "field_type" in query and "gs1_field" in query
+E       AssertionError: assert ('field_type' in '\n                    INSERT INTO reference_logos (t3777_code, variant_label, storage_path, source, active)\n                    VALUES ($1, $2, $3, $4, true)\n                    RETURNING id\n                    ')
+
+apps/ml-service/tests/unit/test_reference_registration_contract.py:66: AssertionError
+_ test_new_reference_persists_canonical_pair[NUTRISCORE_E-NutritionalScore-nutritionalScore] _
+
+runtime = (<app.services.similarity.SimilarityService object at 0x10b171940>, <module 'app.api.artwork' from '/Users/frisovanwee...e/app/api/artwork.py'>, <Mock id='4481026432'>, <Mock id='4481027104'>, <Mock id='4481028112'>, <Mock id='4481028784'>)
+code = 'NUTRISCORE_E', field = 'NutritionalScore', gs1 = 'nutritionalScore'
+
+    @pytest.mark.parametrize("code,field,gs1", CATEGORIES)
+    def test_new_reference_persists_canonical_pair(runtime, code, field, gs1):
+        service, _, conn, _, model, _ = runtime
+        result = asyncio.run(service.register_crop_as_reference("crop.png", f" {code.lower()} "))
+        assert result["added"] is True
+        query, *args = conn.fetchrow.call_args.args
+>       assert "field_type" in query and "gs1_field" in query
+E       AssertionError: assert ('field_type' in '\n                    INSERT INTO reference_logos (t3777_code, variant_label, storage_path, source, active)\n                    VALUES ($1, $2, $3, $4, true)\n                    RETURNING id\n                    ')
+
+apps/ml-service/tests/unit/test_reference_registration_contract.py:66: AssertionError
+_ test_new_reference_persists_canonical_pair[VEGAN-DietTypeCode-dietTypeCode] __
+
+runtime = (<app.services.similarity.SimilarityService object at 0x10b1e81a0>, <module 'app.api.artwork' from '/Users/frisovanwee...e/app/api/artwork.py'>, <Mock id='4481036512'>, <Mock id='4481037184'>, <Mock id='4481038192'>, <Mock id='4481038864'>)
+code = 'VEGAN', field = 'DietTypeCode', gs1 = 'dietTypeCode'
+
+    @pytest.mark.parametrize("code,field,gs1", CATEGORIES)
+    def test_new_reference_persists_canonical_pair(runtime, code, field, gs1):
+        service, _, conn, _, model, _ = runtime
+        result = asyncio.run(service.register_crop_as_reference("crop.png", f" {code.lower()} "))
+        assert result["added"] is True
+        query, *args = conn.fetchrow.call_args.args
+>       assert "field_type" in query and "gs1_field" in query
+E       AssertionError: assert ('field_type' in '\n                    INSERT INTO reference_logos (t3777_code, variant_label, storage_path, source, active)\n                    VALUES ($1, $2, $3, $4, true)\n                    RETURNING id\n                    ')
+
+apps/ml-service/tests/unit/test_reference_registration_contract.py:66: AssertionError
+_ test_new_reference_persists_canonical_pair[AISE_1-EU_consumerUsageLabelCodeList-enumerationValue] _
+
+runtime = (<app.services.similarity.SimilarityService object at 0x10b1eaba0>, <module 'app.api.artwork' from '/Users/frisovanwee...e/app/api/artwork.py'>, <Mock id='4481522656'>, <Mock id='4481523328'>, <Mock id='4481524336'>, <Mock id='4481525008'>)
+code = 'AISE_1', field = 'EU_consumerUsageLabelCodeList'
+gs1 = 'enumerationValue'
+
+    @pytest.mark.parametrize("code,field,gs1", CATEGORIES)
+    def test_new_reference_persists_canonical_pair(runtime, code, field, gs1):
+        service, _, conn, _, model, _ = runtime
+        result = asyncio.run(service.register_crop_as_reference("crop.png", f" {code.lower()} "))
+        assert result["added"] is True
+        query, *args = conn.fetchrow.call_args.args
+>       assert "field_type" in query and "gs1_field" in query
+E       AssertionError: assert ('field_type' in '\n                    INSERT INTO reference_logos (t3777_code, variant_label, storage_path, source, active)\n                    VALUES ($1, $2, $3, $4, true)\n                    RETURNING id\n                    ')
+
+apps/ml-service/tests/unit/test_reference_registration_contract.py:66: AssertionError
+_ test_new_reference_persists_canonical_pair[FLAME-GHSSymbolDescriptionCode-gHSSymbolDescriptionCode] _
+
+runtime = (<app.services.similarity.SimilarityService object at 0x10b2c56a0>, <module 'app.api.artwork' from '/Users/frisovanwee...e/app/api/artwork.py'>, <Mock id='4482418400'>, <Mock id='4482419072'>, <Mock id='4482420080'>, <Mock id='4482420752'>)
+code = 'FLAME', field = 'GHSSymbolDescriptionCode'
+gs1 = 'gHSSymbolDescriptionCode'
+
+    @pytest.mark.parametrize("code,field,gs1", CATEGORIES)
+    def test_new_reference_persists_canonical_pair(runtime, code, field, gs1):
+        service, _, conn, _, model, _ = runtime
+        result = asyncio.run(service.register_crop_as_reference("crop.png", f" {code.lower()} "))
+        assert result["added"] is True
+        query, *args = conn.fetchrow.call_args.args
+>       assert "field_type" in query and "gs1_field" in query
+E       AssertionError: assert ('field_type' in '\n                    INSERT INTO reference_logos (t3777_code, variant_label, storage_path, source, active)\n                    VALUES ($1, $2, $3, $4, true)\n                    RETURNING id\n                    ')
+
+apps/ml-service/tests/unit/test_reference_registration_contract.py:66: AssertionError
+_ test_new_reference_persists_canonical_pair[UNKNOWN_VALID-PackagingMarkedLabelAccreditationCode-packagingMarkedLabelAccreditationCode] _
+
+runtime = (<app.services.similarity.SimilarityService object at 0x10b3241a0>, <module 'app.api.artwork' from '/Users/frisovanwee...e/app/api/artwork.py'>, <Mock id='4482429152'>, <Mock id='4482429824'>, <Mock id='4482430832'>, <Mock id='4482431504'>)
+code = 'UNKNOWN_VALID', field = 'PackagingMarkedLabelAccreditationCode'
+gs1 = 'packagingMarkedLabelAccreditationCode'
+
+    @pytest.mark.parametrize("code,field,gs1", CATEGORIES)
+    def test_new_reference_persists_canonical_pair(runtime, code, field, gs1):
+        service, _, conn, _, model, _ = runtime
+        result = asyncio.run(service.register_crop_as_reference("crop.png", f" {code.lower()} "))
+        assert result["added"] is True
+        query, *args = conn.fetchrow.call_args.args
+>       assert "field_type" in query and "gs1_field" in query
+E       AssertionError: assert ('field_type' in '\n                    INSERT INTO reference_logos (t3777_code, variant_label, storage_path, source, active)\n                    VALUES ($1, $2, $3, $4, true)\n                    RETURNING id\n                    ')
+
+apps/ml-service/tests/unit/test_reference_registration_contract.py:66: AssertionError
+___________________ test_invalid_direct_code_does_no_work[] ____________________
+
+runtime = (<app.services.similarity.SimilarityService object at 0x10b326ba0>, <module 'app.api.artwork' from '/Users/frisovanwee...e/app/api/artwork.py'>, <Mock id='4482816992'>, <Mock id='4482817664'>, <Mock id='4482818672'>, <Mock id='4482819344'>)
+code = ''
+
+    @pytest.mark.parametrize("code", ["", "  ", None, 42, {}])
+    def test_invalid_direct_code_does_no_work(runtime, code):
+        service, _, _, db, model, storage = runtime
+>       with pytest.raises(ValueError):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValueError
+
+apps/ml-service/tests/unit/test_reference_registration_contract.py:73: Failed
+__________________ test_invalid_direct_code_does_no_work[  ] ___________________
+
+runtime = (<app.services.similarity.SimilarityService object at 0x10b4157f0>, <module 'app.api.artwork' from '/Users/frisovanwee...e/app/api/artwork.py'>, <Mock id='4483794992'>, <Mock id='4483795664'>, <Mock id='4483796672'>, <Mock id='4483797344'>)
+code = '  '
+
+    @pytest.mark.parametrize("code", ["", "  ", None, 42, {}])
+    def test_invalid_direct_code_does_no_work(runtime, code):
+        service, _, _, db, model, storage = runtime
+>       with pytest.raises(ValueError):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValueError
+
+apps/ml-service/tests/unit/test_reference_registration_contract.py:73: Failed
+_________________ test_invalid_direct_code_does_no_work[None] __________________
+
+runtime = (<app.services.similarity.SimilarityService object at 0x10b4781a0>, <module 'app.api.artwork' from '/Users/frisovanwee...e/app/api/artwork.py'>, <Mock id='4483805408'>, <Mock id='4483806080'>, <Mock id='4483807088'>, <Mock id='4483807760'>)
+code = None
+
+    @pytest.mark.parametrize("code", ["", "  ", None, 42, {}])
+    def test_invalid_direct_code_does_no_work(runtime, code):
+        service, _, _, db, model, storage = runtime
+>       with pytest.raises(ValueError):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValueError
+
+apps/ml-service/tests/unit/test_reference_registration_contract.py:73: Failed
+__________________ test_invalid_direct_code_does_no_work[42] ___________________
+
+runtime = (<app.services.similarity.SimilarityService object at 0x10b47aba0>, <module 'app.api.artwork' from '/Users/frisovanwee...e/app/api/artwork.py'>, <Mock id='4484209632'>, <Mock id='4484210304'>, <Mock id='4484211312'>, <Mock id='4484211984'>)
+code = 42
+
+    @pytest.mark.parametrize("code", ["", "  ", None, 42, {}])
+    def test_invalid_direct_code_does_no_work(runtime, code):
+        service, _, _, db, model, storage = runtime
+>       with pytest.raises(ValueError):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValueError
+
+apps/ml-service/tests/unit/test_reference_registration_contract.py:73: Failed
+_________________ test_invalid_direct_code_does_no_work[code4] _________________
+
+runtime = (<app.services.similarity.SimilarityService object at 0x10b5396a0>, <module 'app.api.artwork' from '/Users/frisovanwee...e/app/api/artwork.py'>, <Mock id='4484990688'>, <Mock id='4484991360'>, <Mock id='4484992368'>, <Mock id='4484993040'>)
+code = {}
+
+    @pytest.mark.parametrize("code", ["", "  ", None, 42, {}])
+    def test_invalid_direct_code_does_no_work(runtime, code):
+        service, _, _, db, model, storage = runtime
+>       with pytest.raises(ValueError):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValueError
+
+apps/ml-service/tests/unit/test_reference_registration_contract.py:73: Failed
+__________ test_invalid_endpoint_returns_422_without_work[metadata0] ___________
+
+runtime = (<app.services.similarity.SimilarityService object at 0x10b5dc1a0>, <module 'app.api.artwork' from '/Users/frisovanwee...e/app/api/artwork.py'>, <Mock id='4485001440'>, <Mock id='4485002112'>, <Mock id='4485003120'>, <Mock id='4485003792'>)
+metadata = {'field_type': 'DietTypeCode'}
+
+    @pytest.mark.parametrize("metadata", [{"field_type": "DietTypeCode"}, {"gs1_field": "dietTypeCode"},
+        {"field_type": "NutritionalScore", "gs1_field": "dietTypeCode"}, {"field_type": ""}, {"field_type": None}])
+    def test_invalid_endpoint_returns_422_without_work(runtime, metadata):
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+        _, artwork, _, db, _, storage = runtime
+        app = FastAPI()
+        app.include_router(artwork.router)
+        response = TestClient(app).post("/artwork/register-reference", json={"crop_path": "x", "t3777_code": "NUTRISCORE_A", **metadata})
+>       assert response.status_code == 422
+E       assert 200 == 422
+E        +  where 200 = <Response [200 OK]>.status_code
+
+apps/ml-service/tests/unit/test_reference_registration_contract.py:88: AssertionError
+__________ test_invalid_endpoint_returns_422_without_work[metadata1] ___________
+
+runtime = (<app.services.similarity.SimilarityService object at 0x10b7f8d70>, <module 'app.api.artwork' from '/Users/frisovanwee...e/app/api/artwork.py'>, <Mock id='4486885600'>, <Mock id='4486885936'>, <Mock id='4486888960'>, <Mock id='4487872928'>)
+metadata = {'gs1_field': 'dietTypeCode'}
+
+    @pytest.mark.parametrize("metadata", [{"field_type": "DietTypeCode"}, {"gs1_field": "dietTypeCode"},
+        {"field_type": "NutritionalScore", "gs1_field": "dietTypeCode"}, {"field_type": ""}, {"field_type": None}])
+    def test_invalid_endpoint_returns_422_without_work(runtime, metadata):
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+        _, artwork, _, db, _, storage = runtime
+        app = FastAPI()
+        app.include_router(artwork.router)
+        response = TestClient(app).post("/artwork/register-reference", json={"crop_path": "x", "t3777_code": "NUTRISCORE_A", **metadata})
+>       assert response.status_code == 422
+E       assert 200 == 422
+E        +  where 200 = <Response [200 OK]>.status_code
+
+apps/ml-service/tests/unit/test_reference_registration_contract.py:88: AssertionError
+__________ test_invalid_endpoint_returns_422_without_work[metadata2] ___________
+
+runtime = (<app.services.similarity.SimilarityService object at 0x10b7fb8c0>, <module 'app.api.artwork' from '/Users/frisovanwee...e/app/api/artwork.py'>, <Mock id='4487883008'>, <Mock id='4487883680'>, <Mock id='4487884688'>, <Mock id='4487885360'>)
+metadata = {'field_type': 'NutritionalScore', 'gs1_field': 'dietTypeCode'}
+
+    @pytest.mark.parametrize("metadata", [{"field_type": "DietTypeCode"}, {"gs1_field": "dietTypeCode"},
+        {"field_type": "NutritionalScore", "gs1_field": "dietTypeCode"}, {"field_type": ""}, {"field_type": None}])
+    def test_invalid_endpoint_returns_422_without_work(runtime, metadata):
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+        _, artwork, _, db, _, storage = runtime
+        app = FastAPI()
+        app.include_router(artwork.router)
+        response = TestClient(app).post("/artwork/register-reference", json={"crop_path": "x", "t3777_code": "NUTRISCORE_A", **metadata})
+>       assert response.status_code == 422
+E       assert 200 == 422
+E        +  where 200 = <Response [200 OK]>.status_code
+
+apps/ml-service/tests/unit/test_reference_registration_contract.py:88: AssertionError
+__________ test_invalid_endpoint_returns_422_without_work[metadata3] ___________
+
+runtime = (<app.services.similarity.SimilarityService object at 0x10b89a510>, <module 'app.api.artwork' from '/Users/frisovanwee...e/app/api/artwork.py'>, <Mock id='4488533328'>, <Mock id='4488534000'>, <Mock id='4488535008'>, <Mock id='4488535680'>)
+metadata = {'field_type': ''}
+
+    @pytest.mark.parametrize("metadata", [{"field_type": "DietTypeCode"}, {"gs1_field": "dietTypeCode"},
+        {"field_type": "NutritionalScore", "gs1_field": "dietTypeCode"}, {"field_type": ""}, {"field_type": None}])
+    def test_invalid_endpoint_returns_422_without_work(runtime, metadata):
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+        _, artwork, _, db, _, storage = runtime
+        app = FastAPI()
+        app.include_router(artwork.router)
+        response = TestClient(app).post("/artwork/register-reference", json={"crop_path": "x", "t3777_code": "NUTRISCORE_A", **metadata})
+>       assert response.status_code == 422
+E       assert 200 == 422
+E        +  where 200 = <Response [200 OK]>.status_code
+
+apps/ml-service/tests/unit/test_reference_registration_contract.py:88: AssertionError
+__________ test_invalid_endpoint_returns_422_without_work[metadata4] ___________
+
+runtime = (<app.services.similarity.SimilarityService object at 0x10b9a1160>, <module 'app.api.artwork' from '/Users/frisovanwee...e/app/api/artwork.py'>, <Mock id='4489609632'>, <Mock id='4489610304'>, <Mock id='4489611312'>, <Mock id='4489611984'>)
+metadata = {'field_type': None}
+
+    @pytest.mark.parametrize("metadata", [{"field_type": "DietTypeCode"}, {"gs1_field": "dietTypeCode"},
+        {"field_type": "NutritionalScore", "gs1_field": "dietTypeCode"}, {"field_type": ""}, {"field_type": None}])
+    def test_invalid_endpoint_returns_422_without_work(runtime, metadata):
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+        _, artwork, _, db, _, storage = runtime
+        app = FastAPI()
+        app.include_router(artwork.router)
+        response = TestClient(app).post("/artwork/register-reference", json={"crop_path": "x", "t3777_code": "NUTRISCORE_A", **metadata})
+>       assert response.status_code == 422
+E       assert 200 == 422
+E        +  where 200 = <Response [200 OK]>.status_code
+
+apps/ml-service/tests/unit/test_reference_registration_contract.py:88: AssertionError
+___________________ test_invalid_endpoint_code_returns_422[] ___________________
+
+runtime = (<app.services.similarity.SimilarityService object at 0x10b9a38c0>, <module 'app.api.artwork' from '/Users/frisovanwee...e/app/api/artwork.py'>, <Mock id='4489619712'>, <Mock id='4489620384'>, <Mock id='4489621392'>, <Mock id='4489622064'>)
+code = ''
+
+    @pytest.mark.parametrize("code", ["", "  ", None, 42, {}])
+    def test_invalid_endpoint_code_returns_422(runtime, code):
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+        _, artwork, _, db, _, _ = runtime
+        app = FastAPI()
+        app.include_router(artwork.router)
+        response = TestClient(app).post("/artwork/register-reference", json={"crop_path": "x", "t3777_code": code})
+>       assert response.status_code == 422
+E       assert 200 == 422
+E        +  where 200 = <Response [200 OK]>.status_code
+
+apps/ml-service/tests/unit/test_reference_registration_contract.py:100: AssertionError
+__________________ test_invalid_endpoint_code_returns_422[  ] __________________
+
+runtime = (<app.services.similarity.SimilarityService object at 0x10ba1a510>, <module 'app.api.artwork' from '/Users/frisovanwee...e/app/api/artwork.py'>, <Mock id='4490106192'>, <Mock id='4490106864'>, <Mock id='4490107872'>, <Mock id='4490108544'>)
+code = '  '
+
+    @pytest.mark.parametrize("code", ["", "  ", None, 42, {}])
+    def test_invalid_endpoint_code_returns_422(runtime, code):
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+        _, artwork, _, db, _, _ = runtime
+        app = FastAPI()
+        app.include_router(artwork.router)
+        response = TestClient(app).post("/artwork/register-reference", json={"crop_path": "x", "t3777_code": code})
+>       assert response.status_code == 422
+E       assert 200 == 422
+E        +  where 200 = <Response [200 OK]>.status_code
+
+apps/ml-service/tests/unit/test_reference_registration_contract.py:100: AssertionError
+________ test_same_path_repairs_only_metadata_without_embedding[rows0] _________
+
+runtime = (<app.services.similarity.SimilarityService object at 0x10bc3c2f0>, <module 'app.api.artwork' from '/Users/frisovanwee...e/app/api/artwork.py'>, <Mock id='4491686448'>, <Mock id='4491687120'>, <Mock id='4491688128'>, <Mock id='4491688800'>)
+rows = [{'id': 'inactive', 't3777_code': ' nutriscore_a ', 'active': False}]
+
+    @pytest.mark.parametrize("rows", [[{"id": "inactive", "t3777_code": " nutriscore_a ", "active": False}],
+        [{"id": "a", "t3777_code": "NUTRISCORE_A"}, {"id": "b", "t3777_code": "NUTRISCORE_A"}]])
+    def test_same_path_repairs_only_metadata_without_embedding(runtime, rows):
+        service, _, conn, _, model, storage = runtime
+        conn.fetch.return_value = rows
+        result = asyncio.run(service.register_crop_as_reference("crop.png", "NUTRISCORE_A"))
+>       assert result["added"] is False
+E       assert True is False
+
+apps/ml-service/tests/unit/test_reference_registration_contract.py:109: AssertionError
+________ test_same_path_repairs_only_metadata_without_embedding[rows1] _________
+
+runtime = (<app.services.similarity.SimilarityService object at 0x10b898ad0>, <module 'app.api.artwork' from '/Users/frisovanwee...e/app/api/artwork.py'>, <Mock id='4488542064'>, <Mock id='4488531312'>, <Mock id='4488543408'>, <Mock id='4488541728'>)
+rows = [{'id': 'a', 't3777_code': 'NUTRISCORE_A'}, {'id': 'b', 't3777_code': 'NUTRISCORE_A'}]
+
+    @pytest.mark.parametrize("rows", [[{"id": "inactive", "t3777_code": " nutriscore_a ", "active": False}],
+        [{"id": "a", "t3777_code": "NUTRISCORE_A"}, {"id": "b", "t3777_code": "NUTRISCORE_A"}]])
+    def test_same_path_repairs_only_metadata_without_embedding(runtime, rows):
+        service, _, conn, _, model, storage = runtime
+        conn.fetch.return_value = rows
+        result = asyncio.run(service.register_crop_as_reference("crop.png", "NUTRISCORE_A"))
+>       assert result["added"] is False
+E       assert True is False
+
+apps/ml-service/tests/unit/test_reference_registration_contract.py:109: AssertionError
+________________ test_conflicting_same_path_never_writes[rows0] ________________
+
+runtime = (<app.services.similarity.SimilarityService object at 0x10b706a50>, <module 'app.api.artwork' from '/Users/frisovanwee...e/app/api/artwork.py'>, <Mock id='4487881328'>, <Mock id='4487884352'>, <Mock id='4487883680'>, <Mock id='4487875952'>)
+rows = [{'id': 'a', 't3777_code': 'VEGAN'}]
+
+    @pytest.mark.parametrize("rows", [[{"id": "a", "t3777_code": "VEGAN"}],
+        [{"id": "a", "t3777_code": "NUTRISCORE_A"}, {"id": "b", "t3777_code": "VEGAN"}]])
+    def test_conflicting_same_path_never_writes(runtime, rows):
+        service, _, conn, _, model, storage = runtime
+        conn.fetch.return_value = rows
+        result = asyncio.run(service.register_crop_as_reference("crop.png", "NUTRISCORE_A"))
+>       assert result == {"added": False, "reason": "conflicting-reference-code"}
+E       AssertionError: assert {'added': Tru...id': 'new-id'} == {'added': Fal...ference-code'}
+E
+E         Differing items:
+E         {'added': True} != {'added': False}
+E         {'reason': 'added'} != {'reason': 'conflicting-reference-code'}
+E         Left contains 1 more item:
+E         {'reference_logo_id': 'new-id'}
+E         Use -v to get more diff
+
+apps/ml-service/tests/unit/test_reference_registration_contract.py:128: AssertionError
+________________ test_conflicting_same_path_never_writes[rows1] ________________
+
+runtime = (<app.services.similarity.SimilarityService object at 0x10b47b0e0>, <module 'app.api.artwork' from '/Users/frisovanwee...e/app/api/artwork.py'>, <Mock id='4486887616'>, <Mock id='4486883584'>, <Mock id='4486886944'>, <Mock id='4485661760'>)
+rows = [{'id': 'a', 't3777_code': 'NUTRISCORE_A'}, {'id': 'b', 't3777_code': 'VEGAN'}]
+
+    @pytest.mark.parametrize("rows", [[{"id": "a", "t3777_code": "VEGAN"}],
+        [{"id": "a", "t3777_code": "NUTRISCORE_A"}, {"id": "b", "t3777_code": "VEGAN"}]])
+    def test_conflicting_same_path_never_writes(runtime, rows):
+        service, _, conn, _, model, storage = runtime
+        conn.fetch.return_value = rows
+        result = asyncio.run(service.register_crop_as_reference("crop.png", "NUTRISCORE_A"))
+>       assert result == {"added": False, "reason": "conflicting-reference-code"}
+E       AssertionError: assert {'added': Tru...id': 'new-id'} == {'added': Fal...ference-code'}
+E
+E         Differing items:
+E         {'added': True} != {'added': False}
+E         {'reason': 'added'} != {'reason': 'conflicting-reference-code'}
+E         Left contains 1 more item:
+E         {'reference_logo_id': 'new-id'}
+E         Use -v to get more diff
+
+apps/ml-service/tests/unit/test_reference_registration_contract.py:128: AssertionError
+____________________ test_new_near_duplicate_guard_remains _____________________
+
+runtime = (<app.services.similarity.SimilarityService object at 0x10b53acf0>, <module 'app.api.artwork' from '/Users/frisovanwee...e/app/api/artwork.py'>, <Mock id='4484995392'>, <Mock id='4484996064'>, <Mock id='4484999424'>, <Mock id='4485002448'>)
+
+    def test_new_near_duplicate_guard_remains(runtime):
+        service, _, conn, _, model, _ = runtime
+        conn.fetchval.return_value = 0.999
+        result = asyncio.run(service.register_crop_as_reference("crop.png", "NUTRISCORE_A"))
+>       assert result["added"] is False and result["reason"].startswith("near-duplicate")
+E       AssertionError: assert (False is False and False)
+E        +  where False = <built-in method startswith of str object at 0x10b159d30>('near-duplicate')
+E        +    where <built-in method startswith of str object at 0x10b159d30> = 'already-a-reference'.startswith
+
+apps/ml-service/tests/unit/test_reference_registration_contract.py:137: AssertionError
+_____________ test_direct_metadata_rejected_before_work[metadata0] _____________
+
+runtime = (<app.services.similarity.SimilarityService object at 0x10b3252b0>, <module 'app.api.artwork' from '/Users/frisovanwee...e/app/api/artwork.py'>, <Mock id='4485001776'>, <Mock id='4485004800'>, <Mock id='4482810944'>, <Mock id='4482816320'>)
+metadata = {'field_type': 'DietTypeCode'}
+
+    @pytest.mark.parametrize("metadata", [{"field_type": "DietTypeCode"}, {"gs1_field": "dietTypeCode"}])
+    def test_direct_metadata_rejected_before_work(runtime, metadata):
+        service, _, _, db, _, storage = runtime
+        with pytest.raises(ValueError):
+>           asyncio.run(service.register_crop_as_reference("crop.png", "NUTRISCORE_A", **metadata))
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           TypeError: SimilarityService.register_crop_as_reference() got an unexpected keyword argument 'field_type'
+
+apps/ml-service/tests/unit/test_reference_registration_contract.py:144: TypeError
+_____________ test_direct_metadata_rejected_before_work[metadata1] _____________
+
+runtime = (<app.services.similarity.SimilarityService object at 0x10b2c6a50>, <module 'app.api.artwork' from '/Users/frisovanwee...e/app/api/artwork.py'>, <Mock id='4482428480'>, <Mock id='4482417728'>, <Mock id='4482426800'>, <Mock id='4482417056'>)
+metadata = {'gs1_field': 'dietTypeCode'}
+
+    @pytest.mark.parametrize("metadata", [{"field_type": "DietTypeCode"}, {"gs1_field": "dietTypeCode"}])
+    def test_direct_metadata_rejected_before_work(runtime, metadata):
+        service, _, _, db, _, storage = runtime
+        with pytest.raises(ValueError):
+>           asyncio.run(service.register_crop_as_reference("crop.png", "NUTRISCORE_A", **metadata))
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           TypeError: SimilarityService.register_crop_as_reference() got an unexpected keyword argument 'gs1_field'
+
+apps/ml-service/tests/unit/test_reference_registration_contract.py:144: TypeError
+______________ test_shared_mapping_python_parity_and_runtime_file ______________
+
+    def test_shared_mapping_python_parity_and_runtime_file():
+        mapping_path = ROOT / 'apps/api/src/services/reference-code-mapping.json'
+>       data = json.loads(mapping_path.read_text())
+                          ^^^^^^^^^^^^^^^^^^^^^^^^
+
+apps/ml-service/tests/unit/test_reference_registration_contract.py:150:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/pathlib/__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = PosixPath('/Users/frisovanweelden/Documents/projects/logoRecognition/apps/api/src/services/reference-code-mapping.json')
+mode = 'r', buffering = -1, encoding = 'locale', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/Users/frisovanweelden/Documents/projects/logoRecognition/apps/api/src/services/reference-code-mapping.json'
+
+/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/pathlib/__init__.py:771: FileNotFoundError
+_ test_live_writer_persists_pair[NUTRISCORE_A-NutritionalScore-nutritionalScore] _
+
+runtime = (<app.services.similarity.SimilarityService object at 0x10b1e92b0>, <module 'app.api.artwork' from '/Users/frisovanwee...e/app/api/artwork.py'>, <Mock id='4482421760'>, <Mock id='4482418736'>, <Mock id='4481528032'>, <Mock id='4481517280'>)
+code = 'NUTRISCORE_A', field = 'NutritionalScore', gs1 = 'nutritionalScore'
+
+    @pytest.mark.parametrize('code,field,gs1', CATEGORIES)
+    def test_live_writer_persists_pair(runtime, code, field, gs1):
+        service, _, conn, _, model, storage = runtime
+        spec = importlib.util.spec_from_file_location('realref_live_contract', ROOT / 'apps/ml-service/scripts/realref_live.py')
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        assert asyncio.run(mod._add_ref(conn, model, storage, f' {code.lower()} ', 'crop.png', 'variant'))
+        query, *args = conn.fetchrow.call_args.args
+>       assert 'field_type' in query and 'gs1_field' in query
+E       AssertionError: assert ('field_type' in '\n        INSERT INTO reference_logos (t3777_code, variant_label, storage_path, source, active)\n        VALUES ($1, $2, $3, $4, true)\n        RETURNING id\n        ')
+
+apps/ml-service/tests/unit/test_reference_registration_contract.py:166: AssertionError
+_ test_live_writer_persists_pair[NUTRISCORE_B-NutritionalScore-nutritionalScore] _
+
+runtime = (<app.services.similarity.SimilarityService object at 0x10b414590>, <module 'app.api.artwork' from '/Users/frisovanwee...e/app/api/artwork.py'>, <Mock id='4483805072'>, <Mock id='4483804400'>, <Mock id='4483806752'>, <Mock id='4483806080'>)
+code = 'NUTRISCORE_B', field = 'NutritionalScore', gs1 = 'nutritionalScore'
+
+    @pytest.mark.parametrize('code,field,gs1', CATEGORIES)
+    def test_live_writer_persists_pair(runtime, code, field, gs1):
+        service, _, conn, _, model, storage = runtime
+        spec = importlib.util.spec_from_file_location('realref_live_contract', ROOT / 'apps/ml-service/scripts/realref_live.py')
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        assert asyncio.run(mod._add_ref(conn, model, storage, f' {code.lower()} ', 'crop.png', 'variant'))
+        query, *args = conn.fetchrow.call_args.args
+>       assert 'field_type' in query and 'gs1_field' in query
+E       AssertionError: assert ('field_type' in '\n        INSERT INTO reference_logos (t3777_code, variant_label, storage_path, source, active)\n        VALUES ($1, $2, $3, $4, true)\n        RETURNING id\n        ')
+
+apps/ml-service/tests/unit/test_reference_registration_contract.py:166: AssertionError
+_ test_live_writer_persists_pair[NUTRISCORE_C-NutritionalScore-nutritionalScore] _
+
+runtime = (<app.services.similarity.SimilarityService object at 0x10b09ae40>, <module 'app.api.artwork' from '/Users/frisovanwee...e/app/api/artwork.py'>, <Mock id='4480155136'>, <Mock id='4480145056'>, <Mock id='4480146736'>, <Mock id='4480146064'>)
+code = 'NUTRISCORE_C', field = 'NutritionalScore', gs1 = 'nutritionalScore'
+
+    @pytest.mark.parametrize('code,field,gs1', CATEGORIES)
+    def test_live_writer_persists_pair(runtime, code, field, gs1):
+        service, _, conn, _, model, storage = runtime
+        spec = importlib.util.spec_from_file_location('realref_live_contract', ROOT / 'apps/ml-service/scripts/realref_live.py')
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        assert asyncio.run(mod._add_ref(conn, model, storage, f' {code.lower()} ', 'crop.png', 'variant'))
+        query, *args = conn.fetchrow.call_args.args
+>       assert 'field_type' in query and 'gs1_field' in query
+E       AssertionError: assert ('field_type' in '\n        INSERT INTO reference_logos (t3777_code, variant_label, storage_path, source, active)\n        VALUES ($1, $2, $3, $4, true)\n        RETURNING id\n        ')
+
+apps/ml-service/tests/unit/test_reference_registration_contract.py:166: AssertionError
+_ test_live_writer_persists_pair[NUTRISCORE_D-NutritionalScore-nutritionalScore] _
+
+runtime = (<app.services.similarity.SimilarityService object at 0x10b02b620>, <module 'app.api.artwork' from '/Users/frisovanwee...e/app/api/artwork.py'>, <Mock id='4479693696'>, <Mock id='4479692016'>, <Mock id='4479695376'>, <Mock id='4479682608'>)
+code = 'NUTRISCORE_D', field = 'NutritionalScore', gs1 = 'nutritionalScore'
+
+    @pytest.mark.parametrize('code,field,gs1', CATEGORIES)
+    def test_live_writer_persists_pair(runtime, code, field, gs1):
+        service, _, conn, _, model, storage = runtime
+        spec = importlib.util.spec_from_file_location('realref_live_contract', ROOT / 'apps/ml-service/scripts/realref_live.py')
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        assert asyncio.run(mod._add_ref(conn, model, storage, f' {code.lower()} ', 'crop.png', 'variant'))
+        query, *args = conn.fetchrow.call_args.args
+>       assert 'field_type' in query and 'gs1_field' in query
+E       AssertionError: assert ('field_type' in '\n        INSERT INTO reference_logos (t3777_code, variant_label, storage_path, source, active)\n        VALUES ($1, $2, $3, $4, true)\n        RETURNING id\n        ')
+
+apps/ml-service/tests/unit/test_reference_registration_contract.py:166: AssertionError
+_ test_live_writer_persists_pair[NUTRISCORE_E-NutritionalScore-nutritionalScore] _
+
+runtime = (<app.services.similarity.SimilarityService object at 0x10b171010>, <module 'app.api.artwork' from '/Users/frisovanwee...e/app/api/artwork.py'>, <Mock id='4481031136'>, <Mock id='4481025760'>, <Mock id='4481027440'>, <Mock id='4481026432'>)
+code = 'NUTRISCORE_E', field = 'NutritionalScore', gs1 = 'nutritionalScore'
+
+    @pytest.mark.parametrize('code,field,gs1', CATEGORIES)
+    def test_live_writer_persists_pair(runtime, code, field, gs1):
+        service, _, conn, _, model, storage = runtime
+        spec = importlib.util.spec_from_file_location('realref_live_contract', ROOT / 'apps/ml-service/scripts/realref_live.py')
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        assert asyncio.run(mod._add_ref(conn, model, storage, f' {code.lower()} ', 'crop.png', 'variant'))
+        query, *args = conn.fetchrow.call_args.args
+>       assert 'field_type' in query and 'gs1_field' in query
+E       AssertionError: assert ('field_type' in '\n        INSERT INTO reference_logos (t3777_code, variant_label, storage_path, source, active)\n        VALUES ($1, $2, $3, $4, true)\n        RETURNING id\n        ')
+
+apps/ml-service/tests/unit/test_reference_registration_contract.py:166: AssertionError
+_______ test_live_writer_persists_pair[VEGAN-DietTypeCode-dietTypeCode] ________
+
+runtime = (<app.services.similarity.SimilarityService object at 0x10975b4d0>, <module 'app.api.artwork' from '/Users/frisovanwee...e/app/api/artwork.py'>, <Mock id='4453672544'>, <Mock id='4453667840'>, <Mock id='4453675232'>, <Mock id='4453677920'>)
+code = 'VEGAN', field = 'DietTypeCode', gs1 = 'dietTypeCode'
+
+    @pytest.mark.parametrize('code,field,gs1', CATEGORIES)
+    def test_live_writer_persists_pair(runtime, code, field, gs1):
+        service, _, conn, _, model, storage = runtime
+        spec = importlib.util.spec_from_file_location('realref_live_contract', ROOT / 'apps/ml-service/scripts/realref_live.py')
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        assert asyncio.run(mod._add_ref(conn, model, storage, f' {code.lower()} ', 'crop.png', 'variant'))
+        query, *args = conn.fetchrow.call_args.args
+>       assert 'field_type' in query and 'gs1_field' in query
+E       AssertionError: assert ('field_type' in '\n        INSERT INTO reference_logos (t3777_code, variant_label, storage_path, source, active)\n        VALUES ($1, $2, $3, $4, true)\n        RETURNING id\n        ')
+
+apps/ml-service/tests/unit/test_reference_registration_contract.py:166: AssertionError
+_ test_live_writer_persists_pair[AISE_1-EU_consumerUsageLabelCodeList-enumerationValue] _
+
+runtime = (<app.services.similarity.SimilarityService object at 0x10bb04590>, <module 'app.api.artwork' from '/Users/frisovanwee...e/app/api/artwork.py'>, <Mock id='4491077216'>, <Mock id='4491075872'>, <Mock id='4491077552'>, <Mock id='4491076208'>)
+code = 'AISE_1', field = 'EU_consumerUsageLabelCodeList'
+gs1 = 'enumerationValue'
+
+    @pytest.mark.parametrize('code,field,gs1', CATEGORIES)
+    def test_live_writer_persists_pair(runtime, code, field, gs1):
+        service, _, conn, _, model, storage = runtime
+        spec = importlib.util.spec_from_file_location('realref_live_contract', ROOT / 'apps/ml-service/scripts/realref_live.py')
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        assert asyncio.run(mod._add_ref(conn, model, storage, f' {code.lower()} ', 'crop.png', 'variant'))
+        query, *args = conn.fetchrow.call_args.args
+>       assert 'field_type' in query and 'gs1_field' in query
+E       AssertionError: assert ('field_type' in '\n        INSERT INTO reference_logos (t3777_code, variant_label, storage_path, source, active)\n        VALUES ($1, $2, $3, $4, true)\n        RETURNING id\n        ')
+
+apps/ml-service/tests/unit/test_reference_registration_contract.py:166: AssertionError
+_ test_live_writer_persists_pair[FLAME-GHSSymbolDescriptionCode-gHSSymbolDescriptionCode] _
+
+runtime = (<app.services.similarity.SimilarityService object at 0x10ba1b620>, <module 'app.api.artwork' from '/Users/frisovanwee...e/app/api/artwork.py'>, <Mock id='4490107536'>, <Mock id='4490110224'>, <Mock id='4490106528'>, <Mock id='4490115936'>)
+code = 'FLAME', field = 'GHSSymbolDescriptionCode'
+gs1 = 'gHSSymbolDescriptionCode'
+
+    @pytest.mark.parametrize('code,field,gs1', CATEGORIES)
+    def test_live_writer_persists_pair(runtime, code, field, gs1):
+        service, _, conn, _, model, storage = runtime
+        spec = importlib.util.spec_from_file_location('realref_live_contract', ROOT / 'apps/ml-service/scripts/realref_live.py')
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        assert asyncio.run(mod._add_ref(conn, model, storage, f' {code.lower()} ', 'crop.png', 'variant'))
+        query, *args = conn.fetchrow.call_args.args
+>       assert 'field_type' in query and 'gs1_field' in query
+E       AssertionError: assert ('field_type' in '\n        INSERT INTO reference_logos (t3777_code, variant_label, storage_path, source, active)\n        VALUES ($1, $2, $3, $4, true)\n        RETURNING id\n        ')
+
+apps/ml-service/tests/unit/test_reference_registration_contract.py:166: AssertionError
+_ test_live_writer_persists_pair[UNKNOWN_VALID-PackagingMarkedLabelAccreditationCode-packagingMarkedLabelAccreditationCode] _
+
+runtime = (<app.services.similarity.SimilarityService object at 0x10bc3cad0>, <module 'app.api.artwork' from '/Users/frisovanwee...e/app/api/artwork.py'>, <Mock id='4489610640'>, <Mock id='4489609632'>, <Mock id='4489613664'>, <Mock id='4489609968'>)
+code = 'UNKNOWN_VALID', field = 'PackagingMarkedLabelAccreditationCode'
+gs1 = 'packagingMarkedLabelAccreditationCode'
+
+    @pytest.mark.parametrize('code,field,gs1', CATEGORIES)
+    def test_live_writer_persists_pair(runtime, code, field, gs1):
+        service, _, conn, _, model, storage = runtime
+        spec = importlib.util.spec_from_file_location('realref_live_contract', ROOT / 'apps/ml-service/scripts/realref_live.py')
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        assert asyncio.run(mod._add_ref(conn, model, storage, f' {code.lower()} ', 'crop.png', 'variant'))
+        query, *args = conn.fetchrow.call_args.args
+>       assert 'field_type' in query and 'gs1_field' in query
+E       AssertionError: assert ('field_type' in '\n        INSERT INTO reference_logos (t3777_code, variant_label, storage_path, source, active)\n        VALUES ($1, $2, $3, $4, true)\n        RETURNING id\n        ')
+
+apps/ml-service/tests/unit/test_reference_registration_contract.py:166: AssertionError
+__________________ test_live_writer_invalid_code_before_work ___________________
+
+runtime = (<app.services.similarity.SimilarityService object at 0x10bc3f4d0>, <module 'app.api.artwork' from '/Users/frisovanwee...e/app/api/artwork.py'>, <Mock id='4492354832'>, <Mock id='4492355504'>, <Mock id='4492356512'>, <Mock id='4492357184'>)
+
+    def test_live_writer_invalid_code_before_work(runtime):
+        _, _, conn, _, model, storage = runtime
+        spec = importlib.util.spec_from_file_location('realref_live_contract', ROOT / 'apps/ml-service/scripts/realref_live.py')
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+>       with pytest.raises(ValueError):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValueError
+
+apps/ml-service/tests/unit/test_reference_registration_contract.py:174: Failed
+=============================== warnings summary ===============================
+tests/unit/test_reference_registration_contract.py::test_invalid_endpoint_returns_422_without_work[metadata0]
+  /private/tmp/logo-reference-contract-venv/lib/python3.14/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED apps/ml-service/tests/unit/test_reference_registration_contract.py::test_new_reference_persists_canonical_pair[NUTRISCORE_A-NutritionalScore-nutritionalScore]
+FAILED apps/ml-service/tests/unit/test_reference_registration_contract.py::test_new_reference_persists_canonical_pair[NUTRISCORE_B-NutritionalScore-nutritionalScore]
+FAILED apps/ml-service/tests/unit/test_reference_registration_contract.py::test_new_reference_persists_canonical_pair[NUTRISCORE_C-NutritionalScore-nutritionalScore]
+FAILED apps/ml-service/tests/unit/test_reference_registration_contract.py::test_new_reference_persists_canonical_pair[NUTRISCORE_D-NutritionalScore-nutritionalScore]
+FAILED apps/ml-service/tests/unit/test_reference_registration_contract.py::test_new_reference_persists_canonical_pair[NUTRISCORE_E-NutritionalScore-nutritionalScore]
+FAILED apps/ml-service/tests/unit/test_reference_registration_contract.py::test_new_reference_persists_canonical_pair[VEGAN-DietTypeCode-dietTypeCode]
+FAILED apps/ml-service/tests/unit/test_reference_registration_contract.py::test_new_reference_persists_canonical_pair[AISE_1-EU_consumerUsageLabelCodeList-enumerationValue]
+FAILED apps/ml-service/tests/unit/test_reference_registration_contract.py::test_new_reference_persists_canonical_pair[FLAME-GHSSymbolDescriptionCode-gHSSymbolDescriptionCode]
+FAILED apps/ml-service/tests/unit/test_reference_registration_contract.py::test_new_reference_persists_canonical_pair[UNKNOWN_VALID-PackagingMarkedLabelAccreditationCode-packagingMarkedLabelAccreditationCode]
+FAILED apps/ml-service/tests/unit/test_reference_registration_contract.py::test_invalid_direct_code_does_no_work[]
+FAILED apps/ml-service/tests/unit/test_reference_registration_contract.py::test_invalid_direct_code_does_no_work[  ]
+FAILED apps/ml-service/tests/unit/test_reference_registration_contract.py::test_invalid_direct_code_does_no_work[None]
+FAILED apps/ml-service/tests/unit/test_reference_registration_contract.py::test_invalid_direct_code_does_no_work[42]
+FAILED apps/ml-service/tests/unit/test_reference_registration_contract.py::test_invalid_direct_code_does_no_work[code4]
+FAILED apps/ml-service/tests/unit/test_reference_registration_contract.py::test_invalid_endpoint_returns_422_without_work[metadata0]
+FAILED apps/ml-service/tests/unit/test_reference_registration_contract.py::test_invalid_endpoint_returns_422_without_work[metadata1]
+FAILED apps/ml-service/tests/unit/test_reference_registration_contract.py::test_invalid_endpoint_returns_422_without_work[metadata2]
+FAILED apps/ml-service/tests/unit/test_reference_registration_contract.py::test_invalid_endpoint_returns_422_without_work[metadata3]
+FAILED apps/ml-service/tests/unit/test_reference_registration_contract.py::test_invalid_endpoint_returns_422_without_work[metadata4]
+FAILED apps/ml-service/tests/unit/test_reference_registration_contract.py::test_invalid_endpoint_code_returns_422[]
+FAILED apps/ml-service/tests/unit/test_reference_registration_contract.py::test_invalid_endpoint_code_returns_422[  ]
+FAILED apps/ml-service/tests/unit/test_reference_registration_contract.py::test_same_path_repairs_only_metadata_without_embedding[rows0]
+FAILED apps/ml-service/tests/unit/test_reference_registration_contract.py::test_same_path_repairs_only_metadata_without_embedding[rows1]
+FAILED apps/ml-service/tests/unit/test_reference_registration_contract.py::test_conflicting_same_path_never_writes[rows0]
+FAILED apps/ml-service/tests/unit/test_reference_registration_contract.py::test_conflicting_same_path_never_writes[rows1]
+FAILED apps/ml-service/tests/unit/test_reference_registration_contract.py::test_new_near_duplicate_guard_remains
+FAILED apps/ml-service/tests/unit/test_reference_registration_contract.py::test_direct_metadata_rejected_before_work[metadata0]
+FAILED apps/ml-service/tests/unit/test_reference_registration_contract.py::test_direct_metadata_rejected_before_work[metadata1]
+FAILED apps/ml-service/tests/unit/test_reference_registration_contract.py::test_shared_mapping_python_parity_and_runtime_file
+FAILED apps/ml-service/tests/unit/test_reference_registration_contract.py::test_live_writer_persists_pair[NUTRISCORE_A-NutritionalScore-nutritionalScore]
+FAILED apps/ml-service/tests/unit/test_reference_registration_contract.py::test_live_writer_persists_pair[NUTRISCORE_B-NutritionalScore-nutritionalScore]
+FAILED apps/ml-service/tests/unit/test_reference_registration_contract.py::test_live_writer_persists_pair[NUTRISCORE_C-NutritionalScore-nutritionalScore]
+FAILED apps/ml-service/tests/unit/test_reference_registration_contract.py::test_live_writer_persists_pair[NUTRISCORE_D-NutritionalScore-nutritionalScore]
+FAILED apps/ml-service/tests/unit/test_reference_registration_contract.py::test_live_writer_persists_pair[NUTRISCORE_E-NutritionalScore-nutritionalScore]
+FAILED apps/ml-service/tests/unit/test_reference_registration_contract.py::test_live_writer_persists_pair[VEGAN-DietTypeCode-dietTypeCode]
+FAILED apps/ml-service/tests/unit/test_reference_registration_contract.py::test_live_writer_persists_pair[AISE_1-EU_consumerUsageLabelCodeList-enumerationValue]
+FAILED apps/ml-service/tests/unit/test_reference_registration_contract.py::test_live_writer_persists_pair[FLAME-GHSSymbolDescriptionCode-gHSSymbolDescriptionCode]
+FAILED apps/ml-service/tests/unit/test_reference_registration_contract.py::test_live_writer_persists_pair[UNKNOWN_VALID-PackagingMarkedLabelAccreditationCode-packagingMarkedLabelAccreditationCode]
+FAILED apps/ml-service/tests/unit/test_reference_registration_contract.py::test_live_writer_invalid_code_before_work
+39 failed, 3 passed, 1 warning in 1.82s

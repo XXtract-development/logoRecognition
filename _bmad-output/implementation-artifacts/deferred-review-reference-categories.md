@@ -1,0 +1,3 @@
+# Explicitly deferred existing issues
+- Historical reference rows without an embedding require separate investigation. Original registration inserted logo and embedding outside a transaction. Current path serialization uses a transaction but cannot repair old incomplete rows without violating metadata-only re-registration. No historical data write performed.
+- Existing ML CI step masks pytest failures through || echo "No tests yet". Root excludes broad CI repair from this category story. Local targeted test evidence is valid; CI-green alone is not acceptance evidence. Follow-up through bmad-investigate before a CI repair; no deployment authorized.

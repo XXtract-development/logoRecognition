@@ -28,10 +28,11 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StrictStr, model_validator
 
 from app.core.logging import logger
 from app.services.artwork import DEFAULT_DPI, rasterize_pdf
+from app.services.reference_category import ABSENT, resolve_reference_category
 from app.services.storage import storage_service
 
 router = APIRouter()
@@ -175,7 +176,23 @@ class RegisterReferenceRequest(BaseModel):
     crop_path: str = Field(
         ..., description="Object key of the confirmed crop in the training bucket"
     )
-    t3777_code: str = Field(..., description="Confirmed keurmerk code for the crop")
+    t3777_code: StrictStr = Field(
+        ..., description="Confirmed canonical code for the crop"
+    )
+    field_type: StrictStr
+    gs1_field: StrictStr
+
+    @model_validator(mode="before")
+    @classmethod
+    def validate_category(cls, values: Any) -> Any:
+        if not isinstance(values, dict):
+            return values
+        code, field, gs1 = resolve_reference_category(
+            values.get("t3777_code"),
+            values.get("field_type", ABSENT),
+            values.get("gs1_field", ABSENT),
+        )
+        return {**values, "t3777_code": code, "field_type": field, "gs1_field": gs1}
 
 
 @router.post("/artwork/register-reference")
@@ -193,7 +210,10 @@ async def register_reference_endpoint(
     from app.services.similarity import similarity_service
 
     result = await similarity_service.register_crop_as_reference(
-        crop_path=request.crop_path, t3777_code=request.t3777_code
+        crop_path=request.crop_path,
+        t3777_code=request.t3777_code,
+        field_type=request.field_type,
+        gs1_field=request.gs1_field,
     )
     return {"status": "ok", **result}
 

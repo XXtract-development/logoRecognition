@@ -36,6 +36,8 @@ from PIL import Image
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+from app.services.reference_category import resolve_reference_category
+
 TAG = "realref-live-poc"
 
 
@@ -53,6 +55,7 @@ async def _ensure_model():
 
 async def _add_ref(conn, model_manager, storage_service, label: str, crop_path: str, tag_suffix: str) -> bool:
     """Insert one tagged reference_logos row + its embedding. Returns True on success."""
+    label, field_type, gs1_field = resolve_reference_category(label)
     try:
         data = storage_service.get_training_image(crop_path)
         im = Image.open(io.BytesIO(data)).convert("RGB")
@@ -62,11 +65,11 @@ async def _add_ref(conn, model_manager, storage_service, label: str, crop_path: 
     emb = await model_manager.generate_embedding(im)
     row = await conn.fetchrow(
         """
-        INSERT INTO reference_logos (t3777_code, variant_label, storage_path, source, active)
-        VALUES ($1, $2, $3, $4, true)
+        INSERT INTO reference_logos (t3777_code, variant_label, storage_path, source, active, field_type, gs1_field)
+        VALUES ($1, $2, $3, $4, true, $5, $6)
         RETURNING id
         """,
-        label, f"real-crop:{tag_suffix}", crop_path, TAG,
+        label, f"real-crop:{tag_suffix}", crop_path, TAG, field_type, gs1_field,
     )
     logo_id = str(row["id"])
     await conn.execute(

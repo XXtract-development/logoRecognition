@@ -1,0 +1,105 @@
+{
+  "default": {
+    "fieldType": "PackagingMarkedLabelAccreditationCode",
+    "gs1Field": "packagingMarkedLabelAccreditationCode"
+  },
+  "categories": {
+    "DietTypeCode": {
+      "gs1Field": "dietTypeCode",
+      "codes": [
+        "COELIAC",
+        "DIABETIC",
+        "DIETETIC",
+        "FREE_FROM_GLUTEN",
+        "GRAIN_FREE",
+        "HALAL",
+        "HIGH_CARB",
+        "HIGH_PROTEIN",
+        "INFANT_FORMULA",
+        "KETO",
+        "KOSHER",
+        "LACTASE_ENZYME",
+        "LACTOSE_FREE",
+        "LOW_CALORIE",
+        "LOW_CARB",
+        "LOW_FAT",
+        "LOW_PROTEIN",
+        "LOW_SALT",
+        "MEAL_REPLACEMENT",
+        "MOTHERS_MILK_SUBSTITUTE",
+        "NUTRITION_SUPPLEMENT",
+        "ORGANIC",
+        "PALEO",
+        "PESCATARIAN",
+        "PLANT_BASED",
+        "POLLOTARIAN",
+        "PROBIOTICS",
+        "RAW",
+        "TOTAL_DIET_REPLACEMENT",
+        "VEGAN",
+        "VEGETARIAN",
+        "WITHOUT_BEEF",
+        "WITHOUT_PORK",
+        "FODMAP"
+      ]
+    },
+    "GHSSymbolDescriptionCode": {
+      "gs1Field": "gHSSymbolDescriptionCode",
+      "codes": [
+        "CORROSION",
+        "ENVIRONMENT",
+        "EXCLAMATION_MARK",
+        "EXPLODING_BOMB",
+        "FLAME",
+        "FLAME_OVER_CIRCLE",
+        "GAS_CYLINDER",
+        "HEALTH_HAZARD",
+        "NO_PICTOGRAM",
+        "SKULL_AND_CROSSBONES"
+      ]
+    },
+    "EU_consumerUsageLabelCodeList": {
+      "gs1Field": "enumerationValue",
+      "codes": [
+        "AISE_1",
+        "AISE_2",
+        "AISE_3",
+        "AISE_4",
+        "AISE_5",
+        "AISE_6",
+        "AISE_7",
+        "AISE_8",
+        "AISE_9",
+        "AISE_10",
+        "AISE_11",
+        "AISE_12",
+        "AISE_13",
+        "AISE_14",
+        "DO_NOT_DRINK_AND_DRIVE_WARNING",
+        "DO_NOT_FLUSH",
+        "MINIMUM_DRINKING_AGE_18_WARNING",
+        "NIX18",
+        "POULTRY_MEAT_WARNING",
+        "PREGNANCY_WARNING"
+      ]
+    },
+    "NutritionalScore": {
+      "gs1Field": "nutritionalScore",
+      "codes": [
+        "NUTRISCORE_A",
+        "NUTRISCORE_B",
+        "NUTRISCORE_C",
+        "NUTRISCORE_D",
+        "NUTRISCORE_E"
+      ]
+    }
+  },
+  "defaultOverlapCodes": [
+    "FODMAP",
+    "NUTRISCORE_A",
+    "NUTRISCORE_B",
+    "NUTRISCORE_C",
+    "NUTRISCORE_D",
+    "NUTRISCORE_E"
+  ]
+}

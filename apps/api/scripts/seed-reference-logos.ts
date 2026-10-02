@@ -22,6 +22,7 @@
 import fs from 'fs';
 import path from 'path';
 import prisma from '../src/core/db';
+import { resolveFieldType } from '../src/services/field-type-mapping';
 import { uploadReferenceLogo } from '../src/services/storage';
 
 // Top-20 codes from the logo_detection pilot (descending volume).
@@ -51,24 +52,30 @@ const TOP_20_CODES = [
 const VARIANT_LABEL = 'default';
 const SEED_DIR = path.join(__dirname, '..', 'seeds', 'reference-logos');
 
-async function main(): Promise<void> {
+export async function seedReferenceLogos(): Promise<void> {
   const missing: string[] = [];
   let created = 0;
   let skipped = 0;
 
   for (const code of TOP_20_CODES) {
-    const pngPath = path.join(SEED_DIR, `${code}.png`);
-    if (!fs.existsSync(pngPath)) {
-      missing.push(code);
-      continue;
-    }
-
+    const category = resolveFieldType(code);
+    if (!category.fieldType || !category.gs1Field) throw new Error(`Unresolved category: ${code}`);
     // Idempotent: skip if this exact code/variant already exists.
     const existing = await prisma.referenceLogo.findUnique({
       where: { t3777Code_variantLabel: { t3777Code: code, variantLabel: VARIANT_LABEL } },
     });
     if (existing) {
+      await prisma.referenceLogo.updateMany({
+        where: { id: existing.id, t3777Code: existing.t3777Code },
+        data: { fieldType: category.fieldType, gs1Field: category.gs1Field },
+      });
       skipped += 1;
+      continue;
+    }
+
+    const pngPath = path.join(SEED_DIR, `${code}.png`);
+    if (!fs.existsSync(pngPath)) {
+      missing.push(code);
       continue;
     }
 
@@ -86,6 +93,8 @@ async function main(): Promise<void> {
     await prisma.referenceLogo.create({
       data: {
         t3777Code: code,
+        fieldType: category.fieldType,
+        gs1Field: category.gs1Field,
         variantLabel: VARIANT_LABEL,
         source: `seed:apps/api/seeds/reference-logos/${code}.png`,
         storagePath,
@@ -109,7 +118,7 @@ async function main(): Promise<void> {
   }
 }
 
-main()
+if (require.main === module) seedReferenceLogos()
   .catch((err) => {
     // eslint-disable-next-line no-console
     console.error('Reference library seed failed:', err);

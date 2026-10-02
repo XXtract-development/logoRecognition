@@ -74,13 +74,14 @@ services:
   # ============================================
   ml-service:
     build:
-      context: ./apps/ml-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/ml-service/Dockerfile
     container_name: logo-recognition-ml
     ports:
       - "8001:8001"
     volumes:
       - ./apps/ml-service/app:/app/app
+      - ./apps/api/src/services/reference-code-mapping.json:/app/reference-code-mapping.json:ro
       - ml-models:/app/models
     environment:
       - PYTHONUNBUFFERED=1

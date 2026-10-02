@@ -1,0 +1,20 @@
+The CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.
+
+ RUN  v2.1.8 /Users/frisovanweelden/Documents/projects/logoRecognition/apps/api
+
+ ✓ src/__tests__/scripts/backfill-reference-logo-field-type.test.ts (6 tests) 7ms
+ ✓ src/__tests__/services/field-type-mapping.test.ts (10 tests) 17ms
+ ✓ src/__tests__/scripts/backfill-reference-manifest.test.ts (17 tests) 52ms
+ ✓ src/__tests__/services/reference-registration-contract.test.ts (15 tests) 38ms
+stdout | src/__tests__/scripts/seed-reference-category.test.ts > seed writes canonical metadata for every code
+Reference library seed complete: 20 created, 0 already present.
+
+stdout | src/__tests__/scripts/seed-reference-category.test.ts > existing seeded references repair metadata without image work or new rows
+Reference library seed complete: 0 created, 20 already present.
+
+ ✓ src/__tests__/scripts/seed-reference-category.test.ts (2 tests) 12ms
+
+ Test Files  5 passed (5)
+      Tests  50 passed (50)
+   Start at  15:14:36
+   Duration  2.66s (transform 687ms, setup 335ms, collect 1.89s, tests 126ms, environment 1ms, prepare 765ms)
