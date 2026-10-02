@@ -1,0 +1,13 @@
+The CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.
+
+ RUN  v2.1.8 /Users/frisovanweelden/Documents/projects/logoRecognition/apps/api
+
+ ✓ src/__tests__/services/artwork-detection-orchestration.test.ts (17 tests) 3746ms
+   ✓ Artwork Detection Orchestration (8-3O) > Detection job chain > should run localize → classify → crosscheck in order with full provenance 444ms
+   ✓ Artwork Detection Orchestration (8-3O) > Run management > should write gln on import so 8-3D can resolve declarations (S3/D1) 2571ms
+   ✓ Artwork Detection Orchestration (8-3O) > Crash resilience (AC4) > should keep queued detection jobs in Redis-backed state across a worker restart 459ms
+
+ Test Files  1 passed (1)
+      Tests  17 passed (17)
+   Start at  15:09:58
+   Duration  5.20s (transform 1.19s, setup 127ms, collect 117ms, tests 3.75s, environment 0ms, prepare 207ms)

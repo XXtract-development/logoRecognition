@@ -27,3 +27,10 @@
 - **`run()`-orchestratie unittest**: de dry-run/apply/counts/REINDEX-orkestratie van `restore_recyclable_refs.run()` is live op ACC gevalideerd maar niet in een unittest (vergt db_service-mock). `_load_and_embed`/`_write_ref` zijn wél gedekt.
 - **Model-identiteitscheck**: het script valideert de embedding-shape maar niet dat het huidige model dezelfde ruimte is als waarmee de actieve refs zijn gemaakt (model bleek NIET-stale in de diagnose, cosine 1,0). Overweeg een expliciete guard bij toekomstige model-wissels.
 - **`print` → `logger`** en een **dry-run crop-laadbaarheid-preflight** in `restore_recyclable_refs.py` (operationele netheid; laag).
+
+- source_spec: `spec-review-reference-categories.md`
+  summary: Investigate historical active references lacking embeddings before any recovery.
+  evidence: Original insert and embedding writes were outside a transaction; current path transaction prevents future partials, metadata-only re-registration intentionally cannot recover old embeddings.
+- source_spec: `spec-review-reference-categories.md`
+  summary: Repair existing ML CI pytest failure masking in a separate investigation.
+  evidence: Existing pytest command ends with || echo "No tests yet"; root explicitly deferred general CI repair, so CI-green is not acceptance evidence.

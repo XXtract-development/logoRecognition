@@ -56,6 +56,8 @@ RUN mkdir -p /app/models /app/logs /app/temp && \
 # Copy application code
 COPY --chown=mlservice:mlservice apps/ml-service/app/ /app/app/
 
+COPY --chown=mlservice:mlservice apps/api/src/services/reference-code-mapping.json /app/reference-code-mapping.json
+
 # Switch to non-root user
 USER mlservice
 

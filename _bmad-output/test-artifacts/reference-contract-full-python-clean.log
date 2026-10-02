@@ -1,0 +1,771 @@
+.............................................FFF.....s..............F... [ 22%]
+.FF....F....................................F................FFFFFFFFFFF [ 45%]
+F....................................................................... [ 68%]
+........................................................................ [ 91%]
+...........................                                              [100%]
+=================================== FAILURES ===================================
+___________ test_13_1_ac1_endpoint_retourneert_content_hash_en_phash ___________
+
+client = <starlette.testclient.TestClient object at 0x116f5aa50>
+
+    def test_13_1_ac1_endpoint_retourneert_content_hash_en_phash(client):
+>       resp = client.post("/ml/phash", json={"image_b64": _b64_image()})
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+/Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_flywheel_phash_endpoint.py:40:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+logo-reference-contract-venv/lib/python3.14/site-packages/httpx/_client.py:1144: in post
+    return self.request(
+logo-reference-contract-venv/lib/python3.14/site-packages/starlette/testclient.py:463: in request
+    return super().request(
+logo-reference-contract-venv/lib/python3.14/site-packages/httpx/_client.py:825: in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+logo-reference-contract-venv/lib/python3.14/site-packages/httpx/_client.py:914: in send
+    response = self._send_handling_auth(
+logo-reference-contract-venv/lib/python3.14/site-packages/httpx/_client.py:942: in _send_handling_auth
+    response = self._send_handling_redirects(
+logo-reference-contract-venv/lib/python3.14/site-packages/httpx/_client.py:979: in _send_handling_redirects
+    response = self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+logo-reference-contract-venv/lib/python3.14/site-packages/httpx/_client.py:1014: in _send_single_request
+    response = transport.handle_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+logo-reference-contract-venv/lib/python3.14/site-packages/starlette/testclient.py:360: in handle_request
+    raise exc
+logo-reference-contract-venv/lib/python3.14/site-packages/starlette/testclient.py:357: in handle_request
+    portal.call(self.app, scope, receive, send)
+logo-reference-contract-venv/lib/python3.14/site-packages/anyio/from_thread.py:340: in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/_base.py:454: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/_base.py:396: in __get_result
+    raise self._exception
+logo-reference-contract-venv/lib/python3.14/site-packages/anyio/from_thread.py:265: in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+logo-reference-contract-venv/lib/python3.14/site-packages/fastapi/applications.py:1215: in __call__
+    await super().__call__(scope, receive, send)
+logo-reference-contract-venv/lib/python3.14/site-packages/starlette/applications.py:96: in __call__
+    await self.middleware_stack(scope, receive, send)
+logo-reference-contract-venv/lib/python3.14/site-packages/starlette/middleware/errors.py:186: in __call__
+    raise exc
+logo-reference-contract-venv/lib/python3.14/site-packages/starlette/middleware/errors.py:164: in __call__
+    await self.app(scope, receive, _send)
+logo-reference-contract-venv/lib/python3.14/site-packages/fastapi/telemetry/_asgi.py:151: in __call__
+    await self.app(scope, receive, send)
+logo-reference-contract-venv/lib/python3.14/site-packages/starlette/middleware/exceptions.py:63: in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+logo-reference-contract-venv/lib/python3.14/site-packages/starlette/_exception_handler.py:53: in wrapped_app
+    raise exc
+logo-reference-contract-venv/lib/python3.14/site-packages/starlette/_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+logo-reference-contract-venv/lib/python3.14/site-packages/fastapi/middleware/asyncexitstack.py:18: in __call__
+    await self.app(scope, receive, send)
+logo-reference-contract-venv/lib/python3.14/site-packages/starlette/routing.py:676: in __call__
+    await self.middleware_stack(scope, receive, send)
+logo-reference-contract-venv/lib/python3.14/site-packages/fastapi/routing.py:2786: in app
+    await route.handle(scope, receive, send)
+logo-reference-contract-venv/lib/python3.14/site-packages/fastapi/routing.py:1817: in handle
+    await self.original_router.handle(scope, receive, send)
+logo-reference-contract-venv/lib/python3.14/site-packages/fastapi/routing.py:2869: in handle
+    await included_router._handle_selected(scope, receive, send)
+logo-reference-contract-venv/lib/python3.14/site-packages/fastapi/routing.py:1843: in _handle_selected
+    await original_route.handle(scope, receive, send)
+logo-reference-contract-venv/lib/python3.14/site-packages/fastapi/routing.py:1308: in handle
+    await effective_context.app(scope, receive, send)
+logo-reference-contract-venv/lib/python3.14/site-packages/fastapi/routing.py:165: in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+logo-reference-contract-venv/lib/python3.14/site-packages/starlette/_exception_handler.py:53: in wrapped_app
+    raise exc
+logo-reference-contract-venv/lib/python3.14/site-packages/starlette/_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+logo-reference-contract-venv/lib/python3.14/site-packages/fastapi/routing.py:151: in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+logo-reference-contract-venv/lib/python3.14/site-packages/fastapi/routing.py:727: in app
+    raw_response = await run_endpoint_function(
+logo-reference-contract-venv/lib/python3.14/site-packages/fastapi/routing.py:360: in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/app/api/flywheel.py:116: in compute_phash
+    phash=phash_service.perceptual_hash(image),
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+image = <PIL.PngImagePlugin.PngImageFile image mode=RGB size=48x48 at 0x1170F5D30>
+
+    def perceptual_hash(image: Image.Image) -> str:
+        """Perceptual hash (pHash) als hex-string via ImageHash (voor 13.4).
+
+        Deterministisch over dezelfde genormaliseerde invoer. Losstaand van de
+        canonieke content-hash: pHash dient de tolerante Hamming-dedup, content_hash
+        de exacte uniciteit.
+        """
+>       import imagehash
+E       ModuleNotFoundError: No module named 'imagehash'
+
+/Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/app/services/phash.py:89: ModuleNotFoundError
+__________________ test_13_1_ac2_endpoint_is_deterministisch ___________________
+
+client = <starlette.testclient.TestClient object at 0x117125810>
+
+    def test_13_1_ac2_endpoint_is_deterministisch(client):
+        payload = {"image_b64": _b64_image()}
+>       first = client.post("/ml/phash", json=payload).json()
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+/Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_flywheel_phash_endpoint.py:55:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+logo-reference-contract-venv/lib/python3.14/site-packages/httpx/_client.py:1144: in post
+    return self.request(
+logo-reference-contract-venv/lib/python3.14/site-packages/starlette/testclient.py:463: in request
+    return super().request(
+logo-reference-contract-venv/lib/python3.14/site-packages/httpx/_client.py:825: in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+logo-reference-contract-venv/lib/python3.14/site-packages/httpx/_client.py:914: in send
+    response = self._send_handling_auth(
+logo-reference-contract-venv/lib/python3.14/site-packages/httpx/_client.py:942: in _send_handling_auth
+    response = self._send_handling_redirects(
+logo-reference-contract-venv/lib/python3.14/site-packages/httpx/_client.py:979: in _send_handling_redirects
+    response = self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+logo-reference-contract-venv/lib/python3.14/site-packages/httpx/_client.py:1014: in _send_single_request
+    response = transport.handle_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+logo-reference-contract-venv/lib/python3.14/site-packages/starlette/testclient.py:360: in handle_request
+    raise exc
+logo-reference-contract-venv/lib/python3.14/site-packages/starlette/testclient.py:357: in handle_request
+    portal.call(self.app, scope, receive, send)
+logo-reference-contract-venv/lib/python3.14/site-packages/anyio/from_thread.py:340: in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/_base.py:454: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/_base.py:396: in __get_result
+    raise self._exception
+logo-reference-contract-venv/lib/python3.14/site-packages/anyio/from_thread.py:265: in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+logo-reference-contract-venv/lib/python3.14/site-packages/fastapi/applications.py:1215: in __call__
+    await super().__call__(scope, receive, send)
+logo-reference-contract-venv/lib/python3.14/site-packages/starlette/applications.py:96: in __call__
+    await self.middleware_stack(scope, receive, send)
+logo-reference-contract-venv/lib/python3.14/site-packages/starlette/middleware/errors.py:186: in __call__
+    raise exc
+logo-reference-contract-venv/lib/python3.14/site-packages/starlette/middleware/errors.py:164: in __call__
+    await self.app(scope, receive, _send)
+logo-reference-contract-venv/lib/python3.14/site-packages/fastapi/telemetry/_asgi.py:151: in __call__
+    await self.app(scope, receive, send)
+logo-reference-contract-venv/lib/python3.14/site-packages/starlette/middleware/exceptions.py:63: in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+logo-reference-contract-venv/lib/python3.14/site-packages/starlette/_exception_handler.py:53: in wrapped_app
+    raise exc
+logo-reference-contract-venv/lib/python3.14/site-packages/starlette/_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+logo-reference-contract-venv/lib/python3.14/site-packages/fastapi/middleware/asyncexitstack.py:18: in __call__
+    await self.app(scope, receive, send)
+logo-reference-contract-venv/lib/python3.14/site-packages/starlette/routing.py:676: in __call__
+    await self.middleware_stack(scope, receive, send)
+logo-reference-contract-venv/lib/python3.14/site-packages/fastapi/routing.py:2786: in app
+    await route.handle(scope, receive, send)
+logo-reference-contract-venv/lib/python3.14/site-packages/fastapi/routing.py:1817: in handle
+    await self.original_router.handle(scope, receive, send)
+logo-reference-contract-venv/lib/python3.14/site-packages/fastapi/routing.py:2869: in handle
+    await included_router._handle_selected(scope, receive, send)
+logo-reference-contract-venv/lib/python3.14/site-packages/fastapi/routing.py:1843: in _handle_selected
+    await original_route.handle(scope, receive, send)
+logo-reference-contract-venv/lib/python3.14/site-packages/fastapi/routing.py:1308: in handle
+    await effective_context.app(scope, receive, send)
+logo-reference-contract-venv/lib/python3.14/site-packages/fastapi/routing.py:165: in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+logo-reference-contract-venv/lib/python3.14/site-packages/starlette/_exception_handler.py:53: in wrapped_app
+    raise exc
+logo-reference-contract-venv/lib/python3.14/site-packages/starlette/_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+logo-reference-contract-venv/lib/python3.14/site-packages/fastapi/routing.py:151: in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+logo-reference-contract-venv/lib/python3.14/site-packages/fastapi/routing.py:727: in app
+    raw_response = await run_endpoint_function(
+logo-reference-contract-venv/lib/python3.14/site-packages/fastapi/routing.py:360: in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/app/api/flywheel.py:116: in compute_phash
+    phash=phash_service.perceptual_hash(image),
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+image = <PIL.PngImagePlugin.PngImageFile image mode=RGB size=48x48 at 0x1171B4190>
+
+    def perceptual_hash(image: Image.Image) -> str:
+        """Perceptual hash (pHash) als hex-string via ImageHash (voor 13.4).
+
+        Deterministisch over dezelfde genormaliseerde invoer. Losstaand van de
+        canonieke content-hash: pHash dient de tolerante Hamming-dedup, content_hash
+        de exacte uniciteit.
+        """
+>       import imagehash
+E       ModuleNotFoundError: No module named 'imagehash'
+
+/Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/app/services/phash.py:89: ModuleNotFoundError
+______________ test_13_1_ac1_crop_path_laadt_via_storage_service _______________
+
+client = <starlette.testclient.TestClient object at 0x1171b4f50>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x117b7e9e0>
+
+    def test_13_1_ac1_crop_path_laadt_via_storage_service(client, monkeypatch):
+        img = Image.new("RGB", (48, 48), (10, 20, 30))
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        monkeypatch.setattr(
+            flywheel.storage_service, "get_training_image", lambda path: buf.getvalue()
+        )
+>       resp = client.post("/ml/phash", json={"crop_path": "crops/abc.png"})
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+/Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_flywheel_phash_endpoint.py:72:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+logo-reference-contract-venv/lib/python3.14/site-packages/httpx/_client.py:1144: in post
+    return self.request(
+logo-reference-contract-venv/lib/python3.14/site-packages/starlette/testclient.py:463: in request
+    return super().request(
+logo-reference-contract-venv/lib/python3.14/site-packages/httpx/_client.py:825: in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+logo-reference-contract-venv/lib/python3.14/site-packages/httpx/_client.py:914: in send
+    response = self._send_handling_auth(
+logo-reference-contract-venv/lib/python3.14/site-packages/httpx/_client.py:942: in _send_handling_auth
+    response = self._send_handling_redirects(
+logo-reference-contract-venv/lib/python3.14/site-packages/httpx/_client.py:979: in _send_handling_redirects
+    response = self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+logo-reference-contract-venv/lib/python3.14/site-packages/httpx/_client.py:1014: in _send_single_request
+    response = transport.handle_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+logo-reference-contract-venv/lib/python3.14/site-packages/starlette/testclient.py:360: in handle_request
+    raise exc
+logo-reference-contract-venv/lib/python3.14/site-packages/starlette/testclient.py:357: in handle_request
+    portal.call(self.app, scope, receive, send)
+logo-reference-contract-venv/lib/python3.14/site-packages/anyio/from_thread.py:340: in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/_base.py:454: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/_base.py:396: in __get_result
+    raise self._exception
+logo-reference-contract-venv/lib/python3.14/site-packages/anyio/from_thread.py:265: in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+logo-reference-contract-venv/lib/python3.14/site-packages/fastapi/applications.py:1215: in __call__
+    await super().__call__(scope, receive, send)
+logo-reference-contract-venv/lib/python3.14/site-packages/starlette/applications.py:96: in __call__
+    await self.middleware_stack(scope, receive, send)
+logo-reference-contract-venv/lib/python3.14/site-packages/starlette/middleware/errors.py:186: in __call__
+    raise exc
+logo-reference-contract-venv/lib/python3.14/site-packages/starlette/middleware/errors.py:164: in __call__
+    await self.app(scope, receive, _send)
+logo-reference-contract-venv/lib/python3.14/site-packages/fastapi/telemetry/_asgi.py:151: in __call__
+    await self.app(scope, receive, send)
+logo-reference-contract-venv/lib/python3.14/site-packages/starlette/middleware/exceptions.py:63: in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+logo-reference-contract-venv/lib/python3.14/site-packages/starlette/_exception_handler.py:53: in wrapped_app
+    raise exc
+logo-reference-contract-venv/lib/python3.14/site-packages/starlette/_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+logo-reference-contract-venv/lib/python3.14/site-packages/fastapi/middleware/asyncexitstack.py:18: in __call__
+    await self.app(scope, receive, send)
+logo-reference-contract-venv/lib/python3.14/site-packages/starlette/routing.py:676: in __call__
+    await self.middleware_stack(scope, receive, send)
+logo-reference-contract-venv/lib/python3.14/site-packages/fastapi/routing.py:2786: in app
+    await route.handle(scope, receive, send)
+logo-reference-contract-venv/lib/python3.14/site-packages/fastapi/routing.py:1817: in handle
+    await self.original_router.handle(scope, receive, send)
+logo-reference-contract-venv/lib/python3.14/site-packages/fastapi/routing.py:2869: in handle
+    await included_router._handle_selected(scope, receive, send)
+logo-reference-contract-venv/lib/python3.14/site-packages/fastapi/routing.py:1843: in _handle_selected
+    await original_route.handle(scope, receive, send)
+logo-reference-contract-venv/lib/python3.14/site-packages/fastapi/routing.py:1308: in handle
+    await effective_context.app(scope, receive, send)
+logo-reference-contract-venv/lib/python3.14/site-packages/fastapi/routing.py:165: in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+logo-reference-contract-venv/lib/python3.14/site-packages/starlette/_exception_handler.py:53: in wrapped_app
+    raise exc
+logo-reference-contract-venv/lib/python3.14/site-packages/starlette/_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+logo-reference-contract-venv/lib/python3.14/site-packages/fastapi/routing.py:151: in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+logo-reference-contract-venv/lib/python3.14/site-packages/fastapi/routing.py:727: in app
+    raw_response = await run_endpoint_function(
+logo-reference-contract-venv/lib/python3.14/site-packages/fastapi/routing.py:360: in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/app/api/flywheel.py:116: in compute_phash
+    phash=phash_service.perceptual_hash(image),
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+image = <PIL.PngImagePlugin.PngImageFile image mode=RGB size=48x48 at 0x1171B7390>
+
+    def perceptual_hash(image: Image.Image) -> str:
+        """Perceptual hash (pHash) als hex-string via ImageHash (voor 13.4).
+
+        Deterministisch over dezelfde genormaliseerde invoer. Losstaand van de
+        canonieke content-hash: pHash dient de tolerante Hamming-dedup, content_hash
+        de exacte uniciteit.
+        """
+>       import imagehash
+E       ModuleNotFoundError: No module named 'imagehash'
+
+/Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/app/services/phash.py:89: ModuleNotFoundError
+________________ test_ac_g_module_laadt_en_voldoet_aan_contract ________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x117177000>
+
+    def test_ac_g_module_laadt_en_voldoet_aan_contract(monkeypatch):
+        with _echte_cv2_actief():
+            meta = json.dumps({"classes": ["A", "B", "C", "D", "E", "none"]}).encode()
+            objects = {
+>               "models/nutriscore-a2/v1/a2_mobilenetv3s.pt": _make_state_dict_bytes(),
+                                                              ^^^^^^^^^^^^^^^^^^^^^^^^
+                "models/nutriscore-a2/v1/a2_meta.json": meta,
+            }
+
+/Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_nutriscore_a2_12_25.py:310:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+    def _make_state_dict_bytes():
+        """Bouw een ECHT (random-init) state_dict voor de A2-architectuur."""
+>       import torch
+E       ModuleNotFoundError: No module named 'torch'
+
+/Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_nutriscore_a2_12_25.py:259: ModuleNotFoundError
+_______________ test_review_l5_min_conf_clamp_in_de_echte_module _______________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x117584280>
+
+    def test_review_l5_min_conf_clamp_in_de_echte_module(monkeypatch):
+        with _echte_cv2_actief():
+            meta = json.dumps({"classes": ["A", "B", "C", "D", "E", "none"]}).encode()
+            objects = {
+>               "models/nutriscore-a2/v1/a2_mobilenetv3s.pt": _make_state_dict_bytes(),
+                                                              ^^^^^^^^^^^^^^^^^^^^^^^^
+                "models/nutriscore-a2/v1/a2_meta.json": meta,
+            }
+
+/Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_nutriscore_a2_12_25.py:369:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+    def _make_state_dict_bytes():
+        """Bouw een ECHT (random-init) state_dict voor de A2-architectuur."""
+>       import torch
+E       ModuleNotFoundError: No module named 'torch'
+
+/Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_nutriscore_a2_12_25.py:259: ModuleNotFoundError
+_________________ test_ac5a_leest_de_juiste_letter[variant1-A] _________________
+
+letter = 'A', hues = {'A': 57, 'B': 45, 'C': 25, 'D': 10, ...}
+
+    @pytest.mark.parametrize("letter", list("ABCDE"))
+    @pytest.mark.parametrize("hues", [VARIANT_1, VARIANT_2], ids=["variant1", "variant2"])
+    def test_ac5a_leest_de_juiste_letter(letter, hues):
+        reader = _load_reader()
+        got, info = reader.read_nutriscore(make_band(enlarged=letter, hues=hues))
+>       assert got == letter, f"verwacht {letter}, kreeg {got} ({info})"
+E       AssertionError: verwacht A, kreeg None ({'reason': 'massief vlak zonder letter-glyph (vul 0.97)', 'heights': {'A': 117.0, 'B': 85.0, 'C': 84.0, 'D': 84.0, 'E': 84.0}})
+E       assert None == 'A'
+
+/Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_nutriscore_reader_12_22.py:132: AssertionError
+_________________ test_ac5a_leest_de_juiste_letter[variant2-A] _________________
+
+letter = 'A', hues = {'A': 75, 'B': 42, 'C': 24, 'D': 16, ...}
+
+    @pytest.mark.parametrize("letter", list("ABCDE"))
+    @pytest.mark.parametrize("hues", [VARIANT_1, VARIANT_2], ids=["variant1", "variant2"])
+    def test_ac5a_leest_de_juiste_letter(letter, hues):
+        reader = _load_reader()
+        got, info = reader.read_nutriscore(make_band(enlarged=letter, hues=hues))
+>       assert got == letter, f"verwacht {letter}, kreeg {got} ({info})"
+E       AssertionError: verwacht A, kreeg None ({'reason': 'massief vlak zonder letter-glyph (vul 0.97)', 'heights': {'A': 117.0, 'B': 85.0, 'C': 84.0, 'D': 84.0, 'E': 84.0}})
+E       assert None == 'A'
+
+/Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_nutriscore_reader_12_22.py:132: AssertionError
+_______________ test_13_1_ac2_perceptual_hash_is_deterministisch _______________
+
+    def test_13_1_ac2_perceptual_hash_is_deterministisch():
+        """Zelfde afbeelding → identieke pHash bij herhaalde aanroep."""
+        img = _make_image()
+>       assert phash_service.perceptual_hash(img) == phash_service.perceptual_hash(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            img.copy()
+        )
+
+/Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_phash_service.py:59:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+image = <PIL.Image.Image image mode=RGB size=64x48 at 0x11758FA10>
+
+    def perceptual_hash(image: Image.Image) -> str:
+        """Perceptual hash (pHash) als hex-string via ImageHash (voor 13.4).
+
+        Deterministisch over dezelfde genormaliseerde invoer. Losstaand van de
+        canonieke content-hash: pHash dient de tolerante Hamming-dedup, content_hash
+        de exacte uniciteit.
+        """
+>       import imagehash
+E       ModuleNotFoundError: No module named 'imagehash'
+
+/Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/app/services/phash.py:89: ModuleNotFoundError
+___________________ test_crop_is_losgekoppeld_van_de_pagina ____________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x116ed29e0>
+
+    def test_crop_is_losgekoppeld_van_de_pagina(monkeypatch):
+        """De kern van de OOM: een view houdt de hele pagina in leven.
+
+        `crop.base is None` bewijst dat de crop zijn eigen geheugen heeft. Draai
+        `.copy()` terug en deze test valt om (`base` wijst dan naar de pagina-array).
+        """
+>       m = _load_module(monkeypatch)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+/Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_queue_harvest_declared_20_11.py:74:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+/Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_queue_harvest_declared_20_11.py:59: in _load_module
+    spec.loader.exec_module(module)
+<frozen importlib._bootstrap_external>:755: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:892: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x1179fabd0>
+path = '/private/tmp/app/services/queue_harvest_declared.py'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '/private/tmp/app/services/queue_harvest_declared.py'
+
+<frozen importlib._bootstrap_external>:950: FileNotFoundError
+_______________ test_crop_overleeft_het_vrijgeven_van_de_pagina ________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x11768ba80>
+
+    def test_crop_overleeft_het_vrijgeven_van_de_pagina(monkeypatch):
+        """Praktijktest: de pagina loslaten mag de crop niet ongeldig maken."""
+>       m = _load_module(monkeypatch)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+/Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_queue_harvest_declared_20_11.py:85:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+/Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_queue_harvest_declared_20_11.py:59: in _load_module
+    spec.loader.exec_module(module)
+<frozen importlib._bootstrap_external>:755: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:892: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x1179f9370>
+path = '/private/tmp/app/services/queue_harvest_declared.py'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '/private/tmp/app/services/queue_harvest_declared.py'
+
+<frozen importlib._bootstrap_external>:950: FileNotFoundError
+_______________________ test_te_kleine_regio_blijft_none _______________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1171746e0>
+
+    def test_te_kleine_regio_blijft_none(monkeypatch):
+        """Bestaand gedrag ongewijzigd: <4px levert None, niet een lege kopie."""
+>       m = _load_module(monkeypatch)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+/Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_queue_harvest_declared_20_11.py:94:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+/Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_queue_harvest_declared_20_11.py:59: in _load_module
+    spec.loader.exec_module(module)
+<frozen importlib._bootstrap_external>:755: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:892: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x1179fb1d0>
+path = '/private/tmp/app/services/queue_harvest_declared.py'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '/private/tmp/app/services/queue_harvest_declared.py'
+
+<frozen importlib._bootstrap_external>:950: FileNotFoundError
+______________________ test_geheugendruk_leest_cgroup_v2 _______________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x117177690>
+tmp_path = PosixPath('/private/tmp/pytest-of-frisovanweelden/pytest-0/test_geheugendruk_leest_cgroup0')
+
+    def test_geheugendruk_leest_cgroup_v2(monkeypatch, tmp_path):
+>       m = _load_module(monkeypatch)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+/Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_queue_harvest_declared_20_11.py:106:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+/Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_queue_harvest_declared_20_11.py:59: in _load_module
+    spec.loader.exec_module(module)
+<frozen importlib._bootstrap_external>:755: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:892: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x1179fbfb0>
+path = '/private/tmp/app/services/queue_harvest_declared.py'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '/private/tmp/app/services/queue_harvest_declared.py'
+
+<frozen importlib._bootstrap_external>:950: FileNotFoundError
+_____________ test_geen_limiet_of_onleesbaar_geeft_geen_valse_stop _____________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1179f5470>
+
+    def test_geen_limiet_of_onleesbaar_geeft_geen_valse_stop(monkeypatch):
+        """Zonder leesbare cgroup mag de oogst NIET gaan stoppen — fail-open."""
+>       m = _load_module(monkeypatch)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+/Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_queue_harvest_declared_20_11.py:114:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+/Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_queue_harvest_declared_20_11.py:59: in _load_module
+    spec.loader.exec_module(module)
+<frozen importlib._bootstrap_external>:755: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:892: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x1179fb650>
+path = '/private/tmp/app/services/queue_harvest_declared.py'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '/private/tmp/app/services/queue_harvest_declared.py'
+
+<frozen importlib._bootstrap_external>:950: FileNotFoundError
+__________________ test_drempel_nul_schakelt_de_bewaking_uit ___________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1179f6430>
+
+    def test_drempel_nul_schakelt_de_bewaking_uit(monkeypatch):
+>       m = _load_module(monkeypatch)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+/Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_queue_harvest_declared_20_11.py:120:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+/Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_queue_harvest_declared_20_11.py:59: in _load_module
+    spec.loader.exec_module(module)
+<frozen importlib._bootstrap_external>:755: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:892: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x1179fbe30>
+path = '/private/tmp/app/services/queue_harvest_declared.py'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '/private/tmp/app/services/queue_harvest_declared.py'
+
+<frozen importlib._bootstrap_external>:950: FileNotFoundError
+___________________________ test_cgroup_v1_fallback ____________________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1179f6660>
+
+    def test_cgroup_v1_fallback(monkeypatch):
+        """v1 gebruikt andere bestandsnamen; de helper moet terugvallen."""
+>       m = _load_module(monkeypatch)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+/Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_queue_harvest_declared_20_11.py:127:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+/Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_queue_harvest_declared_20_11.py:59: in _load_module
+    spec.loader.exec_module(module)
+<frozen importlib._bootstrap_external>:755: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:892: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x1175a2510>
+path = '/private/tmp/app/services/queue_harvest_declared.py'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '/private/tmp/app/services/queue_harvest_declared.py'
+
+<frozen importlib._bootstrap_external>:950: FileNotFoundError
+__________________ test_v1_zonder_limiet_telt_als_geen_limiet __________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1179f6ba0>
+
+    def test_v1_zonder_limiet_telt_als_geen_limiet(monkeypatch):
+        """cgroup v1 zet een absurd hoog getal als er geen limiet is — niet als grens lezen."""
+>       m = _load_module(monkeypatch)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+/Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_queue_harvest_declared_20_11.py:144:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+/Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_queue_harvest_declared_20_11.py:59: in _load_module
+    spec.loader.exec_module(module)
+<frozen importlib._bootstrap_external>:755: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:892: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x1175a29f0>
+path = '/private/tmp/app/services/queue_harvest_declared.py'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '/private/tmp/app/services/queue_harvest_declared.py'
+
+<frozen importlib._bootstrap_external>:950: FileNotFoundError
+_____________________ test_read_int_hanteert_max_en_rommel _____________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1179f6cf0>
+tmp_path = PosixPath('/private/tmp/pytest-of-frisovanweelden/pytest-0/test_read_int_hanteert_max_en_0')
+
+    def test_read_int_hanteert_max_en_rommel(monkeypatch, tmp_path):
+>       m = _load_module(monkeypatch)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+/Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_queue_harvest_declared_20_11.py:160:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+/Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_queue_harvest_declared_20_11.py:59: in _load_module
+    spec.loader.exec_module(module)
+<frozen importlib._bootstrap_external>:755: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:892: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x117500d70>
+path = '/private/tmp/app/services/queue_harvest_declared.py'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '/private/tmp/app/services/queue_harvest_declared.py'
+
+<frozen importlib._bootstrap_external>:950: FileNotFoundError
+___________ test_page_order_zet_de_groep_met_de_laagste_index_eerst ____________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1179f7230>
+
+    def test_page_order_zet_de_groep_met_de_laagste_index_eerst(monkeypatch):
+        """H1-regressie, direct op de sorteerlogica.
+
+        Paginasleutels staan hier bewust omgekeerd t.o.v. de paar-indices. Met
+        `sorted(groups)` (op sleutel) komt `a_page` eerst en blijft index 0 liggen —
+        breekt de run daarvoor af, dan schuift de offset nooit op → livelock.
+        """
+>       m = _load_module(monkeypatch)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+/Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_queue_harvest_declared_20_11.py:200:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+/Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_queue_harvest_declared_20_11.py:59: in _load_module
+    spec.loader.exec_module(module)
+<frozen importlib._bootstrap_external>:755: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:892: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x1175bf230>
+path = '/private/tmp/app/services/queue_harvest_declared.py'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '/private/tmp/app/services/queue_harvest_declared.py'
+
+<frozen importlib._bootstrap_external>:950: FileNotFoundError
+__________ test_page_order_garandeert_voortgang_bij_vroege_afbreking ___________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1179f74d0>
+
+    def test_page_order_garandeert_voortgang_bij_vroege_afbreking(monkeypatch):
+        """Na ALLEEN de eerste groep moet de aaneengesloten prefix al opschuiven."""
+>       m = _load_module(monkeypatch)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+/Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_queue_harvest_declared_20_11.py:210:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+/Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_queue_harvest_declared_20_11.py:59: in _load_module
+    spec.loader.exec_module(module)
+<frozen importlib._bootstrap_external>:755: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:892: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x117ba1070>
+path = '/private/tmp/app/services/queue_harvest_declared.py'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '/private/tmp/app/services/queue_harvest_declared.py'
+
+<frozen importlib._bootstrap_external>:950: FileNotFoundError
+______________________ test_page_order_is_deterministisch ______________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1179f7620>
+
+    def test_page_order_is_deterministisch(monkeypatch):
+>       m = _load_module(monkeypatch)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+/Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_queue_harvest_declared_20_11.py:230:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+/Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_queue_harvest_declared_20_11.py:59: in _load_module
+    spec.loader.exec_module(module)
+<frozen importlib._bootstrap_external>:755: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:892: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x117ba1130>
+path = '/private/tmp/app/services/queue_harvest_declared.py'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '/private/tmp/app/services/queue_harvest_declared.py'
+
+<frozen importlib._bootstrap_external>:950: FileNotFoundError
+=============================== warnings summary ===============================
+logo-reference-contract-venv/lib/python3.14/site-packages/fastapi/testclient.py:1
+  /private/tmp/logo-reference-contract-venv/lib/python3.14/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED ../../Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_flywheel_phash_endpoint.py::test_13_1_ac1_endpoint_retourneert_content_hash_en_phash
+FAILED ../../Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_flywheel_phash_endpoint.py::test_13_1_ac2_endpoint_is_deterministisch
+FAILED ../../Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_flywheel_phash_endpoint.py::test_13_1_ac1_crop_path_laadt_via_storage_service
+FAILED ../../Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_nutriscore_a2_12_25.py::test_ac_g_module_laadt_en_voldoet_aan_contract
+FAILED ../../Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_nutriscore_a2_12_25.py::test_review_l5_min_conf_clamp_in_de_echte_module
+FAILED ../../Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_nutriscore_reader_12_22.py::test_ac5a_leest_de_juiste_letter[variant1-A]
+FAILED ../../Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_nutriscore_reader_12_22.py::test_ac5a_leest_de_juiste_letter[variant2-A]
+FAILED ../../Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_phash_service.py::test_13_1_ac2_perceptual_hash_is_deterministisch
+FAILED ../../Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_queue_harvest_declared_20_11.py::test_crop_is_losgekoppeld_van_de_pagina
+FAILED ../../Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_queue_harvest_declared_20_11.py::test_crop_overleeft_het_vrijgeven_van_de_pagina
+FAILED ../../Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_queue_harvest_declared_20_11.py::test_te_kleine_regio_blijft_none
+FAILED ../../Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_queue_harvest_declared_20_11.py::test_geheugendruk_leest_cgroup_v2
+FAILED ../../Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_queue_harvest_declared_20_11.py::test_geen_limiet_of_onleesbaar_geeft_geen_valse_stop
+FAILED ../../Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_queue_harvest_declared_20_11.py::test_drempel_nul_schakelt_de_bewaking_uit
+FAILED ../../Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_queue_harvest_declared_20_11.py::test_cgroup_v1_fallback
+FAILED ../../Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_queue_harvest_declared_20_11.py::test_v1_zonder_limiet_telt_als_geen_limiet
+FAILED ../../Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_queue_harvest_declared_20_11.py::test_read_int_hanteert_max_en_rommel
+FAILED ../../Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_queue_harvest_declared_20_11.py::test_page_order_zet_de_groep_met_de_laagste_index_eerst
+FAILED ../../Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_queue_harvest_declared_20_11.py::test_page_order_garandeert_voortgang_bij_vroege_afbreking
+FAILED ../../Users/frisovanweelden/Documents/projects/logoRecognition/apps/ml-service/tests/unit/test_queue_harvest_declared_20_11.py::test_page_order_is_deterministisch
+20 failed, 294 passed, 2 skipped, 1 warning in 43.49s

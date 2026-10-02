@@ -1,0 +1,446 @@
+The CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.
+
+ RUN  v2.1.8 /Users/frisovanweelden/Documents/projects/logoRecognition/apps/api
+
+ ✓ src/__tests__/services/flywheel-balanced-sampler.test.ts (15 tests) 232ms
+ ✓ src/__tests__/services/flywheel-bootstrap-run.test.ts (34 tests) 460ms
+ ✓ src/__tests__/services/t3777-declarations.test.ts (26 tests) 743ms
+ ✓ src/__tests__/services/flywheel-mismatch.test.ts (29 tests) 3105ms
+   ✓ Story 16.1 AC3 — vlag-scoping (AD-8, 4 vlag×pad-combinaties) > crosscheck-pad, hoofdvlag UIT → schrijft NIETS 853ms
+   ✓ Story 16.1 AC6 — register: per-run-observaties + fail-safe > een DB-fout bij persist is non-fataal (registratie is aanvullend werk) 512ms
+   ✓ Story 16.1 AC6 — register: per-run-observaties + fail-safe > lege declaratie + geen vondsten → geen persist-aanroep 584ms
+ ✓ src/__tests__/services/t3777-momentopname-20-19.test.ts (32 tests) 4083ms
+   ✓ AC1 — besluit 2 is vastgepind op de aanroepers, niet op goed vertrouwen > kent ALLE aanroepers in de codebase — een zesde moet hier langs 3368ms
+ ✓ src/__tests__/services/flywheel-gate.test.ts (17 tests) 305ms
+ ✓ src/__tests__/smoke/pipeline-smoke-test.test.ts (14 tests) 684ms
+   ✓ Pipeline Smoke Test (Story 9.6) > Step 1 — Incorporate: retraining trigger with mini-dataset count (AC1, AC3) > should evaluate trigger based on mini-dataset feedback count 532ms
+ ✓ src/__tests__/services/flywheel-workload.test.ts (24 tests) 286ms
+ ✓ src/__tests__/services/flywheel-control-cohort.atdd.test.ts (21 tests) 11293ms
+   ✓ AC1 — cohort-definitie in system_settings (control-cohort) > resolveControlCohort leest + normaliseert de GTIN-lijst (dedup, trim) 2651ms
+   ✓ AC1 — cohort-definitie in system_settings (control-cohort) > seed selecteert GTINs gespreid over codes (round-robin, idempotent-deterministisch) 611ms
+   ✓ AC2 — cohort-job registreert events met herkomst cohort-<runId> > scheduler registreert flywheel-cohort-rerun via upsertJobScheduler (geen repeat), maandelijkse cron + tz 2462ms
+   ✓ AC2 — cohort-job registreert events met herkomst cohort-<runId> > worker routeert flywheel-cohort-rerun naar de cohort-flow (leest de definitie) 3820ms
+   ✓ AC3 — cohort-trend per run (overview) > overview-composer neemt cohortTrend als paneel op 1186ms
+ ✓ src/__tests__/scripts/build-keurmerk-index-19-16.test.ts (23 tests) 433ms
+ ✓ src/__tests__/services/flywheel-promotion-batch.test.ts (13 tests) 57ms
+ ❯ src/__tests__/services/artwork-detection-orchestration.test.ts (17 tests | 1 failed) 13026ms
+   ✓ Artwork Detection Orchestration (8-3O) > Detection job chain > should run localize → classify → crosscheck in order with full provenance 2531ms
+   × Artwork Detection Orchestration (8-3O) > Run management > should write gln on import so 8-3D can resolve declarations (S3/D1) 5034ms
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+   ✓ Artwork Detection Orchestration (8-3O) > Run management > should derive gln from the previewUrl path when the discovery response lacks it 3974ms
+   ✓ Artwork Detection Orchestration (8-3O) > Crash resilience (AC4) > should keep queued detection jobs in Redis-backed state across a worker restart 645ms
+ ✓ src/__tests__/services/flywheel-outlier-audit.test.ts (14 tests) 501ms
+   ✓ runOutlierAudit — job-flow (AC2/AC3) > lege klasse (centroid_size 0) levert niets en crasht niet 379ms
+ ✓ src/__tests__/api/feedback.routes.test.ts (16 tests | 2 skipped) 7500ms
+   ✓ Feedback Routes > POST /feedback > should submit positive feedback 1338ms
+   ✓ Feedback Routes > POST /feedback/bulk > should submit multiple feedback entries 659ms
+   ✓ Feedback Routes > Admin-only routes > POST /feedback/incorporate > should incorporate pending feedback 320ms
+   ✓ Feedback Routes > Admin-only routes > POST /feedback/incorporate > should handle no pending feedback 920ms
+   ✓ Feedback Routes > Admin-only routes > POST /feedback/trigger-retraining > should trigger retraining when conditions met 332ms
+   ✓ Feedback Routes > Admin-only routes > POST /feedback/trigger-retraining > should force retraining even when conditions not met 435ms
+   ✓ Feedback Routes > Admin-only routes > POST /feedback/trigger-retraining > should not trigger when conditions not met and not forced 1564ms
+   ✓ Feedback Routes > Admin-only routes > GET /feedback/model-comparison > should compare model versions 872ms
+ ✓ src/__tests__/services/training-pipeline-queue.test.ts (17 tests) 713ms
+   ✓ Training Pipeline Queue (ATDD RED — Epic 9) > Scheduled retraining trigger > should evaluate retraining conditions with configurable thresholds 364ms
+ ✓ src/__tests__/services/flywheel-nomination.test.ts (15 tests) 5283ms
+   ✓ Story 13.2 — nominateCandidate > vult het evidence-contract (bron-GTIN, bbox, methode, scores, hash) (AC2) 447ms
+   ✓ Story 13.2 — nominateCandidate > nomineert precies op de drempel (0,90 grens) (AC8) 477ms
+   ✓ Story 13.2 — nominateCandidate > nomineert niet zonder declaratie-bevestiging (AC8) 310ms
+   ✓ Story 13.2 — nominateCandidate > reset een zacht afgewezen rij terug naar candidate zonder nieuwe insert (AC8, AD-12) 328ms
+   ✓ Story 13.2 — nominateCandidate > reset een hard afgewezen rij NIET (AC8, AD-12) 774ms
+   ✓ Story 13.2 — nominateCandidate > weigert fail-closed als /ml/phash faalt en registreert het event (AC2, AD-14, AC7) 478ms
+   ✓ Story 13.2 — nominateCandidate > nomineert kruischeck NIET met alleen de hoofdvlag aan (AC5, AD-8) 667ms
+   ✓ Story 13.2 — nominateCandidate > nomineert niet met de hoofdvlag uit (AC8) 412ms
+   ✓ Story 13.2 — nominateCandidate > nomineert review ook onder de model-drempel (AC6) 600ms
+ ✓ src/__tests__/api/training.routes.test.ts (21 tests) 9753ms
+   ✓ Training Routes > POST /training/start > should start a training job with batch_id 1264ms
+   ✓ Training Routes > POST /training/start > should start a training job with custom config 418ms
+   ✓ Training Routes > GET /training/:jobId > should return training job status 625ms
+   ✓ Training Routes > GET /training/:jobId > should return 404 when job not found 406ms
+   ✓ Training Routes > GET /training/jobs > should list training jobs 324ms
+   ✓ Training Routes > GET /training/jobs > should filter by status 529ms
+   ✓ Training Routes > GET /training/jobs > should accept limit parameter 1333ms
+   ✓ Training Routes > GET /training/jobs > should return empty list when ML service is down 529ms
+   ✓ Training Routes > GET /training (alias) > should list training jobs via alias route 437ms
+   ✓ Training Routes > DELETE /training/:jobId > should return 500 for unexpected errors 701ms
+   ✓ Training Routes > GET /models > should return empty list when ML service is down 670ms
+   ✓ Training Routes > POST /models/:modelId/activate > should activate a model 370ms
+   ✓ Training Routes > POST /models/:modelId/activate > should return 500 for unexpected errors 592ms
+ ✓ src/__tests__/services/flywheel-guardrails.test.ts (17 tests) 177ms
+ ✓ src/__tests__/services/verify-flow.test.ts (19 tests) 20109ms
+   ✓ Story 12.8 — verify-flow > AC1: terminates with status no-artwork (no throw) when nothing is imported 2149ms
+   ✓ Story 12.8 — verify-flow > AC4/AC5: localizes only the declared active codes and maps CONFIRMED/UNSUPPORTED 4739ms
+   ✓ Story 12.8 — verify-flow > AC5: a hit below the method threshold → UNCERTAIN (confidence carried); missing → NOT_FOUND 3644ms
+   ✓ Story 12.8 — verify-flow > AC7: writes a recognition_logs row + a result per CONFIRMED verdict 2158ms
+   ✓ Story 12.8 — verify-flow > AC8: never creates review items or training data, and writes no mismatch events with the flag off 2024ms
+   ✓ Story 12.8 — verify-flow > registers CANONICAL declared codes to the kruischeck mismatch path when the flag is on 2803ms
+   ✓ Story 12.8 — verify-flow > skipFlywheelHooks: no nomination/mismatch writes even with the flags ON (cohort isolation) 2270ms
+ ✓ src/__tests__/api/annotations.routes.test.ts (25 tests) 12577ms
+   ✓ Annotation Routes > POST /annotations > should create a single annotation 2341ms
+   ✓ Annotation Routes > POST /annotations > should return 404 for non-existent image 334ms
+   ✓ Annotation Routes > POST /annotations/bulk > should return 404 for non-existent image 324ms
+   ✓ Annotation Routes > GET /annotations/:id > should return annotation details 473ms
+   ✓ Annotation Routes > GET /annotations/:id > should return 404 for non-existent annotation 515ms
+   ✓ Annotation Routes > PATCH /annotations/:id > should update annotation 503ms
+   ✓ Annotation Routes > PATCH /annotations/:id > should return 404 for non-existent annotation 324ms
+   ✓ Annotation Routes > PATCH /annotations/:id > should update logo training samples when changing logoId 420ms
+   ✓ Annotation Routes > DELETE /annotations/:id > should return 404 for non-existent annotation 405ms
+   ✓ Annotation Routes > POST /annotations/smart-click > should detect logo at click position 1182ms
+   ✓ Annotation Routes > POST /annotations/smart-click > should return suggestion when no logo detected 512ms
+   ✓ Annotation Routes > POST /annotations/smart-click > should return 400 when image data missing 689ms
+   ✓ Annotation Routes > GET /annotations/image/:imageId/canvas > should return canvas data with annotations 1059ms
+   ✓ Annotation Routes > GET /annotations/image/:imageId/canvas > should return 404 for non-existent image 464ms
+   ✓ Annotation Routes > POST /annotations/:id/review (Admin only) > should approve annotation 913ms
+   ✓ Annotation Routes > POST /annotations/:id/review (Admin only) > should apply corrections when reviewing 494ms
+   ✓ Annotation Routes > POST /annotations/:id/review (Admin only) > should return 404 for non-existent annotation 303ms
+ ✓ src/__tests__/services/flywheel-bootstrap-queue.test.ts (17 tests) 331ms
+ ✓ src/__tests__/services/tradeitem-declaration-snapshot.test.ts (17 tests) 520ms
+ ✓ src/__tests__/api/auth.routes.test.ts (19 tests) 1751ms
+   ✓ Auth Routes > POST /auth/login > should login successfully with valid credentials 1354ms
+ ✓ src/__tests__/services/auth.test.ts (23 tests) 172ms
+ ✓ src/__tests__/services/flywheel-candidate-decision.test.ts (15 tests) 177ms
+ ✓ src/__tests__/services/flywheel-guard-5-5.atdd.test.ts (5 tests) 10ms
+ ✓ src/__tests__/services/training-flow-workers.test.ts (13 tests) 106ms
+ ✓ src/__tests__/services/flywheel-gold-set-composition.test.ts (17 tests) 36ms
+ ✓ src/__tests__/api/holdout.routes.test.ts (9 tests) 3305ms
+   ✓ Holdout Routes (ATDD RED — Story 7.1 & 7.2) > PATCH /training/data/:id/holdout > should mark a training data record as holdout 1578ms
+   ✓ Holdout Routes (ATDD RED — Story 7.1 & 7.2) > PATCH /training/data/:id/holdout > should unmark a holdout record back to trainable 324ms
+   ✓ Holdout Routes (ATDD RED — Story 7.1 & 7.2) > PATCH /training/data/:id/holdout > should return 404 for an unknown training data id 452ms
+   ✓ Holdout Routes (ATDD RED — Story 7.1 & 7.2) > POST /training/start — holdout guard (NFR3) > should refuse to start training when the holdout set is empty 315ms
+ ✓ src/__tests__/services/flywheel-thresholds.test.ts (14 tests) 45ms
+ ✓ src/__tests__/scripts/build-nutriscore-declared-map.test.ts (19 tests) 117ms
+ ✓ src/__tests__/scripts/gln-reimport-restant.test.ts (12 tests) 56ms
+ ✓ src/__tests__/api/recognition.routes.test.ts (14 tests) 2425ms
+   ✓ Recognition Routes > POST /recognize > should recognize logos in image 411ms
+   ✓ Recognition Routes > POST /recognize/batch > should process multiple images 436ms
+ ✓ src/__tests__/api/categories.routes.test.ts (17 tests) 3264ms
+   ✓ Category Routes > GET /categories > should list categories with pagination 1056ms
+   ✓ Category Routes > PATCH /categories/:id > should return 404 for non-existent category 337ms
+ ✓ src/__tests__/services/flywheel-review-decision.test.ts (11 tests) 61ms
+ ✓ src/__tests__/api/reference-logos.routes.test.ts (7 tests) 732ms
+   ✓ Reference Logos Routes (ATDD RED — Story 7.3) > POST /reference-logos > should upload a reference logo with T3777 code and variant metadata 604ms
+ ✓ src/__tests__/services/t3777-declarations-19-16.test.ts (19 tests) 11270ms
+   ✓ AC2 — de aborttimer dekt ook de BODY-read (het echte hang-scenario) > een ECHTE server die headers stuurt en dan stilvalt, wordt afgebroken 3772ms
+   ✓ AC4 — cachegedrag > een TRANSIËNTE fout krijgt een korte TTL, geen etmaal 1602ms
+   ✓ AC6/AC10 — knownGln en geen regressie op de live paden > een throwende parse breekt de "never throws"-belofte niet 1531ms
+   ✓ AC9 — backoff zit ONDER de cache en bereikt de bron echt > een 503 wordt opnieuw geprobeerd en slaagt alsnog — met ECHTE fetch-teller 1553ms
+   ✓ AC9 — backoff zit ONDER de cache en bereikt de bron echt > een blijvende 503 eindigt na de herkansingen als api-fout 509ms
+   ✓ Live-vondst: catalog meldt een ONTBREKEND bestand met een 500 > een ECHTE 500 blijft wél api-fout — geen blinde 500-vrijbrief 1525ms
+ ✓ src/__tests__/services/flywheel-overview-panels.test.ts (7 tests) 85ms
+ ✓ src/__tests__/services/backfill-gln-from-tradeitems.test.ts (15 tests) 22ms
+stdout | src/__tests__/scripts/build-declared-harvest-map.test.ts > AC1 — droogloop is de standaard > schrijft NIETS zonder --apply
+=== Declaratie-oogst-kaart ===
+  Modus              : DROGE RUN (schrijft niets)
+  Bronindex          : flywheel-index/keurmerk-etiket-index.json (gebouwd 2026-08-19T10:00:00.000Z)
+  Bronomvang         : ? sleutels, ? GTINs met data
+  Uitsluitingen      :
+    veldsoort                  0 code(s), 0 paar/paren
+      reden: veldsoort NutritionalScore: de sleutel geeft A..E terwijl de referenties NUTRISCORE_A..E heten, en de eigen Nutri-Score-oogst zou dubbele items opleveren
+    zonderActieveReferentie    0 code(s), 0 paar/paren
+      reden: de oogst zoekt strikt binnen de eigen referentiepool van een code; zonder actieve referentie levert dat per definitie niets op. De vergelijking is HOOFDLETTERGEVOELIG, net als de matchquery van de oogst: een referentiecode met een andere schrijfwijze telt hier bewust niet mee, want hij zou daar ook nooit matchen
+    overstroming               0 code(s), 0 paar/paren
+      reden: overstroming — dezelfde twee codes die de volume-oogst uitsluit (queue_harvest.py, _DEFAULT_EXCLUDE_CODES)
+  Wacht op referentie: 0 code(s)
+  Kaart              : 1 codes, 2 producten, 2 paren
+  Krimpbescherming   : nog geen bestaande kaart — niet van toepassing (eerste run).
+  Teller van de oogst: het voortgangsbestand draagt nog geen vingerafdruk van de kaart — de oogst legt hem bij zijn eerstvolgende start vast; de teller wordt nu niet teruggezet
+Droge run — er is niets naar de opslag geschreven. Schrijven doe je met --apply.
+
+stdout | src/__tests__/scripts/build-declared-harvest-map.test.ts > AC1 — droogloop is de standaard > schrijft de kaart met --apply
+=== Declaratie-oogst-kaart ===
+  Modus              : ECHTE BOUW (--apply)
+  Bronindex          : flywheel-index/keurmerk-etiket-index.json (gebouwd 2026-08-19T10:00:00.000Z)
+  Bronomvang         : ? sleutels, ? GTINs met data
+  Uitsluitingen      :
+    veldsoort                  0 code(s), 0 paar/paren
+      reden: veldsoort NutritionalScore: de sleutel geeft A..E terwijl de referenties NUTRISCORE_A..E heten, en de eigen Nutri-Score-oogst zou dubbele items opleveren
+    zonderActieveReferentie    0 code(s), 0 paar/paren
+      reden: de oogst zoekt strikt binnen de eigen referentiepool van een code; zonder actieve referentie levert dat per definitie niets op. De vergelijking is HOOFDLETTERGEVOELIG, net als de matchquery van de oogst: een referentiecode met een andere schrijfwijze telt hier bewust niet mee, want hij zou daar ook nooit matchen
+    overstroming               0 code(s), 0 paar/paren
+      reden: overstroming — dezelfde twee codes die de volume-oogst uitsluit (queue_harvest.py, _DEFAULT_EXCLUDE_CODES)
+  Wacht op referentie: 0 code(s)
+  Kaart              : 1 codes, 2 producten, 2 paren
+  Krimpbescherming   : nog geen bestaande kaart — niet van toepassing (eerste run).
+  Teller van de oogst: het voortgangsbestand draagt nog geen vingerafdruk van de kaart — de oogst legt hem bij zijn eerstvolgende start vast; de teller wordt nu niet teruggezet
+Kaart gebouwd: 1 codes, 2 paren → flywheel-index/declared-harvest-map.json
+
+stderr | src/__tests__/scripts/build-declared-harvest-map.test.ts > AC1 — droogloop is de standaard > stopt met een foutcode als de bronindex ontbreekt
+Bronindex flywheel-index/keurmerk-etiket-index.json ontbreekt of is onleesbaar — geen kaart gebouwd.
+
+stdout | src/__tests__/scripts/build-declared-harvest-map.test.ts > AC1 — droogloop is de standaard > AC6 — een geblokkeerde krimp schrijft niet en geeft een foutcode
+=== Declaratie-oogst-kaart ===
+  Modus              : ECHTE BOUW (--apply)
+  Bronindex          : flywheel-index/keurmerk-etiket-index.json (gebouwd 2026-08-19T10:00:00.000Z)
+  Bronomvang         : ? sleutels, ? GTINs met data
+  Uitsluitingen      :
+    veldsoort                  0 code(s), 0 paar/paren
+      reden: veldsoort NutritionalScore: de sleutel geeft A..E terwijl de referenties NUTRISCORE_A..E heten, en de eigen Nutri-Score-oogst zou dubbele items opleveren
+    zonderActieveReferentie    0 code(s), 0 paar/paren
+      reden: de oogst zoekt strikt binnen de eigen referentiepool van een code; zonder actieve referentie levert dat per definitie niets op. De vergelijking is HOOFDLETTERGEVOELIG, net als de matchquery van de oogst: een referentiecode met een andere schrijfwijze telt hier bewust niet mee, want hij zou daar ook nooit matchen
+    overstroming               0 code(s), 0 paar/paren
+      reden: overstroming — dezelfde twee codes die de volume-oogst uitsluit (queue_harvest.py, _DEFAULT_EXCLUDE_CODES)
+  Wacht op referentie: 0 code(s)
+  Kaart              : 1 codes, 2 producten, 2 paren
+  Krimpbescherming   : krimp: 2 paren tegenover 100 in de bestaande kaart (98.0% kleiner, grens 10%) — gebruik --force om dit bewust door te zetten
+  Teller van de oogst: het voortgangsbestand draagt nog geen vingerafdruk van de kaart — de oogst legt hem bij zijn eerstvolgende start vast; de teller wordt nu niet teruggezet
+
+stderr | src/__tests__/scripts/build-declared-harvest-map.test.ts > AC1 — droogloop is de standaard > AC6 — een geblokkeerde krimp schrijft niet en geeft een foutcode
+KRIMPBESCHERMING BLOKKEERT — de bestaande kaart blijft ongewijzigd.
+  Bewust doorzetten kan met --force.
+
+stdout | src/__tests__/scripts/build-declared-harvest-map.test.ts > AC1 — droogloop is de standaard > AC6 — --force zet de blokkade bewust opzij en schrijft wél
+=== Declaratie-oogst-kaart ===
+  Modus              : ECHTE BOUW (--apply)
+  Bronindex          : flywheel-index/keurmerk-etiket-index.json (gebouwd 2026-08-19T10:00:00.000Z)
+  Bronomvang         : ? sleutels, ? GTINs met data
+  Uitsluitingen      :
+    veldsoort                  0 code(s), 0 paar/paren
+      reden: veldsoort NutritionalScore: de sleutel geeft A..E terwijl de referenties NUTRISCORE_A..E heten, en de eigen Nutri-Score-oogst zou dubbele items opleveren
+    zonderActieveReferentie    0 code(s), 0 paar/paren
+      reden: de oogst zoekt strikt binnen de eigen referentiepool van een code; zonder actieve referentie levert dat per definitie niets op. De vergelijking is HOOFDLETTERGEVOELIG, net als de matchquery van de oogst: een referentiecode met een andere schrijfwijze telt hier bewust niet mee, want hij zou daar ook nooit matchen
+    overstroming               0 code(s), 0 paar/paren
+      reden: overstroming — dezelfde twee codes die de volume-oogst uitsluit (queue_harvest.py, _DEFAULT_EXCLUDE_CODES)
+  Wacht op referentie: 0 code(s)
+  Kaart              : 1 codes, 2 producten, 2 paren
+  Krimpbescherming   : krimp: 2 paren tegenover 100 in de bestaande kaart (98.0% kleiner, grens 10%) — bewust doorgezet met --force
+  Teller van de oogst: het voortgangsbestand draagt nog geen vingerafdruk van de kaart — de oogst legt hem bij zijn eerstvolgende start vast; de teller wordt nu niet teruggezet
+Kaart gebouwd: 1 codes, 2 paren → flywheel-index/declared-harvest-map.json
+
+stdout | src/__tests__/scripts/build-declared-harvest-map.test.ts > AC1 — droogloop is de standaard > AC6 — de droogloop geeft GEEN foutcode bij een geblokkeerde krimp
+=== Declaratie-oogst-kaart ===
+  Modus              : DROGE RUN (schrijft niets)
+  Bronindex          : flywheel-index/keurmerk-etiket-index.json (gebouwd 2026-08-19T10:00:00.000Z)
+  Bronomvang         : ? sleutels, ? GTINs met data
+  Uitsluitingen      :
+    veldsoort                  0 code(s), 0 paar/paren
+      reden: veldsoort NutritionalScore: de sleutel geeft A..E terwijl de referenties NUTRISCORE_A..E heten, en de eigen Nutri-Score-oogst zou dubbele items opleveren
+    zonderActieveReferentie    0 code(s), 0 paar/paren
+      reden: de oogst zoekt strikt binnen de eigen referentiepool van een code; zonder actieve referentie levert dat per definitie niets op. De vergelijking is HOOFDLETTERGEVOELIG, net als de matchquery van de oogst: een referentiecode met een andere schrijfwijze telt hier bewust niet mee, want hij zou daar ook nooit matchen
+    overstroming               0 code(s), 0 paar/paren
+      reden: overstroming — dezelfde twee codes die de volume-oogst uitsluit (queue_harvest.py, _DEFAULT_EXCLUDE_CODES)
+  Wacht op referentie: 0 code(s)
+  Kaart              : 1 codes, 2 producten, 2 paren
+  Krimpbescherming   : krimp: 2 paren tegenover 100 in de bestaande kaart (98.0% kleiner, grens 10%) — gebruik --force om dit bewust door te zetten
+  Teller van de oogst: het voortgangsbestand draagt nog geen vingerafdruk van de kaart — de oogst legt hem bij zijn eerstvolgende start vast; de teller wordt nu niet teruggezet
+Droge run — er is niets naar de opslag geschreven. LET OP: met --apply zou de krimpbescherming dit schrijven blokkeren; bewust doorzetten kan met --force.
+
+stdout | src/__tests__/scripts/build-declared-harvest-map.test.ts > her-review ronde 3 — een ONLEESBARE kaart is geen eerste run > weigert te schrijven en geeft een foutcode
+=== Declaratie-oogst-kaart ===
+  Modus              : ECHTE BOUW (--apply)
+  Bronindex          : flywheel-index/keurmerk-etiket-index.json (gebouwd 2026-08-19T10:00:00.000Z)
+  Bronomvang         : ? sleutels, ? GTINs met data
+  Uitsluitingen      :
+    veldsoort                  0 code(s), 0 paar/paren
+      reden: veldsoort NutritionalScore: de sleutel geeft A..E terwijl de referenties NUTRISCORE_A..E heten, en de eigen Nutri-Score-oogst zou dubbele items opleveren
+    zonderActieveReferentie    0 code(s), 0 paar/paren
+      reden: de oogst zoekt strikt binnen de eigen referentiepool van een code; zonder actieve referentie levert dat per definitie niets op. De vergelijking is HOOFDLETTERGEVOELIG, net als de matchquery van de oogst: een referentiecode met een andere schrijfwijze telt hier bewust niet mee, want hij zou daar ook nooit matchen
+    overstroming               0 code(s), 0 paar/paren
+      reden: overstroming — dezelfde twee codes die de volume-oogst uitsluit (queue_harvest.py, _DEFAULT_EXCLUDE_CODES)
+  Wacht op referentie: 0 code(s)
+  Kaart              : 1 codes, 2 producten, 2 paren
+
+stderr | src/__tests__/scripts/build-declared-harvest-map.test.ts > her-review ronde 3 — een ONLEESBARE kaart is geen eerste run > weigert te schrijven en geeft een foutcode
+  Krimpbescherming   : bestaande kaart ONLEESBAAR (onleesbare JSON) — niets geschreven. Dit is geen eerste run: overschrijven zou de krimpgrens overslaan. Bewust doorzetten kan met --force.
+
+stdout | src/__tests__/scripts/build-declared-harvest-map.test.ts > her-review ronde 3 — een ONLEESBARE kaart is geen eerste run > gaat wél door met --force, want dan is het een bewuste keuze
+=== Declaratie-oogst-kaart ===
+  Modus              : ECHTE BOUW (--apply)
+  Bronindex          : flywheel-index/keurmerk-etiket-index.json (gebouwd 2026-08-19T10:00:00.000Z)
+  Bronomvang         : ? sleutels, ? GTINs met data
+  Uitsluitingen      :
+    veldsoort                  0 code(s), 0 paar/paren
+      reden: veldsoort NutritionalScore: de sleutel geeft A..E terwijl de referenties NUTRISCORE_A..E heten, en de eigen Nutri-Score-oogst zou dubbele items opleveren
+    zonderActieveReferentie    0 code(s), 0 paar/paren
+      reden: de oogst zoekt strikt binnen de eigen referentiepool van een code; zonder actieve referentie levert dat per definitie niets op. De vergelijking is HOOFDLETTERGEVOELIG, net als de matchquery van de oogst: een referentiecode met een andere schrijfwijze telt hier bewust niet mee, want hij zou daar ook nooit matchen
+    overstroming               0 code(s), 0 paar/paren
+      reden: overstroming — dezelfde twee codes die de volume-oogst uitsluit (queue_harvest.py, _DEFAULT_EXCLUDE_CODES)
+  Wacht op referentie: 0 code(s)
+  Kaart              : 1 codes, 2 producten, 2 paren
+  Krimpbescherming   : bestaande kaart ONLEESBAAR (onleesbare JSON) — grens niet te bepalen.
+  Teller van de oogst: het voortgangsbestand draagt nog geen vingerafdruk van de kaart — de oogst legt hem bij zijn eerstvolgende start vast; de teller wordt nu niet teruggezet
+Kaart gebouwd: 1 codes, 2 paren → flywheel-index/declared-harvest-map.json
+
+stdout | src/__tests__/scripts/build-declared-harvest-map.test.ts > her-review ronde 3 — een ONLEESBARE kaart is geen eerste run > een ECHTE eerste run (geen kaart) mag gewoon schrijven
+=== Declaratie-oogst-kaart ===
+  Modus              : ECHTE BOUW (--apply)
+  Bronindex          : flywheel-index/keurmerk-etiket-index.json (gebouwd 2026-08-19T10:00:00.000Z)
+  Bronomvang         : ? sleutels, ? GTINs met data
+  Uitsluitingen      :
+    veldsoort                  0 code(s), 0 paar/paren
+      reden: veldsoort NutritionalScore: de sleutel geeft A..E terwijl de referenties NUTRISCORE_A..E heten, en de eigen Nutri-Score-oogst zou dubbele items opleveren
+    zonderActieveReferentie    0 code(s), 0 paar/paren
+      reden: de oogst zoekt strikt binnen de eigen referentiepool van een code; zonder actieve referentie levert dat per definitie niets op. De vergelijking is HOOFDLETTERGEVOELIG, net als de matchquery van de oogst: een referentiecode met een andere schrijfwijze telt hier bewust niet mee, want hij zou daar ook nooit matchen
+    overstroming               0 code(s), 0 paar/paren
+      reden: overstroming — dezelfde twee codes die de volume-oogst uitsluit (queue_harvest.py, _DEFAULT_EXCLUDE_CODES)
+  Wacht op referentie: 0 code(s)
+  Kaart              : 1 codes, 2 producten, 2 paren
+  Krimpbescherming   : nog geen bestaande kaart — niet van toepassing (eerste run).
+  Teller van de oogst: het voortgangsbestand draagt nog geen vingerafdruk van de kaart — de oogst legt hem bij zijn eerstvolgende start vast; de teller wordt nu niet teruggezet
+Kaart gebouwd: 1 codes, 2 paren → flywheel-index/declared-harvest-map.json
+
+ ✓ src/__tests__/scripts/build-declared-harvest-map.test.ts (55 tests) 31062ms
+   ✓ AC7 — de aandrijving is uitvoerbaar, niet alleen opgeschreven > stopt allebei de scripts bij MEER DAN EEN treffer in plaats van er een te gokken 10325ms
+   ✓ AC7 — de aandrijving is uitvoerbaar, niet alleen opgeschreven > stopt allebei de scripts als er GEEN container is 2498ms
+   ✓ AC7 — de aandrijving is uitvoerbaar, niet alleen opgeschreven > laat een onschrijfbaar logbestand de exitcode van het werk niet omdraaien 12983ms
+   ✓ AC7 — de aandrijving is uitvoerbaar, niet alleen opgeschreven > geeft het tijdsbudget uit de runbook echt aan de container mee 3778ms
+ ✓ src/__tests__/services/flywheel-data-quality-report.atdd.test.ts (11 tests) 521ms
+   ✓ Story 16.3 AC1 — buildDataQualityReport (groepering per GLN + periode + filter) > groepeert per GLN; GLN=null → groep "onbekend"; per geval GTIN/code/confidence/bronbestand 446ms
+ ✓ src/__tests__/scripts/build-keurmerk-index.test.ts (13 tests) 844ms
+   ✓ Story 19.3 — buildIndex (AC1: index + tellingen) > bouwt {fieldType/code → [{gtin,gln,labels}]} met tellingen per sleutel 629ms
+ ✓ src/__tests__/api/artwork-pipeline.routes.test.ts (65 tests) 28974ms
+   ✓ Artwork Pipeline Routes (ATDD — Epic 8) > POST /artwork-import/runs > should start an import run and return 202 with runId 4496ms
+   ✓ Artwork Pipeline Routes (ATDD — Epic 8) > GET /artwork/review-items/:id/crop-url > streams the crop bytes via /crop with the right content type 446ms
+   ✓ Artwork Pipeline Routes (ATDD — Epic 8) > GET /artwork/review-items/:id/crop-url > Story 12.19 — /source emits an X-Context-Window consistent with the extract 508ms
+   ✓ Artwork Pipeline Routes (ATDD — Epic 8) > GET /artwork/review-items/:id/crop-url > 20.17 AC1: een KLEIN kader levert nu een vergroot fragment (was byte-identiek) 765ms
+   ✓ Artwork Pipeline Routes (ATDD — Epic 8) > GET /artwork/review-items/:id/crop-url > 20.17 AC2: de opblaasfactor begrenst, niet de pixelgrens — ook bij een piepklein kader 1847ms
+   ✓ Artwork Pipeline Routes (ATDD — Epic 8) > GET /artwork/review-items/:id/crop-url > 20.17 AC2: een GROOT kader wordt nog steeds verkleind tot de pixelgrens 2173ms
+   ✓ Artwork Pipeline Routes (ATDD — Epic 8) > GET /artwork/review-items/:id/crop-url > 20.17 AC5: de context-window-header blijft schaal-ONAFHANKELIJK 2360ms
+   ✓ Artwork Pipeline Routes (ATDD — Epic 8) > GET /artwork/review-items/:id/crop-url > 20.17 AC2: onbruikbare instellingen vallen terug op de STANDAARD, niet op de ondergrens 3066ms
+   ✓ Artwork Pipeline Routes (ATDD — Epic 8) > GET /artwork/review-items/:id/crop-url > 20.17 AC2: de harde bovengrenzen klemmen werkelijk (2400 px en 4x) 2280ms
+   ✓ Artwork Pipeline Routes (ATDD — Epic 8) > GET /artwork/review-items/:id/crop-url > 20.17 AC5: dezelfde uitsnede levert dezelfde artwork-fracties bij 900 én bij 1600 1519ms
+   ✓ Artwork Pipeline Routes (ATDD — Epic 8) > GET /artwork/review-items/:id/crop-url > 20.17: doorzichtig bron-artwork wordt WIT, niet zwart 713ms
+   ✓ Artwork Pipeline Routes (ATDD — Epic 8) > GET /artwork/review-items/:id/crop-url > 20.17 (her-review N5): een te lage instelling wordt op de ondergrens geklemd 439ms
+   ✓ Artwork Pipeline Routes (ATDD — Epic 8) > GET /artwork/review-items/:id/crop-url > 20.17 AC4: de ETag van /source draagt de instellingen, zodat 304 geen oud fragment vasthoudt 869ms
+   ✓ Artwork Pipeline Routes (ATDD — Epic 8) > GET /artwork/review-items/:id/crop-url > 20.6 AC1: /marked stuurt eveneens no-cache + ETag (box weerspiegelt bbox) 433ms
+   ✓ Artwork Pipeline Routes (ATDD — Epic 8) > Accept/reject doorzet of review items > deactivates the review-confirmed reference when the item is reopened 617ms
+   ✓ Artwork Pipeline Routes (ATDD — Epic 8) > Accept/reject doorzet of review items > catch-up processes pre-existing accepted items into training data 485ms
+   ✓ Artwork Pipeline Routes (ATDD — Epic 8) > Story 14.1 — reviewbeslissing → gold-set/hard-negative > Story 20.10: reject "geen-keurmerk" op een KADERLOOS item → 200, registers overgeslagen 319ms
+   ✓ Artwork Pipeline Routes (ATDD — Epic 8) > Import flow PDF detection (Story 8.2 AC1) > does NOT rasterize a non-PDF (JPG) import 307ms
+ ✓ src/__tests__/api/rate-limit.routes.test.ts (5 tests) 6941ms
+   ✓ Rate limiting — 429 mapping + thumbnail-flood exclusion (Story 12.13) > AC2: the thumbnail route survives a realistic bulk-fanout (a full 80-row picker open) without hitting 429 870ms
+   ✓ Rate limiting — 429 mapping + thumbnail-flood exclusion (Story 12.13) > AC3: the thumbnail route is bounded, not fully unmetered — its own higher budget still trips 429 eventually 5409ms
+   ✓ Rate limiting — 429 mapping + thumbnail-flood exclusion (Story 12.13) > AC2/AC3: the thumbnail route's own (higher) budget does not leak into or borrow from non-excluded routes 329ms
+ ✓ src/__tests__/services/storage-adapter.test.ts (18 tests) 58ms
+ ✓ src/__tests__/api/flywheel-review-redirect.routes.test.ts (4 tests) 2767ms
+   ✓ Story 19.12 — reviewstation-accept → directe referentie > Story 19.12: met vlag AAN registreert accept direct (review-confirmed) en enqueue-t GEEN nominatie 1998ms
+   ✓ Story 19.12 — reviewstation-accept → directe referentie > met vlag UIT: directe registratie ongewijzigd, geen nominatie 312ms
+ ❯ src/__tests__/api/flywheel-thresholds-pause.routes.test.ts (12 tests | 1 failed) 6954ms
+   × GET /api/v1/flywheel/thresholds (AC 2) > happy path → 200 met per-methode-view + historie 5143ms
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+   ✓ GET /api/v1/flywheel/thresholds (AC 2) > 403 voor niet-ADMIN 737ms
+ ✓ src/__tests__/services/flywheel-config.test.ts (15 tests) 1021ms
+ ✓ src/__tests__/services/flywheel-promotion.test.ts (8 tests) 80ms
+ ❯ src/__tests__/api/flywheel-batch-detail.routes.test.ts (14 tests | 1 failed) 8812ms
+   × GET /api/v1/flywheel/batches/:id (AC1) > happy path → 200 met detail 5051ms
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+   ✓ GET /api/v1/flywheel/batches/:id (AC1) > onbekende batch → 404 1548ms
+   ✓ POST /api/v1/flywheel/candidates/:id/decision (AC2/AC3) > vrijgeven happy path → 200 candidate 397ms
+   ✓ POST /api/v1/flywheel/candidates/:id/decision (AC2/AC3) > ongeldige decision → 400 zonder de service aan te roepen 307ms
+   ✓ POST /api/v1/flywheel/candidates/:id/decision (AC2/AC3) > onbekende kandidaat → 404 372ms
+   ✓ POST /api/v1/flywheel/batches/:id/close (AC4) > onbekende batch → 404 327ms
+ ✓ src/__tests__/api/health.routes.test.ts (11 tests) 2529ms
+   ✓ Health Routes > GET /health > should return basic health status 1334ms
+   ✓ Health Routes > GET /health/live > should always return alive 320ms
+ ✓ src/__tests__/services/flywheel-gold-set.test.ts (9 tests) 46ms
+ ✓ src/__tests__/api/flywheel.routes.test.ts (9 tests) 5259ms
+   ✓ Story 13.2 — GET /api/v1/flywheel/overview (AC7) > geeft de gemiste-nominatie-teller met alle redenen terug 3697ms
+   ✓ Story 13.2 — GET /api/v1/flywheel/overview (AC7) > ontsluit lastSuccessfulPromotionRun (Story 13.4, AC9) 592ms
+   ✓ Story 13.2 — GET /api/v1/flywheel/overview (AC7) > GET /flywheel/quarantine-count levert alleen de count (badge, geen overview-aggregatie) 437ms
+ ✓ src/__tests__/services/flywheel-worker-scheduler.test.ts (7 tests) 1370ms
+   ✓ registerFlywheelWorker (AC2 — concurrency 1, AD-6) > maakt de worker op de flywheel-queue met concurrency 1 1238ms
+ ✓ src/__tests__/services/flywheel-pause.test.ts (9 tests) 74ms
+ ✓ src/__tests__/services/flywheel-rollback.test.ts (9 tests) 35ms
+ ✓ src/__tests__/services/flywheel-batch-detail.test.ts (6 tests) 28ms
+ ✓ src/__tests__/scripts/seed-gold-set.test.ts (8 tests) 130ms
+ ✓ src/__tests__/api/flywheel-bootstrap-queue.routes.test.ts (13 tests) 3915ms
+   ✓ GET /api/v1/flywheel/bootstrap-queue (AC2) > happy path → 200 met effectief geordende lijst 2197ms
+   ✓ PATCH /api/v1/flywheel/bootstrap-queue/:code (AC2) > onbekende code → 404 316ms
+   ✓ POST /api/v1/flywheel/bootstrap-queue (AC2 + taak 5) > onbekende action → 400 404ms
+ ✓ src/__tests__/api/model-approval.routes.test.ts (5 tests) 3724ms
+   ✓ Model Approval Routes (ATDD RED — Story 9.5) > GET /models/approval-queue > should list gate-passing challengers with full evaluation report 1622ms
+   ✓ Model Approval Routes (ATDD RED — Story 9.5) > GET /models/approval-queue > should exclude challengers that failed the gate 458ms
+   ✓ Model Approval Routes (ATDD RED — Story 9.5) > POST /models/:modelId/activate — human gate (NFR5) > should refuse activation by service accounts with 403 886ms
+   ✓ Model Approval Routes (ATDD RED — Story 9.5) > POST /models/:modelId/activate — human gate (NFR5) > should log every activation with user and timestamp 366ms
+   ✓ Model Approval Routes (ATDD RED — Story 9.5) > POST /models/:modelId/activate — human gate (NFR5) > should refuse anonymous activation with 401 and write no audit log 380ms
+ ✓ src/__tests__/services/flywheel-crosscheck-hook.test.ts (5 tests) 2587ms
+   ✓ Story 13.2 — nominateAutoAccepted (worker-pad) > nomineert exact één kandidaat + embedding uit auto-accepted (AC2) 1218ms
+   ✓ Story 13.2 — nominateAutoAccepted (worker-pad) > levert geen duplicaat bij herverwerking zelfde GTIN (NFR-4) 459ms
+   ✓ Story 13.2 — enqueueNominations (request-pad, NFR-3/NFR-7) > enqueue-t i.p.v. inline te nomineren op het request-pad 576ms
+ ✓ src/__tests__/api/verify-declared.routes.test.ts (7 tests) 4437ms
+   ✓ Story 12.8 — verify-declared routes > AC1: POST returns 202 { runId } for the system API key (n8n) 507ms
+   ✓ Story 12.8 — verify-declared routes > AC1: a JWT-authenticated dashboard user can also start a run 3837ms
+ ✓ src/__tests__/services/flywheel-review-routing-19-8.atdd.test.ts (3 tests) 13ms
+ ✓ src/__tests__/services/flywheel-coverage-overview.test.ts (6 tests) 73ms
+ ✓ src/__tests__/scripts/backfill-reference-logo-field-type.test.ts (6 tests) 12ms
+ ✓ src/__tests__/services/flywheel-watchdog.test.ts (7 tests) 58ms
+ ✓ src/__tests__/api/reference-logos-example-fallback.20-8.test.ts (5 tests) 427ms
+ ✓ src/__tests__/api/flywheel-rollback-export.routes.test.ts (9 tests) 4106ms
+   ✓ POST /api/v1/flywheel/batches/:id/rollback (AC 2) > happy path → 200 rolled_back 2982ms
+ ✓ src/__tests__/scripts/seed-bootstrap-queue.test.ts (8 tests) 52ms
+ ✓ src/__tests__/services/field-type-mapping.test.ts (10 tests) 26ms
+ ✓ src/__tests__/scripts/backfill-reference-manifest.test.ts (17 tests) 212ms
+ ✓ src/__tests__/api/flywheel-data-quality-report.routes.test.ts (6 tests) 2371ms
+   ✓ GET /api/v1/flywheel/reports/data-quality (Story 16.3 AC1) > JSON-respons → 200 met rapportmodel 1957ms
+ ✓ src/__tests__/api/reference-logos-example-rank-20-13.test.ts (9 tests) 69ms
+ ✓ src/__tests__/services/flywheel-outlier-decision.test.ts (4 tests) 264ms
+ ✓ src/__tests__/services/flywheel-standstill.test.ts (5 tests) 51ms
+ ✓ src/__tests__/services/flywheel-reembed.test.ts (4 tests) 188ms
+ ✓ src/__tests__/services/flywheel-pause-control.test.ts (4 tests) 13ms
+ ✓ src/__tests__/services/flywheel-hard-negative-export.test.ts (4 tests) 106ms
+ ✓ src/__tests__/api/flywheel-outlier-decision.routes.test.ts (6 tests) 2824ms
+   ✓ POST /api/v1/flywheel/outliers/:id/decision (AC6) > behouden happy path → 200 2254ms
+ ✓ src/__tests__/services/t3777-aliases.test.ts (12 tests) 17ms
+ ✓ src/__tests__/services/flywheel-gln-coverage.test.ts (4 tests) 31ms
+ ✓ src/__tests__/services/flywheel-pause-scope.test.ts (2 tests) 18ms
+ ✓ src/__tests__/services/flywheel-baseline-write.test.ts (5 tests) 37ms
+ ↓ src/__tests__/services/flywheel-bootstrap.atdd.test.ts (10 tests | 10 skipped)
+ ✓ src/__tests__/services/flywheel-kruischeck-hook.test.ts (3 tests) 979ms
+   ✓ Story 13.2 — nominateFromKruischeck > nomineert synchroon met beide vlaggen aan (AC4) 514ms
+   ✓ Story 13.2 — nominateFromKruischeck > enqueue-t op het request-pad i.p.v. inline te nomineren (NFR-3/NFR-7) 405ms
+ ↓ src/__tests__/services/flywheel-goldset-hygiene.atdd.test.ts (13 tests | 13 skipped)
+ ✓ src/__tests__/services/flywheel-reference-path-guard.test.ts (10 tests) 52ms
+ ↓ src/__tests__/services/flywheel-promotion-loop.atdd.test.ts (9 tests | 9 skipped)
+ ↓ src/__tests__/services/flywheel-mismatch.atdd.test.ts (7 tests | 7 skipped)
+ ✓ src/__tests__/services/flywheel-overview-compose.test.ts (2 tests) 30ms
+ ↓ src/__tests__/services/flywheel-nomination.atdd.test.ts (8 tests | 8 skipped)
+ ↓ src/__tests__/services/flywheel-quality-gate.atdd.test.ts (7 tests | 7 skipped)
+ ✓ src/__tests__/api/images.routes.test.ts (3 tests) 1307ms
+   ✓ Image Library Routes — artwork-source exclusion (Story 8.6) > excludes artwork-source records from the listing query 850ms
+   ✓ Image Library Routes — artwork-source exclusion (Story 8.6) > excludes artwork-source records from the Total Images count 403ms
+ ↓ src/__tests__/services/flywheel-rollback-pause.atdd.test.ts (6 tests | 6 skipped)
+ ✓ src/__tests__/api/flywheel-workload-traceability.routes.test.ts (4 tests) 1938ms
+   ✓ GET /api/v1/flywheel/bootstrap-queue/:code/traceability (AC3) > happy path → 200 met GTINs + verwerkingen 1693ms
+ ✓ src/__tests__/services/flywheel-bootstrap-threshold-19-6.atdd.test.ts (2 tests) 11ms
+ ✓ src/__tests__/services/reference-registration-contract.test.ts (15 tests) 32ms
+ ↓ src/__tests__/api/flywheel.routes.atdd.test.ts (4 tests | 4 skipped)
+ ↓ src/__tests__/services/flywheel-goldset-store.atdd.test.ts (3 tests | 3 skipped)
+ ✓ src/__tests__/services/flywheel-baseline.test.ts (3 tests) 4ms
+ ✓ src/__tests__/scripts/seed-reference-logos-from-guide.test.ts (3 tests) 7ms
+stdout | src/__tests__/scripts/seed-reference-category.test.ts > seed writes canonical metadata for every code
+Reference library seed complete: 20 created, 0 already present.
+
+stdout | src/__tests__/scripts/seed-reference-category.test.ts > existing seeded references repair metadata without image work or new rows
+Reference library seed complete: 0 created, 20 already present.
+
+ ❯ src/__tests__/scripts/seed-reference-category.test.ts (2 tests | 1 failed) 94ms
+   × existing seeded references repair metadata without image work or new rows 78ms
+     → expected "spy" to be called 20 times, but got 0 times
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/__tests__/api/flywheel-batch-detail.routes.test.ts > GET /api/v1/flywheel/batches/:id (AC1) > happy path → 200 met detail
+ FAIL  src/__tests__/api/flywheel-thresholds-pause.routes.test.ts > GET /api/v1/flywheel/thresholds (AC 2) > happy path → 200 met per-methode-view + historie
+ FAIL  src/__tests__/services/artwork-detection-orchestration.test.ts > Artwork Detection Orchestration (8-3O) > Run management > should write gln on import so 8-3D can resolve declarations (S3/D1)
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  src/__tests__/scripts/seed-reference-category.test.ts > existing seeded references repair metadata without image work or new rows
+AssertionError: expected "spy" to be called 20 times, but got 0 times
+ ❯ src/__tests__/scripts/seed-reference-category.test.ts:23:39
+     21|   vi.mocked(prisma.referenceLogo.findUnique).mockResolvedValue({ id: '…
+     22|   await seed.seedReferenceLogos();
+     23|   expect(prisma.referenceLogo.update).toHaveBeenCalledTimes(20);
+       |                                       ^
+     24|   for (const call of vi.mocked(prisma.referenceLogo.update).mock.calls…
+     25|     expect(Object.keys(call[0].data).sort()).toEqual(['fieldType', 'gs…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ Test Files  4 failed | 89 passed | 9 skipped (102)
+      Tests  4 failed | 1174 passed | 2 skipped | 67 todo (1247)
+   Start at  15:11:09
+   Duration  63.86s (transform 43.04s, setup 16.66s, collect 148.04s, tests 243.39s, environment 72ms, prepare 91.86s)

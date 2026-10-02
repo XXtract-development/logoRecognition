@@ -1,0 +1,36 @@
+The CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.
+
+ RUN  v2.1.8 /Users/frisovanweelden/Documents/projects/logoRecognition/apps/api
+
+stdout | src/__tests__/scripts/approved-manifest-validation.temp.test.ts > validates supplied 319-row manifest with no database work
+Validated manifest: 319 exact updates. Dry run; no writes.
+
+ ✓ src/__tests__/scripts/approved-manifest-validation.temp.test.ts (1 test) 79ms
+stdout | src/__tests__/scripts/seed-reference-category.test.ts > seed writes canonical metadata for every code
+Reference library seed complete: 20 created, 0 already present.
+
+stdout | src/__tests__/scripts/seed-reference-category.test.ts > existing seeded references repair metadata without image work or new rows
+Reference library seed complete: 0 created, 20 already present.
+
+ ❯ src/__tests__/scripts/seed-reference-category.test.ts (2 tests | 1 failed) 77ms
+   × existing seeded references repair metadata without image work or new rows 52ms
+     → expected "spy" to be called 20 times, but got 0 times
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/__tests__/scripts/seed-reference-category.test.ts > existing seeded references repair metadata without image work or new rows
+AssertionError: expected "spy" to be called 20 times, but got 0 times
+ ❯ src/__tests__/scripts/seed-reference-category.test.ts:23:39
+     21|   vi.mocked(prisma.referenceLogo.findUnique).mockResolvedValue({ id: '…
+     22|   await seed.seedReferenceLogos();
+     23|   expect(prisma.referenceLogo.update).toHaveBeenCalledTimes(20);
+       |                                       ^
+     24|   for (const call of vi.mocked(prisma.referenceLogo.update).mock.calls…
+     25|     expect(Object.keys(call[0].data).sort()).toEqual(['fieldType', 'gs…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  1 failed | 2 passed (3)
+   Start at  15:11:59
+   Duration  5.29s (transform 1.54s, setup 2.27s, collect 1.42s, tests 155ms, environment 1ms, prepare 2.62s)

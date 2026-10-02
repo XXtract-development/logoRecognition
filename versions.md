@@ -1,5 +1,21 @@
 # Versiegeschiedenis
 
+## 2 oktober 2026
+
+**Betrouwbaardere controles vóór een nieuwe versie**
+- De controles gebruiken weer een eigen tijdelijke opslagomgeving.
+- Fouten in de herkenningscontroles houden een nieuwe versie tegen.
+- Een trage catalogus houdt de controles vóór een vrijgave niet meer op.
+
+---
+
+**Juiste categorie voor bevestigde voorbeeldafbeeldingen**
+- Bevestigde logo’s worden voortaan bij hun juiste categorie opgeslagen, zoals voedingsscore, dieet, gebruiksaanwijzing of gevaarpictogram.
+- Opnieuw bevestigen van dezelfde afbeelding herstelt de categorie zonder een dubbel voorbeeld toe te voegen.
+
+---
+
+
 ## 20 augustus 2026
 
 **De declaratie-oogst kan weer draaien, en rekent niet meer nachtenlang aan kansloze producten**

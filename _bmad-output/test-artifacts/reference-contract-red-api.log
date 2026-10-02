@@ -1,0 +1,570 @@
+The CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.
+
+ RUN  v2.1.8 /Users/frisovanweelden/Documents/projects/logoRecognition/apps/api
+
+stdout | src/__tests__/scripts/seed-reference-category.test.ts
+Reference library seed complete: 20 created, 0 already present.
+
+ ❯ src/__tests__/scripts/seed-reference-category.test.ts (1 test | 1 failed) 28ms
+   × seed writes canonical metadata for every code 20ms
+     → seedReferenceLogos is not a function
+ ❯ src/__tests__/services/reference-registration-contract.test.ts (14 tests | 14 failed) 171ms
+   × reference registration contract > sends resolved fields for NUTRISCORE_A 36ms
+     → expected "spy" to be called with arguments: [ …(2) ]
+
+Received:
+
+  1st spy call:
+
+  Array [
+    "/ml/artwork/register-reference",
+    Object {
+      "crop_path": "crop.png",
+-     "field_type": "NutritionalScore",
+-     "gs1_field": "nutritionalScore",
+-     "t3777_code": "NUTRISCORE_A",
++     "t3777_code": " nutriscore_a ",
+    },
+  ]
+
+
+Number of calls: 1
+
+   × reference registration contract > sends resolved fields for NUTRISCORE_B 55ms
+     → expected "spy" to be called with arguments: [ …(2) ]
+
+Received:
+
+  1st spy call:
+
+  Array [
+    "/ml/artwork/register-reference",
+    Object {
+      "crop_path": "crop.png",
+-     "field_type": "NutritionalScore",
+-     "gs1_field": "nutritionalScore",
+-     "t3777_code": "NUTRISCORE_B",
++     "t3777_code": " nutriscore_b ",
+    },
+  ]
+
+
+Number of calls: 1
+
+   × reference registration contract > sends resolved fields for NUTRISCORE_C 15ms
+     → expected "spy" to be called with arguments: [ …(2) ]
+
+Received:
+
+  1st spy call:
+
+  Array [
+    "/ml/artwork/register-reference",
+    Object {
+      "crop_path": "crop.png",
+-     "field_type": "NutritionalScore",
+-     "gs1_field": "nutritionalScore",
+-     "t3777_code": "NUTRISCORE_C",
++     "t3777_code": " nutriscore_c ",
+    },
+  ]
+
+
+Number of calls: 1
+
+   × reference registration contract > sends resolved fields for NUTRISCORE_D 14ms
+     → expected "spy" to be called with arguments: [ …(2) ]
+
+Received:
+
+  1st spy call:
+
+  Array [
+    "/ml/artwork/register-reference",
+    Object {
+      "crop_path": "crop.png",
+-     "field_type": "NutritionalScore",
+-     "gs1_field": "nutritionalScore",
+-     "t3777_code": "NUTRISCORE_D",
++     "t3777_code": " nutriscore_d ",
+    },
+  ]
+
+
+Number of calls: 1
+
+   × reference registration contract > sends resolved fields for NUTRISCORE_E 6ms
+     → expected "spy" to be called with arguments: [ …(2) ]
+
+Received:
+
+  1st spy call:
+
+  Array [
+    "/ml/artwork/register-reference",
+    Object {
+      "crop_path": "crop.png",
+-     "field_type": "NutritionalScore",
+-     "gs1_field": "nutritionalScore",
+-     "t3777_code": "NUTRISCORE_E",
++     "t3777_code": " nutriscore_e ",
+    },
+  ]
+
+
+Number of calls: 1
+
+   × reference registration contract > sends resolved fields for VEGAN 5ms
+     → expected "spy" to be called with arguments: [ …(2) ]
+
+Received:
+
+  1st spy call:
+
+  Array [
+    "/ml/artwork/register-reference",
+    Object {
+      "crop_path": "crop.png",
+-     "field_type": "DietTypeCode",
+-     "gs1_field": "dietTypeCode",
+-     "t3777_code": "VEGAN",
++     "t3777_code": " vegan ",
+    },
+  ]
+
+
+Number of calls: 1
+
+   × reference registration contract > sends resolved fields for AISE_1 2ms
+     → expected "spy" to be called with arguments: [ …(2) ]
+
+Received:
+
+  1st spy call:
+
+  Array [
+    "/ml/artwork/register-reference",
+    Object {
+      "crop_path": "crop.png",
+-     "field_type": "EU_consumerUsageLabelCodeList",
+-     "gs1_field": "enumerationValue",
+-     "t3777_code": "AISE_1",
++     "t3777_code": " aise_1 ",
+    },
+  ]
+
+
+Number of calls: 1
+
+   × reference registration contract > sends resolved fields for FLAME 6ms
+     → expected "spy" to be called with arguments: [ …(2) ]
+
+Received:
+
+  1st spy call:
+
+  Array [
+    "/ml/artwork/register-reference",
+    Object {
+      "crop_path": "crop.png",
+-     "field_type": "GHSSymbolDescriptionCode",
+-     "gs1_field": "gHSSymbolDescriptionCode",
+-     "t3777_code": "FLAME",
++     "t3777_code": " flame ",
+    },
+  ]
+
+
+Number of calls: 1
+
+   × reference registration contract > sends resolved fields for UNKNOWN_VALID 10ms
+     → expected "spy" to be called with arguments: [ …(2) ]
+
+Received:
+
+  1st spy call:
+
+  Array [
+    "/ml/artwork/register-reference",
+    Object {
+      "crop_path": "crop.png",
+-     "field_type": "PackagingMarkedLabelAccreditationCode",
+-     "gs1_field": "packagingMarkedLabelAccreditationCode",
+-     "t3777_code": "UNKNOWN_VALID",
++     "t3777_code": " unknown_valid ",
+    },
+  ]
+
+
+Number of calls: 1
+
+   × reference registration contract > rejects invalid code "" before HTTP 8ms
+     → promise resolved "{ added: true, reason: 'added' }" instead of rejecting
+   × reference registration contract > rejects invalid code "  " before HTTP 4ms
+     → promise resolved "{ added: true, reason: 'added' }" instead of rejecting
+   × reference registration contract > rejects invalid code null before HTTP 2ms
+     → promise resolved "{ added: true, reason: 'added' }" instead of rejecting
+   × reference registration contract > rejects invalid code 42 before HTTP 1ms
+     → promise resolved "{ added: true, reason: 'added' }" instead of rejecting
+   × reference registration contract > rejects invalid code {} before HTTP 2ms
+     → promise resolved "{ added: true, reason: 'added' }" instead of rejecting
+ ❯ src/__tests__/scripts/backfill-reference-manifest.test.ts (13 tests | 3 failed) 27ms
+   × approved backfill exact scope > skips changed preconditions: {"t3777_code":"VEGAN"} 13ms
+     → expected 'written' to be 'skipped-race' // Object.is equality
+   × approved backfill exact scope > skips changed preconditions: {"active":false} 2ms
+     → expected 'written' to be 'skipped-race' // Object.is equality
+   × approved backfill exact scope > accepts exact approved manifest 1ms
+     → validateManifest is not a function
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 18 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/__tests__/scripts/backfill-reference-manifest.test.ts > approved backfill exact scope > skips changed preconditions: {"t3777_code":"VEGAN"}
+ FAIL  src/__tests__/scripts/backfill-reference-manifest.test.ts > approved backfill exact scope > skips changed preconditions: {"active":false}
+AssertionError: expected 'written' to be 'skipped-race' // Object.is equality
+
+Expected: "skipped-race"
+Received: "written"
+
+ ❯ src/__tests__/scripts/backfill-reference-manifest.test.ts:25:57
+     23|   it.each([{ t3777_code: 'VEGAN' }, { active: false }, { field_type: '…
+     24|     query.mockResolvedValue([{ t3777_code: 'NUTRISCORE_A', active: tru…
+     25|     expect(await sandbox.exports.probeApplyOne(item())).toBe('skipped-…
+       |                                                         ^
+     26|     expect(update).not.toHaveBeenCalled();
+     27|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/18]⎯
+
+ FAIL  src/__tests__/scripts/backfill-reference-manifest.test.ts > approved backfill exact scope > accepts exact approved manifest
+TypeError: validateManifest is not a function
+ ❯ src/__tests__/scripts/backfill-reference-manifest.test.ts:36:30
+     34|   it('accepts exact approved manifest', () => {
+     35|     const manifest = { version: 1, items: [item()] };
+     36|     expect((backfill as any).validateManifest(manifest)).toEqual(manif…
+       |                              ^
+     37|   });
+     38|   it.each(['duplicate', 'target', 'inactive', 'action', 'missing-code'…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/18]⎯
+
+ FAIL  src/__tests__/scripts/seed-reference-category.test.ts > seed writes canonical metadata for every code
+TypeError: seedReferenceLogos is not a function
+ ❯ src/__tests__/scripts/seed-reference-category.test.ts:8:23
+      6| import { resolveFieldType } from '../../services/field-type-mapping';
+      7| it('seed writes canonical metadata for every code', async () => {
+      8|   await (seed as any).seedReferenceLogos();
+       |                       ^
+      9|   for (const call of vi.mocked(prisma.referenceLogo.create).mock.calls…
+     10|     const data = call[0].data;
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/18]⎯
+
+ FAIL  src/__tests__/services/reference-registration-contract.test.ts > reference registration contract > sends resolved fields for NUTRISCORE_A
+AssertionError: expected "spy" to be called with arguments: [ …(2) ]
+
+Received:
+
+  1st spy call:
+
+  Array [
+    "/ml/artwork/register-reference",
+    Object {
+      "crop_path": "crop.png",
+-     "field_type": "NutritionalScore",
+-     "gs1_field": "nutritionalScore",
+-     "t3777_code": "NUTRISCORE_A",
++     "t3777_code": " nutriscore_a ",
+    },
+  ]
+
+
+Number of calls: 1
+
+ ❯ src/__tests__/services/reference-registration-contract.test.ts:13:18
+     11|     const resolved = resolveFieldType(code);
+     12|     await mlClient.registerReference('crop.png', ` ${code.toLowerCase(…
+     13|     expect(post).toHaveBeenCalledWith('/ml/artwork/register-reference'…
+       |                  ^
+     14|       crop_path: 'crop.png', t3777_code: code, field_type: resolved.fi…
+     15|     });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/18]⎯
+
+ FAIL  src/__tests__/services/reference-registration-contract.test.ts > reference registration contract > sends resolved fields for NUTRISCORE_B
+AssertionError: expected "spy" to be called with arguments: [ …(2) ]
+
+Received:
+
+  1st spy call:
+
+  Array [
+    "/ml/artwork/register-reference",
+    Object {
+      "crop_path": "crop.png",
+-     "field_type": "NutritionalScore",
+-     "gs1_field": "nutritionalScore",
+-     "t3777_code": "NUTRISCORE_B",
++     "t3777_code": " nutriscore_b ",
+    },
+  ]
+
+
+Number of calls: 1
+
+ ❯ src/__tests__/services/reference-registration-contract.test.ts:13:18
+     11|     const resolved = resolveFieldType(code);
+     12|     await mlClient.registerReference('crop.png', ` ${code.toLowerCase(…
+     13|     expect(post).toHaveBeenCalledWith('/ml/artwork/register-reference'…
+       |                  ^
+     14|       crop_path: 'crop.png', t3777_code: code, field_type: resolved.fi…
+     15|     });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/18]⎯
+
+ FAIL  src/__tests__/services/reference-registration-contract.test.ts > reference registration contract > sends resolved fields for NUTRISCORE_C
+AssertionError: expected "spy" to be called with arguments: [ …(2) ]
+
+Received:
+
+  1st spy call:
+
+  Array [
+    "/ml/artwork/register-reference",
+    Object {
+      "crop_path": "crop.png",
+-     "field_type": "NutritionalScore",
+-     "gs1_field": "nutritionalScore",
+-     "t3777_code": "NUTRISCORE_C",
++     "t3777_code": " nutriscore_c ",
+    },
+  ]
+
+
+Number of calls: 1
+
+ ❯ src/__tests__/services/reference-registration-contract.test.ts:13:18
+     11|     const resolved = resolveFieldType(code);
+     12|     await mlClient.registerReference('crop.png', ` ${code.toLowerCase(…
+     13|     expect(post).toHaveBeenCalledWith('/ml/artwork/register-reference'…
+       |                  ^
+     14|       crop_path: 'crop.png', t3777_code: code, field_type: resolved.fi…
+     15|     });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/18]⎯
+
+ FAIL  src/__tests__/services/reference-registration-contract.test.ts > reference registration contract > sends resolved fields for NUTRISCORE_D
+AssertionError: expected "spy" to be called with arguments: [ …(2) ]
+
+Received:
+
+  1st spy call:
+
+  Array [
+    "/ml/artwork/register-reference",
+    Object {
+      "crop_path": "crop.png",
+-     "field_type": "NutritionalScore",
+-     "gs1_field": "nutritionalScore",
+-     "t3777_code": "NUTRISCORE_D",
++     "t3777_code": " nutriscore_d ",
+    },
+  ]
+
+
+Number of calls: 1
+
+ ❯ src/__tests__/services/reference-registration-contract.test.ts:13:18
+     11|     const resolved = resolveFieldType(code);
+     12|     await mlClient.registerReference('crop.png', ` ${code.toLowerCase(…
+     13|     expect(post).toHaveBeenCalledWith('/ml/artwork/register-reference'…
+       |                  ^
+     14|       crop_path: 'crop.png', t3777_code: code, field_type: resolved.fi…
+     15|     });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/18]⎯
+
+ FAIL  src/__tests__/services/reference-registration-contract.test.ts > reference registration contract > sends resolved fields for NUTRISCORE_E
+AssertionError: expected "spy" to be called with arguments: [ …(2) ]
+
+Received:
+
+  1st spy call:
+
+  Array [
+    "/ml/artwork/register-reference",
+    Object {
+      "crop_path": "crop.png",
+-     "field_type": "NutritionalScore",
+-     "gs1_field": "nutritionalScore",
+-     "t3777_code": "NUTRISCORE_E",
++     "t3777_code": " nutriscore_e ",
+    },
+  ]
+
+
+Number of calls: 1
+
+ ❯ src/__tests__/services/reference-registration-contract.test.ts:13:18
+     11|     const resolved = resolveFieldType(code);
+     12|     await mlClient.registerReference('crop.png', ` ${code.toLowerCase(…
+     13|     expect(post).toHaveBeenCalledWith('/ml/artwork/register-reference'…
+       |                  ^
+     14|       crop_path: 'crop.png', t3777_code: code, field_type: resolved.fi…
+     15|     });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/18]⎯
+
+ FAIL  src/__tests__/services/reference-registration-contract.test.ts > reference registration contract > sends resolved fields for VEGAN
+AssertionError: expected "spy" to be called with arguments: [ …(2) ]
+
+Received:
+
+  1st spy call:
+
+  Array [
+    "/ml/artwork/register-reference",
+    Object {
+      "crop_path": "crop.png",
+-     "field_type": "DietTypeCode",
+-     "gs1_field": "dietTypeCode",
+-     "t3777_code": "VEGAN",
++     "t3777_code": " vegan ",
+    },
+  ]
+
+
+Number of calls: 1
+
+ ❯ src/__tests__/services/reference-registration-contract.test.ts:13:18
+     11|     const resolved = resolveFieldType(code);
+     12|     await mlClient.registerReference('crop.png', ` ${code.toLowerCase(…
+     13|     expect(post).toHaveBeenCalledWith('/ml/artwork/register-reference'…
+       |                  ^
+     14|       crop_path: 'crop.png', t3777_code: code, field_type: resolved.fi…
+     15|     });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/18]⎯
+
+ FAIL  src/__tests__/services/reference-registration-contract.test.ts > reference registration contract > sends resolved fields for AISE_1
+AssertionError: expected "spy" to be called with arguments: [ …(2) ]
+
+Received:
+
+  1st spy call:
+
+  Array [
+    "/ml/artwork/register-reference",
+    Object {
+      "crop_path": "crop.png",
+-     "field_type": "EU_consumerUsageLabelCodeList",
+-     "gs1_field": "enumerationValue",
+-     "t3777_code": "AISE_1",
++     "t3777_code": " aise_1 ",
+    },
+  ]
+
+
+Number of calls: 1
+
+ ❯ src/__tests__/services/reference-registration-contract.test.ts:13:18
+     11|     const resolved = resolveFieldType(code);
+     12|     await mlClient.registerReference('crop.png', ` ${code.toLowerCase(…
+     13|     expect(post).toHaveBeenCalledWith('/ml/artwork/register-reference'…
+       |                  ^
+     14|       crop_path: 'crop.png', t3777_code: code, field_type: resolved.fi…
+     15|     });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/18]⎯
+
+ FAIL  src/__tests__/services/reference-registration-contract.test.ts > reference registration contract > sends resolved fields for FLAME
+AssertionError: expected "spy" to be called with arguments: [ …(2) ]
+
+Received:
+
+  1st spy call:
+
+  Array [
+    "/ml/artwork/register-reference",
+    Object {
+      "crop_path": "crop.png",
+-     "field_type": "GHSSymbolDescriptionCode",
+-     "gs1_field": "gHSSymbolDescriptionCode",
+-     "t3777_code": "FLAME",
++     "t3777_code": " flame ",
+    },
+  ]
+
+
+Number of calls: 1
+
+ ❯ src/__tests__/services/reference-registration-contract.test.ts:13:18
+     11|     const resolved = resolveFieldType(code);
+     12|     await mlClient.registerReference('crop.png', ` ${code.toLowerCase(…
+     13|     expect(post).toHaveBeenCalledWith('/ml/artwork/register-reference'…
+       |                  ^
+     14|       crop_path: 'crop.png', t3777_code: code, field_type: resolved.fi…
+     15|     });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/18]⎯
+
+ FAIL  src/__tests__/services/reference-registration-contract.test.ts > reference registration contract > sends resolved fields for UNKNOWN_VALID
+AssertionError: expected "spy" to be called with arguments: [ …(2) ]
+
+Received:
+
+  1st spy call:
+
+  Array [
+    "/ml/artwork/register-reference",
+    Object {
+      "crop_path": "crop.png",
+-     "field_type": "PackagingMarkedLabelAccreditationCode",
+-     "gs1_field": "packagingMarkedLabelAccreditationCode",
+-     "t3777_code": "UNKNOWN_VALID",
++     "t3777_code": " unknown_valid ",
+    },
+  ]
+
+
+Number of calls: 1
+
+ ❯ src/__tests__/services/reference-registration-contract.test.ts:13:18
+     11|     const resolved = resolveFieldType(code);
+     12|     await mlClient.registerReference('crop.png', ` ${code.toLowerCase(…
+     13|     expect(post).toHaveBeenCalledWith('/ml/artwork/register-reference'…
+       |                  ^
+     14|       crop_path: 'crop.png', t3777_code: code, field_type: resolved.fi…
+     15|     });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/18]⎯
+
+ FAIL  src/__tests__/services/reference-registration-contract.test.ts > reference registration contract > rejects invalid code "" before HTTP
+ FAIL  src/__tests__/services/reference-registration-contract.test.ts > reference registration contract > rejects invalid code "  " before HTTP
+ FAIL  src/__tests__/services/reference-registration-contract.test.ts > reference registration contract > rejects invalid code null before HTTP
+ FAIL  src/__tests__/services/reference-registration-contract.test.ts > reference registration contract > rejects invalid code 42 before HTTP
+ FAIL  src/__tests__/services/reference-registration-contract.test.ts > reference registration contract > rejects invalid code {} before HTTP
+AssertionError: promise resolved "{ added: true, reason: 'added' }" instead of rejecting
+
+- Expected
++ Received
+
+- [Error: rejected promise]
++ Object {
++   "added": true,
++   "reason": "added",
++ }
+
+ ❯ src/__tests__/services/reference-registration-contract.test.ts:18:72
+     16|   });
+     17|   it.each(['', '  ', null, 42, {}])('rejects invalid code %j before HT…
+     18|     await expect(mlClient.registerReference('crop.png', code as string…
+       |                                                                        ^
+     19|     expect(post).not.toHaveBeenCalled();
+     20|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/18]⎯
+
+ Test Files  3 failed (3)
+      Tests  18 failed | 10 passed (28)
+   Start at  15:04:13
+   Duration  5.43s (transform 1.11s, setup 742ms, collect 2.98s, tests 225ms, environment 2ms, prepare 2.21s)
