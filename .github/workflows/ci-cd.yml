@@ -239,13 +239,28 @@ jobs:
           cd apps/ml-service
           mypy app/ --ignore-missing-imports || true
 
+      - name: Run CI environment contracts
+        run: python -m unittest discover -s .github/tests -v
+
       - name: Run tests
         run: |
           cd apps/ml-service
-          pytest tests/ -v --cov=app --cov-report=xml || echo "No tests yet"
+          # A checkout dotenv must never override the disposable test settings.
+          if [ -e .env ]; then echo "Unexpected ML dotenv in CI" >&2; exit 1; fi
+          mkdir -p "$MODEL_PATH" "$TORCH_HOME"
+          pytest tests/ -v --cov=app --cov-report=xml
         env:
+          MODEL_PATH: ${{ runner.temp }}/ml-test/models
+          TORCH_HOME: ${{ runner.temp }}/ml-test/models/torch
+          ONNX_MODEL_PATH: ${{ runner.temp }}/ml-test/models/efficientdet.onnx
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/logo_recognition_test
           REDIS_URL: redis://localhost:6379
+          MINIO_ENDPOINT: localhost:9000
+          MINIO_ACCESS_KEY: ci-test
+          MINIO_SECRET_KEY: ci-test-secret
+          MINIO_BUCKET: ci-test
+          MINIO_USE_SSL: 'false'
+          ENABLE_GPU: 'false'
 
       - name: Upload coverage
         uses: codecov/codecov-action@v3
@@ -320,19 +335,30 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Start MinIO + create buckets
+      - name: Setup Go for official CI storage
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.8'
+          cache: false
+
+      - name: Build pinned official MinIO and client
+        timeout-minutes: 10
         run: |
-          docker run -d --name minio -p 9000:9000 \
-            -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadmin \
-            minio/minio server /data
-          for i in $(seq 1 30); do
-            curl -sf http://localhost:9000/minio/health/live && break || sleep 2
-          done
-          # minio/mc's entrypoint IS `mc`, so define the alias inline via
-          # MC_HOST_<alias> (no `mc alias set`, which needs a persistent config).
-          docker run --rm --network host \
-            -e MC_HOST_local=http://minioadmin:minioadmin@localhost:9000 \
-            minio/mc mb --ignore-existing local/training-data local/models local/artwork
+          mkdir -p "$GOBIN"
+          go install github.com/minio/minio@9e49d5e7a648f00e26f2246f4dc28e6b07f8c84a
+          go install github.com/minio/mc@7394ce0dd2a80935aded936b09fa12cbb3cb8096
+        env:
+          GOBIN: ${{ runner.temp }}/minio-bin
+          GOPROXY: https://proxy.golang.org
+          GOSUMDB: sum.golang.org
+          GONOSUMDB: ''
+          GOTOOLCHAIN: local
+
+      - name: Start MinIO + create buckets
+        timeout-minutes: 2
+        run: bash .github/scripts/start-ci-minio.sh
+        env:
+          CI_BIN_DIR: ${{ runner.temp }}/minio-bin
 
       - name: Prisma generate + migrate
         run: |
@@ -373,6 +399,12 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
+
+      - name: Stop CI services
+        if: always()
+        run: |
+          if [ -n "${MINIO_PID:-}" ]; then kill "$MINIO_PID" 2>/dev/null || true; fi
+          if [ -n "${API_PID:-}" ]; then kill "$API_PID" 2>/dev/null || true; fi
 
   # ===========================================
   # BUILD DOCKER IMAGES
