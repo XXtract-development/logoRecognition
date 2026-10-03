@@ -65,10 +65,14 @@ async def detect_from_image(
     image = Image.open(io.BytesIO(image_data))
     if image.mode != "RGB":
         image = image.convert("RGB")
+    from app.services.ghs_reference import detect_ghs
+
+    ghs = detect_ghs(image)
     detector = LogoDetector(model_manager)
-    return await detector.detect(
+    legacy = await detector.detect(
         image=image, confidence_threshold=confidence_threshold, return_embeddings=False
     )
+    return legacy + ghs
 
 
 @router.post("/detect-symbols", response_model=SymbolResponse)
@@ -81,6 +85,15 @@ async def detect_symbols(request: SymbolRequest) -> SymbolResponse:
         )
     ).hexdigest()[:12]
 
+    if request.imageUrl and not request.image and not request.detections:
+        raise HTTPException(
+            status_code=422,
+            detail="imageUrl-only input is unsupported; supply base64 image",
+        )
+    if not request.image and not request.detections:
+        raise HTTPException(
+            status_code=422, detail="Image or replay detections required"
+        )
     try:
         raw_detections = request.detections
         if not raw_detections and request.image:

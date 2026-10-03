@@ -40,6 +40,7 @@ import {
   DeclarationProvider,
 } from './pipeline/detection-flow';
 import prisma from '../core/db';
+import { normalizeReferenceCode } from './field-type-mapping';
 import {
   TRADEITEM_SNAPSHOT,
   TRADEITEM_SNAPSHOT_META,
@@ -271,7 +272,7 @@ async function fetchDeclaration(
     return { codes: [], reason };
   }
 
-  const codes = parseT3777Codes(xml);
+  const codes = [...new Set([...parseT3777Codes(xml), ...parseDeclaredMarks(xml).filter(m => m.fieldType === 'GHSSymbolDescriptionCode').map(m => m.code)])];
   if (codes.length === 0) {
     logger.info('Catalog declaration empty', { reason: 'lege-declaratie', gtin });
     return { codes: [], reason: 'lege-declaratie' };
@@ -438,6 +439,7 @@ export const MARK_FIELDS: Array<{ tag: string; fieldType: string }> = [
   { tag: 'localPackagingMarkedLabelAccreditationCodeReference', fieldType: 'AdditionalPackagingMarkingsCode' },
   { tag: 'dietTypeCode', fieldType: 'DietTypeCode' },
   { tag: 'nutritionalScore', fieldType: 'NutritionalScore' },
+  { tag: 'gHSSymbolDescriptionCode', fieldType: 'GHSSymbolDescriptionCode' },
 ];
 
 /**
@@ -463,7 +465,7 @@ export function parseDeclaredMarks(xml: string): DeclaredMark[] {
   const seen = new Set<string>();
   const out: DeclaredMark[] = [];
   const push = (fieldType: string, raw: string): void => {
-    const code = raw.trim().toUpperCase();
+    const code = fieldType === 'GHSSymbolDescriptionCode' ? normalizeReferenceCode(raw) : raw.trim().toUpperCase();
     if (!code) return;
     const k = `${fieldType}:${code}`;
     if (seen.has(k)) return;

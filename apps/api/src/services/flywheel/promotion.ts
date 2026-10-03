@@ -21,6 +21,7 @@
 
 import { Prisma } from '@prisma/client';
 import prisma from '../../core/db';
+import { isGhsCode } from '../field-type-mapping';
 import { createLogger } from '../../core/logger';
 import { assertClassCapWithinTx } from './guardrails';
 import { resolveFieldType } from '../field-type-mapping';
@@ -159,6 +160,7 @@ export async function promoteOne(
   candidate: PromotionCandidate,
   variantLabel: string
 ): Promise<PromoteOneOutcome> {
+  if (isGhsCode(candidate.t3777Code) || /holdout|validation|ghs-pilot/i.test(candidate.cropPath ?? '')) return { status: 'skipped' };
   return prisma.$transaction(async (tx) => {
     // 1. Cap ín de transactie (SELECT ... FOR UPDATE, AD-6). Vol → geen INSERT.
     const hasRoom = await assertClassCapWithinTx(tx, candidate.t3777Code);

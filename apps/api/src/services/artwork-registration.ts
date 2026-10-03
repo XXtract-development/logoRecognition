@@ -12,6 +12,7 @@
  */
 
 import prisma from '../core/db';
+import { assertPositiveReferenceCode, isGhsCode } from './field-type-mapping';
 import { logger } from '../core/logger';
 import {
   KEURMERK_CATEGORY,
@@ -59,6 +60,11 @@ export async function registerCropsTx(
   gtin: string,
   crops: RegisterableCrop[]
 ): Promise<string[]> {
+  for (const crop of crops) {
+    assertPositiveReferenceCode(crop.t3777Code);
+    if (isGhsCode(crop.t3777Code)) throw new Error('GHS pilot data cannot enter live training');
+    if (/\b(holdout|validation|ghs-pilot)\b/i.test(crop.cropPath + ' ' + crop.sourceFile)) throw new Error('Sealed/pilot data cannot enter live training');
+  }
   const ids: string[] = [];
   for (const crop of crops) {
     // storagePath is not unique in the schema → findFirst + create.
@@ -132,6 +138,10 @@ export async function processAcceptedReviewItems(
   const skippedIds: string[] = [];
 
   for (const item of items) {
+    if (isGhsCode(item.t3777Code)) {
+      skipped += 1; skippedIds.push(item.id);
+      continue; // Accepted review decision remains accepted; no training side effect.
+    }
     // Provenance requires a crop + source. Without them we cannot register a
     // truthful record — skip rather than fabricate (the no-fabricate rule).
     if (!item.cropPath || !item.sourceFile) {

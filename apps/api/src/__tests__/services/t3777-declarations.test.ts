@@ -185,6 +185,13 @@ describe('T3777 declaration provider (8-3D)', () => {
   // Redis cache behaviour (AC3 / AC5)
   // -------------------------------------------------------------------------
   describe('Redis cache', () => {
+    it('catalog provider contributes canonical GHS-only XML on fetch and cache hit', async () => {
+      fetchMock.mockResolvedValue(okXml('<tradeItem><gs1:gHSSymbolDescriptionCode> ghs02 </gs1:gHSSymbolDescriptionCode></tradeItem>'));
+      expect(await catalogDeclarationProvider(GTIN)).toEqual(['FLAME']);
+      expect(await catalogDeclarationProvider(GTIN)).toEqual(['FLAME']);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(cacheStore.size).toBe(1);
+    });
     it('cache hit prevents a second fetch', async () => {
       fetchMock.mockResolvedValue(okXml(ACC_XML));
 

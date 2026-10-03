@@ -43,6 +43,7 @@ import {
   registerCropsTx,
   processAcceptedReviewItems,
 } from '../../services/artwork-registration';
+import { isGhsCode } from '../../services/field-type-mapping';
 import { crosscheckDetections } from '../../services/artwork-crosscheck';
 import { enqueueDetectionForImport } from '../../services/pipeline/detection-flow';
 import { enqueueNominations } from '../../services/flywheel/crosscheck-hook';
@@ -1200,6 +1201,7 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
       });
 
       const result = await processAcceptedReviewItems([accepted]);
+      if (isGhsCode(accepted.t3777Code)) return reply.status(200).send({ status: 'accepted', registered: 0, skipped: result.skipped, referenceAdded: false });
 
       // Story 12.3 — review→reference loop: a human-confirmed crop is the
       // strongest reference (real crops match each other far better than the
@@ -1377,6 +1379,7 @@ export async function artworkPipelineRoutes(fastify: FastifyInstance) {
       });
 
       const result = await processAcceptedReviewItems([updated]);
+      if (isGhsCode(updated.t3777Code)) return reply.status(200).send({ status: 'accepted', registered: 0, referenceAdded: false });
 
       // Story 13.2 (12.3-ombuiging, AD-1/AD-2): identiek aan het accept-pad.
       // Vlag aan → nominatie (herkomst `review`, geënqueue-d, geen

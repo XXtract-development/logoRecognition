@@ -25,6 +25,7 @@ def resolve_reference_category(
     if not isinstance(code, str) or not code.strip():
         raise ValueError("Reference code must be a nonempty string")
     normalized = code.strip().upper()
+    normalized = MAPPING.get("aliases", {}).get(normalized, normalized)
     matches = [
         (field, group["gs1Field"])
         for field, group in MAPPING["categories"].items()
@@ -42,3 +43,9 @@ def resolve_reference_category(
     if gs1_field is not ABSENT and gs1_field != expected_gs1:
         raise ValueError("gs1_field conflicts with canonical reference code")
     return normalized, expected_field, expected_gs1
+
+
+def assert_positive_reference_code(code):
+    normalized = resolve_reference_category(code)[0]
+    if normalized == "NO_PICTOGRAM" or normalized.startswith("GHS"):
+        raise ValueError("Not a positive GHS reference class")

@@ -116,10 +116,12 @@ def filter_templates_by_codes(
     """
     if not codes:
         return templates
-    wanted = {c.strip().upper() for c in codes if c and c.strip()}
+    from app.symbol_contract import normalize_code
+
+    wanted = {normalize_code(c) for c in codes if c and c.strip()}
     if not wanted:
         return templates
-    return [t for t in templates if str(t["t3777_code"]).upper() in wanted]
+    return [t for t in templates if normalize_code(t["t3777_code"]) in wanted]
 
 
 async def _get_reference_templates_cached() -> List[Dict[str, Any]]:
@@ -187,6 +189,14 @@ class RegisterReferenceRequest(BaseModel):
     def validate_category(cls, values: Any) -> Any:
         if not isinstance(values, dict):
             return values
+        from app.services.reference_category import assert_positive_reference_code
+
+        assert_positive_reference_code(values.get("t3777_code"))
+        if any(
+            part in str(values.get("crop_path", "")).lower()
+            for part in ("holdout", "validation", "ghs-pilot")
+        ):
+            raise ValueError("Sealed/pilot data cannot enter live references")
         code, field, gs1 = resolve_reference_category(
             values.get("t3777_code"),
             values.get("field_type", ABSENT),
@@ -528,6 +538,10 @@ async def localize_artwork(request: LocalizeRequest) -> LocalizeResponse:
         request.min_score if request.min_score is not None else LOCALIZE_MIN_SCORE
     )
 
+    from app.services.ghs_reference import detect_ghs
+
+    ghs_detections = detect_ghs(img, request.codes)
+
     # Templates: caller-supplied (decode b64) OR loaded ML-side from the active
     # reference library with a TTL cache when omitted (Story 8-3O, decision 2).
     templates: List[Dict[str, Any]] = []
@@ -560,7 +574,7 @@ async def localize_artwork(request: LocalizeRequest) -> LocalizeResponse:
         logger.warning(
             "Localize has no usable templates (empty reference library or codes-filter matched nothing) — returning no detections"
         )
-        return LocalizeResponse(detections=[])
+        return LocalizeResponse(detections=ghs_detections)
 
     # Build the scale ladder ONCE per request (design decisions 1+2)
     variants = prepare_scaled_templates(
@@ -649,7 +663,9 @@ async def localize_artwork(request: LocalizeRequest) -> LocalizeResponse:
             "truncated": truncated,
         },
     )
-    return LocalizeResponse(detections=merged, truncated=truncated)
+    return LocalizeResponse(
+        detections=merge_detections(merged + ghs_detections), truncated=truncated
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -689,6 +705,9 @@ class ClassifyResult(BaseModel):
     confidence: float
     method: str
     uncertain: bool = False
+    # Optional provenance for the GHS pilot; existing result fields remain unchanged.
+    reference_version: Optional[str] = None
+    requires_review: Optional[bool] = None
     # Set only when persist_crops=True: MinIO object key of the saved crop PNG.
     crop_path: Optional[str] = None
 
@@ -829,6 +848,8 @@ async def classify_artwork(request: ClassifyRequest) -> ClassifyResponse:
                 method=outcome.get("method", "embedding"),
                 uncertain=bool(outcome.get("uncertain", False)),
                 crop_path=crop_path,
+                reference_version=outcome.get("reference_version"),
+                requires_review=outcome.get("requires_review"),
             )
         )
 

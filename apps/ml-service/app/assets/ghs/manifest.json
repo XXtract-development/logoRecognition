@@ -1,0 +1,107 @@
+{
+  "version": "ccohs-ghs-v1",
+  "source_page": "https://www.ccohs.ca/WHMISpictograms.html",
+  "attribution": "Canadian Centre for Occupational Health and Safety (CCOHS), WHMIS Pictograms Kit.",
+  "purpose": "Official reference templates only; not independent holdout or evidence of field accuracy.",
+  "templates": [
+    {
+      "code": "EXPLODING_BOMB",
+      "file": "EXPLODING_BOMB.png",
+      "source_url": "https://www.ccohs.ca/images/whmis2015/for_download/exploding_bomb.png",
+      "sha256": "821b9aa570d9337058ef0c72f846389d4a614b528f469515f49b11aa95cf988e",
+      "width": 289,
+      "height": 285,
+      "split": "reference",
+      "source_family": "ccohs-official-ghs-exploding_bomb",
+      "license": "CCOHS freely downloadable pictograms kit"
+    },
+    {
+      "code": "FLAME",
+      "file": "FLAME.png",
+      "source_url": "https://www.ccohs.ca/images/whmis2015/for_download/flame.png",
+      "sha256": "1a227810e24420c6a24d90dc37abd77170cb0cc1b06ccff7e11386ddc744f17c",
+      "width": 298,
+      "height": 293,
+      "split": "reference",
+      "source_family": "ccohs-official-ghs-flame",
+      "license": "CCOHS freely downloadable pictograms kit"
+    },
+    {
+      "code": "FLAME_OVER_CIRCLE",
+      "file": "FLAME_OVER_CIRCLE.png",
+      "source_url": "https://www.ccohs.ca/images/whmis2015/for_download/flame_circle.png",
+      "sha256": "5431a8c6aff66119dcacf90f253523e7a71a4430aa28475bd52eb6ef3ee92546",
+      "width": 297,
+      "height": 294,
+      "split": "reference",
+      "source_family": "ccohs-official-ghs-flame_over_circle",
+      "license": "CCOHS freely downloadable pictograms kit"
+    },
+    {
+      "code": "GAS_CYLINDER",
+      "file": "GAS_CYLINDER.png",
+      "source_url": "https://www.ccohs.ca/images/whmis2015/for_download/gas_cylinder.png",
+      "sha256": "a854d88dda48c5e0cffac2eb11cd4b867a3a5cfb039a7a71181660b5185cfb91",
+      "width": 293,
+      "height": 291,
+      "split": "reference",
+      "source_family": "ccohs-official-ghs-gas_cylinder",
+      "license": "CCOHS freely downloadable pictograms kit"
+    },
+    {
+      "code": "CORROSION",
+      "file": "CORROSION.png",
+      "source_url": "https://www.ccohs.ca/images/whmis2015/for_download/corrosion.png",
+      "sha256": "feb027a2231f7e94273b156b86d0ff7c904559d12d39713d06a8481d1d80632d",
+      "width": 292,
+      "height": 294,
+      "split": "reference",
+      "source_family": "ccohs-official-ghs-corrosion",
+      "license": "CCOHS freely downloadable pictograms kit"
+    },
+    {
+      "code": "SKULL_AND_CROSSBONES",
+      "file": "SKULL_AND_CROSSBONES.png",
+      "source_url": "https://www.ccohs.ca/images/whmis2015/for_download/skull_crossbones.png",
+      "sha256": "5fb5861112da20edd7a9b52656ce8078316cb768d6b223d9f37466e695a2d016",
+      "width": 295,
+      "height": 300,
+      "split": "reference",
+      "source_family": "ccohs-official-ghs-skull_and_crossbones",
+      "license": "CCOHS freely downloadable pictograms kit"
+    },
+    {
+      "code": "EXCLAMATION_MARK",
+      "file": "EXCLAMATION_MARK.png",
+      "source_url": "https://www.ccohs.ca/images/whmis2015/for_download/exclamation_mark.png",
+      "sha256": "c96ce2a9e72f93a2c8a7c3bfd5c7edf7574750f0f2cd7ded4586b60a62d62504",
+      "width": 304,
+      "height": 302,
+      "split": "reference",
+      "source_family": "ccohs-official-ghs-exclamation_mark",
+      "license": "CCOHS freely downloadable pictograms kit"
+    },
+    {
+      "code": "HEALTH_HAZARD",
+      "file": "HEALTH_HAZARD.png",
+      "source_url": "https://www.ccohs.ca/images/whmis2015/for_download/health_hazard.png",
+      "sha256": "a8692e3906c0309580779d136e7477c7926973d4a377bcfb8e5f313b4a60ffb3",
+      "width": 299,
+      "height": 303,
+      "split": "reference",
+      "source_family": "ccohs-official-ghs-health_hazard",
+      "license": "CCOHS freely downloadable pictograms kit"
+    },
+    {
+      "code": "ENVIRONMENT",
+      "file": "ENVIRONMENT.png",
+      "source_url": "https://www.ccohs.ca/images/whmis2015/for_download/environment.png",
+      "sha256": "32873788a465c8c3da42c13d4f908feebc66b2f0abb37f2fb4685f2cd57d13df",
+      "width": 300,
+      "height": 303,
+      "split": "reference",
+      "source_family": "ccohs-official-ghs-environment",
+      "license": "CCOHS freely downloadable pictograms kit"
+    }
+  ]
+}

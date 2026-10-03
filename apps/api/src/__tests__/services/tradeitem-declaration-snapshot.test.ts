@@ -85,6 +85,24 @@ describe('extractMarks — uitlezen uit de werkelijke documentstructuur', () => 
     ]);
   });
 
+  it('extracts and deduplicates exact GHS declarations from nested trade-item fields', () => {
+    const ghsXpath =
+      "//*[local-name()='dangerousSubstanceInformationModule']/dangerousSubstanceInformation/gHSSymbolDescriptionCode";
+    const doc: TradeItemDocument = {
+      _id: '8712423032132-07611480011566-528',
+      dangerousSubstanceInformationModule: moduleWith(
+        node('gHSSymbolDescriptionCode', ghsXpath, ' flame '),
+        node('gHSSymbolDescriptionCode', ghsXpath, 'FLAME'),
+        node('gHSSymbolDescriptionCode', ghsXpath, '', 'CORROSION'),
+        node('gHSSymbolDescriptionCodeOther', ghsXpath, 'GAS_CYLINDER')
+      ),
+    };
+
+    expect(extractMarks(doc)).toEqual([
+      { fieldType: 'GHSSymbolDescriptionCode', code: 'FLAME' },
+    ]);
+  });
+
   it('trimt en zet om naar hoofdletters, net als parseDeclaredMarks', () => {
     const doc: TradeItemDocument = {
       _id: 'x',
