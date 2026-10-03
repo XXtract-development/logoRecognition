@@ -343,12 +343,21 @@ class SimilarityService:
         import io
         import os
 
+        from app.services.reference_category import assert_positive_reference_code
         from app.services.storage import storage_service
 
+        assert_positive_reference_code(t3777_code)
         # Validate even direct callers before storage, model or database access.
         t3777_code, field_type, gs1_field = resolve_reference_category(
             t3777_code, field_type, gs1_field
         )
+        from app.ghs_dataset import assert_runtime_reference_import
+
+        assert_runtime_reference_import(crop_path)
+        if os.environ.get("GHS_PILOT_MANIFEST"):
+            assert_runtime_reference_import(
+                crop_path, storage_service.get_training_image(crop_path)
+            )
         async with db_service.get_connection() as conn:
             async with conn.transaction():
                 locked = await conn.fetchval(

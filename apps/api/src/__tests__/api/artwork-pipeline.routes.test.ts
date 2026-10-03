@@ -954,6 +954,19 @@ describe('Artwork Pipeline Routes (ATDD — Epic 8)', () => {
       sourceFile: null,
     };
 
+    it.each(['true', 'false'])('GHS human accept returns accepted without training or references (flag %s)', async flag => {
+      vi.stubEnv('FLYWHEEL_NOMINATION_ENABLED', flag);
+      const item = { ...reviewItemWithCrop, t3777Code: 'FLAME' };
+      (mockPrisma.artworkReviewItem.findUnique as vi.Mock).mockResolvedValue(item);
+      (mockPrisma.artworkReviewItem.update as vi.Mock).mockResolvedValue({ ...item, status: 'accepted' });
+      const response = await app.inject({ method: 'PATCH', url: '/api/v1/artwork/review-items/ri-0001/accept' });
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toMatchObject({ status: 'accepted', registered: 0, referenceAdded: false });
+      expect(mockPrisma.trainingData.create).not.toHaveBeenCalled();
+      expect(mlClient.registerReference).not.toHaveBeenCalled();
+      vi.unstubAllEnvs();
+    });
+
     it('accepts a review item with a crop and registers it as training data', async () => {
       (mockPrisma.artworkReviewItem.findUnique as vi.Mock).mockResolvedValue(reviewItemWithCrop);
       (mockPrisma.artworkReviewItem.update as vi.Mock).mockResolvedValue({

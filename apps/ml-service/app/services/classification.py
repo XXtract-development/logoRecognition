@@ -277,6 +277,22 @@ async def classify_crop(
     Fail-closed: on any error the function returns UNKNOWN / 0.0 / method
     "embedding" / uncertain True. It never fabricates a label.
     """
+    try:
+        from app.services.ghs_reference import classify_ghs
+
+        ghs = classify_ghs(crop)
+        if ghs is not None:
+            if (
+                confidence_threshold is not None
+                and ghs["confidence"] < confidence_threshold
+            ):
+                ghs["uncertain"] = True
+            return ghs
+    except Exception as exc:
+        logger.warning(
+            "GHS reference route unavailable — continuing legacy classification",
+            extra={"error": str(exc)},
+        )
     explicit = confidence_threshold is not None
     ns_head_no_read = False  # Story 12.25: lezer geconsulteerd maar geen lezing
 

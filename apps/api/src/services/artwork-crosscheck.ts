@@ -21,6 +21,7 @@
  */
 
 import prisma from '../core/db';
+import { normalizeReferenceCode, isGhsCode } from './field-type-mapping';
 
 // Crosscheck confidence thresholds per detection method.
 // Detections without a method fall under STRICTEST (classifier).
@@ -123,11 +124,24 @@ export async function crosscheckDetections(
   const autoAccepted: CrosscheckDetection[] = [];
   const reviewItems: CrosscheckReviewItem[] = [];
 
+  declared = declared.map(normalizeReferenceCode);
+  detections = detections.map(d => ({ ...d, t3777Code: normalizeReferenceCode(d.t3777Code) }));
   const declaredSet = new Set(declared);
 
   // Process each detection
   for (const detection of detections) {
     const threshold = getThresholdForMethod(detection.method);
+    if (isGhsCode(detection.t3777Code)) {
+      const ghsDeclared = declared.filter(isGhsCode);
+      const reason = declaredSet.has('NO_PICTOGRAM')
+        ? 'GHS-tegenspraak: NO_PICTOGRAM en zichtbaar gevarenpictogram — menselijke beoordeling'
+        : declaredSet.has(detection.t3777Code)
+          ? 'GHS komt overeen met onafhankelijke declaratie — menselijke beoordeling blijft verplicht'
+          : ghsDeclared.length ? 'GHS wijkt af van onafhankelijke declaratie — menselijke beoordeling'
+            : 'Geen onafhankelijke GHS-declaratie — menselijke beoordeling';
+      reviewItems.push({ ...detection, reason });
+      continue;
+    }
 
     if (declaredSet.size === 0) {
       // Safety rule: no declaration = no auto-accept
@@ -174,6 +188,7 @@ export async function crosscheckDetections(
   // Check for "declared but not found"
   const detectedCodes = new Set(detections.map((d) => d.t3777Code));
   for (const code of declared) {
+    if (code === 'NO_PICTOGRAM') continue;
     if (!detectedCodes.has(code)) {
       reviewItems.push({
         t3777Code: code,
@@ -197,7 +212,7 @@ export async function crosscheckDetections(
         // Sub-floor detections are persisted but hidden from the queue. Items
         // without a confidence (placeholders) always stay 'open'.
         status:
-          typeof item.confidence === 'number' &&
+          !isGhsCode(item.t3777Code) && typeof item.confidence === 'number' &&
           REVIEW_MIN_CONFIDENCE > 0 &&
           item.confidence < REVIEW_MIN_CONFIDENCE
             ? LOW_CONF_DISMISS_STATUS

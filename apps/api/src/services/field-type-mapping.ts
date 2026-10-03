@@ -84,9 +84,21 @@ export function classifyCode(
 }
 
 /** Resolve een losse code naar zijn `field_type`/`gs1_field` (echte statische data). */
+export function normalizeReferenceCode(code: string): string {
+  const normalized = code.trim().toUpperCase();
+  return (mapping.aliases as Record<string, string>)[normalized] ?? normalized;
+}
+export function isGhsCode(code: string): boolean {
+  return mapping.categories.GHSSymbolDescriptionCode.codes.includes(normalizeReferenceCode(code)) && normalizeReferenceCode(code) !== 'NO_PICTOGRAM';
+}
+export function assertPositiveReferenceCode(code: string): void {
+  const normalized = normalizeReferenceCode(code);
+  if (normalized === 'NO_PICTOGRAM' || /^GHS\d+$/.test(normalized)) throw new Error('Not a positive GHS reference class');
+}
+
 export function resolveFieldType(code: string): FieldTypeResolution {
   if (typeof code !== 'string' || !code.trim()) throw new Error('Reference code must be a nonempty string');
-  const normalized = code.trim().toUpperCase();
+  const normalized = normalizeReferenceCode(code);
   return classifyCode(
     normalized,
     (c) => SPECIFIC_FIELD_TYPES_BY_CODE[c] ?? [],

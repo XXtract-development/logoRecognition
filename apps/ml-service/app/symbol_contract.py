@@ -7,15 +7,37 @@ DEFAULT_T3777_CODES = {
     "FSC_MIX",
 }
 NUTRISCORE_CODES = {"A", "B", "C", "D", "E"}
-GHS_CODES = {f"GHS{i:02d}" for i in range(1, 10)}
+GHS_ALIASES = dict(
+    zip(
+        (f"GHS{i:02d}" for i in range(1, 10)),
+        [
+            "EXPLODING_BOMB",
+            "FLAME",
+            "FLAME_OVER_CIRCLE",
+            "GAS_CYLINDER",
+            "CORROSION",
+            "SKULL_AND_CROSSBONES",
+            "EXCLAMATION_MARK",
+            "HEALTH_HAZARD",
+            "ENVIRONMENT",
+        ],
+    )
+)
+GHS_CODES = set(GHS_ALIASES.values())
+GHS_LEGACY = {name: code for code, name in GHS_ALIASES.items()}
+
+
+def normalize_code(code):
+    value = str(code).strip().upper()
+    return GHS_ALIASES.get(value, value)
 
 
 def allowed_codes(profile):
-    explicit = {str(code).upper() for code in profile.get("codes", [])}
+    explicit = {normalize_code(code) for code in profile.get("codes", [])}
     codelists = set(profile.get("codelists", []))
     codes = set(explicit)
     if (
-        not codes
+        (not codes and not codelists)
         or "T3777" in codelists
         or "PackagingMarkedLabelAccreditationCode" in codelists
     ):
@@ -23,11 +45,12 @@ def allowed_codes(profile):
     if "NutritionalScore" in codelists:
         codes |= NUTRISCORE_CODES
     if "GHSSymbolDescriptionCode" in codelists:
-        codes |= GHS_CODES
+        codes |= GHS_CODES if not explicit else (explicit & GHS_CODES)
     return codes
 
 
 def classify_codelist(code):
+    code = normalize_code(code)
     if code in NUTRISCORE_CODES:
         return "NutritionalScore"
     if code in GHS_CODES:
@@ -41,10 +64,13 @@ def normalize_detection(raw, profile, model_version, elapsed_ms):
         .strip()
         .upper()
     )
+    code = normalize_code(code)
     confidence = float(
         raw.get("confidence") or raw.get("match_confidence") or raw.get("score") or 0
     )
     method = str(raw.get("method") or "embedding")
+    if method == "ghs-reference":
+        method = "classifier"  # Legacy enum: deterministic reference classification.
     if method not in {"embedding", "classifier"}:
         method = "embedding"
 
@@ -62,20 +88,25 @@ def normalize_detection(raw, profile, model_version, elapsed_ms):
             "processingTimeMs": elapsed_ms,
             "uncertain": True,
         }
-    if confidence < float(profile.get("visionThreshold", 0.75)):
+    below_threshold = confidence < float(profile.get("visionThreshold", 0.75))
+    if below_threshold and code not in GHS_CODES:
         return None
     if code not in allowed_codes(profile):
         return None
     return {
-        "code": code,
+        "code": GHS_LEGACY.get(code, code),
         "codelist": classify_codelist(code),
         "confidence": confidence,
         "bbox": raw.get("bbox"),
         "cropRef": raw.get("cropRef") or raw.get("crop_path"),
         "method": method,
-        "modelVersion": model_version,
+        "modelVersion": (
+            raw.get("reference_version", model_version)
+            if code in GHS_CODES
+            else model_version
+        ),
         "processingTimeMs": elapsed_ms,
-        "uncertain": bool(raw.get("uncertain", False)),
+        "uncertain": bool(raw.get("uncertain", False) or below_threshold),
     }
 
 

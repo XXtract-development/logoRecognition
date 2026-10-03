@@ -457,6 +457,8 @@ export class MLClient {
     cropPath: string,
     t3777Code: string
   ): Promise<{ added: boolean; reason: string; reference_logo_id?: string }> {
+    if (t3777Code.trim().toUpperCase() === 'NO_PICTOGRAM' || /^GHS(?:00|10)$/i.test(t3777Code.trim())) throw new Error('Not a positive GHS class');
+    if (/holdout|validation|ghs-pilot/i.test(cropPath)) throw new Error('Sealed/pilot data cannot enter live references');
     const category = resolveFieldType(t3777Code);
     if (!category.fieldType || !category.gs1Field) throw new Error('Unresolved reference category');
     const res = await this.client.post('/ml/artwork/register-reference', {

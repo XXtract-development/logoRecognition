@@ -28,6 +28,7 @@
  * review-ombuiging borgen dat door op het request-pad te enqueue-en.
  */
 
+import { isGhsCode } from '../field-type-mapping';
 import { Prisma } from '@prisma/client';
 import prisma from '../../core/db';
 import { mlClient } from '../ml-client';
@@ -92,6 +93,7 @@ export async function nominateCandidate(
   input: NominateCandidateInput
 ): Promise<NominationOutcome> {
   const { detection, origin, gtin, declared } = input;
+  if (isGhsCode(detection.t3777Code) || /holdout|validation|ghs-pilot/i.test(detection.cropPath ?? '')) return { status: 'refused', reason: 'ghs-human-review-pilot' };
 
   // 1. Vlagcheck (AD-8). Hoofdvlag stuurt crosscheck/import + review; de
   //    kruischeck-herkomst vereist bovendien de kruischeck-vlag.

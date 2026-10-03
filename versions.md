@@ -1,5 +1,14 @@
 # Versiegeschiedenis
 
+## 4 oktober 2026
+
+**Gevarenpictogrammen herkennen en beoordelen**
+- De herkenning ondersteunt nu alle negen gevaarlijke-stoffenpictogrammen met officiële voorbeeldafbeeldingen.
+- Gevonden pictogrammen worden vergeleken met de productdeclaratie en blijven altijd ter beoordeling aangeboden.
+- Per pictogram kan de herkenningskwaliteit worden gemeten. Ontbrekende onafhankelijke verpakkingstests blijven zichtbaar als onvoldoende bewijs.
+
+---
+
 ## 2 oktober 2026
 
 **Betrouwbaardere controles vóór een nieuwe versie**

@@ -101,5 +101,16 @@
     "NUTRISCORE_C",
     "NUTRISCORE_D",
     "NUTRISCORE_E"
-  ]
+  ],
+  "aliases": {
+    "GHS01": "EXPLODING_BOMB",
+    "GHS02": "FLAME",
+    "GHS03": "FLAME_OVER_CIRCLE",
+    "GHS04": "GAS_CYLINDER",
+    "GHS05": "CORROSION",
+    "GHS06": "SKULL_AND_CROSSBONES",
+    "GHS07": "EXCLAMATION_MARK",
+    "GHS08": "HEALTH_HAZARD",
+    "GHS09": "ENVIRONMENT"
+  }
 }

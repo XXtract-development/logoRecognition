@@ -291,3 +291,43 @@ def test_same_path_concurrency_and_embedding_failure_rollback(runtime):
 def test_development_mount_uses_canonical_mapping():
     compose = (ROOT / 'docker-compose.full.yml').read_text()
     assert './apps/api/src/services/reference-code-mapping.json:/app/reference-code-mapping.json:ro' in compose
+
+
+@pytest.mark.parametrize("code", ["GHS00", "GHS10", "NO_PICTOGRAM"])
+def test_ghs_invalid_positive_reference_does_no_io(runtime, code):
+    service, _, _, db, model, storage = runtime
+    with pytest.raises(ValueError):
+        asyncio.run(service.register_crop_as_reference("crop.png", code))
+    db.get_connection.assert_not_called()
+    model.generate_embedding.assert_not_called()
+    storage.get_training_image.assert_not_called()
+
+
+def test_ghs_alias_registration_metadata(runtime):
+    service, _, conn, _, _, _ = runtime
+    result = asyncio.run(service.register_crop_as_reference("crop.png", " ghs02 "))
+    assert result["added"]
+    assert conn.fetchrow.call_args.args[1:] == (
+        "FLAME",
+        "review:crop.png",
+        "crop.png",
+        "review-confirmed",
+        "GHSSymbolDescriptionCode",
+        "gHSSymbolDescriptionCode",
+    )
+
+
+@pytest.mark.parametrize("code", ["GHS00", "GHS10", "NO_PICTOGRAM"])
+def test_invalid_ghs_reference_endpoint_422_no_io(runtime, code):
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    _, art, _, db, _, storage = runtime
+    app = FastAPI()
+    app.include_router(art.router)
+    response = TestClient(app).post(
+        "/artwork/register-reference", json={"crop_path": "x", "t3777_code": code}
+    )
+    assert response.status_code == 422
+    db.get_connection.assert_not_called()
+    storage.get_training_image.assert_not_called()
