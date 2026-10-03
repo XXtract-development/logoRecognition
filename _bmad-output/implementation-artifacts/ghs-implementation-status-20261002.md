@@ -3,7 +3,7 @@ status: active
 taak_id: 01a0fc7a-28d6-7333-ae26-c6dc972076d8
 eigenaar: root
 bijgewerkt: 2026-10-04T00:12:54.812814+02:00
-gate: GitHub CI-hercontrole op PR2
+gate: bouwcorrectie-PR, volledige CI en automatische ACC-uitrol
 open_goedkeuring: geen voor lokale bouw en reguliere ACC-vrijgave
 ---
 # GHS-implementatie
@@ -36,3 +36,11 @@ Review gestart: ghs_blind_review en ghs_edge_review. Derde controle van bewijsde
 2026-10-04T00:24:02.142332+02:00: CI37157970435 faalt op1van1212APIassertions; volledigeMLjobgroen. GHSveld ontbreekt in zelfstandigeoogstmap, confirmedreproduce; bestaande workerherstelgestart, geenACCmerge/uitrol.
 
 2026-10-04T00:25:29.039193+02:00: CI1fix lokaal/independentreviewclosed. Geenopenapproval; nieuwecommitpushonderstaandeautorisatie; geenACCmerge.
+
+2026-10-04T00:26:47.041862+02:00: fixcommit223fe89a081fc8b7e088ca6abe84dc58af1b7927 gepusht, PR2 bijgewerkt; nieuweCI37158406548 daadwerkelijkin_progress. GeenACCmerge.
+
+2026-10-04T00:34:48.649644+02:00: PRCI37158406548 success. PR2 squashmerged naarACC f5c4a5b74f35c6a692782aacea1754e1849fd408, remoteSHA bevestigd. Automatische build/deploy werkelijk volgen; noggeenruntimeclaim.
+
+2026-10-04T00:38:59.866593+02:00: build37158891455appfailedonnxpostinstallnetwerk; MLbuildloopt. RootreadonlyoldACC305733gezond. Readonlyexploreronderzoekgestart; geen handmatigrestart/deploy.
+
+2026-10-04T00:46:13.458265+02:00: ACCpostmergeCI37158891471 successinclsmoke. ScopedDockerfix2regels/rootnativehookexit0/independentreviewclosed; nieuwereleasebranchcodex/ghs-release-build vanafaccf5c. Geenhandmatigecontaineractie, oude305733runtimegezond.

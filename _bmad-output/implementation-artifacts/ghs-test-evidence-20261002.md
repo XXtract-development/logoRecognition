@@ -100,3 +100,6 @@ Root herhaalde zelf de volledige hierboven vermelde Pythoncontract/beeld/evaluat
 
 
 CI-follow-up: volledige eersteGitHubMLjobgeslaagd; APIjob1failed/1211passed doorontbrekendGHSoogstveld. Niet genegeerd: rootreproduce1fail16pass; mappingfix+nieuwegenestetest geeft18/18snapshotchecks. Root63adjacentAPIchecks exit0, APIbuild/diffcheckexit0; onafhankelijke verificationreview bevestigt geen testverzwakking/gemetendatawijziging. VolledigenieuweCI volgt.
+
+
+ACCpostmergeCI37158891471 success (incl.pipeline smoke). Automatischeappbuild blokkeert optioneleONNXinstallerdownload; minimaleDockerfilefix2scopedcommands. RootinstallerONNXRUNTIME_NODE_INSTALL=skip opverifiedlokalepackage1.23.0exit0, workerzero-networkprobeexit0/diff0. Independentverificationreview bevestigt supportedskip/CPUbundled/nootherhooks/runtimechanges. Werkelijkebuild+runtimebewijs volgt; exactefailedCIpkgversieonbewezen.

@@ -1,6 +1,6 @@
 ---
 datum: 2026-10-04
-status: implementatie en onafhankelijke review afgerond; ACC-vrijgave loopt
+status: naar ACC samengevoegd; bouwherstel voor automatische uitrol loopt
 ---
 # Gevarenpictogrammen: implementatie en bewijs per type
 
@@ -51,3 +51,7 @@ De volgende inhoudelijke stap na codevrijgave is meer onafhankelijke echte etike
 
 
 Eindverificatie4oktober2026:190Python/169APItests geslaagd, APIbuild/lint/opmaak/diff groen. Drie onafhankelijke reviews plus hercontrole afgerond,21bevindingen opgelost; niets uitgesteld. Geen onafhankelijkeveldkwaliteitsclaim.
+
+PR2 samengevoegd na succesvolle volledige CI: ACCcommitf5c4a5b74f35c6a692782aacea1754e1849fd408. Werkelijkedraaiendeversie volgt na automatischeuitrol.
+
+Automatischeappbuild37158891455 faalde bij externeONNXpostinstall vóórcompilatie. OudeACC305733noggezond; geenruntimevrijgaveclaim. Onderzoek bevestigt optioneleCUDA-downloadinlockedpackage; minimalecommand-scopedbouwfix voorbereid. Geenherkennings/model/providerwijziging.
