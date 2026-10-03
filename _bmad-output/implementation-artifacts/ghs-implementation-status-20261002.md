@@ -3,7 +3,7 @@ status: active
 taak_id: 01a0fc7a-28d6-7333-ae26-c6dc972076d8
 eigenaar: root
 bijgewerkt: 2026-10-04T00:12:54.812814+02:00
-gate: commit, PR, CI en automatische ACC-uitrol
+gate: GitHub CI-hercontrole op PR2
 open_goedkeuring: geen voor lokale bouw en reguliere ACC-vrijgave
 ---
 # GHS-implementatie
@@ -30,3 +30,9 @@ Review gestart: ghs_blind_review en ghs_edge_review. Derde controle van bewijsde
 2026-10-04: alle drie onafhankelijke reviews voltooid; 21 bevindingen getriaged. Gerichte herstelronde door bestaande implementatieworker volgt. Root bewaart succesvolle beeldroute; geen livewrites/approval.
 
 2026-10-04T00:17:42.902194+02:00: lokale bouw en drie herreviews voltooid, root190Python/169API/build/lint groen. Gate: commit/PR/CI/automatische ACCuitrol. Openapprovalgeen.
+
+2026-10-04T00:19:03.308069+02:00: featurecommitb6f16f8a29cf908100f56a1e7cfa94136cc60884 gepusht; PR2 aangemaakt/aanhoofdtaakgekoppeld. CI37157970435 actief. Geenmerge/uitrol/livewrites.
+
+2026-10-04T00:24:02.142332+02:00: CI37157970435 faalt op1van1212APIassertions; volledigeMLjobgroen. GHSveld ontbreekt in zelfstandigeoogstmap, confirmedreproduce; bestaande workerherstelgestart, geenACCmerge/uitrol.
+
+2026-10-04T00:25:29.039193+02:00: CI1fix lokaal/independentreviewclosed. Geenopenapproval; nieuwecommitpushonderstaandeautorisatie; geenACCmerge.

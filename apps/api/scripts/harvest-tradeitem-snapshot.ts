@@ -61,6 +61,7 @@ export const GDSN_TO_FIELD_TYPE: Readonly<Record<string, string>> = {
   localPackagingMarkedLabelAccreditationCodeReference: 'AdditionalPackagingMarkingsCode',
   dietTypeCode: 'DietTypeCode',
   nutritionalScore: 'NutritionalScore',
+  gHSSymbolDescriptionCode: 'GHSSymbolDescriptionCode',
   enumerationValue: 'EU_consumerUsageLabelCodeList',
 };
 

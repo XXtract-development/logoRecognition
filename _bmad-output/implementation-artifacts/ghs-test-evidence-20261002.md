@@ -97,3 +97,6 @@ De deterministische rekeningfixtures vormen geen veldkwaliteitsbewijs. De herken
 ## Onafhankelijke eindverificatie na reviewfixes — 2026-10-04T00:16:35.865314+02:00
 
 Root herhaalde zelf de volledige hierboven vermelde Pythoncontract/beeld/evaluatie/registratie/gate/filter/Nutri-Score-reeks: **190 passed**, 2 bestaande deprecationwaarschuwingen, 10.13s, exit0. Root herhaalde de acht vermelde APItestbestanden: **169 passed**, 10.59s, exit0. APIpackagebuild exit0; ruffcheck app/ exit0; blackcheck app/42bestanden exit0; isortcheck app/ exit0; gitdiff en stageddiffcheck exit0. Geen tests op live DB. Onafhankelijke fixes-audit loopt; testbewijs is geen onafhankelijke veldkwaliteitsclaim.
+
+
+CI-follow-up: volledige eersteGitHubMLjobgeslaagd; APIjob1failed/1211passed doorontbrekendGHSoogstveld. Niet genegeerd: rootreproduce1fail16pass; mappingfix+nieuwegenestetest geeft18/18snapshotchecks. Root63adjacentAPIchecks exit0, APIbuild/diffcheckexit0; onafhankelijke verificationreview bevestigt geen testverzwakking/gemetendatawijziging. VolledigenieuweCI volgt.

@@ -98,6 +98,7 @@ Deze worker bezit alle productcode, tests en lokale evaluatiecode voor GHS. Je b
 | V1 | medium | Preverified provider/cachetest ontbreekt: alleen directe parser GHS getest; consumercanonicalisatie kan regressie ongemerkt krijgen. | patch |
 | V2 | high | Preverified sufficient-evidence/pilotthresholdtakken niet bereikt door tests; omgekeerde negatievegrens blijft groen. | patch |
 | V3 | medium | Preverified matchingreassignment ongetest; greedy mutatie behoudt tests maar verliest tweede geldige match. | patch |
+| CI1 | medium | Volledige CI en rootherhaling bevestigen dat zelfstandige oogstmap GHS overslaat; nieuw veld ontbreekt terwijl XMLmap het bevat. Generatorwalk inspecteert uitsluitend mapped names. | patch |
 
 Alle 21 bevindingen afzonderlijk geverifieerd of als preverified testgap beoordeeld vóór groepering. Groepen delen uitsluitend de beschreven rootcause; geen bevinding stil weggelaten. Geen defer. B4 vergt een kleine specificatieverduidelijking; gebruikersopdracht tot autonome implementatie en BMAD-flexibiliteitsregel maken herstel zonder destructieve volledige terugdraaiing passend. KEEP: negen officiële referenties, GHS01–09 extern, verplichte menselijke review, vier ontwikkeltreffers en bestaande niet-GHS regressies.
 
@@ -119,3 +120,8 @@ Rootmatrixaudit: alle G01–G15gedragsrijen getraceerd naar testbewijs en geleze
 ## Review afgesloten — 2026-10-04T00:17:42.901321+02:00
 
 Alle21bevindingen opgelost in14rootcause/testgroepen. Blindhunter bevestigt10/10opgelost; edgehunter8/8opgelost en zelfstandig71Python/18APIpass; verificationreviewer3/3gapsgesloten met mutationgevoelige assertions. Geen nieuwe bevestigde regressie en niets uitgesteld. Provenanceherstel ligt op MLresponsgrens; geen nieuwe DBversiekolom. Root190Python/169API/build/lint/opmaak/diff groen. Push/PR/CI/ACCverificatie volgt buiten lokale bouwfase onder bestaande gebruikersautorisatie.
+
+
+CI-follow-up: zelfstandige GDSNoogstmap mist nieuw veld; confirmedmediumregressie, routepatch. Exactonderzoek staat in bestaande investigationcase. Herstel door bestaande productworker vóórnieuweCI/merge; geen testverzwakking of liveoogst.
+
+CI1 gesloten: generatorveld toegevoegd plus genesteextractietest; onafhankelijke reviewer bevestigt juiste productionmapping/strictexistingassertions/ongewijzigdegemetendata. Root63aansluitendeAPItests enAPIbuild/diffcheckexit0. VolledigeGitHubhercontrole volgt.
