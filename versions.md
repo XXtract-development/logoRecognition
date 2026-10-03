@@ -6,6 +6,7 @@
 - De herkenning ondersteunt nu alle negen gevaarlijke-stoffenpictogrammen met officiële voorbeeldafbeeldingen.
 - Gevonden pictogrammen worden vergeleken met de productdeclaratie en blijven altijd ter beoordeling aangeboden.
 - Gevarenpictogrammen uit de productgegevens worden ook meegenomen in het bestaande declaratieoverzicht.
+- Nieuwe versies kunnen worden uitgerold zonder een overbodige extra download.
 - Per pictogram kan de herkenningskwaliteit worden gemeten. Ontbrekende onafhankelijke verpakkingstests blijven zichtbaar als onvoldoende bewijs.
 
 ---
