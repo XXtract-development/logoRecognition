@@ -1,0 +1,584 @@
+{
+  "provider": "Gemini existing shared credential",
+  "execution": "local ASGI route, real HTTPS provider calls",
+  "reviewStatus": "ai-prelabel; human confirmation required",
+  "liveConfigWritten": false,
+  "images": [
+    {
+      "image": "page-01.png",
+      "httpStatus": 200,
+      "elapsedSeconds": 8.17,
+      "result": {
+        "status": "ai-reviewed",
+        "labelType": "ai-prelabel",
+        "humanReviewRequired": true,
+        "image": {
+          "sha256": "4ee1384a7cdea7d7eaf09f8f8b1ada1540382f5f24c66ea1bf9c0f847e488725",
+          "width": 4299,
+          "height": 2186,
+          "mimeType": "image/png",
+          "byteLength": 923731
+        },
+        "reviews": [
+          {
+            "reviewId": "9e70ca4a-083b-4042-a7be-3c6378db5c46",
+            "configuredModel": "gemini-2.5-flash",
+            "status": "succeeded",
+            "returnedModel": "gemini-2.5-flash",
+            "output": {
+              "annotations": []
+            }
+          },
+          {
+            "reviewId": "38c3888c-e9f7-40b1-a389-2ff382378e24",
+            "configuredModel": "gemini-2.5-pro",
+            "status": "succeeded",
+            "returnedModel": "gemini-2.5-pro",
+            "output": {
+              "annotations": []
+            }
+          }
+        ],
+        "comparison": {
+          "status": "agree",
+          "annotationCounts": [
+            0,
+            0
+          ],
+          "method": "exact-annotations-order-independent"
+        },
+        "sameConfiguredModel": false,
+        "sameReturnedModel": false,
+        "independentErrorsGuaranteed": false
+      }
+    },
+    {
+      "image": "page-02.png",
+      "httpStatus": 200,
+      "elapsedSeconds": 8.13,
+      "result": {
+        "status": "ai-reviewed",
+        "labelType": "ai-prelabel",
+        "humanReviewRequired": true,
+        "image": {
+          "sha256": "5e725f177517fd4271ff086e15935d23969edc1fcd5a252c952df988eb1d018b",
+          "width": 3606,
+          "height": 2274,
+          "mimeType": "image/png",
+          "byteLength": 858235
+        },
+        "reviews": [
+          {
+            "reviewId": "5d62ad42-3599-458d-8e75-4927c1dd5799",
+            "configuredModel": "gemini-2.5-flash",
+            "status": "succeeded",
+            "returnedModel": "gemini-2.5-flash",
+            "output": {
+              "annotations": []
+            }
+          },
+          {
+            "reviewId": "90fe09cb-5dfc-4a12-8a19-dbd09357a709",
+            "configuredModel": "gemini-2.5-pro",
+            "status": "succeeded",
+            "returnedModel": "gemini-2.5-pro",
+            "output": {
+              "annotations": []
+            }
+          }
+        ],
+        "comparison": {
+          "status": "agree",
+          "annotationCounts": [
+            0,
+            0
+          ],
+          "method": "exact-annotations-order-independent"
+        },
+        "sameConfiguredModel": false,
+        "sameReturnedModel": false,
+        "independentErrorsGuaranteed": false
+      }
+    },
+    {
+      "image": "page-03.png",
+      "httpStatus": 200,
+      "elapsedSeconds": 6.18,
+      "result": {
+        "status": "ai-reviewed",
+        "labelType": "ai-prelabel",
+        "humanReviewRequired": true,
+        "image": {
+          "sha256": "a3e5fa3e79ec56153fddeefd6b6280b73b997a5ebe76a72907a6e23160f9878b",
+          "width": 1754,
+          "height": 1396,
+          "mimeType": "image/png",
+          "byteLength": 370986
+        },
+        "reviews": [
+          {
+            "reviewId": "9204b902-1b70-4840-9beb-363ee9935358",
+            "configuredModel": "gemini-2.5-flash",
+            "status": "succeeded",
+            "returnedModel": "gemini-2.5-flash",
+            "output": {
+              "annotations": []
+            }
+          },
+          {
+            "reviewId": "0b4b2ddb-a6a6-42e0-be4b-91a1a1890595",
+            "configuredModel": "gemini-2.5-pro",
+            "status": "succeeded",
+            "returnedModel": "gemini-2.5-pro",
+            "output": {
+              "annotations": []
+            }
+          }
+        ],
+        "comparison": {
+          "status": "agree",
+          "annotationCounts": [
+            0,
+            0
+          ],
+          "method": "exact-annotations-order-independent"
+        },
+        "sameConfiguredModel": false,
+        "sameReturnedModel": false,
+        "independentErrorsGuaranteed": false
+      }
+    },
+    {
+      "image": "page-04.png",
+      "httpStatus": 200,
+      "elapsedSeconds": 6.19,
+      "result": {
+        "status": "ai-reviewed",
+        "labelType": "ai-prelabel",
+        "humanReviewRequired": true,
+        "image": {
+          "sha256": "f9a8d9952735ce069e86daf062c3cafd25dd4193a6addc4895d1ba8e7123d1b0",
+          "width": 1754,
+          "height": 1396,
+          "mimeType": "image/png",
+          "byteLength": 318499
+        },
+        "reviews": [
+          {
+            "reviewId": "a0d6e1f7-17b1-4d25-9e19-2a89aea2558a",
+            "configuredModel": "gemini-2.5-flash",
+            "status": "succeeded",
+            "returnedModel": "gemini-2.5-flash",
+            "output": {
+              "annotations": [
+                {
+                  "code": "EXCLAMATION_MARK",
+                  "bbox": {
+                    "x": 236,
+                    "y": 694,
+                    "width": 63,
+                    "height": 63
+                  },
+                  "confidence": 0.95,
+                  "uncertain": false
+                }
+              ]
+            }
+          },
+          {
+            "reviewId": "0e75bb62-0f96-45a2-b7d3-a616dacf4e8a",
+            "configuredModel": "gemini-2.5-pro",
+            "status": "succeeded",
+            "returnedModel": "gemini-2.5-pro",
+            "output": {
+              "annotations": [
+                {
+                  "code": "EXCLAMATION_MARK",
+                  "bbox": {
+                    "x": 235,
+                    "y": 715,
+                    "width": 141,
+                    "height": 141
+                  },
+                  "confidence": 0.99,
+                  "uncertain": false
+                }
+              ]
+            }
+          }
+        ],
+        "comparison": {
+          "status": "disagree",
+          "annotationCounts": [
+            1,
+            1
+          ],
+          "method": "exact-annotations-order-independent"
+        },
+        "sameConfiguredModel": false,
+        "sameReturnedModel": false,
+        "independentErrorsGuaranteed": false
+      }
+    },
+    {
+      "image": "page-05.png",
+      "httpStatus": 200,
+      "elapsedSeconds": 8.41,
+      "result": {
+        "status": "ai-reviewed",
+        "labelType": "ai-prelabel",
+        "humanReviewRequired": true,
+        "image": {
+          "sha256": "8999c34da554cf8137fb271beda87ad875c4d0f2e1c4920632a473c7916e40cb",
+          "width": 3073,
+          "height": 3379,
+          "mimeType": "image/png",
+          "byteLength": 1545151
+        },
+        "reviews": [
+          {
+            "reviewId": "9f6e5feb-2a43-4879-8f9b-1e1bf4822f34",
+            "configuredModel": "gemini-2.5-flash",
+            "status": "succeeded",
+            "returnedModel": "gemini-2.5-flash",
+            "output": {
+              "annotations": [
+                {
+                  "code": "EXCLAMATION_MARK",
+                  "bbox": {
+                    "x": 1763,
+                    "y": 2042,
+                    "width": 120,
+                    "height": 120
+                  },
+                  "confidence": 0.9,
+                  "uncertain": false
+                }
+              ]
+            }
+          },
+          {
+            "reviewId": "6607585f-93a8-4547-982e-823ddf956665",
+            "configuredModel": "gemini-2.5-pro",
+            "status": "succeeded",
+            "returnedModel": "gemini-2.5-pro",
+            "output": {
+              "annotations": [
+                {
+                  "code": "EXCLAMATION_MARK",
+                  "bbox": {
+                    "x": 567,
+                    "y": 638,
+                    "width": 147,
+                    "height": 147
+                  },
+                  "confidence": 0.99,
+                  "uncertain": false
+                }
+              ]
+            }
+          }
+        ],
+        "comparison": {
+          "status": "disagree",
+          "annotationCounts": [
+            1,
+            1
+          ],
+          "method": "exact-annotations-order-independent"
+        },
+        "sameConfiguredModel": false,
+        "sameReturnedModel": false,
+        "independentErrorsGuaranteed": false
+      }
+    },
+    {
+      "image": "page-06.png",
+      "httpStatus": 200,
+      "elapsedSeconds": 7.91,
+      "result": {
+        "status": "ai-reviewed",
+        "labelType": "ai-prelabel",
+        "humanReviewRequired": true,
+        "image": {
+          "sha256": "d473ab1c8c9447cf3e6caf7aa8450e1beacc8dfbbfe8fdb6674f53246ea2f89a",
+          "width": 1754,
+          "height": 1396,
+          "mimeType": "image/png",
+          "byteLength": 320540
+        },
+        "reviews": [
+          {
+            "reviewId": "ba66be05-4d13-46ab-aa12-0b09446478c7",
+            "configuredModel": "gemini-2.5-flash",
+            "status": "succeeded",
+            "returnedModel": "gemini-2.5-flash",
+            "output": {
+              "annotations": [
+                {
+                  "code": "EXCLAMATION_MARK",
+                  "bbox": {
+                    "x": 796,
+                    "y": 690,
+                    "width": 100,
+                    "height": 94
+                  },
+                  "confidence": 0.9,
+                  "uncertain": false
+                }
+              ]
+            }
+          },
+          {
+            "reviewId": "f950d7a2-c1e9-445b-af1c-8577ac4e5508",
+            "configuredModel": "gemini-2.5-pro",
+            "status": "succeeded",
+            "returnedModel": "gemini-2.5-pro",
+            "output": {
+              "annotations": [
+                {
+                  "code": "EXCLAMATION_MARK",
+                  "bbox": {
+                    "x": 232,
+                    "y": 692,
+                    "width": 99,
+                    "height": 99
+                  },
+                  "confidence": 0.99,
+                  "uncertain": false
+                }
+              ]
+            }
+          }
+        ],
+        "comparison": {
+          "status": "disagree",
+          "annotationCounts": [
+            1,
+            1
+          ],
+          "method": "exact-annotations-order-independent"
+        },
+        "sameConfiguredModel": false,
+        "sameReturnedModel": false,
+        "independentErrorsGuaranteed": false
+      }
+    },
+    {
+      "image": "page-07.png",
+      "httpStatus": 200,
+      "elapsedSeconds": 6.55,
+      "result": {
+        "status": "ai-reviewed",
+        "labelType": "ai-prelabel",
+        "humanReviewRequired": true,
+        "image": {
+          "sha256": "f28a4a0fa35c82a9bd7bb068af0576afec6f9cea40aade0d1a2ab98ddd8aea94",
+          "width": 1754,
+          "height": 1396,
+          "mimeType": "image/png",
+          "byteLength": 356852
+        },
+        "reviews": [
+          {
+            "reviewId": "0cb5a6ed-dd2e-4fc2-9a30-47836d30eda0",
+            "configuredModel": "gemini-2.5-flash",
+            "status": "succeeded",
+            "returnedModel": "gemini-2.5-flash",
+            "output": {
+              "annotations": []
+            }
+          },
+          {
+            "reviewId": "20f98f07-a18e-49d0-8aca-48b1ec86f844",
+            "configuredModel": "gemini-2.5-pro",
+            "status": "succeeded",
+            "returnedModel": "gemini-2.5-pro",
+            "output": {
+              "annotations": []
+            }
+          }
+        ],
+        "comparison": {
+          "status": "agree",
+          "annotationCounts": [
+            0,
+            0
+          ],
+          "method": "exact-annotations-order-independent"
+        },
+        "sameConfiguredModel": false,
+        "sameReturnedModel": false,
+        "independentErrorsGuaranteed": false
+      }
+    },
+    {
+      "image": "page-08.png",
+      "httpStatus": 200,
+      "elapsedSeconds": 8.34,
+      "result": {
+        "status": "ai-reviewed",
+        "labelType": "ai-prelabel",
+        "humanReviewRequired": true,
+        "image": {
+          "sha256": "2777242a5b126280330b2568a94ba038912357faf46288ed95a4ecb625cbc476",
+          "width": 3073,
+          "height": 3379,
+          "mimeType": "image/png",
+          "byteLength": 1620574
+        },
+        "reviews": [
+          {
+            "reviewId": "96d98ae0-302c-49b8-8d33-a0d07be5a807",
+            "configuredModel": "gemini-2.5-flash",
+            "status": "succeeded",
+            "returnedModel": "gemini-2.5-flash",
+            "output": {
+              "annotations": [
+                {
+                  "code": "EXCLAMATION_MARK",
+                  "bbox": {
+                    "x": 577,
+                    "y": 540,
+                    "width": 63,
+                    "height": 55
+                  },
+                  "confidence": 0.95,
+                  "uncertain": false
+                }
+              ]
+            }
+          },
+          {
+            "reviewId": "9face5ab-151d-474a-b5e0-5ccfb76443e0",
+            "configuredModel": "gemini-2.5-pro",
+            "status": "succeeded",
+            "returnedModel": "gemini-2.5-pro",
+            "output": {
+              "annotations": [
+                {
+                  "code": "EXCLAMATION_MARK",
+                  "bbox": {
+                    "x": 1768,
+                    "y": 2443,
+                    "width": 165,
+                    "height": 165
+                  },
+                  "confidence": 0.99,
+                  "uncertain": false
+                }
+              ]
+            }
+          }
+        ],
+        "comparison": {
+          "status": "disagree",
+          "annotationCounts": [
+            1,
+            1
+          ],
+          "method": "exact-annotations-order-independent"
+        },
+        "sameConfiguredModel": false,
+        "sameReturnedModel": false,
+        "independentErrorsGuaranteed": false
+      }
+    },
+    {
+      "image": "page-09.png",
+      "httpStatus": 200,
+      "elapsedSeconds": 6.11,
+      "result": {
+        "status": "ai-reviewed",
+        "labelType": "ai-prelabel",
+        "humanReviewRequired": true,
+        "image": {
+          "sha256": "9b8014afb4e3174ead484d2ca12ea73becb079868e69dcb3766dd2d0a9ed30a4",
+          "width": 503,
+          "height": 770,
+          "mimeType": "image/png",
+          "byteLength": 493226
+        },
+        "reviews": [
+          {
+            "reviewId": "6dcabbb5-36d8-42a2-9dce-564f75160a92",
+            "configuredModel": "gemini-2.5-flash",
+            "status": "succeeded",
+            "returnedModel": "gemini-2.5-flash",
+            "output": {
+              "annotations": []
+            }
+          },
+          {
+            "reviewId": "9cfe01e5-f05e-4244-a0f1-146f76bb015d",
+            "configuredModel": "gemini-2.5-pro",
+            "status": "succeeded",
+            "returnedModel": "gemini-2.5-pro",
+            "output": {
+              "annotations": []
+            }
+          }
+        ],
+        "comparison": {
+          "status": "agree",
+          "annotationCounts": [
+            0,
+            0
+          ],
+          "method": "exact-annotations-order-independent"
+        },
+        "sameConfiguredModel": false,
+        "sameReturnedModel": false,
+        "independentErrorsGuaranteed": false
+      }
+    },
+    {
+      "image": "page-10.png",
+      "httpStatus": 200,
+      "elapsedSeconds": 6.95,
+      "result": {
+        "status": "ai-reviewed",
+        "labelType": "ai-prelabel",
+        "humanReviewRequired": true,
+        "image": {
+          "sha256": "d7e6b85d9a0693bfee991785b5f274332c22fcfda5fed9166821bcd5d64d9405",
+          "width": 679,
+          "height": 443,
+          "mimeType": "image/png",
+          "byteLength": 434399
+        },
+        "reviews": [
+          {
+            "reviewId": "492ebaf2-e444-467e-a74e-b60dabb38343",
+            "configuredModel": "gemini-2.5-flash",
+            "status": "succeeded",
+            "returnedModel": "gemini-2.5-flash",
+            "output": {
+              "annotations": []
+            }
+          },
+          {
+            "reviewId": "e6358244-5ac4-41d6-a60c-f33c5f2ea146",
+            "configuredModel": "gemini-2.5-pro",
+            "status": "succeeded",
+            "returnedModel": "gemini-2.5-pro",
+            "output": {
+              "annotations": []
+            }
+          }
+        ],
+        "comparison": {
+          "status": "agree",
+          "annotationCounts": [
+            0,
+            0
+          ],
+          "method": "exact-annotations-order-independent"
+        },
+        "sameConfiguredModel": false,
+        "sameReturnedModel": false,
+        "independentErrorsGuaranteed": false
+      }
+    }
+  ]
+}

@@ -5,7 +5,7 @@ Uses pydantic-settings for environment variable management.
 
 from typing import List
 
-from pydantic import Field
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -44,6 +44,14 @@ class Settings(BaseSettings):
     MODEL_PATH: str = "/app/models"
     TORCH_HOME: str = "/app/models/torch"
     ONNX_MODEL_PATH: str = "/app/models/efficientdet.onnx"
+
+    # Stateless visual GHS review (explicit provider configuration required).
+    PIPELINE_SERVICE_KEY: SecretStr = SecretStr("")
+    GHS_REVIEW_INTERNAL_KEY: SecretStr = SecretStr("")
+    GHS_REVIEW_BASE_URL: str = ""
+    GHS_REVIEW_API_KEY: SecretStr = SecretStr("")
+    GHS_REVIEW_MODEL_A: str = ""
+    GHS_REVIEW_MODEL_B: str = ""
 
     # Detection settings
     CONFIDENCE_THRESHOLD: float = 0.99

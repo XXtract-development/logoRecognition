@@ -189,6 +189,34 @@ export class MLClient {
   // Health Check
   // ==========================================
 
+  /** Dedicated transport bypasses interceptors and raw upstream error details. */
+  async reviewGhs(request: { image: string; mimeType: 'image/png' | 'image/jpeg' }): Promise<Record<string, unknown>> {
+    const key = process.env.GHS_REVIEW_INTERNAL_KEY || process.env.PIPELINE_SERVICE_KEY;
+    if (!key || key.length < 32) throw new MLServiceError('GHS review is unavailable', 503, 'Configuration unavailable');
+    try {
+      const response = await axios.post<Record<string, unknown>>(
+        `${this.baseUrl}/ml/ghs/review`, request,
+        {
+          headers: { 'Content-Type': 'application/json', 'x-ghs-review-key': key },
+          timeout: 105000,
+          maxRedirects: 0,
+          maxBodyLength: 6 * 1024 * 1024,
+          maxContentLength: 512 * 1024,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      let status = 502;
+      if (axios.isAxiosError(error)) {
+        const upstream = error.response?.status;
+        if (upstream && [401, 403, 413, 422, 429, 502, 503, 504].includes(upstream)) status = upstream;
+        else if (['ETIMEDOUT', 'ECONNABORTED'].includes(error.code || '')) status = 504;
+        else if (error.code === 'ECONNREFUSED') status = 503;
+      }
+      throw new MLServiceError('GHS review is unavailable', status, 'GHS review failed');
+    }
+  }
+
   async healthCheck(): Promise<HealthStatus> {
     try {
       const response = await this.client.get<HealthStatus>('/health');
