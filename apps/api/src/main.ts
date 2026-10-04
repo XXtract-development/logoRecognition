@@ -1,3 +1,4 @@
+import { ghsReviewRoutes } from './api/v1/ghs-review';
 /**
  * Logo Recognition API Gateway
  * Main entry point for the Fastify server
@@ -150,6 +151,7 @@ async function startServer() {
     await app.register(verifyDeclaredRoutes, { prefix: '/api/v1' });
     await app.register(pipelineRoutes, { prefix: '/api/v1' });
     await app.register(flywheelRoutes, { prefix: '/api/v1' });
+    await app.register(ghsReviewRoutes, { prefix: '/api/v1' });
 
     // ==========================================
     // Static Files (Monolith: serve frontend build)

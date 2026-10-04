@@ -1,0 +1,1260 @@
+{
+  "execution": "unchanged authenticated ASGI review route; real Gemini HTTPS calls",
+  "providerModels": [
+    "gemini-3.8-flash",
+    "gemini-3.1-pro-preview"
+  ],
+  "scope": "AI development proposal check; comparison with earlier AI visual estimates; not independent gold test",
+  "humanReviewed": false,
+  "liveConfigWritten": false,
+  "images": [
+    {
+      "image": "page-01.png",
+      "httpStatus": 200,
+      "elapsedSeconds": 4.61,
+      "result": {
+        "status": "ai-reviewed",
+        "labelType": "ai-prelabel",
+        "humanReviewRequired": true,
+        "image": {
+          "sha256": "4ee1384a7cdea7d7eaf09f8f8b1ada1540382f5f24c66ea1bf9c0f847e488725",
+          "width": 4299,
+          "height": 2186,
+          "mimeType": "image/png",
+          "byteLength": 923731
+        },
+        "reviews": [
+          {
+            "reviewId": "49bb4e26-eeae-4a66-a673-b40acd601b88",
+            "configuredModel": "gemini-3.8-flash",
+            "status": "succeeded",
+            "returnedModel": "gemini-3.8-flash",
+            "output": {
+              "pageType": "technical",
+              "readability": "readable",
+              "annotations": []
+            },
+            "projectedAnnotations": []
+          },
+          {
+            "reviewId": "fa3eb4f4-cfcc-43c1-9cdf-9e4f55e4dfa2",
+            "configuredModel": "gemini-3.1-pro-preview",
+            "status": "succeeded",
+            "returnedModel": "gemini-3.1-pro-preview",
+            "output": {
+              "pageType": "technical",
+              "readability": "unreadable",
+              "annotations": []
+            },
+            "projectedAnnotations": []
+          }
+        ],
+        "comparison": {
+          "status": "disagree",
+          "annotationCounts": [
+            0,
+            0
+          ],
+          "method": "exact-annotations-and-page-assessment-order-independent",
+          "labels": {
+            "status": "agree",
+            "codeCounts": [
+              {},
+              {}
+            ]
+          },
+          "locations": {
+            "status": "agree",
+            "method": "maximum-cardinality-same-code-IoU",
+            "iouThreshold": 0.5,
+            "matches": [],
+            "unmatchedA": [],
+            "unmatchedB": []
+          },
+          "uncertainty": {
+            "status": "agree"
+          },
+          "pageAssessment": {
+            "status": "disagree",
+            "reviews": [
+              {
+                "pageType": "technical",
+                "readability": "readable"
+              },
+              {
+                "pageType": "technical",
+                "readability": "unreadable"
+              }
+            ]
+          }
+        },
+        "sameConfiguredModel": false,
+        "sameReturnedModel": false,
+        "independentErrorsGuaranteed": false
+      }
+    },
+    {
+      "image": "page-02.png",
+      "httpStatus": 200,
+      "elapsedSeconds": 7.03,
+      "result": {
+        "status": "ai-reviewed",
+        "labelType": "ai-prelabel",
+        "humanReviewRequired": true,
+        "image": {
+          "sha256": "5e725f177517fd4271ff086e15935d23969edc1fcd5a252c952df988eb1d018b",
+          "width": 3606,
+          "height": 2274,
+          "mimeType": "image/png",
+          "byteLength": 858235
+        },
+        "reviews": [
+          {
+            "reviewId": "70c34897-fd30-4bb9-bd5d-2c75ac36bb5b",
+            "configuredModel": "gemini-3.8-flash",
+            "status": "succeeded",
+            "returnedModel": "gemini-3.8-flash",
+            "output": {
+              "pageType": "technical",
+              "readability": "unreadable",
+              "annotations": []
+            },
+            "projectedAnnotations": []
+          },
+          {
+            "reviewId": "b2837580-78e4-4dab-8ca7-32beaf098ff9",
+            "configuredModel": "gemini-3.1-pro-preview",
+            "status": "succeeded",
+            "returnedModel": "gemini-3.1-pro-preview",
+            "output": {
+              "pageType": "technical",
+              "readability": "unreadable",
+              "annotations": []
+            },
+            "projectedAnnotations": []
+          }
+        ],
+        "comparison": {
+          "status": "agree",
+          "annotationCounts": [
+            0,
+            0
+          ],
+          "method": "exact-annotations-and-page-assessment-order-independent",
+          "labels": {
+            "status": "agree",
+            "codeCounts": [
+              {},
+              {}
+            ]
+          },
+          "locations": {
+            "status": "agree",
+            "method": "maximum-cardinality-same-code-IoU",
+            "iouThreshold": 0.5,
+            "matches": [],
+            "unmatchedA": [],
+            "unmatchedB": []
+          },
+          "uncertainty": {
+            "status": "agree"
+          },
+          "pageAssessment": {
+            "status": "agree",
+            "reviews": [
+              {
+                "pageType": "technical",
+                "readability": "unreadable"
+              },
+              {
+                "pageType": "technical",
+                "readability": "unreadable"
+              }
+            ]
+          }
+        },
+        "sameConfiguredModel": false,
+        "sameReturnedModel": false,
+        "independentErrorsGuaranteed": false
+      }
+    },
+    {
+      "image": "page-03.png",
+      "httpStatus": 200,
+      "elapsedSeconds": 4.57,
+      "result": {
+        "status": "ai-reviewed",
+        "labelType": "ai-prelabel",
+        "humanReviewRequired": true,
+        "image": {
+          "sha256": "a3e5fa3e79ec56153fddeefd6b6280b73b997a5ebe76a72907a6e23160f9878b",
+          "width": 1754,
+          "height": 1396,
+          "mimeType": "image/png",
+          "byteLength": 370986
+        },
+        "reviews": [
+          {
+            "reviewId": "99ed6145-672a-4b91-a34f-5edb34236331",
+            "configuredModel": "gemini-3.8-flash",
+            "status": "succeeded",
+            "returnedModel": "gemini-3.8-flash",
+            "output": {
+              "pageType": "label",
+              "readability": "readable",
+              "annotations": []
+            },
+            "projectedAnnotations": []
+          },
+          {
+            "reviewId": "4214ab43-6a4b-4e63-81ed-a0c3d1f6d49c",
+            "configuredModel": "gemini-3.1-pro-preview",
+            "status": "succeeded",
+            "returnedModel": "gemini-3.1-pro-preview",
+            "output": {
+              "pageType": "label",
+              "readability": "readable",
+              "annotations": []
+            },
+            "projectedAnnotations": []
+          }
+        ],
+        "comparison": {
+          "status": "agree",
+          "annotationCounts": [
+            0,
+            0
+          ],
+          "method": "exact-annotations-and-page-assessment-order-independent",
+          "labels": {
+            "status": "agree",
+            "codeCounts": [
+              {},
+              {}
+            ]
+          },
+          "locations": {
+            "status": "agree",
+            "method": "maximum-cardinality-same-code-IoU",
+            "iouThreshold": 0.5,
+            "matches": [],
+            "unmatchedA": [],
+            "unmatchedB": []
+          },
+          "uncertainty": {
+            "status": "agree"
+          },
+          "pageAssessment": {
+            "status": "agree",
+            "reviews": [
+              {
+                "pageType": "label",
+                "readability": "readable"
+              },
+              {
+                "pageType": "label",
+                "readability": "readable"
+              }
+            ]
+          }
+        },
+        "sameConfiguredModel": false,
+        "sameReturnedModel": false,
+        "independentErrorsGuaranteed": false
+      }
+    },
+    {
+      "image": "page-04.png",
+      "httpStatus": 200,
+      "elapsedSeconds": 3.48,
+      "result": {
+        "status": "ai-reviewed",
+        "labelType": "ai-prelabel",
+        "humanReviewRequired": true,
+        "image": {
+          "sha256": "f9a8d9952735ce069e86daf062c3cafd25dd4193a6addc4895d1ba8e7123d1b0",
+          "width": 1754,
+          "height": 1396,
+          "mimeType": "image/png",
+          "byteLength": 318499
+        },
+        "reviews": [
+          {
+            "reviewId": "5b3faa20-1b83-496e-bccd-e114cac2e8fa",
+            "configuredModel": "gemini-3.8-flash",
+            "status": "succeeded",
+            "returnedModel": "gemini-3.8-flash",
+            "output": {
+              "pageType": "technical",
+              "readability": "readable",
+              "annotations": [
+                {
+                  "code": "EXCLAMATION_MARK",
+                  "box_2d": [
+                    694,
+                    233,
+                    786,
+                    310
+                  ],
+                  "confidence": 0.99,
+                  "uncertain": false
+                }
+              ]
+            },
+            "projectedAnnotations": [
+              {
+                "code": "EXCLAMATION_MARK",
+                "bbox": {
+                  "x": 408.682,
+                  "y": 968.824,
+                  "width": 135.058,
+                  "height": 128.432
+                },
+                "confidence": 0.99,
+                "uncertain": false
+              }
+            ]
+          },
+          {
+            "reviewId": "b8c2f1a1-a98c-4847-9a44-9b362697b3c0",
+            "configuredModel": "gemini-3.1-pro-preview",
+            "status": "succeeded",
+            "returnedModel": "gemini-3.1-pro-preview",
+            "output": {
+              "pageType": "technical",
+              "readability": "readable",
+              "annotations": [
+                {
+                  "code": "EXCLAMATION_MARK",
+                  "box_2d": [
+                    693,
+                    230,
+                    792,
+                    301
+                  ],
+                  "confidence": 1.0,
+                  "uncertain": false
+                }
+              ]
+            },
+            "projectedAnnotations": [
+              {
+                "code": "EXCLAMATION_MARK",
+                "bbox": {
+                  "x": 403.42,
+                  "y": 967.428,
+                  "width": 124.534,
+                  "height": 138.204
+                },
+                "confidence": 1.0,
+                "uncertain": false
+              }
+            ]
+          }
+        ],
+        "comparison": {
+          "status": "disagree",
+          "annotationCounts": [
+            1,
+            1
+          ],
+          "method": "exact-annotations-and-page-assessment-order-independent",
+          "labels": {
+            "status": "agree",
+            "codeCounts": [
+              {
+                "EXCLAMATION_MARK": 1
+              },
+              {
+                "EXCLAMATION_MARK": 1
+              }
+            ]
+          },
+          "locations": {
+            "status": "agree",
+            "method": "maximum-cardinality-same-code-IoU",
+            "iouThreshold": 0.5,
+            "matches": [
+              {
+                "aIndex": 0,
+                "bIndex": 0,
+                "iou": 0.7962326587756141
+              }
+            ],
+            "unmatchedA": [],
+            "unmatchedB": []
+          },
+          "uncertainty": {
+            "status": "agree"
+          },
+          "pageAssessment": {
+            "status": "agree",
+            "reviews": [
+              {
+                "pageType": "technical",
+                "readability": "readable"
+              },
+              {
+                "pageType": "technical",
+                "readability": "readable"
+              }
+            ]
+          }
+        },
+        "sameConfiguredModel": false,
+        "sameReturnedModel": false,
+        "independentErrorsGuaranteed": false
+      }
+    },
+    {
+      "image": "page-05.png",
+      "httpStatus": 200,
+      "elapsedSeconds": 3.98,
+      "result": {
+        "status": "ai-reviewed",
+        "labelType": "ai-prelabel",
+        "humanReviewRequired": true,
+        "image": {
+          "sha256": "8999c34da554cf8137fb271beda87ad875c4d0f2e1c4920632a473c7916e40cb",
+          "width": 3073,
+          "height": 3379,
+          "mimeType": "image/png",
+          "byteLength": 1545151
+        },
+        "reviews": [
+          {
+            "reviewId": "9cd6c36d-9baf-4d32-9238-195b1ecf1653",
+            "configuredModel": "gemini-3.8-flash",
+            "status": "succeeded",
+            "returnedModel": "gemini-3.8-flash",
+            "output": {
+              "pageType": "label",
+              "readability": "readable",
+              "annotations": [
+                {
+                  "code": "EXCLAMATION_MARK",
+                  "box_2d": [
+                    534,
+                    572,
+                    578,
+                    618
+                  ],
+                  "confidence": 0.98,
+                  "uncertain": false
+                }
+              ]
+            },
+            "projectedAnnotations": [
+              {
+                "code": "EXCLAMATION_MARK",
+                "bbox": {
+                  "x": 1757.756,
+                  "y": 1804.386,
+                  "width": 141.358,
+                  "height": 148.676
+                },
+                "confidence": 0.98,
+                "uncertain": false
+              }
+            ]
+          },
+          {
+            "reviewId": "9deb7bfd-a817-424e-b224-f9bddde6323a",
+            "configuredModel": "gemini-3.1-pro-preview",
+            "status": "succeeded",
+            "returnedModel": "gemini-3.1-pro-preview",
+            "output": {
+              "pageType": "label",
+              "readability": "readable",
+              "annotations": [
+                {
+                  "code": "EXCLAMATION_MARK",
+                  "box_2d": [
+                    536,
+                    573,
+                    566,
+                    617
+                  ],
+                  "confidence": 1.0,
+                  "uncertain": false
+                }
+              ]
+            },
+            "projectedAnnotations": [
+              {
+                "code": "EXCLAMATION_MARK",
+                "bbox": {
+                  "x": 1760.829,
+                  "y": 1811.144,
+                  "width": 135.212,
+                  "height": 101.37
+                },
+                "confidence": 1.0,
+                "uncertain": false
+              }
+            ]
+          }
+        ],
+        "comparison": {
+          "status": "disagree",
+          "annotationCounts": [
+            1,
+            1
+          ],
+          "method": "exact-annotations-and-page-assessment-order-independent",
+          "labels": {
+            "status": "agree",
+            "codeCounts": [
+              {
+                "EXCLAMATION_MARK": 1
+              },
+              {
+                "EXCLAMATION_MARK": 1
+              }
+            ]
+          },
+          "locations": {
+            "status": "agree",
+            "method": "maximum-cardinality-same-code-IoU",
+            "iouThreshold": 0.5,
+            "matches": [
+              {
+                "aIndex": 0,
+                "bIndex": 0,
+                "iou": 0.6521739130434783
+              }
+            ],
+            "unmatchedA": [],
+            "unmatchedB": []
+          },
+          "uncertainty": {
+            "status": "agree"
+          },
+          "pageAssessment": {
+            "status": "agree",
+            "reviews": [
+              {
+                "pageType": "label",
+                "readability": "readable"
+              },
+              {
+                "pageType": "label",
+                "readability": "readable"
+              }
+            ]
+          }
+        },
+        "sameConfiguredModel": false,
+        "sameReturnedModel": false,
+        "independentErrorsGuaranteed": false
+      }
+    },
+    {
+      "image": "page-06.png",
+      "httpStatus": 200,
+      "elapsedSeconds": 3.49,
+      "result": {
+        "status": "ai-reviewed",
+        "labelType": "ai-prelabel",
+        "humanReviewRequired": true,
+        "image": {
+          "sha256": "d473ab1c8c9447cf3e6caf7aa8450e1beacc8dfbbfe8fdb6674f53246ea2f89a",
+          "width": 1754,
+          "height": 1396,
+          "mimeType": "image/png",
+          "byteLength": 320540
+        },
+        "reviews": [
+          {
+            "reviewId": "a4a2664a-12ff-40b4-88bd-e59de654b6ee",
+            "configuredModel": "gemini-3.8-flash",
+            "status": "succeeded",
+            "returnedModel": "gemini-3.8-flash",
+            "output": {
+              "pageType": "technical",
+              "readability": "readable",
+              "annotations": [
+                {
+                  "code": "EXCLAMATION_MARK",
+                  "box_2d": [
+                    693,
+                    233,
+                    789,
+                    312
+                  ],
+                  "confidence": 0.98,
+                  "uncertain": false
+                }
+              ]
+            },
+            "projectedAnnotations": [
+              {
+                "code": "EXCLAMATION_MARK",
+                "bbox": {
+                  "x": 408.682,
+                  "y": 967.428,
+                  "width": 138.566,
+                  "height": 134.016
+                },
+                "confidence": 0.98,
+                "uncertain": false
+              }
+            ]
+          },
+          {
+            "reviewId": "258e69f4-b9eb-4892-b478-5a4878ab22a6",
+            "configuredModel": "gemini-3.1-pro-preview",
+            "status": "succeeded",
+            "returnedModel": "gemini-3.1-pro-preview",
+            "output": {
+              "pageType": "label",
+              "readability": "readable",
+              "annotations": [
+                {
+                  "code": "EXCLAMATION_MARK",
+                  "box_2d": [
+                    688,
+                    233,
+                    782,
+                    326
+                  ],
+                  "confidence": 0.9996,
+                  "uncertain": false
+                }
+              ]
+            },
+            "projectedAnnotations": [
+              {
+                "code": "EXCLAMATION_MARK",
+                "bbox": {
+                  "x": 408.682,
+                  "y": 960.448,
+                  "width": 163.122,
+                  "height": 131.224
+                },
+                "confidence": 0.9996,
+                "uncertain": false
+              }
+            ]
+          }
+        ],
+        "comparison": {
+          "status": "disagree",
+          "annotationCounts": [
+            1,
+            1
+          ],
+          "method": "exact-annotations-and-page-assessment-order-independent",
+          "labels": {
+            "status": "agree",
+            "codeCounts": [
+              {
+                "EXCLAMATION_MARK": 1
+              },
+              {
+                "EXCLAMATION_MARK": 1
+              }
+            ]
+          },
+          "locations": {
+            "status": "agree",
+            "method": "maximum-cardinality-same-code-IoU",
+            "iouThreshold": 0.5,
+            "matches": [
+              {
+                "aIndex": 0,
+                "bIndex": 0,
+                "iou": 0.756428187197418
+              }
+            ],
+            "unmatchedA": [],
+            "unmatchedB": []
+          },
+          "uncertainty": {
+            "status": "agree"
+          },
+          "pageAssessment": {
+            "status": "disagree",
+            "reviews": [
+              {
+                "pageType": "technical",
+                "readability": "readable"
+              },
+              {
+                "pageType": "label",
+                "readability": "readable"
+              }
+            ]
+          }
+        },
+        "sameConfiguredModel": false,
+        "sameReturnedModel": false,
+        "independentErrorsGuaranteed": false
+      }
+    },
+    {
+      "image": "page-07.png",
+      "httpStatus": 200,
+      "elapsedSeconds": 3.06,
+      "result": {
+        "status": "ai-reviewed",
+        "labelType": "ai-prelabel",
+        "humanReviewRequired": true,
+        "image": {
+          "sha256": "f28a4a0fa35c82a9bd7bb068af0576afec6f9cea40aade0d1a2ab98ddd8aea94",
+          "width": 1754,
+          "height": 1396,
+          "mimeType": "image/png",
+          "byteLength": 356852
+        },
+        "reviews": [
+          {
+            "reviewId": "e339d6e5-02ed-4ee4-988a-bb1fda77c3db",
+            "configuredModel": "gemini-3.8-flash",
+            "status": "succeeded",
+            "returnedModel": "gemini-3.8-flash",
+            "output": {
+              "pageType": "label",
+              "readability": "readable",
+              "annotations": []
+            },
+            "projectedAnnotations": []
+          },
+          {
+            "reviewId": "bc7e51f5-0ca5-4bf2-bd75-5b2d9c176438",
+            "configuredModel": "gemini-3.1-pro-preview",
+            "status": "succeeded",
+            "returnedModel": "gemini-3.1-pro-preview",
+            "output": {
+              "pageType": "label",
+              "readability": "readable",
+              "annotations": []
+            },
+            "projectedAnnotations": []
+          }
+        ],
+        "comparison": {
+          "status": "agree",
+          "annotationCounts": [
+            0,
+            0
+          ],
+          "method": "exact-annotations-and-page-assessment-order-independent",
+          "labels": {
+            "status": "agree",
+            "codeCounts": [
+              {},
+              {}
+            ]
+          },
+          "locations": {
+            "status": "agree",
+            "method": "maximum-cardinality-same-code-IoU",
+            "iouThreshold": 0.5,
+            "matches": [],
+            "unmatchedA": [],
+            "unmatchedB": []
+          },
+          "uncertainty": {
+            "status": "agree"
+          },
+          "pageAssessment": {
+            "status": "agree",
+            "reviews": [
+              {
+                "pageType": "label",
+                "readability": "readable"
+              },
+              {
+                "pageType": "label",
+                "readability": "readable"
+              }
+            ]
+          }
+        },
+        "sameConfiguredModel": false,
+        "sameReturnedModel": false,
+        "independentErrorsGuaranteed": false
+      }
+    },
+    {
+      "image": "page-08.png",
+      "httpStatus": 200,
+      "elapsedSeconds": 6.73,
+      "result": {
+        "status": "ai-reviewed",
+        "labelType": "ai-prelabel",
+        "humanReviewRequired": true,
+        "image": {
+          "sha256": "2777242a5b126280330b2568a94ba038912357faf46288ed95a4ecb625cbc476",
+          "width": 3073,
+          "height": 3379,
+          "mimeType": "image/png",
+          "byteLength": 1620574
+        },
+        "reviews": [
+          {
+            "reviewId": "8c153bd8-5d82-4b6d-8d45-892bc6867c1b",
+            "configuredModel": "gemini-3.8-flash",
+            "status": "succeeded",
+            "returnedModel": "gemini-3.8-flash",
+            "output": {
+              "pageType": "label",
+              "readability": "readable",
+              "annotations": [
+                {
+                  "code": "EXCLAMATION_MARK",
+                  "box_2d": [
+                    538,
+                    573,
+                    580,
+                    618
+                  ],
+                  "confidence": 0.99,
+                  "uncertain": false
+                }
+              ]
+            },
+            "projectedAnnotations": [
+              {
+                "code": "EXCLAMATION_MARK",
+                "bbox": {
+                  "x": 1760.829,
+                  "y": 1817.902,
+                  "width": 138.285,
+                  "height": 141.918
+                },
+                "confidence": 0.99,
+                "uncertain": false
+              }
+            ]
+          },
+          {
+            "reviewId": "8ac7856d-90e2-486e-87d8-f0b8d4dd9c23",
+            "configuredModel": "gemini-3.1-pro-preview",
+            "status": "succeeded",
+            "returnedModel": "gemini-3.1-pro-preview",
+            "output": {
+              "pageType": "label",
+              "readability": "readable",
+              "annotations": [
+                {
+                  "code": "EXCLAMATION_MARK",
+                  "box_2d": [
+                    533,
+                    571,
+                    581,
+                    618
+                  ],
+                  "confidence": 1.0,
+                  "uncertain": false
+                }
+              ]
+            },
+            "projectedAnnotations": [
+              {
+                "code": "EXCLAMATION_MARK",
+                "bbox": {
+                  "x": 1754.683,
+                  "y": 1801.007,
+                  "width": 144.431,
+                  "height": 162.192
+                },
+                "confidence": 1.0,
+                "uncertain": false
+              }
+            ]
+          }
+        ],
+        "comparison": {
+          "status": "disagree",
+          "annotationCounts": [
+            1,
+            1
+          ],
+          "method": "exact-annotations-and-page-assessment-order-independent",
+          "labels": {
+            "status": "agree",
+            "codeCounts": [
+              {
+                "EXCLAMATION_MARK": 1
+              },
+              {
+                "EXCLAMATION_MARK": 1
+              }
+            ]
+          },
+          "locations": {
+            "status": "agree",
+            "method": "maximum-cardinality-same-code-IoU",
+            "iouThreshold": 0.5,
+            "matches": [
+              {
+                "aIndex": 0,
+                "bIndex": 0,
+                "iou": 0.8377659574468085
+              }
+            ],
+            "unmatchedA": [],
+            "unmatchedB": []
+          },
+          "uncertainty": {
+            "status": "agree"
+          },
+          "pageAssessment": {
+            "status": "agree",
+            "reviews": [
+              {
+                "pageType": "label",
+                "readability": "readable"
+              },
+              {
+                "pageType": "label",
+                "readability": "readable"
+              }
+            ]
+          }
+        },
+        "sameConfiguredModel": false,
+        "sameReturnedModel": false,
+        "independentErrorsGuaranteed": false
+      }
+    },
+    {
+      "image": "page-09.png",
+      "httpStatus": 200,
+      "elapsedSeconds": 3.07,
+      "result": {
+        "status": "ai-reviewed",
+        "labelType": "ai-prelabel",
+        "humanReviewRequired": true,
+        "image": {
+          "sha256": "9b8014afb4e3174ead484d2ca12ea73becb079868e69dcb3766dd2d0a9ed30a4",
+          "width": 503,
+          "height": 770,
+          "mimeType": "image/png",
+          "byteLength": 493226
+        },
+        "reviews": [
+          {
+            "reviewId": "fcb084a0-6000-44ec-92ce-16ae75330398",
+            "configuredModel": "gemini-3.8-flash",
+            "status": "succeeded",
+            "returnedModel": "gemini-3.8-flash",
+            "output": {
+              "pageType": "label",
+              "readability": "readable",
+              "annotations": []
+            },
+            "projectedAnnotations": []
+          },
+          {
+            "reviewId": "58b7983e-8fde-4296-8d33-f49aca103c04",
+            "configuredModel": "gemini-3.1-pro-preview",
+            "status": "succeeded",
+            "returnedModel": "gemini-3.1-pro-preview",
+            "output": {
+              "pageType": "label",
+              "readability": "readable",
+              "annotations": []
+            },
+            "projectedAnnotations": []
+          }
+        ],
+        "comparison": {
+          "status": "agree",
+          "annotationCounts": [
+            0,
+            0
+          ],
+          "method": "exact-annotations-and-page-assessment-order-independent",
+          "labels": {
+            "status": "agree",
+            "codeCounts": [
+              {},
+              {}
+            ]
+          },
+          "locations": {
+            "status": "agree",
+            "method": "maximum-cardinality-same-code-IoU",
+            "iouThreshold": 0.5,
+            "matches": [],
+            "unmatchedA": [],
+            "unmatchedB": []
+          },
+          "uncertainty": {
+            "status": "agree"
+          },
+          "pageAssessment": {
+            "status": "agree",
+            "reviews": [
+              {
+                "pageType": "label",
+                "readability": "readable"
+              },
+              {
+                "pageType": "label",
+                "readability": "readable"
+              }
+            ]
+          }
+        },
+        "sameConfiguredModel": false,
+        "sameReturnedModel": false,
+        "independentErrorsGuaranteed": false
+      }
+    },
+    {
+      "image": "page-10.png",
+      "httpStatus": 200,
+      "elapsedSeconds": 2.46,
+      "result": {
+        "status": "ai-reviewed",
+        "labelType": "ai-prelabel",
+        "humanReviewRequired": true,
+        "image": {
+          "sha256": "d7e6b85d9a0693bfee991785b5f274332c22fcfda5fed9166821bcd5d64d9405",
+          "width": 679,
+          "height": 443,
+          "mimeType": "image/png",
+          "byteLength": 434399
+        },
+        "reviews": [
+          {
+            "reviewId": "87f300f5-1175-4633-b950-5da785354919",
+            "configuredModel": "gemini-3.8-flash",
+            "status": "succeeded",
+            "returnedModel": "gemini-3.8-flash",
+            "output": {
+              "pageType": "label",
+              "readability": "readable",
+              "annotations": []
+            },
+            "projectedAnnotations": []
+          },
+          {
+            "reviewId": "871b2220-95f0-4dbf-b793-be48999d56c7",
+            "configuredModel": "gemini-3.1-pro-preview",
+            "status": "succeeded",
+            "returnedModel": "gemini-3.1-pro-preview",
+            "output": {
+              "pageType": "label",
+              "readability": "readable",
+              "annotations": []
+            },
+            "projectedAnnotations": []
+          }
+        ],
+        "comparison": {
+          "status": "agree",
+          "annotationCounts": [
+            0,
+            0
+          ],
+          "method": "exact-annotations-and-page-assessment-order-independent",
+          "labels": {
+            "status": "agree",
+            "codeCounts": [
+              {},
+              {}
+            ]
+          },
+          "locations": {
+            "status": "agree",
+            "method": "maximum-cardinality-same-code-IoU",
+            "iouThreshold": 0.5,
+            "matches": [],
+            "unmatchedA": [],
+            "unmatchedB": []
+          },
+          "uncertainty": {
+            "status": "agree"
+          },
+          "pageAssessment": {
+            "status": "agree",
+            "reviews": [
+              {
+                "pageType": "label",
+                "readability": "readable"
+              },
+              {
+                "pageType": "label",
+                "readability": "readable"
+              }
+            ]
+          }
+        },
+        "sameConfiguredModel": false,
+        "sameReturnedModel": false,
+        "independentErrorsGuaranteed": false
+      }
+    }
+  ],
+  "comparisonVersusEarlierAiEstimate": [
+    {
+      "image": "page-01.png",
+      "model": "gemini-3.8-flash",
+      "pageType": "technical",
+      "readability": "readable",
+      "codes": []
+    },
+    {
+      "image": "page-01.png",
+      "model": "gemini-3.1-pro-preview",
+      "pageType": "technical",
+      "readability": "unreadable",
+      "codes": []
+    },
+    {
+      "image": "page-02.png",
+      "model": "gemini-3.8-flash",
+      "pageType": "technical",
+      "readability": "unreadable",
+      "codes": []
+    },
+    {
+      "image": "page-02.png",
+      "model": "gemini-3.1-pro-preview",
+      "pageType": "technical",
+      "readability": "unreadable",
+      "codes": []
+    },
+    {
+      "image": "page-03.png",
+      "model": "gemini-3.8-flash",
+      "pageType": "label",
+      "readability": "readable",
+      "codes": []
+    },
+    {
+      "image": "page-03.png",
+      "model": "gemini-3.1-pro-preview",
+      "pageType": "label",
+      "readability": "readable",
+      "codes": []
+    },
+    {
+      "image": "page-04.png",
+      "model": "gemini-3.8-flash",
+      "pageType": "technical",
+      "readability": "readable",
+      "codes": [
+        "EXCLAMATION_MARK"
+      ],
+      "iouVersusEarlierAiEstimate": 0.947
+    },
+    {
+      "image": "page-04.png",
+      "model": "gemini-3.1-pro-preview",
+      "pageType": "technical",
+      "readability": "readable",
+      "codes": [
+        "EXCLAMATION_MARK"
+      ],
+      "iouVersusEarlierAiEstimate": 0.813
+    },
+    {
+      "image": "page-05.png",
+      "model": "gemini-3.8-flash",
+      "pageType": "label",
+      "readability": "readable",
+      "codes": [
+        "EXCLAMATION_MARK"
+      ],
+      "iouVersusEarlierAiEstimate": 0.909
+    },
+    {
+      "image": "page-05.png",
+      "model": "gemini-3.1-pro-preview",
+      "pageType": "label",
+      "readability": "readable",
+      "codes": [
+        "EXCLAMATION_MARK"
+      ],
+      "iouVersusEarlierAiEstimate": 0.698
+    },
+    {
+      "image": "page-06.png",
+      "model": "gemini-3.8-flash",
+      "pageType": "technical",
+      "readability": "readable",
+      "codes": [
+        "EXCLAMATION_MARK"
+      ],
+      "iouVersusEarlierAiEstimate": 0.961
+    },
+    {
+      "image": "page-06.png",
+      "model": "gemini-3.1-pro-preview",
+      "pageType": "label",
+      "readability": "readable",
+      "codes": [
+        "EXCLAMATION_MARK"
+      ],
+      "iouVersusEarlierAiEstimate": 0.749
+    },
+    {
+      "image": "page-07.png",
+      "model": "gemini-3.8-flash",
+      "pageType": "label",
+      "readability": "readable",
+      "codes": []
+    },
+    {
+      "image": "page-07.png",
+      "model": "gemini-3.1-pro-preview",
+      "pageType": "label",
+      "readability": "readable",
+      "codes": []
+    },
+    {
+      "image": "page-08.png",
+      "model": "gemini-3.8-flash",
+      "pageType": "label",
+      "readability": "readable",
+      "codes": [
+        "EXCLAMATION_MARK"
+      ],
+      "iouVersusEarlierAiEstimate": 0.857
+    },
+    {
+      "image": "page-08.png",
+      "model": "gemini-3.1-pro-preview",
+      "pageType": "label",
+      "readability": "readable",
+      "codes": [
+        "EXCLAMATION_MARK"
+      ],
+      "iouVersusEarlierAiEstimate": 0.816
+    },
+    {
+      "image": "page-09.png",
+      "model": "gemini-3.8-flash",
+      "pageType": "label",
+      "readability": "readable",
+      "codes": []
+    },
+    {
+      "image": "page-09.png",
+      "model": "gemini-3.1-pro-preview",
+      "pageType": "label",
+      "readability": "readable",
+      "codes": []
+    },
+    {
+      "image": "page-10.png",
+      "model": "gemini-3.8-flash",
+      "pageType": "label",
+      "readability": "readable",
+      "codes": []
+    },
+    {
+      "image": "page-10.png",
+      "model": "gemini-3.1-pro-preview",
+      "pageType": "label",
+      "readability": "readable",
+      "codes": []
+    }
+  ]
+}

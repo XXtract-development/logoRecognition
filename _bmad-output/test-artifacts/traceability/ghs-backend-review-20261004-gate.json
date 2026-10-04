@@ -1,0 +1,93 @@
+{
+  "decision": "FAIL",
+  "reason": "AC5 runtime/config/CI release evidence pending; no complete delivery claim",
+  "p0Coverage": 100,
+  "p1Coverage": 50,
+  "overallCoverage": 80,
+  "localProductChecks": "passed",
+  "liveConfigWritten": false,
+  "matrix": {
+    "phase": "PHASE_1_COMPLETE",
+    "generated_at": "2026-10-04T12:01:54.480354+00:00",
+    "requirements": [
+      {
+        "id": "AC1",
+        "priority": "P1",
+        "coverage": "FULL"
+      },
+      {
+        "id": "AC2",
+        "priority": "P0",
+        "coverage": "FULL"
+      },
+      {
+        "id": "AC3",
+        "priority": "P0",
+        "coverage": "FULL"
+      },
+      {
+        "id": "AC4",
+        "priority": "P0",
+        "coverage": "FULL"
+      },
+      {
+        "id": "AC5",
+        "priority": "P1",
+        "coverage": "PARTIAL"
+      }
+    ],
+    "coverage_statistics": {
+      "total_requirements": 5,
+      "fully_covered": 4,
+      "partially_covered": 1,
+      "uncovered": 0,
+      "overall_coverage_percentage": 80,
+      "priority_breakdown": {
+        "P0": {
+          "total": 3,
+          "covered": 3,
+          "percentage": 100
+        },
+        "P1": {
+          "total": 2,
+          "covered": 1,
+          "percentage": 50
+        },
+        "P2": {
+          "total": 0,
+          "covered": 0,
+          "percentage": 100
+        },
+        "P3": {
+          "total": 0,
+          "covered": 0,
+          "percentage": 100
+        }
+      }
+    },
+    "gap_analysis": {
+      "critical_gaps": [],
+      "high_gaps": [],
+      "medium_gaps": [],
+      "low_gaps": [],
+      "partial_coverage_items": [
+        {
+          "id": "AC5",
+          "priority": "P1",
+          "coverage": "PARTIAL"
+        }
+      ],
+      "unit_only_items": []
+    },
+    "coverage_heuristics": {
+      "endpoint_gaps": [],
+      "auth_negative_path_gaps": [],
+      "happy_path_only_gaps": []
+    },
+    "recommendations": [
+      "Volledige PR-CI afronden",
+      "Vier providerconfigvariabelen op ACC na expliciet akkoord toevoegen",
+      "Geautoriseerde accmerge/autodeploy en werkelijke runtime controleren"
+    ]
+  }
+}

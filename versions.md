@@ -2,6 +2,14 @@
 
 ## 4 oktober 2026
 
+**Twee beeldbeoordelingen voor gevarenpictogrammen**
+- Een afbeelding kan automatisch twee afzonderlijke visuele beoordelingen krijgen, met een vergelijking van de uitkomsten.
+- Als één beoordeling mislukt, blijft de andere zichtbaar en wordt de ontbrekende beoordeling gemeld.
+- De uitkomsten blijven voorstellen die een mens moet controleren; er worden geen voorbeelden of trainingsgegevens opgeslagen.
+- De beoordelingsdienst en beide modellen worden vooraf ingesteld. Zonder die instellingen blijft de beoordeling uitgeschakeld.
+
+---
+
 **Gevarenpictogrammen herkennen en beoordelen**
 - De herkenning ondersteunt nu alle negen gevaarlijke-stoffenpictogrammen met officiële voorbeeldafbeeldingen.
 - Gevonden pictogrammen worden vergeleken met de productdeclaratie en blijven altijd ter beoordeling aangeboden.
