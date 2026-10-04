@@ -49,6 +49,30 @@ describe('Recognition Routes', () => {
   });
 
   describe('POST /recognize', () => {
+    it('preserves under-threshold GHS review proposals and specialist trace without promoting them', async () => {
+      mockedMlClient.isHealthy.mockResolvedValue(true);
+      const proposal = {
+        category: 'GHSSymbolDescriptionCode', value: 'CORROSION', confidence: 0.82,
+        bbox: { x: 1, y: 2, width: 30, height: 30 }, uncertain: true,
+        requires_review: true, model_version: 'ghs-glyph-frozen',
+        reference_version: 'ghs-glyph-frozen', method: 'ghs-specialist',
+        confidence_kind: 'uncalibrated-classifier-score',
+      };
+      mockedMlClient.detectLogos.mockResolvedValue({
+        ...mockDetectionResult, detections: [], review_proposals: [proposal],
+      });
+      (mockPrisma.recognitionLog.create as vi.Mock).mockResolvedValue(mockRecognitionLog);
+      const response = await app.inject({
+        method: 'POST', url: '/api/v1/recognize',
+        payload: { image: createBase64TestImage(), confidence_threshold: 0.99 },
+      });
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body.detections).toEqual([]);
+      expect(body.review_proposals).toEqual([proposal]);
+      expect(mockPrisma.recognitionResult.createMany).not.toHaveBeenCalled();
+    });
+
     it('should recognize logos in image', async () => {
       mockedMlClient.isHealthy.mockResolvedValue(true);
       mockedMlClient.detectLogos.mockResolvedValue(mockDetectionResult);

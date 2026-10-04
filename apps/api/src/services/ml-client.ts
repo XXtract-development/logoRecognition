@@ -24,6 +24,12 @@ export interface Detection {
   confidence: number;
   bbox: BoundingBox;
   embedding?: number[];
+  uncertain?: boolean;
+  requires_review?: boolean;
+  model_version?: string;
+  reference_version?: string;
+  confidence_kind?: string;
+  method?: string;
 }
 
 export interface DetectionRequest {
@@ -38,6 +44,7 @@ export interface DetectionResponse {
   processing_time_ms: number;
   image_hash: string;
   model_version: string;
+  review_proposals?: Detection[];
 }
 
 export interface EmbeddingRequest {

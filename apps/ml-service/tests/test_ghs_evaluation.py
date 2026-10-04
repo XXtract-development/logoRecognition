@@ -585,6 +585,7 @@ def test_dirty_normalization_source_change_invalidates_protocol(tmp_path):
         "app/ghs_dataset.py",
         "app/ghs_evaluation.py",
         "app/services/ghs_reference.py",
+        "app/services/ghs_specialist.py",
         "app/services/reference_category.py",
     ]
     for relative in files:

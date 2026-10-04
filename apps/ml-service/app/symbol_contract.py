@@ -69,7 +69,7 @@ def normalize_detection(raw, profile, model_version, elapsed_ms):
         raw.get("confidence") or raw.get("match_confidence") or raw.get("score") or 0
     )
     method = str(raw.get("method") or "embedding")
-    if method == "ghs-reference":
+    if method in {"ghs-reference", "ghs-specialist"}:
         method = "classifier"  # Legacy enum: deterministic reference classification.
     if method not in {"embedding", "classifier"}:
         method = "embedding"
@@ -120,6 +120,27 @@ def normalize_detections(raw, profile, model_version, elapsed_ms):
         key = (normalized["code"], str(normalized.get("bbox")))
         if key in seen:
             continue
+        if normalize_code(normalized["code"]) in GHS_CODES and any(
+            previous["code"] == normalized["code"]
+            and _box_iou(previous.get("bbox"), normalized.get("bbox")) >= 0.5
+            for previous in out
+        ):
+            continue
         seen.add(key)
         out.append(normalized)
     return out
+
+
+def _box_iou(a, b):
+    if not a or not b:
+        return 0.0
+    try:
+        overlap = max(
+            0, min(a["x"] + a["width"], b["x"] + b["width"]) - max(a["x"], b["x"])
+        ) * max(
+            0, min(a["y"] + a["height"], b["y"] + b["height"]) - max(a["y"], b["y"])
+        )
+        union = a["width"] * a["height"] + b["width"] * b["height"] - overlap
+        return overlap / union if union > 0 else 0.0
+    except (KeyError, TypeError, ValueError):
+        return 0.0

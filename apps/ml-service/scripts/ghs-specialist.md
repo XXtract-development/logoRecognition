@@ -1,0 +1,20 @@
+# Lokale GHS-specialist trainen
+
+`train_ghs_specialist.py` traint uitsluitend lokaal en schrijft een nieuw, onveranderlijk artifactdirectory. De inferencecode gebruikt NumPy/OpenCV en gebundelde JSON-gewichten; training gebruikt scikit-learn. Geen database, upload, modelactivatie of live configuratie.
+
+```sh
+pip install -r scripts/ghs-training-requirements.txt
+python scripts/train_ghs_specialist.py --output /nieuw/pad/specialist
+```
+
+Zonder manifest worden negen gehashte officiële CCOHS-referenties gebruikt. Deterministische schaal-, rotatie-, blur- en lijndiktevarianten blijven dezelfde bronfamilie. Vierhonderd gemaakte achtergrondglyphs trainen `UNKNOWN`; dit zijn geen praktijknegatieven. Het gebundelde artifact bevat1849 trainingsvarianten, negen officiële bronfamilies en nul onafhankelijke praktijkgroepen. Scores zijn niet gekalibreerde classifieruitkomsten, geen kansen op correcte herkenning. Elk voorstel vereist review.
+
+Eigen `--manifest` JSON bevat `samples`; elke rij heeft `imagePath`, `sha256`, `familyId`, `split` (`train|reference|validation|holdout`), `code` (canonieke GHS-naam of `UNKNOWN`), `provenance`, `labelStatus`, `trainingAllowed` (alleen expliciet `true` voor training). Optioneel `bbox={x,y,width,height}`; zonder bbox moet de bron een gesloten GHS-ruit bevatten. `officialReference=true` wordt geweigerd in validation/holdout. Alle families en hashes blijven in één split; alle aangeleverde checksums worden geverifieerd. Alleen train/reference worden gedecodeerd en getraind. Validation/holdout worden niet voor modelkeuze of training gelezen; alleen bytechecksums worden gecontroleerd.
+
+Nieuw artifact bevat `model.json` plus `manifest.json` met hashes, deterministische versie, bronrechten, labelstatus, featureversie en runtimeversies. Een niet-lege outputdirectory wordt geweigerd. Hertraining schrijft een aparte directory, nooit over een bevroren model. De API gebruikt uitsluitend het gecontroleerde artifact in de release. Geen live hertrainingstrigger. `uncertain` betekent classifier-score onder de vaste bestaande reviewgrens0,87; ongekalibreerde status staat apart in `confidence_kind`. Ook boven0,87 blijft `requires_review=true`; deze grens bewijst geen praktijknauwkeurigheid.
+
+De classifier verwijdert de gedeelde rode rand, normaliseert de zwarte glyph en gebruikt HOG plus lage-resolutie glyphpixels. UNKNOWN, minimumscore, klassenscoremarge en afstand tot trainingsreferenties kunnen van een positief label afzien. Sterke bestaande templatehits blijven behouden. Recovery met minder witte annulus wordt alleen voor geometrisch gesloten rode ruiten onderzocht en moet door de classifier bevestigd worden. Pixelwerk en kandidaatcount zijn begrensd, outputboxen verwijzen naar het oorspronkelijke beeld.
+
+Normale detect/upload geven `detections` alleen boven de gevraagde minimumscore; onderdrempel-GHS blijft afzonderlijk in `review_proposals`. Metadata: `uncertain`, `requires_review`, `model_version`, `reference_version`, `confidence_kind`, `method`. Dit verandert geen score en bevestigt geen chemische classificatie. De algemene herkenner en categorieën blijven behouden.
+
+Echte ontwikkelingsevidence is apart vastgelegd onder `ghs-training-20261004/development-after/`; de24 bronnen en AI-labels zijn geen gold of onafhankelijke eindtest. `ghs_eval.py` bevriest nu zowel specialist-featurebron als model-/manifesthash vóór eindtoegang. Gewichts- of policywijziging na freeze wordt geweigerd. Voldoende praktijkherkenning vraagt een aparte bevroren beeldtest met onafhankelijke families, alle negen klassen en negatieve etiketten.

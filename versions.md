@@ -2,6 +2,11 @@
 
 ## 4 oktober 2026
 
+**Gevarenpictogrammen in de gewone logoherkenning**
+- De gewone herkenning geeft nu ook voorstellen voor gevaarlijke-stoffenpictogrammen terug, inclusief hun plaats in de afbeelding.
+- Twijfelgevallen blijven apart zichtbaar ter beoordeling; de gevraagde zekerheidsgrens blijft gelden voor herkenningsresultaten.
+- De herkenning is verbeterd voor onder meer explosiegevaar, giftigheid en milieugevaar. De kwaliteit op onafhankelijke praktijkbeelden wordt afzonderlijk gecontroleerd.
+
 **Twee beeldbeoordelingen voor gevarenpictogrammen**
 - Een afbeelding kan automatisch twee afzonderlijke visuele beoordelingen krijgen, met een vergelijking van de uitkomsten.
 - Als één beoordeling mislukt, blijft de andere zichtbaar en wordt de ontbrekende beoordeling gemeld.

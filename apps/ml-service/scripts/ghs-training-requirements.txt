@@ -1,0 +1,5 @@
+# Offline training/reproduction only; runtime needs no scikit-learn.
+numpy==1.26.3
+opencv-python-headless==4.9.0.80
+scipy==1.12.0
+scikit-learn==1.9.1

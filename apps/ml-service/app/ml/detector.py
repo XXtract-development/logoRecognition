@@ -2,6 +2,7 @@
 Logo Detector - Handles logo detection using ML models.
 """
 
+import math
 from typing import List, Optional
 
 from PIL import Image
@@ -27,6 +28,7 @@ class LogoDetector:
         image: Image.Image,
         confidence_threshold: Optional[float] = None,
         return_embeddings: bool = False,
+        include_review_proposals: bool = False,
     ) -> List[dict]:
         """
         Detect logos in an image.
@@ -39,7 +41,13 @@ class LogoDetector:
         Returns:
             List of detection dictionaries
         """
-        threshold = confidence_threshold or self.confidence_threshold
+        threshold = (
+            self.confidence_threshold
+            if confidence_threshold is None
+            else confidence_threshold
+        )
+        if not math.isfinite(threshold) or not 0 <= threshold <= 1:
+            raise ValueError("Confidence threshold must be finite and within 0..1")
 
         logger.debug(
             "Running detection",
@@ -83,6 +91,76 @@ class LogoDetector:
 
         # Match with known logos (similarity search)
         detections = await self._match_logos(detections)
+
+        # The specialist is independent of legacy embedding matching. Its scores
+        # remain honest; callers may request under-threshold review proposals.
+        try:
+            from app.services.ghs_reference import detect_ghs
+            from app.symbol_contract import GHS_CODES, normalize_code
+
+            combined = list(detections)
+            for proposal in detect_ghs(image):
+                code = proposal["t3777_code"]
+                if (
+                    code not in GHS_CODES
+                    or not math.isfinite(proposal["confidence"])
+                    or not 0 <= proposal["confidence"] <= 1
+                ):
+                    raise ValueError("Invalid GHS specialist proposal")
+                if not include_review_proposals and proposal["confidence"] < threshold:
+                    continue
+                duplicates = [
+                    d
+                    for d in combined
+                    if (
+                        str(d.get("category", "")).lower()
+                        in {"ghssymboldescriptioncode", "ghs", "hazard", "hazardous"}
+                        and normalize_code(d.get("value", d.get("t3777_code", "")))
+                        == code
+                        and self._iou(d["bbox"], proposal["bbox"]) >= 0.5
+                    )
+                ]
+                # A stronger existing GHS hit must not be demoted to a proposal.
+                if (
+                    duplicates
+                    and max(d["confidence"] for d in duplicates)
+                    > proposal["confidence"]
+                ):
+                    chosen = max(duplicates, key=lambda d: d["confidence"])
+                    combined = [d for d in combined if d not in duplicates]
+                    combined.append(
+                        {
+                            **chosen,
+                            "requires_review": True,
+                            "model_version": chosen.get(
+                                "model_version",
+                                getattr(self.model_manager, "model_version", "legacy"),
+                            ),
+                        }
+                    )
+                    continue
+                combined = [d for d in combined if d not in duplicates]
+                combined.append(
+                    {
+                        **proposal,
+                        "category": "GHSSymbolDescriptionCode",
+                        "value": proposal["t3777_code"],
+                        "uncertain": bool(
+                            proposal.get("uncertain", False)
+                            or proposal["confidence"] < threshold
+                        ),
+                        "requires_review": True,
+                        "model_version": proposal.get(
+                            "model_version", proposal["reference_version"]
+                        ),
+                        "confidence_kind": proposal.get(
+                            "confidence_kind", "template-similarity-not-probability"
+                        ),
+                    }
+                )
+            detections = combined
+        except Exception:
+            logger.warning("GHS specialist unavailable; preserving legacy detections")
 
         logger.debug(
             "Detection complete",

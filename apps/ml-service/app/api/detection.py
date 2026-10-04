@@ -36,13 +36,19 @@ class Detection(BaseModel):
     confidence: float
     bbox: BoundingBox
     embedding: Optional[List[float]] = None
+    uncertain: bool = False
+    requires_review: bool = False
+    model_version: Optional[str] = None
+    reference_version: Optional[str] = None
+    confidence_kind: Optional[str] = None
+    method: Optional[str] = None
 
 
 class DetectionRequest(BaseModel):
     """Detection request with base64 image."""
 
     image: str = Field(..., description="Base64 encoded image")
-    confidence_threshold: float = Field(0.99, ge=0.0, le=1.0)
+    confidence_threshold: float = Field(0.99, ge=0.0, le=1.0, allow_inf_nan=False)
     return_embeddings: bool = Field(False, description="Include embeddings in response")
 
 
@@ -54,6 +60,7 @@ class DetectionResponse(BaseModel):
     processing_time_ms: int
     image_hash: str
     model_version: str
+    review_proposals: List[Detection] = Field(default_factory=list)
 
 
 class EmbeddingRequest(BaseModel):
@@ -103,7 +110,16 @@ async def detect_logos(request: DetectionRequest) -> DetectionResponse:
             image=image,
             confidence_threshold=request.confidence_threshold,
             return_embeddings=request.return_embeddings,
+            include_review_proposals=True,
         )
+
+        proposals = [
+            d
+            for d in detections
+            if d.get("requires_review")
+            and d["confidence"] < request.confidence_threshold
+        ]
+        detections = [d for d in detections if d not in proposals]
 
         processing_time = int((time.time() - start_time) * 1000)
 
@@ -120,6 +136,7 @@ async def detect_logos(request: DetectionRequest) -> DetectionResponse:
             processing_time_ms=processing_time,
             image_hash=image_hash,
             model_version=model_manager.model_version,
+            review_proposals=proposals,
         )
 
     except Exception as e:
@@ -171,7 +188,15 @@ async def detect_logos_upload(
             image=image,
             confidence_threshold=confidence_threshold,
             return_embeddings=return_embeddings,
+            include_review_proposals=True,
         )
+
+        proposals = [
+            d
+            for d in detections
+            if d.get("requires_review") and d["confidence"] < confidence_threshold
+        ]
+        detections = [d for d in detections if d not in proposals]
 
         processing_time = int((time.time() - start_time) * 1000)
 
@@ -181,6 +206,7 @@ async def detect_logos_upload(
             processing_time_ms=processing_time,
             image_hash=image_hash,
             model_version=model_manager.model_version,
+            review_proposals=proposals,
         )
 
     except Exception as e:

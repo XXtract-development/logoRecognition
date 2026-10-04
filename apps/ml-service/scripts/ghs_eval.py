@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """Freeze before access, then evaluate the local reference route once. No live writes."""
 import argparse
-import hashlib
 import json
 import subprocess
 import sys
+import types
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from app.ghs_dataset import exposure_marker, file_hash, load_manifest
-from app.ghs_evaluation import evaluate
+from app.ghs_dataset import exposure_marker, file_hash, load_manifest  # noqa: E402
+from app.ghs_evaluation import evaluate  # noqa: E402
 
 
 def main():
@@ -25,6 +25,10 @@ def main():
     protocol_path = Path(args.protocol)
     output = Path(args.output)
     root = Path(__file__).resolve().parents[1]
+    # Offline evaluation must not initialise live storage/database/trainer services.
+    services = types.ModuleType("app.services")
+    services.__path__ = [str(root / "app/services")]
+    sys.modules["app.services"] = services
     import importlib.util
 
     from app.symbol_contract import GHS_ALIASES, GHS_CODES
@@ -40,6 +44,18 @@ def main():
     import platform
 
     import PIL
+
+    specialist_root = root / "app/assets/ghs/specialist"
+    specialist_source = root / "app/services/ghs_specialist.py"
+    specialist_files = {
+        "featureSource": specialist_source,
+        "manifest": specialist_root / "manifest.json",
+        "weights": specialist_root / "model.json",
+    }
+    specialist_hashes = {
+        key: file_hash(path) if path.is_file() else None
+        for key, path in specialist_files.items()
+    }
 
     config = {
         "manifestHash": file_hash(manifest_path),
@@ -67,8 +83,11 @@ def main():
             "numpy": module.np.__version__,
             "pillow": PIL.__version__,
         },
-        "model": "official-reference-route",
-        "modelWeights": "none",
+        "model": "ghs-specialist-with-reference-fallback"
+        if all(specialist_hashes.values())
+        else "official-reference-route",
+        "modelWeights": specialist_hashes["weights"] or "none",
+        "specialistSnapshot": specialist_hashes,
         "labelMap": {"aliases": GHS_ALIASES, "labels": sorted(GHS_CODES)},
         "categoryMapping": json.loads(mapping_path.read_text()),
         "gate": "closed-red-diamond-v1",

@@ -12,6 +12,28 @@ import crypto from 'crypto';
 
 const logger = createLogger('recognition');
 
+const detectionSchema = {
+  type: 'object',
+  properties: {
+    category: { type: 'string' },
+    value: { type: 'string' },
+    confidence: { type: 'number' },
+    bbox: {
+      type: 'object',
+      properties: {
+        x: { type: 'number' }, y: { type: 'number' },
+        width: { type: 'number' }, height: { type: 'number' },
+      },
+    },
+    uncertain: { type: 'boolean' },
+    requires_review: { type: 'boolean' },
+    model_version: { type: ['string', 'null'] },
+    reference_version: { type: ['string', 'null'] },
+    confidence_kind: { type: ['string', 'null'] },
+    method: { type: ['string', 'null'] },
+  },
+};
+
 // ============================================
 // Types
 // ============================================
@@ -126,24 +148,9 @@ export async function recognitionRoutes(fastify: FastifyInstance) {
               request_id: { type: 'string' },
               detections: {
                 type: 'array',
-                items: {
-                  type: 'object',
-                  properties: {
-                    category: { type: 'string' },
-                    value: { type: 'string' },
-                    confidence: { type: 'number' },
-                    bbox: {
-                      type: 'object',
-                      properties: {
-                        x: { type: 'number' },
-                        y: { type: 'number' },
-                        width: { type: 'number' },
-                        height: { type: 'number' },
-                      },
-                    },
-                  },
-                },
+                items: detectionSchema,
               },
+              review_proposals: { type: 'array', items: detectionSchema },
               processing_time_ms: { type: 'number' },
               model_version: { type: 'string' },
             },
