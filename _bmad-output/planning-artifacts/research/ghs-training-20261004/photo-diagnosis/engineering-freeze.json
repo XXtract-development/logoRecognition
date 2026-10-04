@@ -1,0 +1,26 @@
+{
+  "recordedAt": "2026-10-04T21:56:57.458275+00:00",
+  "status": "engineering-review-pending",
+  "gold": false,
+  "independentFinalBenchmark": false,
+  "trainingPerformed": false,
+  "liveWritesPerformed": false,
+  "modelVersion": "ghs-glyph-v1-46ddcb5bd01b",
+  "modelSha256": "8d989fa8e183fd83f1921f0fdf60167c2ac6658bfbcdfaa49421407a186dfd7d",
+  "sourceHashes": {
+    "apps/ml-service/app/services/ghs_reference.py": "69f27675bc52f35688e099902d5e3032c09a56d940350f6e6eddd560e53e3758",
+    "apps/ml-service/tests/test_ghs_specialist.py": "3c812af7f926d6e622dfa50feacf67ebff5165ed96d0d45b39ff5bfff82fe1bf",
+    "apps/ml-service/scripts/ghs-specialist.md": "fc1595e1b4537438fb0997c7939c8a7a194cc553f27a3ff2a083b072fd0c96ee"
+  },
+  "tests": {
+    "pythonFocused": 197,
+    "specialistSubset": 45,
+    "blackOwned": "pass",
+    "isortOwned": "pass",
+    "ruffOwned": "pass",
+    "diffCheck": "pass"
+  },
+  "qualityEvidence": "development-after-resolution-guard.json",
+  "localTemporaryDiagnosticScriptsRemoved": true,
+  "auditArtifactsRetained": true
+}

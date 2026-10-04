@@ -1,0 +1,9 @@
+# Photo-processing release review
+
+Independent read-only review completed on the frozen three-file implementation. No open material code findings. Confirmed bounds, conflict abstention, preservation of strong detections, original-pixel coordinates, neutral/contrast guards and transactional fallback. Tests cover artwork, low resolution, nearby diamonds and >4MP recovery coordinates. Local writer evidence: 197 focused Python checks, including 45 specialist checks. Root independently passed Ruff, Black and isort on all app files and the scoped whitespace check.
+
+Model weights and acceptance policy remain unchanged. Original runtime evidence and four source annotation snapshots retain their recorded hashes. The reviewed app transport baseline contains twelve genuine deployed app-client network requests, including three original photographs, consistent with the ordinary ML HTTP responses. Public user authentication was not fabricated or exercised.
+
+Development-only outcomes: 34 original and 18 additional product objects remain correctly matched. The three original photograph families improve from 3/7 qualified objects to 7/7 at .87; the same-family derivative improves from 1/3 to 3/3. The ADR challenge stays empty. One existing uncertain small-object proposal remains; unreadable and disputed ingredient objects are not promoted to successful product evidence. A newly introduced small-object proposal was recorded before the recovery-only 32-pixel guard; the subsequent measurement removes that new proposal.
+
+These exposed sources are not an independent final benchmark. Neither per-class 20 independent positive families nor 100 independent negative families has been established. No general sufficient-training or field false-positive claim is accepted. Full CI must succeed before merge; live results on the new revision will be recorded separately.

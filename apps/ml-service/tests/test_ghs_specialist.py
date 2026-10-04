@@ -292,9 +292,11 @@ def test_broken_artifact_falls_back_to_template(
         (tmp_path / "manifest.json").write_text(
             json.dumps(
                 {
-                    "sha256": "wrong"
-                    if failure == "checksum"
-                    else hashlib.sha256(data).hexdigest()
+                    "sha256": (
+                        "wrong"
+                        if failure == "checksum"
+                        else hashlib.sha256(data).hexdigest()
+                    )
                 }
             )
         )
@@ -447,3 +449,227 @@ def test_weight_change_invalidates_frozen_protocol_before_exposure(tmp_path):
     result = subprocess.run(command, capture_output=True)
     assert result.returncode != 0 and b"Frozen protocol changed" in result.stderr
     assert not (tmp_path / "result.json").exists()
+
+
+def _shadowed_perspective_skull():
+    original = cv2.imread(str(ROOT / "app/assets/ghs/SKULL_AND_CROSSBONES.png"))
+    h, w = original.shape[:2]
+    corners = np.array([[0, 0], [w - 1, 0], [w - 1, h - 1], [0, h - 1]], np.float32)
+    target = np.array([[42, 20], [w + 12, 2], [w - 8, h + 12], [2, h + 40]], np.float32)
+    warped = cv2.warpPerspective(
+        original,
+        cv2.getPerspectiveTransform(corners, target),
+        (w + 60, h + 60),
+        borderValue=(255, 255, 255),
+    )
+    return (warped * 0.52).astype(np.uint8)
+
+
+def test_shadowed_perspective_recovery_reaches_real_api(runtime):
+    specialist, reference, _, _ = runtime
+    bgr = _shadowed_perspective_skull()
+    image = Image.fromarray(cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB))
+    # Absolute white-interior rule cannot identify the shadowed photograph.
+    assert reference.regions(bgr, minimum_white=0.5) == []
+    result = reference.detect_ghs(bgr)
+    assert len(result) == 1 and result[0]["t3777_code"] == "SKULL_AND_CROSSBONES"
+    assert result[0]["reference_version"].endswith(":neutral-quad-v1")
+    assert result[0]["model_version"] == specialist.load_model()[0]["version"]
+    assert result[0]["confidence"] > 0.99 and not result[0]["uncertain"]
+    candidates = reference._photo_candidates(bgr)
+    expected_box = candidates[0][0][0]
+    assert tuple(result[0]["bbox"].values()) == expected_box
+    api = module(ROOT / "app/api/detection.py", "test_photo_recovery_api")
+    response = asyncio.run(
+        api.detect_logos(
+            api.DetectionRequest(image=base64.b64encode(_png(image)).decode())
+        )
+    )
+    assert len(response.detections) == 1 and not response.review_proposals
+    detection = response.detections[0]
+    assert detection.value == "SKULL_AND_CROSSBONES" and detection.requires_review
+    assert detection.reference_version.endswith(":neutral-quad-v1")
+    assert detection.model_version == result[0]["model_version"]
+
+
+@pytest.mark.parametrize("background", [(130, 130, 130), (150, 100, 20)])
+def test_photo_recovery_rejects_no_contrast_or_colored_background(runtime, background):
+    _, reference, _, _ = runtime
+    image = np.full((200, 200, 3), background, np.uint8)
+    cv2.polylines(
+        image,
+        [np.array([[100, 10], [190, 100], [100, 190], [10, 100]])],
+        True,
+        (0, 0, 200),
+        5,
+    )
+    assert reference.detect_ghs(image) == []
+
+
+def test_photo_recovery_conflicting_strokes_abstain(runtime, monkeypatch):
+    specialist, reference, _, _ = runtime
+    group = [((5, 5, 100, 100), None), ((15, 15, 80, 80), None)]
+    monkeypatch.setattr(reference, "_photo_candidates", lambda image: [group])
+    monkeypatch.setattr(
+        reference, "_photo_glyph", lambda *args: np.zeros((128, 128, 3), np.uint8)
+    )
+    classes = iter(["FLAME", "HEALTH_HAZARD"])
+    monkeypatch.setattr(
+        specialist,
+        "classify",
+        lambda image: {
+            "t3777_code": next(classes),
+            "confidence": 0.99,
+            "support_similarity": 0.9,
+        },
+    )
+    assert (
+        reference._photo_recovery(
+            np.zeros((120, 120, 3), np.uint8), [], {"FLAME", "HEALTH_HAZARD"}
+        )
+        == []
+    )
+
+
+def test_photo_recovery_does_not_reprocess_strong_existing(runtime, monkeypatch):
+    specialist, reference, _, _ = runtime
+    box = (5, 5, 100, 100)
+    monkeypatch.setattr(reference, "_photo_candidates", lambda image: [[(box, None)]])
+    classify = Mock(
+        side_effect=AssertionError("Strong result should not be reprocessed")
+    )
+    monkeypatch.setattr(specialist, "classify", classify)
+    existing = [
+        {"bbox": dict(zip(["x", "y", "width", "height"], box)), "uncertain": False}
+    ]
+    assert (
+        reference._photo_recovery(
+            np.zeros((120, 120, 3), np.uint8), existing, {"FLAME"}
+        )
+        == []
+    )
+    classify.assert_not_called()
+
+
+def test_photo_recovery_failure_preserves_legacy_results(runtime, monkeypatch):
+    _, reference, _, _ = runtime
+    image = Image.open(ROOT / "app/assets/ghs/FLAME.png")
+    before = reference.detect_ghs(image)
+
+    def fail(*args):
+        raise ValueError("corrupt recovery artifact")
+
+    monkeypatch.setattr(reference, "_photo_recovery", fail)
+    assert reference.detect_ghs(image) == before
+
+
+def test_photo_candidate_groups_and_strokes_are_bounded(runtime):
+    _, reference, _, _ = runtime
+    image = np.full((1200, 1200, 3), 130, np.uint8)
+    for y in range(20, 1200, 80):
+        for x in range(20, 1200, 80):
+            quad = np.array(
+                [[x + 20, y], [x + 40, y + 20], [x + 20, y + 40], [x, y + 20]]
+            )
+            cv2.polylines(image, [quad], True, (0, 0, 200), 3)
+    groups = reference._photo_candidates(image)
+    assert len(groups) == reference.MAX_CANDIDATES
+    assert all(1 <= len(group) <= 2 for group in groups)
+    assert reference.detect_ghs(image) == []
+
+
+def test_two_nearby_recovery_diamonds_remain_independent(runtime):
+    _, reference, _, _ = runtime
+    glyph = _shadowed_perspective_skull()
+    h, w = glyph.shape[:2]
+    canvas = np.full((h + 40, 2 * w + 55, 3), 133, np.uint8)
+    canvas[20 : 20 + h, 20 : 20 + w] = glyph
+    canvas[20 : 20 + h, 35 + w : 35 + 2 * w] = glyph
+    detections = reference.detect_ghs(canvas)
+    assert len(detections) == 2
+    assert all(d["t3777_code"] == "SKULL_AND_CROSSBONES" for d in detections)
+    boxes = sorted([d["bbox"] for d in detections], key=lambda b: b["x"])
+    assert boxes[1]["x"] - boxes[0]["x"] == w + 15
+
+
+@pytest.mark.parametrize("mode", ["text", "rectangle", "open-border", "low-resolution"])
+def test_photo_recovery_rejects_artwork_and_missing_information(runtime, mode):
+    _, reference, _, _ = runtime
+    image = np.full((200, 200, 3), 130, np.uint8)
+    cv2.polylines(
+        image,
+        [np.array([[100, 10], [190, 100], [100, 190], [10, 100]])],
+        True,
+        (0, 0, 200),
+        5,
+    )
+    if mode == "rectangle":
+        cv2.rectangle(image, (70, 75), (130, 125), (0, 0, 0), 5)
+    else:
+        cv2.putText(image, "42", (60, 118), cv2.FONT_HERSHEY_SIMPLEX, 1.3, (0, 0, 0), 3)
+    if mode == "open-border":
+        cv2.rectangle(image, (82, 0), (118, 25), (130, 130, 130), -1)
+    if mode == "low-resolution":
+        image = cv2.resize(image, (25, 25), interpolation=cv2.INTER_AREA)
+        assert reference._photo_candidates(image) == []
+    assert reference.detect_ghs(image) == []
+
+
+def test_photo_recovery_failure_after_first_candidate_is_transactional(
+    runtime, monkeypatch
+):
+    _, reference, _, _ = runtime
+    image = Image.open(ROOT / "app/assets/ghs/FLAME.png")
+    before = reference.detect_ghs(image)
+
+    def partial_then_fail(*args):
+        yield {
+            "t3777_code": "SKULL_AND_CROSSBONES",
+            "confidence": 0.99,
+            "bbox": {"x": 0, "y": 0, "width": 50, "height": 50},
+        }
+        raise ValueError("second candidate failed")
+
+    monkeypatch.setattr(reference, "_photo_recovery", partial_then_fail)
+    assert reference.detect_ghs(image) == before
+
+
+def test_total_classifier_calls_are_globally_bounded(runtime, monkeypatch):
+    specialist, reference, _, _ = runtime
+    glyph = _shadowed_perspective_skull()
+    h, w = glyph.shape[:2]
+    canvas = np.full((h * 10, w * 10, 3), 133, np.uint8)
+    for y in range(10):
+        for x in range(10):
+            canvas[y * h : (y + 1) * h, x * w : (x + 1) * w] = glyph
+    classify = Mock(return_value=None)
+    monkeypatch.setattr(specialist, "classify", classify)
+    assert reference.detect_ghs(canvas) == []
+    assert 1 <= classify.call_count <= 3 * reference.MAX_CANDIDATES
+
+
+def test_large_photo_recovery_restores_independent_original_bbox(runtime):
+    _, reference, _, _ = runtime
+    glyph = _shadowed_perspective_skull()
+    hsv = cv2.cvtColor(glyph, cv2.COLOR_BGR2HSV)
+    red = cv2.inRange(hsv, (0, 90, 65), (12, 255, 255)) | cv2.inRange(
+        hsv, (165, 90, 65), (180, 255, 255)
+    )
+    ys, xs = np.where(red > 0)
+    # Expected original box uses all known red source pixels, not candidate/scaling helpers.
+    expected = {
+        "x": 1200 + int(xs.min()),
+        "y": 1800 + int(ys.min()),
+        "width": int(xs.max() - xs.min() + 1),
+        "height": int(ys.max() - ys.min() + 1),
+    }
+    canvas = np.full((3100, 2900, 3), 133, np.uint8)
+    h, w = glyph.shape[:2]
+    canvas[1800 : 1800 + h, 1200 : 1200 + w] = glyph
+    detections = reference.detect_ghs(canvas)
+    assert len(detections) == 1
+    result = detections[0]
+    assert result["t3777_code"] == "SKULL_AND_CROSSBONES"
+    assert result["reference_version"].endswith(":neutral-quad-v1")
+    assert not result["uncertain"]
+    assert all(abs(result["bbox"][key] - expected[key]) <= 5 for key in expected)

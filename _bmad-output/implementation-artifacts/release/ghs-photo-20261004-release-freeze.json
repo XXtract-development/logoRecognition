@@ -1,0 +1,31 @@
+{
+  "recordedAt": "2026-10-04T21:58:04.617959+00:00",
+  "baselineRevision": "dca90c2eec4bf64f568350afc3e006d603cf3755",
+  "modelVersion": "ghs-glyph-v1-46ddcb5bd01b",
+  "modelSha256": "8d989fa8e183fd83f1921f0fdf60167c2ac6658bfbcdfaa49421407a186dfd7d",
+  "modelWeightsChanged": false,
+  "preprocessingVersion": "neutral-quad-v1",
+  "sourceHashes": {
+    "apps/ml-service/app/services/ghs_reference.py": "69f27675bc52f35688e099902d5e3032c09a56d940350f6e6eddd560e53e3758",
+    "apps/ml-service/tests/test_ghs_specialist.py": "3c812af7f926d6e622dfa50feacf67ebff5165ed96d0d45b39ff5bfff82fe1bf",
+    "apps/ml-service/scripts/ghs-specialist.md": "fc1595e1b4537438fb0997c7939c8a7a194cc553f27a3ff2a083b072fd0c96ee",
+    "versions.md": "b3baddd8f793f5e3c234f588dcca790de2dcd1b583d41a0e0887834514ae7772"
+  },
+  "verificationHelperHashes": {
+    "verify-ghs-specialist-acc.py": "7594b44e32571cbf6eb592e336e54035a50c64d7a84eaad02a0c63d2a4f6b47c",
+    "verify-ghs-app-transport-acc.py": "f717c62a84cbdb71ecd419855c66cc1cea9aa9eb7e744218a411668f5c7d9d8e",
+    "summarize-ghs-specialist-runtime.py": "df9a879a44e958bde959b2d52ceb067230717dca31077803bd651725a1aa5fed"
+  },
+  "exposedDevelopmentQualityEvidenceSha256": "bb278b1875c3a789a9833faee4a051b8d841275b0b05fafce9ffb27af7b39e76",
+  "confidenceThresholds": [
+    0.99,
+    0.87
+  ],
+  "independentFinalBenchmark": false,
+  "humanGold": false,
+  "scope": "Photo processing fix on previously exposed development sources; original measurement and source annotation snapshots retained",
+  "plannedRuntimeRequests": 90,
+  "plannedAppTransportRequests": 12,
+  "localTestsPassed": 197,
+  "fullCiRequiredBeforeMerge": true
+}

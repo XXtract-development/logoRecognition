@@ -1,0 +1,1999 @@
+{
+  "recordedAt": "2026-10-04T21:52:30.418836+00:00",
+  "gold": false,
+  "independentFinalBenchmark": false,
+  "allSourcesExposedDevelopment": true,
+  "modelSha256": "8d989fa8e183fd83f1921f0fdf60167c2ac6658bfbcdfaa49421407a186dfd7d",
+  "moduleSha256": "a74e952f7a8850ed4fcb439c85b3fd84fc8abf9f52a2859974f91761ad83c2e9",
+  "totals": {
+    "old-development": {
+      "expected": 46,
+      "correctProposal": 37,
+      "correctNonuncertain": 37,
+      "productExpected": 35,
+      "productCorrect": 34,
+      "extra": 1,
+      "maxSeconds": 0.11786837503314018
+    },
+    "new-SDS-development": {
+      "expected": 23,
+      "correctProposal": 22,
+      "correctNonuncertain": 22,
+      "productExpected": 18,
+      "productCorrect": 18,
+      "extra": 1,
+      "maxSeconds": 0.02325874997768551
+    },
+    "photo": {
+      "expected": 4,
+      "correctProposal": 4,
+      "correctNonuncertain": 4,
+      "productExpected": 4,
+      "productCorrect": 4,
+      "extra": 0,
+      "maxSeconds": 0.08880591596243903
+    },
+    "photograph": {
+      "expected": 3,
+      "correctProposal": 3,
+      "correctNonuncertain": 3,
+      "productExpected": 3,
+      "productCorrect": 3,
+      "extra": 0,
+      "maxSeconds": 0.16332345799310133
+    },
+    "prepared-photograph-same-family": {
+      "expected": 3,
+      "correctProposal": 3,
+      "correctNonuncertain": 3,
+      "productExpected": 3,
+      "productCorrect": 3,
+      "extra": 0,
+      "maxSeconds": 0.03310291696107015
+    },
+    "ADR-challenge-not-negative-benchmark": {
+      "expected": 0,
+      "correctProposal": 0,
+      "correctNonuncertain": 0,
+      "productExpected": 0,
+      "productCorrect": 0,
+      "extra": 0,
+      "maxSeconds": 0.09197304199915379
+    }
+  },
+  "images": [
+    {
+      "id": "input-01",
+      "scope": "old-development",
+      "sha256": "3abe116dfd9e3ee1d076c930922530f2f858e4f12c4d203f8dbf476b1d409c81",
+      "elapsedSeconds": 0.08082199998898432,
+      "objects": [
+        {
+          "code": "FLAME",
+          "context": "product-label-or-product-SDS-symbol",
+          "iou": 0.9562158374211643,
+          "prediction": {
+            "t3777_code": "FLAME",
+            "confidence": 0.9081920903954802,
+            "score": 0.9081920903954802,
+            "method": "ghs-reference",
+            "bbox": {
+              "x": 393,
+              "y": 210,
+              "width": 83,
+              "height": 83
+            },
+            "uncertain": false,
+            "reference_version": "ccohs-ghs-v1",
+            "requires_review": true
+          }
+        },
+        {
+          "code": "SKULL_AND_CROSSBONES",
+          "context": "product-label-or-product-SDS-symbol",
+          "iou": 0.9745918569447981,
+          "prediction": {
+            "t3777_code": "SKULL_AND_CROSSBONES",
+            "confidence": 0.9944283555722676,
+            "score": 0.9944283555722676,
+            "method": "ghs-specialist",
+            "uncertain": false,
+            "requires_review": true,
+            "reference_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "model_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "confidence_kind": "uncalibrated-classifier-score",
+            "support_similarity": 0.9557433981287409,
+            "bbox": {
+              "x": 482,
+              "y": 210,
+              "width": 83,
+              "height": 83
+            }
+          }
+        }
+      ],
+      "extra": []
+    },
+    {
+      "id": "input-02",
+      "scope": "old-development",
+      "sha256": "ab83d970bcce99d7c38cc0313fb164962bf50cd4148010502b0bdc76e38f0fc7",
+      "elapsedSeconds": 0.019281750021036714,
+      "objects": [
+        {
+          "code": "FLAME_OVER_CIRCLE",
+          "context": "product-label-or-product-SDS-symbol",
+          "iou": 0.9544449395627568,
+          "prediction": {
+            "t3777_code": "FLAME_OVER_CIRCLE",
+            "confidence": 0.9144981412639405,
+            "score": 0.9144981412639405,
+            "method": "ghs-reference",
+            "bbox": {
+              "x": 302,
+              "y": 795,
+              "width": 80,
+              "height": 80
+            },
+            "uncertain": false,
+            "reference_version": "ccohs-ghs-v1",
+            "requires_review": true
+          }
+        },
+        {
+          "code": "GAS_CYLINDER",
+          "context": "product-label-or-product-SDS-symbol",
+          "iou": 0.9544449395627568,
+          "prediction": {
+            "t3777_code": "GAS_CYLINDER",
+            "confidence": 0.8917861799217731,
+            "score": 0.8917861799217731,
+            "method": "ghs-reference",
+            "bbox": {
+              "x": 396,
+              "y": 795,
+              "width": 80,
+              "height": 80
+            },
+            "uncertain": false,
+            "reference_version": "ccohs-ghs-v1",
+            "requires_review": true
+          }
+        }
+      ],
+      "extra": []
+    },
+    {
+      "id": "input-03",
+      "scope": "old-development",
+      "sha256": "b5f68978b818634e716aaf4b004e23bb4cdf77faa18e2c6dfd731b3edcb56e18",
+      "elapsedSeconds": 0.020111375022679567,
+      "objects": [
+        {
+          "code": "FLAME",
+          "context": "product-label-or-product-SDS-symbol",
+          "iou": 0.9470729489010212,
+          "prediction": {
+            "t3777_code": "FLAME",
+            "confidence": 0.9634831460674157,
+            "score": 0.9634831460674157,
+            "method": "ghs-reference",
+            "bbox": {
+              "x": 96,
+              "y": 347,
+              "width": 131,
+              "height": 131
+            },
+            "uncertain": false,
+            "reference_version": "ccohs-ghs-v1",
+            "requires_review": true
+          }
+        },
+        {
+          "code": "EXCLAMATION_MARK",
+          "context": "product-label-or-product-SDS-symbol",
+          "iou": 0.9591497562573252,
+          "prediction": {
+            "t3777_code": "EXCLAMATION_MARK",
+            "confidence": 0.9980897117647863,
+            "score": 0.9980897117647863,
+            "method": "ghs-specialist",
+            "uncertain": false,
+            "requires_review": true,
+            "reference_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "model_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "confidence_kind": "uncalibrated-classifier-score",
+            "support_similarity": 0.9696715582465011,
+            "bbox": {
+              "x": 228,
+              "y": 347,
+              "width": 132,
+              "height": 131
+            }
+          }
+        }
+      ],
+      "extra": []
+    },
+    {
+      "id": "input-04",
+      "scope": "old-development",
+      "sha256": "4eef8519d1b18258e8ae03fc6750b995f7840c142b1375b04eeec57abb4c0770",
+      "elapsedSeconds": 0.02325025002937764,
+      "objects": [
+        {
+          "code": "SKULL_AND_CROSSBONES",
+          "context": "product-label-or-product-SDS-symbol",
+          "iou": 0.9626875139887769,
+          "prediction": {
+            "t3777_code": "SKULL_AND_CROSSBONES",
+            "confidence": 0.995133392501399,
+            "score": 0.995133392501399,
+            "method": "ghs-specialist",
+            "uncertain": false,
+            "requires_review": true,
+            "reference_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "model_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "confidence_kind": "uncalibrated-classifier-score",
+            "support_similarity": 0.9502881872461655,
+            "bbox": {
+              "x": 96,
+              "y": 190,
+              "width": 131,
+              "height": 131
+            }
+          }
+        },
+        {
+          "code": "HEALTH_HAZARD",
+          "context": "product-label-or-product-SDS-symbol",
+          "iou": 0.9634226400215711,
+          "prediction": {
+            "t3777_code": "HEALTH_HAZARD",
+            "confidence": 0.9408,
+            "score": 0.9408,
+            "method": "ghs-reference",
+            "bbox": {
+              "x": 228,
+              "y": 190,
+              "width": 132,
+              "height": 131
+            },
+            "uncertain": false,
+            "reference_version": "ccohs-ghs-v1",
+            "requires_review": true
+          }
+        },
+        {
+          "code": "CORROSION",
+          "context": "product-label-or-product-SDS-symbol",
+          "iou": 0.9672889602190987,
+          "prediction": {
+            "t3777_code": "CORROSION",
+            "confidence": 0.9959038721935658,
+            "score": 0.9959038721935658,
+            "method": "ghs-specialist",
+            "uncertain": false,
+            "requires_review": true,
+            "reference_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "model_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "confidence_kind": "uncalibrated-classifier-score",
+            "support_similarity": 0.97245581221168,
+            "bbox": {
+              "x": 361,
+              "y": 190,
+              "width": 131,
+              "height": 131
+            }
+          }
+        }
+      ],
+      "extra": []
+    },
+    {
+      "id": "input-05",
+      "scope": "old-development",
+      "sha256": "d263e1df6090033eabdeacfe0fa7ade3ae95701548c524fed93ee87f0b20a85a",
+      "elapsedSeconds": 0.02048658300191164,
+      "objects": [
+        {
+          "code": "EXCLAMATION_MARK",
+          "context": "product-label-or-product-SDS-symbol",
+          "iou": 0.9512806971217319,
+          "prediction": {
+            "t3777_code": "EXCLAMATION_MARK",
+            "confidence": 0.9980897117647863,
+            "score": 0.9980897117647863,
+            "method": "ghs-specialist",
+            "uncertain": false,
+            "requires_review": true,
+            "reference_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "model_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "confidence_kind": "uncalibrated-classifier-score",
+            "support_similarity": 0.9696715582465011,
+            "bbox": {
+              "x": 100,
+              "y": 521,
+              "width": 132,
+              "height": 131
+            }
+          }
+        },
+        {
+          "code": "ENVIRONMENT",
+          "context": "product-label-or-product-SDS-symbol",
+          "iou": 0.9418763137750319,
+          "prediction": {
+            "t3777_code": "ENVIRONMENT",
+            "confidence": 0.9911249632510989,
+            "score": 0.9911249632510989,
+            "method": "ghs-specialist",
+            "uncertain": false,
+            "requires_review": true,
+            "reference_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "model_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "confidence_kind": "uncalibrated-classifier-score",
+            "support_similarity": 0.894316157395069,
+            "bbox": {
+              "x": 233,
+              "y": 521,
+              "width": 131,
+              "height": 131
+            }
+          }
+        }
+      ],
+      "extra": []
+    },
+    {
+      "id": "input-06",
+      "scope": "old-development",
+      "sha256": "cf3ddce74c6402b0b27ec19f151c99c7e6c65003a4ab129ac1ec0d2031266e0e",
+      "elapsedSeconds": 0.018380291992798448,
+      "objects": [
+        {
+          "code": "EXPLODING_BOMB",
+          "context": "product-label-or-product-SDS-symbol",
+          "iou": 0.9287719055282768,
+          "prediction": {
+            "t3777_code": "EXPLODING_BOMB",
+            "confidence": 0.993184145748616,
+            "score": 0.993184145748616,
+            "method": "ghs-specialist",
+            "uncertain": false,
+            "requires_review": true,
+            "reference_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "model_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "confidence_kind": "uncalibrated-classifier-score",
+            "support_similarity": 0.7419857012627067,
+            "bbox": {
+              "x": 96,
+              "y": 1109,
+              "width": 133,
+              "height": 133
+            }
+          }
+        }
+      ],
+      "extra": []
+    },
+    {
+      "id": "input-07",
+      "scope": "old-development",
+      "sha256": "ed2fa12b379492939da8f419d7d37116b9c74daf43d314d5f12aec34b03ca4f3",
+      "elapsedSeconds": 0.01831720897462219,
+      "objects": [
+        {
+          "code": "FLAME_OVER_CIRCLE",
+          "context": "product-label-or-product-SDS-symbol",
+          "iou": 0.9214717223616001,
+          "prediction": {
+            "t3777_code": "FLAME_OVER_CIRCLE",
+            "confidence": 0.9269206745783886,
+            "score": 0.9269206745783886,
+            "method": "ghs-reference",
+            "bbox": {
+              "x": 393,
+              "y": 210,
+              "width": 83,
+              "height": 83
+            },
+            "uncertain": false,
+            "reference_version": "ccohs-ghs-v1",
+            "requires_review": true
+          }
+        },
+        {
+          "code": "CORROSION",
+          "context": "product-label-or-product-SDS-symbol",
+          "iou": 0.9214717223616001,
+          "prediction": {
+            "t3777_code": "CORROSION",
+            "confidence": 0.997112524729241,
+            "score": 0.997112524729241,
+            "method": "ghs-specialist",
+            "uncertain": false,
+            "requires_review": true,
+            "reference_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "model_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "confidence_kind": "uncalibrated-classifier-score",
+            "support_similarity": 0.950112669577696,
+            "bbox": {
+              "x": 482,
+              "y": 210,
+              "width": 83,
+              "height": 83
+            }
+          }
+        }
+      ],
+      "extra": []
+    },
+    {
+      "id": "input-08",
+      "scope": "old-development",
+      "sha256": "5f71ed281a11d394890dd6c88e688dc15700fd5efbab32479e7733150c41425c",
+      "elapsedSeconds": 0.018792875052895397,
+      "objects": [
+        {
+          "code": "FLAME",
+          "context": "product-label-or-product-SDS-symbol",
+          "iou": 0.946544345216675,
+          "prediction": {
+            "t3777_code": "FLAME",
+            "confidence": 0.9945210220898488,
+            "score": 0.9945210220898488,
+            "method": "ghs-specialist",
+            "uncertain": false,
+            "requires_review": true,
+            "reference_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "model_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "confidence_kind": "uncalibrated-classifier-score",
+            "support_similarity": 0.9299764062538005,
+            "bbox": {
+              "x": 352,
+              "y": 630,
+              "width": 45,
+              "height": 47
+            }
+          }
+        },
+        {
+          "code": "SKULL_AND_CROSSBONES",
+          "context": "product-label-or-product-SDS-symbol",
+          "iou": 0.7984988222142373,
+          "prediction": {
+            "t3777_code": "SKULL_AND_CROSSBONES",
+            "confidence": 0.9896045902368527,
+            "score": 0.9896045902368527,
+            "method": "ghs-specialist",
+            "uncertain": false,
+            "requires_review": true,
+            "reference_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "model_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "confidence_kind": "uncalibrated-classifier-score",
+            "support_similarity": 0.8460202298765418,
+            "bbox": {
+              "x": 401,
+              "y": 632,
+              "width": 40,
+              "height": 42
+            }
+          }
+        },
+        {
+          "code": "HEALTH_HAZARD",
+          "context": "product-label-or-product-SDS-symbol",
+          "iou": 0.7984988222142373,
+          "prediction": {
+            "t3777_code": "HEALTH_HAZARD",
+            "confidence": 0.9589048554697008,
+            "score": 0.9589048554697008,
+            "method": "ghs-specialist",
+            "uncertain": false,
+            "requires_review": true,
+            "reference_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "model_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "confidence_kind": "uncalibrated-classifier-score",
+            "support_similarity": 0.9462351480616377,
+            "bbox": {
+              "x": 446,
+              "y": 632,
+              "width": 40,
+              "height": 42
+            }
+          }
+        }
+      ],
+      "extra": []
+    },
+    {
+      "id": "input-09",
+      "scope": "old-development",
+      "sha256": "655ef1dc1cdb861558855de48fc97425cbbec7d78cf2d72602cc8f0040908b09",
+      "elapsedSeconds": 0.02198683295864612,
+      "objects": [
+        {
+          "code": "GAS_CYLINDER",
+          "context": "product-label-or-product-SDS-symbol",
+          "iou": 0.9587646257116399,
+          "prediction": {
+            "t3777_code": "GAS_CYLINDER",
+            "confidence": 0.9440832249674902,
+            "score": 0.9440832249674902,
+            "method": "ghs-reference",
+            "bbox": {
+              "x": 302,
+              "y": 727,
+              "width": 79,
+              "height": 80
+            },
+            "uncertain": false,
+            "reference_version": "ccohs-ghs-v1",
+            "requires_review": true
+          }
+        },
+        {
+          "code": "SKULL_AND_CROSSBONES",
+          "context": "product-label-or-product-SDS-symbol",
+          "iou": 0.9587646257116399,
+          "prediction": {
+            "t3777_code": "SKULL_AND_CROSSBONES",
+            "confidence": 0.9964694346319228,
+            "score": 0.9964694346319228,
+            "method": "ghs-specialist",
+            "uncertain": false,
+            "requires_review": true,
+            "reference_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "model_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "confidence_kind": "uncalibrated-classifier-score",
+            "support_similarity": 0.9535733574981264,
+            "bbox": {
+              "x": 396,
+              "y": 727,
+              "width": 79,
+              "height": 80
+            }
+          }
+        },
+        {
+          "code": "CORROSION",
+          "context": "product-label-or-product-SDS-symbol",
+          "iou": 0.9575915822362403,
+          "prediction": {
+            "t3777_code": "CORROSION",
+            "confidence": 0.9952901771028431,
+            "score": 0.9952901771028431,
+            "method": "ghs-specialist",
+            "uncertain": false,
+            "requires_review": true,
+            "reference_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "model_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "confidence_kind": "uncalibrated-classifier-score",
+            "support_similarity": 0.9414284426078396,
+            "bbox": {
+              "x": 490,
+              "y": 728,
+              "width": 80,
+              "height": 79
+            }
+          }
+        }
+      ],
+      "extra": []
+    },
+    {
+      "id": "input-10",
+      "scope": "old-development",
+      "sha256": "c58f25e8a8596d068de1d4ffcffda8f786eb14eef84c691163ac5add7d91a7e5",
+      "elapsedSeconds": 0.021167125029023737,
+      "objects": [
+        {
+          "code": "EXPLODING_BOMB",
+          "context": "product-label-or-product-SDS-symbol",
+          "iou": 0.9098691670887322,
+          "prediction": {
+            "t3777_code": "EXPLODING_BOMB",
+            "confidence": 0.9507314269037009,
+            "score": 0.9507314269037009,
+            "method": "ghs-specialist",
+            "uncertain": false,
+            "requires_review": true,
+            "reference_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "model_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "confidence_kind": "uncalibrated-classifier-score",
+            "support_similarity": 0.7545809039661379,
+            "bbox": {
+              "x": 143,
+              "y": 943,
+              "width": 58,
+              "height": 58
+            }
+          }
+        }
+      ],
+      "extra": []
+    },
+    {
+      "id": "input-11",
+      "scope": "old-development",
+      "sha256": "f3aaa08fc9a4eb70c49460882d4a21c2119a50ed9aca1e9101773eebd699a087",
+      "elapsedSeconds": 0.019158834009431303,
+      "objects": [
+        {
+          "code": "GAS_CYLINDER",
+          "context": "product-label-or-product-SDS-symbol",
+          "iou": 0.9544449395627568,
+          "prediction": {
+            "t3777_code": "GAS_CYLINDER",
+            "confidence": 0.9707006369426752,
+            "score": 0.9707006369426752,
+            "method": "ghs-reference",
+            "bbox": {
+              "x": 302,
+              "y": 747,
+              "width": 80,
+              "height": 80
+            },
+            "uncertain": false,
+            "reference_version": "ccohs-ghs-v1",
+            "requires_review": true
+          }
+        },
+        {
+          "code": "CORROSION",
+          "context": "product-label-or-product-SDS-symbol",
+          "iou": 0.9429456029415191,
+          "prediction": {
+            "t3777_code": "CORROSION",
+            "confidence": 0.9947641925290517,
+            "score": 0.9947641925290517,
+            "method": "ghs-specialist",
+            "uncertain": false,
+            "requires_review": true,
+            "reference_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "model_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "confidence_kind": "uncalibrated-classifier-score",
+            "support_similarity": 0.942770597970435,
+            "bbox": {
+              "x": 396,
+              "y": 747,
+              "width": 80,
+              "height": 80
+            }
+          }
+        },
+        {
+          "code": "EXCLAMATION_MARK",
+          "context": "product-label-or-product-SDS-symbol",
+          "iou": 0.9429456029415191,
+          "prediction": {
+            "t3777_code": "EXCLAMATION_MARK",
+            "confidence": 0.8955223880597015,
+            "score": 0.8955223880597015,
+            "method": "ghs-reference",
+            "bbox": {
+              "x": 490,
+              "y": 747,
+              "width": 80,
+              "height": 80
+            },
+            "uncertain": false,
+            "reference_version": "ccohs-ghs-v1",
+            "requires_review": true
+          }
+        }
+      ],
+      "extra": []
+    },
+    {
+      "id": "input-12",
+      "scope": "old-development",
+      "sha256": "581d2d74d7b20372420fc9f0f3be260ed29be5a9ddc9d4a817aa39a8cb223365",
+      "elapsedSeconds": 0.019438749994151294,
+      "objects": [
+        {
+          "code": "CORROSION",
+          "context": "product-label-or-product-SDS-symbol",
+          "iou": 0.8925156190233331,
+          "prediction": {
+            "t3777_code": "CORROSION",
+            "confidence": 0.9875391250105501,
+            "score": 0.9875391250105501,
+            "method": "ghs-specialist",
+            "uncertain": false,
+            "requires_review": true,
+            "reference_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "model_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "confidence_kind": "uncalibrated-classifier-score",
+            "support_similarity": 0.8789923977441603,
+            "bbox": {
+              "x": 283,
+              "y": 1260,
+              "width": 42,
+              "height": 42
+            }
+          }
+        },
+        {
+          "code": "EXCLAMATION_MARK",
+          "context": "product-label-or-product-SDS-symbol",
+          "iou": 0.9330845107971208,
+          "prediction": {
+            "t3777_code": "EXCLAMATION_MARK",
+            "confidence": 0.9953198307598539,
+            "score": 0.9953198307598539,
+            "method": "ghs-specialist",
+            "uncertain": false,
+            "requires_review": true,
+            "reference_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "model_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "confidence_kind": "uncalibrated-classifier-score",
+            "support_similarity": 0.8957171649270377,
+            "bbox": {
+              "x": 329,
+              "y": 1260,
+              "width": 42,
+              "height": 42
+            }
+          }
+        },
+        {
+          "code": "ENVIRONMENT",
+          "context": "product-label-or-product-SDS-symbol",
+          "iou": 0.9123492994460737,
+          "prediction": {
+            "t3777_code": "ENVIRONMENT",
+            "confidence": 0.9774916708813574,
+            "score": 0.9774916708813574,
+            "method": "ghs-specialist",
+            "uncertain": false,
+            "requires_review": true,
+            "reference_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "model_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "confidence_kind": "uncalibrated-classifier-score",
+            "support_similarity": 0.8852213267082378,
+            "bbox": {
+              "x": 375,
+              "y": 1260,
+              "width": 42,
+              "height": 42
+            }
+          }
+        }
+      ],
+      "extra": []
+    },
+    {
+      "id": "input-13",
+      "scope": "old-development",
+      "sha256": "49548feacb61676a26c6bc2f624725d66425004c5a099f8114fa2e3d93349cca",
+      "elapsedSeconds": 0.011548416980076581,
+      "objects": [
+        {
+          "code": "EXCLAMATION_MARK",
+          "context": "product-label-or-product-SDS-symbol",
+          "iou": 0.9522499411170552,
+          "prediction": {
+            "t3777_code": "EXCLAMATION_MARK",
+            "confidence": 0.9203539823008849,
+            "score": 0.9203539823008849,
+            "method": "ghs-reference",
+            "bbox": {
+              "x": 264,
+              "y": 162,
+              "width": 67,
+              "height": 67
+            },
+            "uncertain": false,
+            "reference_version": "ccohs-ghs-v1",
+            "requires_review": true
+          }
+        }
+      ],
+      "extra": []
+    },
+    {
+      "id": "input-14",
+      "scope": "old-development",
+      "sha256": "3e5e2df627e5c60d045dd69cdc2f3b9bdc46a4fd954739d2727e5fc679bcdd21",
+      "elapsedSeconds": 0.11786837503314018,
+      "objects": [],
+      "extra": []
+    },
+    {
+      "id": "input-15",
+      "scope": "old-development",
+      "sha256": "0adf5f8fe59477c764281020102988e12e5fd6970a3f16f74cb01679f620bf1f",
+      "elapsedSeconds": 0.028275833989027888,
+      "objects": [
+        {
+          "code": "FLAME",
+          "context": "product-label-or-product-SDS-symbol",
+          "iou": 0.8790849002472252,
+          "prediction": {
+            "t3777_code": "FLAME",
+            "confidence": 0.8795518207282913,
+            "score": 0.8795518207282913,
+            "method": "ghs-reference",
+            "bbox": {
+              "x": 117,
+              "y": 168,
+              "width": 56,
+              "height": 55
+            },
+            "uncertain": false,
+            "reference_version": "ccohs-ghs-v1",
+            "requires_review": true
+          }
+        },
+        {
+          "code": "FLAME",
+          "context": "ingredient-table",
+          "iou": null,
+          "prediction": null
+        },
+        {
+          "code": "EXCLAMATION_MARK",
+          "context": "ingredient-table",
+          "iou": 0.8148139161229957,
+          "prediction": {
+            "t3777_code": "EXCLAMATION_MARK",
+            "confidence": 0.988129366481427,
+            "score": 0.988129366481427,
+            "method": "ghs-specialist",
+            "uncertain": false,
+            "requires_review": true,
+            "reference_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "model_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "confidence_kind": "uncalibrated-classifier-score",
+            "support_similarity": 0.7462692815723376,
+            "bbox": {
+              "x": 286,
+              "y": 799,
+              "width": 17,
+              "height": 16
+            }
+          }
+        },
+        {
+          "code": "FLAME",
+          "context": "ingredient-table",
+          "iou": null,
+          "prediction": null
+        },
+        {
+          "code": "HEALTH_HAZARD",
+          "context": "ingredient-table",
+          "iou": 0.7074194427491248,
+          "prediction": {
+            "t3777_code": "HEALTH_HAZARD",
+            "confidence": 0.982175118138898,
+            "score": 0.982175118138898,
+            "method": "ghs-specialist",
+            "uncertain": false,
+            "requires_review": true,
+            "reference_version": "ghs-glyph-v1-46ddcb5bd01b:neutral-quad-v1",
+            "model_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "confidence_kind": "uncalibrated-classifier-score",
+            "support_similarity": 0.8860763805166398,
+            "bbox": {
+              "x": 421,
+              "y": 850,
+              "width": 16,
+              "height": 16
+            }
+          }
+        },
+        {
+          "code": "ENVIRONMENT",
+          "context": "ingredient-table",
+          "iou": null,
+          "prediction": null
+        },
+        {
+          "code": "EXCLAMATION_MARK",
+          "context": "ingredient-table",
+          "iou": 0.7516331579209451,
+          "prediction": {
+            "t3777_code": "EXCLAMATION_MARK",
+            "confidence": 0.992380246205957,
+            "score": 0.992380246205957,
+            "method": "ghs-specialist",
+            "uncertain": false,
+            "requires_review": true,
+            "reference_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "model_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "confidence_kind": "uncalibrated-classifier-score",
+            "support_similarity": 0.7958730680633705,
+            "bbox": {
+              "x": 340,
+              "y": 865,
+              "width": 16,
+              "height": 16
+            }
+          }
+        }
+      ],
+      "extra": []
+    },
+    {
+      "id": "input-16",
+      "scope": "old-development",
+      "sha256": "22c94dc0056bd6140bae579711716da9eadf6548d080b20adb7b63b79b78dbb8",
+      "elapsedSeconds": 0.025049416988622397,
+      "objects": [],
+      "extra": []
+    },
+    {
+      "id": "input-17",
+      "scope": "old-development",
+      "sha256": "87e3b79332ebbed3c8571c55981cc83a5c9e512677c93bf2882c3dad43c47f3d",
+      "elapsedSeconds": 0.010658000013791025,
+      "objects": [],
+      "extra": []
+    },
+    {
+      "id": "input-18",
+      "scope": "old-development",
+      "sha256": "af1f5dce5e4dc1f91239a3fec0ba0ba38917cf72810e0a67cbfd5e1870c2ade2",
+      "elapsedSeconds": 0.016431291005574167,
+      "objects": [],
+      "extra": []
+    },
+    {
+      "id": "input-19",
+      "scope": "old-development",
+      "sha256": "22d3147216f42e5ff219efd8c6668b47b9263c004e0adcb553e474ed37ec04ea",
+      "elapsedSeconds": 0.01602570799877867,
+      "objects": [],
+      "extra": []
+    },
+    {
+      "id": "input-20",
+      "scope": "old-development",
+      "sha256": "6160a8182f82c6c186f7e854a7725899a3ac39efed607036dd020ec43547489c",
+      "elapsedSeconds": 0.021452290995512158,
+      "objects": [],
+      "extra": []
+    },
+    {
+      "id": "input-21",
+      "scope": "old-development",
+      "sha256": "e2e776d85e022dafe0ca30b0a6a9ced2333283c89977c9c63ace943ebb422936",
+      "elapsedSeconds": 0.014318000001367182,
+      "objects": [
+        {
+          "code": "CORROSION",
+          "context": "product-label-or-product-SDS-symbol",
+          "iou": 0.9485761718719231,
+          "prediction": {
+            "t3777_code": "CORROSION",
+            "confidence": 0.9950636823077622,
+            "score": 0.9950636823077622,
+            "method": "ghs-specialist",
+            "uncertain": false,
+            "requires_review": true,
+            "reference_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "model_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "confidence_kind": "uncalibrated-classifier-score",
+            "support_similarity": 0.8864562928388239,
+            "bbox": {
+              "x": 264,
+              "y": 132,
+              "width": 67,
+              "height": 66
+            }
+          }
+        }
+      ],
+      "extra": []
+    },
+    {
+      "id": "input-22",
+      "scope": "old-development",
+      "sha256": "70782f298748b7d9589df840647751188462cfa87a1edba75333cc635091787d",
+      "elapsedSeconds": 0.03333950001979247,
+      "objects": [
+        {
+          "code": "CORROSION",
+          "context": "product-label-disputed",
+          "iou": null,
+          "prediction": null
+        }
+      ],
+      "extra": []
+    },
+    {
+      "id": "input-23",
+      "scope": "old-development",
+      "sha256": "619662439e175aa9fb737c62971d6dd10f654644939d1be23a2eb19245109343",
+      "elapsedSeconds": 0.014263832999859005,
+      "objects": [
+        {
+          "code": "FLAME",
+          "context": "product-label-or-product-SDS-symbol",
+          "iou": 0.9414866677891754,
+          "prediction": {
+            "t3777_code": "FLAME",
+            "confidence": 0.9944436566307567,
+            "score": 0.9944436566307567,
+            "method": "ghs-specialist",
+            "uncertain": false,
+            "requires_review": true,
+            "reference_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "model_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "confidence_kind": "uncalibrated-classifier-score",
+            "support_similarity": 0.9315944572703025,
+            "bbox": {
+              "x": 117,
+              "y": 223,
+              "width": 56,
+              "height": 55
+            }
+          }
+        },
+        {
+          "code": "EXCLAMATION_MARK",
+          "context": "product-label-or-product-SDS-symbol",
+          "iou": 0.9246744058643688,
+          "prediction": {
+            "t3777_code": "EXCLAMATION_MARK",
+            "confidence": 0.9537275064267352,
+            "score": 0.9537275064267352,
+            "method": "ghs-reference",
+            "bbox": {
+              "x": 176,
+              "y": 223,
+              "width": 55,
+              "height": 55
+            },
+            "uncertain": false,
+            "reference_version": "ccohs-ghs-v1",
+            "requires_review": true
+          }
+        },
+        {
+          "code": "ENVIRONMENT",
+          "context": "product-label-or-product-SDS-symbol",
+          "iou": 0.9414866677891754,
+          "prediction": {
+            "t3777_code": "ENVIRONMENT",
+            "confidence": 0.9906616290744308,
+            "score": 0.9906616290744308,
+            "method": "ghs-specialist",
+            "uncertain": false,
+            "requires_review": true,
+            "reference_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "model_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "confidence_kind": "uncalibrated-classifier-score",
+            "support_similarity": 0.8883691272215761,
+            "bbox": {
+              "x": 234,
+              "y": 223,
+              "width": 56,
+              "height": 55
+            }
+          }
+        },
+        {
+          "code": "FLAME",
+          "context": "ingredient-table",
+          "iou": null,
+          "prediction": null
+        },
+        {
+          "code": "ENVIRONMENT",
+          "context": "ingredient-table",
+          "iou": null,
+          "prediction": null
+        },
+        {
+          "code": "EXCLAMATION_MARK",
+          "context": "ingredient-table",
+          "iou": null,
+          "prediction": null
+        },
+        {
+          "code": "ENVIRONMENT",
+          "context": "ingredient-table",
+          "iou": null,
+          "prediction": null
+        },
+        {
+          "code": "EXCLAMATION_MARK",
+          "context": "ingredient-table",
+          "iou": null,
+          "prediction": null
+        }
+      ],
+      "extra": [
+        {
+          "t3777_code": "FLAME_OVER_CIRCLE",
+          "confidence": 0.844219835823414,
+          "score": 0.844219835823414,
+          "method": "ghs-specialist",
+          "uncertain": true,
+          "requires_review": true,
+          "reference_version": "ghs-glyph-v1-46ddcb5bd01b",
+          "model_version": "ghs-glyph-v1-46ddcb5bd01b",
+          "confidence_kind": "uncalibrated-classifier-score",
+          "support_similarity": 0.623950678394285,
+          "bbox": {
+            "x": 286,
+            "y": 904,
+            "width": 17,
+            "height": 16
+          }
+        }
+      ]
+    },
+    {
+      "id": "input-24",
+      "scope": "old-development",
+      "sha256": "dbf54dff213887865016a3da85bc650763ccbc9f8a42e7a194a51d1a05db3778",
+      "elapsedSeconds": 0.012245249992702156,
+      "objects": [
+        {
+          "code": "EXCLAMATION_MARK",
+          "context": "product-label-or-product-SDS-symbol",
+          "iou": 0.9604098121694192,
+          "prediction": {
+            "t3777_code": "EXCLAMATION_MARK",
+            "confidence": 0.9924232736642667,
+            "score": 0.9924232736642667,
+            "method": "ghs-specialist",
+            "uncertain": false,
+            "requires_review": true,
+            "reference_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "model_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "confidence_kind": "uncalibrated-classifier-score",
+            "support_similarity": 0.8987449166083792,
+            "bbox": {
+              "x": 79,
+              "y": 799,
+              "width": 39,
+              "height": 38
+            }
+          }
+        }
+      ],
+      "extra": []
+    },
+    {
+      "id": "agar-benzoyl-peroxide",
+      "scope": "new-SDS-development",
+      "sha256": "3443035032b7ceca4d1f55a07b5b5905faf4174f87a00c8bfa8b11ab449a28cf",
+      "elapsedSeconds": 0.02325874997768551,
+      "objects": [
+        {
+          "code": "EXPLODING_BOMB",
+          "context": "product-label",
+          "iou": 0.9295643723327842,
+          "prediction": {
+            "t3777_code": "EXPLODING_BOMB",
+            "confidence": 0.9878697139653209,
+            "score": 0.9878697139653209,
+            "method": "ghs-specialist",
+            "uncertain": false,
+            "requires_review": true,
+            "reference_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "model_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "confidence_kind": "uncalibrated-classifier-score",
+            "support_similarity": 0.7647776774999051,
+            "bbox": {
+              "x": 144,
+              "y": 208,
+              "width": 66,
+              "height": 66
+            }
+          }
+        },
+        {
+          "code": "FLAME",
+          "context": "product-label",
+          "iou": 0.9206991473345272,
+          "prediction": {
+            "t3777_code": "FLAME",
+            "confidence": 0.8871972318339101,
+            "score": 0.8871972318339101,
+            "method": "ghs-reference",
+            "bbox": {
+              "x": 215,
+              "y": 208,
+              "width": 65,
+              "height": 66
+            },
+            "uncertain": false,
+            "reference_version": "ccohs-ghs-v1",
+            "requires_review": true
+          }
+        },
+        {
+          "code": "EXCLAMATION_MARK",
+          "context": "product-label",
+          "iou": 0.9166156003369493,
+          "prediction": {
+            "t3777_code": "EXCLAMATION_MARK",
+            "confidence": 0.8908629441624365,
+            "score": 0.8908629441624365,
+            "method": "ghs-reference",
+            "bbox": {
+              "x": 285,
+              "y": 209,
+              "width": 65,
+              "height": 65
+            },
+            "uncertain": false,
+            "reference_version": "ccohs-ghs-v1",
+            "requires_review": true
+          }
+        },
+        {
+          "code": "HEALTH_HAZARD",
+          "context": "product-label",
+          "iou": 0.9206991473345272,
+          "prediction": {
+            "t3777_code": "HEALTH_HAZARD",
+            "confidence": 0.9420575482853765,
+            "score": 0.9420575482853765,
+            "method": "ghs-reference",
+            "bbox": {
+              "x": 356,
+              "y": 208,
+              "width": 65,
+              "height": 66
+            },
+            "uncertain": false,
+            "reference_version": "ccohs-ghs-v1",
+            "requires_review": true
+          }
+        },
+        {
+          "code": "ENVIRONMENT",
+          "context": "product-label",
+          "iou": 0.9198704397865193,
+          "prediction": {
+            "t3777_code": "ENVIRONMENT",
+            "confidence": 0.9962890020856764,
+            "score": 0.9962890020856764,
+            "method": "ghs-specialist",
+            "uncertain": false,
+            "requires_review": true,
+            "reference_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "model_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "confidence_kind": "uncalibrated-classifier-score",
+            "support_similarity": 0.905215188914424,
+            "bbox": {
+              "x": 426,
+              "y": 209,
+              "width": 65,
+              "height": 65
+            }
+          }
+        },
+        {
+          "code": "HEALTH_HAZARD",
+          "context": "ingredient",
+          "iou": 0.8289218559769166,
+          "prediction": {
+            "t3777_code": "HEALTH_HAZARD",
+            "confidence": 0.9847152408433464,
+            "score": 0.9847152408433464,
+            "method": "ghs-specialist",
+            "uncertain": false,
+            "requires_review": true,
+            "reference_version": "ghs-glyph-v1-46ddcb5bd01b:neutral-quad-v1",
+            "model_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "confidence_kind": "uncalibrated-classifier-score",
+            "support_similarity": 0.8657106368843644,
+            "bbox": {
+              "x": 300,
+              "y": 1002,
+              "width": 18,
+              "height": 19
+            }
+          }
+        },
+        {
+          "code": "EXCLAMATION_MARK",
+          "context": "ingredient",
+          "iou": 0.8073617501519246,
+          "prediction": {
+            "t3777_code": "EXCLAMATION_MARK",
+            "confidence": 0.9087148039255843,
+            "score": 0.9087148039255843,
+            "method": "ghs-specialist",
+            "uncertain": false,
+            "requires_review": true,
+            "reference_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "model_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "confidence_kind": "uncalibrated-classifier-score",
+            "support_similarity": 0.8029278129522052,
+            "bbox": {
+              "x": 458,
+              "y": 1002,
+              "width": 18,
+              "height": 19
+            }
+          }
+        },
+        {
+          "code": "EXPLODING_BOMB",
+          "context": "ingredient",
+          "iou": null,
+          "prediction": null
+        },
+        {
+          "code": "FLAME",
+          "context": "ingredient",
+          "iou": 0.9352953033662572,
+          "prediction": {
+            "t3777_code": "FLAME",
+            "confidence": 0.9773335726341174,
+            "score": 0.9773335726341174,
+            "method": "ghs-specialist",
+            "uncertain": false,
+            "requires_review": true,
+            "reference_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "model_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "confidence_kind": "uncalibrated-classifier-score",
+            "support_similarity": 0.8082626966925277,
+            "bbox": {
+              "x": 322,
+              "y": 1043,
+              "width": 19,
+              "height": 19
+            }
+          }
+        },
+        {
+          "code": "EXCLAMATION_MARK",
+          "context": "ingredient",
+          "iou": 0.8812615955473098,
+          "prediction": {
+            "t3777_code": "EXCLAMATION_MARK",
+            "confidence": 0.9134487350199734,
+            "score": 0.9134487350199734,
+            "method": "ghs-reference",
+            "bbox": {
+              "x": 504,
+              "y": 1043,
+              "width": 18,
+              "height": 19
+            },
+            "uncertain": false,
+            "reference_version": "ccohs-ghs-v1",
+            "requires_review": true
+          }
+        }
+      ],
+      "extra": [
+        {
+          "t3777_code": "HEALTH_HAZARD",
+          "confidence": 0.8442305838696705,
+          "score": 0.8442305838696705,
+          "method": "ghs-specialist",
+          "uncertain": true,
+          "requires_review": true,
+          "reference_version": "ghs-glyph-v1-46ddcb5bd01b:neutral-quad-v1",
+          "model_version": "ghs-glyph-v1-46ddcb5bd01b",
+          "confidence_kind": "uncalibrated-classifier-score",
+          "support_similarity": 0.6135670001322342,
+          "bbox": {
+            "x": 300,
+            "y": 1043,
+            "width": 18,
+            "height": 19
+          }
+        }
+      ]
+    },
+    {
+      "id": "carlroth-water-hardness",
+      "scope": "new-SDS-development",
+      "sha256": "5f52d9ace03c8ae415d8fc2409bae557e09f4f3ea362b1ccf4efe2077becec84",
+      "elapsedSeconds": 0.01663308299612254,
+      "objects": [
+        {
+          "code": "CORROSION",
+          "context": "product-label",
+          "iou": 0.9566597201651224,
+          "prediction": {
+            "t3777_code": "CORROSION",
+            "confidence": 0.9078947368421053,
+            "score": 0.9078947368421053,
+            "method": "ghs-reference",
+            "bbox": {
+              "x": 283,
+              "y": 237,
+              "width": 94,
+              "height": 94
+            },
+            "uncertain": false,
+            "reference_version": "ccohs-ghs-v1",
+            "requires_review": true
+          }
+        },
+        {
+          "code": "EXCLAMATION_MARK",
+          "context": "product-label",
+          "iou": 0.9207727996207119,
+          "prediction": {
+            "t3777_code": "EXCLAMATION_MARK",
+            "confidence": 0.9943842307614039,
+            "score": 0.9943842307614039,
+            "method": "ghs-specialist",
+            "uncertain": false,
+            "requires_review": true,
+            "reference_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "model_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "confidence_kind": "uncalibrated-classifier-score",
+            "support_similarity": 0.8919806593007225,
+            "bbox": {
+              "x": 124,
+              "y": 707,
+              "width": 47,
+              "height": 47
+            }
+          }
+        },
+        {
+          "code": "CORROSION",
+          "context": "product-label",
+          "iou": 0.9592457496355041,
+          "prediction": {
+            "t3777_code": "CORROSION",
+            "confidence": 0.9947331212087503,
+            "score": 0.9947331212087503,
+            "method": "ghs-specialist",
+            "uncertain": false,
+            "requires_review": true,
+            "reference_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "model_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "confidence_kind": "uncalibrated-classifier-score",
+            "support_similarity": 0.9050138200239879,
+            "bbox": {
+              "x": 124,
+              "y": 851,
+              "width": 47,
+              "height": 47
+            }
+          }
+        }
+      ],
+      "extra": []
+    },
+    {
+      "id": "cymit-cucurbitacin",
+      "scope": "new-SDS-development",
+      "sha256": "7b975f4f0055028e7c3ab0f34f1e7b0d06bf3007bbbcdc6850f9cc53df70f014",
+      "elapsedSeconds": 0.018547834013588727,
+      "objects": [
+        {
+          "code": "SKULL_AND_CROSSBONES",
+          "context": "product-label",
+          "iou": 0.957965596637879,
+          "prediction": {
+            "t3777_code": "SKULL_AND_CROSSBONES",
+            "confidence": 0.9925161838950126,
+            "score": 0.9925161838950126,
+            "method": "ghs-specialist",
+            "uncertain": false,
+            "requires_review": true,
+            "reference_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "model_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "confidence_kind": "uncalibrated-classifier-score",
+            "support_similarity": 0.9353732353501676,
+            "bbox": {
+              "x": 158,
+              "y": 797,
+              "width": 70,
+              "height": 69
+            }
+          }
+        },
+        {
+          "code": "SKULL_AND_CROSSBONES",
+          "context": "product-label",
+          "iou": 0.911532230194386,
+          "prediction": {
+            "t3777_code": "SKULL_AND_CROSSBONES",
+            "confidence": 0.9925161838950126,
+            "score": 0.9925161838950126,
+            "method": "ghs-specialist",
+            "uncertain": false,
+            "requires_review": true,
+            "reference_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "model_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "confidence_kind": "uncalibrated-classifier-score",
+            "support_similarity": 0.9353732353501676,
+            "bbox": {
+              "x": 158,
+              "y": 997,
+              "width": 70,
+              "height": 69
+            }
+          }
+        }
+      ],
+      "extra": []
+    },
+    {
+      "id": "dynonobel-electric-detonator",
+      "scope": "new-SDS-development",
+      "sha256": "3467e133f2c33dfbb2fa6ac597a2ae0907d2d7d95ab32796d1ae56f026af2ba3",
+      "elapsedSeconds": 0.02297016599914059,
+      "objects": [
+        {
+          "code": "EXPLODING_BOMB",
+          "context": "product-label",
+          "iou": 0.931434842883549,
+          "prediction": {
+            "t3777_code": "EXPLODING_BOMB",
+            "confidence": 0.990705467047698,
+            "score": 0.990705467047698,
+            "method": "ghs-specialist",
+            "uncertain": false,
+            "requires_review": true,
+            "reference_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "model_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "confidence_kind": "uncalibrated-classifier-score",
+            "support_similarity": 0.6990027376379131,
+            "bbox": {
+              "x": 73,
+              "y": 1033,
+              "width": 84,
+              "height": 86
+            }
+          }
+        }
+      ],
+      "extra": []
+    },
+    {
+      "id": "ghc-hydrogen-sulphide",
+      "scope": "new-SDS-development",
+      "sha256": "0898f926f1811945fe580fb302f25001c8235c5745f221a1b0669a984568f85b",
+      "elapsedSeconds": 0.022174500045366585,
+      "objects": [
+        {
+          "code": "FLAME",
+          "context": "product-label",
+          "iou": 0.9627869104993289,
+          "prediction": {
+            "t3777_code": "FLAME",
+            "confidence": 0.9339080459770115,
+            "score": 0.9339080459770115,
+            "method": "ghs-reference",
+            "bbox": {
+              "x": 118,
+              "y": 264,
+              "width": 70,
+              "height": 70
+            },
+            "uncertain": false,
+            "reference_version": "ccohs-ghs-v1",
+            "requires_review": true
+          }
+        },
+        {
+          "code": "SKULL_AND_CROSSBONES",
+          "context": "product-label",
+          "iou": 0.9438917889622113,
+          "prediction": {
+            "t3777_code": "SKULL_AND_CROSSBONES",
+            "confidence": 0.9990073093103031,
+            "score": 0.9990073093103031,
+            "method": "ghs-specialist",
+            "uncertain": false,
+            "requires_review": true,
+            "reference_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "model_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "confidence_kind": "uncalibrated-classifier-score",
+            "support_similarity": 0.9016691364515088,
+            "bbox": {
+              "x": 213,
+              "y": 264,
+              "width": 69,
+              "height": 70
+            }
+          }
+        },
+        {
+          "code": "ENVIRONMENT",
+          "context": "product-label",
+          "iou": 0.939455938363191,
+          "prediction": {
+            "t3777_code": "ENVIRONMENT",
+            "confidence": 0.9958801266861755,
+            "score": 0.9958801266861755,
+            "method": "ghs-specialist",
+            "uncertain": false,
+            "requires_review": true,
+            "reference_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "model_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "confidence_kind": "uncalibrated-classifier-score",
+            "support_similarity": 0.8884423091122682,
+            "bbox": {
+              "x": 307,
+              "y": 264,
+              "width": 71,
+              "height": 71
+            }
+          }
+        }
+      ],
+      "extra": []
+    },
+    {
+      "id": "irish-oxygen",
+      "scope": "new-SDS-development",
+      "sha256": "31ac9100ed40596dd9ffd0df9157ff3e8581b007acd807c9e06d551e696aae8c",
+      "elapsedSeconds": 0.019569125026464462,
+      "objects": [
+        {
+          "code": "FLAME_OVER_CIRCLE",
+          "context": "product-label",
+          "iou": 0.9338211358413379,
+          "prediction": {
+            "t3777_code": "FLAME_OVER_CIRCLE",
+            "confidence": 0.9593996476693748,
+            "score": 0.9593996476693748,
+            "method": "ghs-specialist",
+            "uncertain": false,
+            "requires_review": true,
+            "reference_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "model_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "confidence_kind": "uncalibrated-classifier-score",
+            "support_similarity": 0.945522380302048,
+            "bbox": {
+              "x": 534,
+              "y": 290,
+              "width": 62,
+              "height": 62
+            }
+          }
+        },
+        {
+          "code": "GAS_CYLINDER",
+          "context": "product-label",
+          "iou": 0.9198835069481835,
+          "prediction": {
+            "t3777_code": "GAS_CYLINDER",
+            "confidence": 0.9136125654450262,
+            "score": 0.9136125654450262,
+            "method": "ghs-reference",
+            "bbox": {
+              "x": 623,
+              "y": 290,
+              "width": 62,
+              "height": 62
+            },
+            "uncertain": false,
+            "reference_version": "ccohs-ghs-v1",
+            "requires_review": true
+          }
+        }
+      ],
+      "extra": []
+    },
+    {
+      "id": "puregas-oxygen",
+      "scope": "new-SDS-development",
+      "sha256": "ad66f498ca9ba94bcb0e5125a0eeb14662f4e89d3e28c881fe9fa1283ee63113",
+      "elapsedSeconds": 0.019422999990638345,
+      "objects": [
+        {
+          "code": "FLAME_OVER_CIRCLE",
+          "context": "product-label",
+          "iou": 0.9636874919851732,
+          "prediction": {
+            "t3777_code": "FLAME_OVER_CIRCLE",
+            "confidence": 0.9652996845425867,
+            "score": 0.9652996845425867,
+            "method": "ghs-reference",
+            "bbox": {
+              "x": 354,
+              "y": 852,
+              "width": 101,
+              "height": 102
+            },
+            "uncertain": false,
+            "reference_version": "ccohs-ghs-v1",
+            "requires_review": true
+          }
+        },
+        {
+          "code": "GAS_CYLINDER",
+          "context": "product-label",
+          "iou": 0.9432003283562352,
+          "prediction": {
+            "t3777_code": "GAS_CYLINDER",
+            "confidence": 0.9367088607594937,
+            "score": 0.9367088607594937,
+            "method": "ghs-reference",
+            "bbox": {
+              "x": 551,
+              "y": 861,
+              "width": 95,
+              "height": 94
+            },
+            "uncertain": false,
+            "reference_version": "ccohs-ghs-v1",
+            "requires_review": true
+          }
+        }
+      ],
+      "extra": []
+    },
+    {
+      "id": "commons-01",
+      "scope": "photo",
+      "sha256": "4662011351a2cb666db923916ee6bddf6c28683e5f152de365dd2fec0385038a",
+      "elapsedSeconds": 0.08880591596243903,
+      "objects": [
+        {
+          "code": "CORROSION",
+          "context": "product-label",
+          "iou": 0.9813382799773179,
+          "prediction": {
+            "t3777_code": "CORROSION",
+            "confidence": 0.9961963404360237,
+            "score": 0.9961963404360237,
+            "method": "ghs-specialist",
+            "uncertain": false,
+            "requires_review": true,
+            "reference_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "model_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "confidence_kind": "uncalibrated-classifier-score",
+            "support_similarity": 0.9674868989089136,
+            "bbox": {
+              "x": 781,
+              "y": 541,
+              "width": 694,
+              "height": 703
+            }
+          }
+        }
+      ],
+      "extra": []
+    },
+    {
+      "id": "commons-02",
+      "scope": "photo",
+      "sha256": "740505f97d5a883ce87a236193f938ba6a87b1da71dfb58d220ac6d25bf20aee",
+      "elapsedSeconds": 0.05239687499124557,
+      "objects": [
+        {
+          "code": "FLAME",
+          "context": "product-label",
+          "iou": 0.9105196029501467,
+          "prediction": {
+            "t3777_code": "FLAME",
+            "confidence": 0.9967720934692561,
+            "score": 0.9967720934692561,
+            "method": "ghs-specialist",
+            "uncertain": false,
+            "requires_review": true,
+            "reference_version": "ghs-glyph-v1-46ddcb5bd01b:neutral-quad-v1",
+            "model_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "confidence_kind": "uncalibrated-classifier-score",
+            "support_similarity": 0.9446917823069534,
+            "bbox": {
+              "x": 705,
+              "y": 1883,
+              "width": 186,
+              "height": 212
+            }
+          }
+        },
+        {
+          "code": "HEALTH_HAZARD",
+          "context": "product-label",
+          "iou": 0.9213976461979388,
+          "prediction": {
+            "t3777_code": "HEALTH_HAZARD",
+            "confidence": 0.9856352081619437,
+            "score": 0.9856352081619437,
+            "method": "ghs-specialist",
+            "uncertain": false,
+            "requires_review": true,
+            "reference_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "model_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "confidence_kind": "uncalibrated-classifier-score",
+            "support_similarity": 0.6919503091157728,
+            "bbox": {
+              "x": 916,
+              "y": 1923,
+              "width": 242,
+              "height": 216
+            }
+          }
+        },
+        {
+          "code": "SKULL_AND_CROSSBONES",
+          "context": "product-label",
+          "iou": 0.6404037309368191,
+          "prediction": {
+            "t3777_code": "SKULL_AND_CROSSBONES",
+            "confidence": 0.9262413237202834,
+            "score": 0.9262413237202834,
+            "method": "ghs-specialist",
+            "uncertain": false,
+            "requires_review": true,
+            "reference_version": "ghs-glyph-v1-46ddcb5bd01b:neutral-quad-v1",
+            "model_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "confidence_kind": "uncalibrated-classifier-score",
+            "support_similarity": 0.8714796473209618,
+            "bbox": {
+              "x": 1195,
+              "y": 1887,
+              "width": 126,
+              "height": 172
+            }
+          }
+        }
+      ],
+      "extra": []
+    },
+    {
+      "id": "photograph-commons-05-original",
+      "scope": "photograph",
+      "sha256": "c58906a4703c47a327f2036a91b5fbe6fb5b25ddbd88532864bac0f4f6f11edc",
+      "elapsedSeconds": 0.16332345799310133,
+      "objects": [
+        {
+          "code": "EXCLAMATION_MARK",
+          "context": "product-label",
+          "iou": 0.9415418121947132,
+          "prediction": {
+            "t3777_code": "EXCLAMATION_MARK",
+            "confidence": 0.918854415274463,
+            "score": 0.918854415274463,
+            "method": "ghs-reference",
+            "bbox": {
+              "x": 632,
+              "y": 2342,
+              "width": 322,
+              "height": 441
+            },
+            "uncertain": false,
+            "reference_version": "ccohs-ghs-v1",
+            "requires_review": true
+          }
+        },
+        {
+          "code": "ENVIRONMENT",
+          "context": "product-label",
+          "iou": 0.9612279931438005,
+          "prediction": {
+            "t3777_code": "ENVIRONMENT",
+            "confidence": 0.9897190154116994,
+            "score": 0.9897190154116994,
+            "method": "ghs-specialist",
+            "uncertain": false,
+            "requires_review": true,
+            "reference_version": "ghs-glyph-v1-46ddcb5bd01b:neutral-quad-v1",
+            "model_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "confidence_kind": "uncalibrated-classifier-score",
+            "support_similarity": 0.8878674840747944,
+            "bbox": {
+              "x": 972,
+              "y": 2351,
+              "width": 417,
+              "height": 471
+            }
+          }
+        },
+        {
+          "code": "FLAME_OVER_CIRCLE",
+          "context": "product-label",
+          "iou": 0.9423431592306484,
+          "prediction": {
+            "t3777_code": "FLAME_OVER_CIRCLE",
+            "confidence": 0.9759567988662832,
+            "score": 0.9759567988662832,
+            "method": "ghs-specialist",
+            "uncertain": false,
+            "requires_review": true,
+            "reference_version": "ghs-glyph-v1-46ddcb5bd01b:neutral-quad-v1",
+            "model_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "confidence_kind": "uncalibrated-classifier-score",
+            "support_similarity": 0.9722077101794486,
+            "bbox": {
+              "x": 639,
+              "y": 2803,
+              "width": 313,
+              "height": 436
+            }
+          }
+        }
+      ],
+      "extra": []
+    },
+    {
+      "id": "prepared-commons-05",
+      "scope": "prepared-photograph-same-family",
+      "sha256": "a7a16014df95fa6a7a2b255dd7b6a35b7e0b22237de33ef61461973ee6254b45",
+      "elapsedSeconds": 0.03310291696107015,
+      "objects": [
+        {
+          "code": "EXCLAMATION_MARK",
+          "context": "product-label",
+          "iou": 0.9332390365519023,
+          "prediction": {
+            "t3777_code": "EXCLAMATION_MARK",
+            "confidence": 0.925089179548157,
+            "score": 0.925089179548157,
+            "method": "ghs-reference",
+            "bbox": {
+              "x": 210,
+              "y": 778,
+              "width": 106,
+              "height": 146
+            },
+            "uncertain": false,
+            "reference_version": "ccohs-ghs-v1",
+            "requires_review": true
+          }
+        },
+        {
+          "code": "ENVIRONMENT",
+          "context": "product-label",
+          "iou": 0.9606597172640298,
+          "prediction": {
+            "t3777_code": "ENVIRONMENT",
+            "confidence": 0.9529441185209163,
+            "score": 0.9529441185209163,
+            "method": "ghs-specialist",
+            "uncertain": false,
+            "requires_review": true,
+            "reference_version": "ghs-glyph-v1-46ddcb5bd01b:neutral-quad-v1",
+            "model_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "confidence_kind": "uncalibrated-classifier-score",
+            "support_similarity": 0.8684446134013728,
+            "bbox": {
+              "x": 323,
+              "y": 781,
+              "width": 138,
+              "height": 156
+            }
+          }
+        },
+        {
+          "code": "FLAME_OVER_CIRCLE",
+          "context": "product-label",
+          "iou": 0.9444250901337614,
+          "prediction": {
+            "t3777_code": "FLAME_OVER_CIRCLE",
+            "confidence": 0.9855288794887288,
+            "score": 0.9855288794887288,
+            "method": "ghs-specialist",
+            "uncertain": false,
+            "requires_review": true,
+            "reference_version": "ghs-glyph-v1-46ddcb5bd01b:neutral-quad-v1",
+            "model_version": "ghs-glyph-v1-46ddcb5bd01b",
+            "confidence_kind": "uncalibrated-classifier-score",
+            "support_similarity": 0.9679579661487532,
+            "bbox": {
+              "x": 213,
+              "y": 930,
+              "width": 103,
+              "height": 144
+            }
+          }
+        }
+      ],
+      "extra": []
+    },
+    {
+      "id": "challenge-commons-03-ADR",
+      "scope": "ADR-challenge-not-negative-benchmark",
+      "sha256": "44ad0587740dbbbb849802bf64bc15f53b0ccc4cc5807b455ca8731d6f95b4a4",
+      "elapsedSeconds": 0.09197304199915379,
+      "objects": [],
+      "extra": []
+    }
+  ]
+}

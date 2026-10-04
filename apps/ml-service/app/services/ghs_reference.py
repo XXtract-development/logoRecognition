@@ -18,6 +18,131 @@ PROPOSAL_FLOOR = 0.65
 MARGIN = 0.035
 MAX_CANDIDATES = 64
 MAX_WORK_PIXELS = 4_000_000
+PHOTO_PREPROCESSING = "neutral-quad-v1"
+MIN_PHOTO_SIDE = 32
+
+
+def _overlap(a, b):
+    x, y, w, h = a
+    ox, oy, ow, oh = b
+    inter = max(0, min(x + w, ox + ow) - max(x, ox)) * max(
+        0, min(y + h, oy + oh) - max(y, oy)
+    )
+    return inter / (w * h + ow * oh - inter) if inter else 0
+
+
+def _photo_candidates(image):
+    """Closed red quads only; postpone inner/outer stroke dedup until classification."""
+    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    mask = cv2.inRange(hsv, (0, 90, 65), (12, 255, 255)) | cv2.inRange(
+        hsv, (165, 90, 65), (180, 255, 255)
+    )
+    contours, _ = cv2.findContours(mask, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+    groups = []
+    for contour in sorted(contours, key=cv2.contourArea, reverse=True)[
+        : MAX_CANDIDATES * 4
+    ]:
+        x, y, w, h = cv2.boundingRect(contour)
+        if min(w, h) < MIN_PHOTO_SIDE or not 0.65 < w / h < 1.5:
+            continue
+        quad = cv2.approxPolyDP(contour, 0.035 * cv2.arcLength(contour, True), True)
+        if (
+            len(quad) != 4
+            or not cv2.isContourConvex(quad)
+            or not 0.30 < cv2.contourArea(contour) / (w * h) < 0.72
+        ):
+            continue
+        vertices = (quad.reshape(-1, 2) - [x, y]) / [w, h]
+        expected = np.array([[0.5, 0], [1, 0.5], [0.5, 1], [0, 0.5]])
+        if any(
+            np.linalg.norm(vertices - point, axis=1).min() > 0.22 for point in expected
+        ):
+            continue
+        box = (x, y, w, h)
+        candidate = (box, quad.reshape(-1, 2).astype(np.float32))
+        group = next((g for g in groups if _overlap(g[0][0], box) > 0.5), None)
+        if group is not None:
+            if len(group) < 2:
+                group.append(candidate)
+        elif len(groups) < MAX_CANDIDATES:
+            groups.append([candidate])
+    return groups
+
+
+def _photo_glyph(image, box, quad):
+    """Physical contour rectification and automatic neutral-paper segmentation."""
+    x, y, w, h = box
+    points = quad - [x, y]
+    center = points.mean(axis=0)
+    angles = np.arctan2(points[:, 1] - center[1], points[:, 0] - center[0])
+    points = points[np.argsort(angles)]
+    points = np.roll(points, -int(np.argmin(points[:, 1])), axis=0).astype(np.float32)
+    target = np.array([[64, 0], [127, 64], [64, 127], [0, 64]], np.float32)
+    rectified = cv2.warpPerspective(
+        image[y : y + h, x : x + w],
+        cv2.getPerspectiveTransform(points, target),
+        (128, 128),
+        borderValue=(255, 255, 255),
+    )
+    hsv = cv2.cvtColor(rectified, cv2.COLOR_BGR2HSV)
+    gray = cv2.cvtColor(rectified, cv2.COLOR_BGR2GRAY)
+    yy, xx = np.indices(gray.shape)
+    radius = abs(xx / 127 - 0.5) + abs(yy / 127 - 0.5)
+    neutral = hsv[:, :, 1] < 85
+    interior = radius < 0.40
+    eligible = neutral & interior
+    if eligible.sum() < 100 or float(neutral[interior].mean()) < 0.65:
+        return None
+    values = gray[eligible]
+    low, high = np.percentile(values, [10, 90])
+    if high < 90 or high - low < 40:
+        return None
+    threshold, _ = cv2.threshold(values, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    annulus = (radius > 0.30) & (radius < 0.40)
+    if float((neutral & (gray > threshold))[annulus].mean()) < 0.50:
+        return None
+    binary = np.where(neutral & (gray <= threshold), 0, 255).astype(np.uint8)
+    return cv2.cvtColor(binary, cv2.COLOR_GRAY2BGR)
+
+
+def _photo_recovery(image, existing, wanted):
+    from app.services.ghs_specialist import classify
+
+    additions = []
+    for group in _photo_candidates(image):
+        box = group[0][0]
+        if any(
+            not d.get("uncertain", True)
+            and _overlap(
+                box, tuple(d["bbox"][k] for k in ["x", "y", "width", "height"])
+            )
+            > 0.5
+            for d in existing
+        ):
+            continue
+        proposals = []
+        for candidate_box, quad in group:
+            glyph = _photo_glyph(image, candidate_box, quad)
+            learned = classify(glyph) if glyph is not None else None
+            if learned is not None:
+                proposals.append(learned)
+        # Inconsistent interpretations of the same physical stroke are ambiguous.
+        if not proposals or len({p["t3777_code"] for p in proposals}) != 1:
+            continue
+        chosen = max(proposals, key=lambda p: p["support_similarity"])
+        if chosen["t3777_code"] not in wanted:
+            continue
+        x, y, w, h = box
+        additions.append(
+            {
+                **chosen,
+                "reference_version": chosen["reference_version"]
+                + ":"
+                + PHOTO_PREPROCESSING,
+                "bbox": {"x": x, "y": y, "width": w, "height": h},
+            }
+        )
+    return additions
 
 
 def _bgr(image):
@@ -164,23 +289,51 @@ def detect_ghs(image, codes=None):
             if chosen is None and legacy_allowed:
                 chosen = legacy
         if chosen is not None and chosen["t3777_code"] in wanted:
-            sx, sy = original_w / image.shape[1], original_h / image.shape[0]
-            left, top = int(x * sx), int(y * sy)
-            right, bottom = (
-                min(original_w, int(np.ceil((x + w) * sx))),
-                min(original_h, int(np.ceil((y + h) * sy))),
-            )
             output.append(
                 {
                     **chosen,
-                    "bbox": {
-                        "x": left,
-                        "y": top,
-                        "width": right - left,
-                        "height": bottom - top,
-                    },
+                    "bbox": {"x": x, "y": y, "width": w, "height": h},
                 }
             )
+    try:
+        additions = _photo_recovery(image, output, wanted)
+        combined = list(output)
+        for addition in additions:
+            box = tuple(addition["bbox"][k] for k in ["x", "y", "width", "height"])
+            overlapping = [
+                d
+                for d in combined
+                if _overlap(
+                    box, tuple(d["bbox"][k] for k in ["x", "y", "width", "height"])
+                )
+                > 0.5
+            ]
+            if any(d["t3777_code"] != addition["t3777_code"] for d in overlapping):
+                continue
+            if overlapping:
+                strongest = max(overlapping, key=lambda d: d["confidence"])
+                if strongest["confidence"] >= addition["confidence"]:
+                    continue
+                combined = [d for d in combined if d not in overlapping]
+            if len(combined) < MAX_CANDIDATES:
+                combined.append(addition)
+        output = combined
+    except Exception:
+        logging.getLogger(__name__).warning(
+            "GHS photo recovery unavailable; retaining existing results", exc_info=False
+        )
+    sx, sy = original_w / image.shape[1], original_h / image.shape[0]
+    for result in output:
+        x, y, w, h = (result["bbox"][k] for k in ["x", "y", "width", "height"])
+        left, top = int(x * sx), int(y * sy)
+        right = min(original_w, int(np.ceil((x + w) * sx)))
+        bottom = min(original_h, int(np.ceil((y + h) * sy)))
+        result["bbox"] = {
+            "x": left,
+            "y": top,
+            "width": right - left,
+            "height": bottom - top,
+        }
     return output
 
 
