@@ -1,0 +1,81 @@
+{
+  "recordedAt": "2026-10-04T20:50:09.750574+00:00",
+  "engineeringFrozen": true,
+  "version": "ghs-glyph-v1-46ddcb5bd01b",
+  "weightsSha256": "8d989fa8e183fd83f1921f0fdf60167c2ac6658bfbcdfaa49421407a186dfd7d",
+  "fullReproductionBytesIdentical": true,
+  "initialWeightsBiasSupportIdenticalAfterUncertaintySemanticsFix": true,
+  "policy": {
+    "minimumMargin": 0.2,
+    "minimumScore": 0.7,
+    "minimumSupportSimilarity": 0.6,
+    "uncertaintyScore": 0.87
+  },
+  "trainingRows": 1849,
+  "independentFieldGroups": 0,
+  "humanReviewRequired": true,
+  "liveWrites": false,
+  "tests": {
+    "pythonGhsBackendContracts": 182,
+    "apiRecognitionRouteInject": 15,
+    "apiBuild": "passed",
+    "ruffOwnedPython": "passed"
+  },
+  "developmentProvisional": {
+    "beforeProduct": {
+      "candidates": 34,
+      "matchingCodeAndIoU": 25,
+      "nonuncertainMatchingCodeAndIoU": 12
+    },
+    "afterProduct": {
+      "candidates": 34,
+      "matchingCodeAndIoU": 34,
+      "nonuncertainMatchingCodeAndIoU": 34
+    },
+    "beforeAllMatches": 26,
+    "afterAllMatches": 36,
+    "allAiCandidates": 46,
+    "unmatchedPredictionsBefore": 0,
+    "unmatchedPredictionsAfter": 1,
+    "holdout": false,
+    "gold": false
+  },
+  "ownedFiles": [
+    "apps/api/src/__tests__/api/recognition.routes.test.ts",
+    "apps/api/src/api/v1/recognition.ts",
+    "apps/api/src/services/ml-client.ts",
+    "apps/ml-service/app/api/detection.py",
+    "apps/ml-service/app/ml/detector.py",
+    "apps/ml-service/app/services/ghs_reference.py",
+    "apps/ml-service/app/services/ghs_specialist.py",
+    "apps/ml-service/app/symbol_contract.py",
+    "apps/ml-service/scripts/ghs_eval.py",
+    "apps/ml-service/scripts/train_ghs_specialist.py",
+    "apps/ml-service/scripts/ghs-specialist.md",
+    "apps/ml-service/tests/test_ghs_specialist.py",
+    "apps/ml-service/tests/test_ghs_evaluation.py",
+    "apps/ml-service/app/assets/ghs/specialist/manifest.json",
+    "apps/ml-service/app/assets/ghs/specialist/model.json",
+    "apps/ml-service/scripts/ghs-training-requirements.txt"
+  ],
+  "sourceHashes": {
+    "apps/api/src/__tests__/api/recognition.routes.test.ts": "a8ee4d92a005b99a500f2098b7c8069600cca599b7f30b1259c70bca09fac87c",
+    "apps/api/src/api/v1/recognition.ts": "dae3b18b2e2af82c99b5cbd5c57496016de5e19caa679e70df5e2365ed3c42e6",
+    "apps/api/src/services/ml-client.ts": "0102d255b3ce091eb8daa541afe15824647538db58e44759b5e60d405bd7096a",
+    "apps/ml-service/app/api/detection.py": "d1228295cb5cad264440663064f006967bb41b1f0d8ee4cda272fdb32b9b477e",
+    "apps/ml-service/app/ml/detector.py": "b912f3a2ab46fde20f68fab67e9d772ddafec86544f6e23276942c7a525c65ca",
+    "apps/ml-service/app/services/ghs_reference.py": "f30c165e096eb59710cb940943728428ddd8425e8df0cffe969d3f6db96828ee",
+    "apps/ml-service/app/services/ghs_specialist.py": "a3f5865a849b165f84e5726ac911baae603f7778dc67034b83d7f33b9aee3fa8",
+    "apps/ml-service/app/symbol_contract.py": "d6555d67bf0ae5eb2ed48cbe077d3da0710c4e25b360a43dbe601d98f42eab75",
+    "apps/ml-service/scripts/ghs_eval.py": "47bfd1b95b529a388d3e0c2c6b9d780c077b8d453f9b92d6df7453858a555cf1",
+    "apps/ml-service/scripts/train_ghs_specialist.py": "bcf3df7757da1f30c34e6f63c56778c8757278b1e930c6ae0b62ec00648a16c5",
+    "apps/ml-service/scripts/ghs-specialist.md": "9210249dc36c8a9531f6236d40f2abe171f7873f33589bbe38a98c443fb56f3b",
+    "apps/ml-service/tests/test_ghs_specialist.py": "8a14cda3e578ce53ab47add8c5b4e92756264f99e2ca5eb71b4c425dce4b8cfb",
+    "apps/ml-service/tests/test_ghs_evaluation.py": "c27e9ab0cfa8d4c9c835da32cfe1e2aad735019bc1388e628e56f31def316fa4",
+    "apps/ml-service/app/assets/ghs/specialist/manifest.json": "5fbe80e48005382cb828b7f73a07bc1a62871d9b311323a4b71a53a375c9b926",
+    "apps/ml-service/app/assets/ghs/specialist/model.json": "8d989fa8e183fd83f1921f0fdf60167c2ac6658bfbcdfaa49421407a186dfd7d",
+    "apps/ml-service/scripts/ghs-training-requirements.txt": "8aff80062f9528c25e7684ebab64533123f56ab5c29d41336cf438101def6766"
+  },
+  "review": "root independent edge-case plus reused verification-gap reviewer; all filed findings resolved; context-free blind layer unavailable after agent-thread limit",
+  "cleanup": "Temporary initial/reproduction artifacts retained for audit; no live cleanup/container action"
+}

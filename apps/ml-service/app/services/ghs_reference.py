@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import logging
 from functools import lru_cache
 from pathlib import Path
 
@@ -15,6 +16,8 @@ METHOD = "ghs-reference"
 THRESHOLD = 0.87
 PROPOSAL_FLOOR = 0.65
 MARGIN = 0.035
+MAX_CANDIDATES = 64
+MAX_WORK_PIXELS = 4_000_000
 
 
 def _bgr(image):
@@ -23,7 +26,7 @@ def _bgr(image):
     return cv2.cvtColor(np.asarray(image.convert("RGB")), cv2.COLOR_RGB2BGR)
 
 
-def regions(image):
+def regions(image, minimum_white=0.65):
     """Require an actual closed red diamond, keeping other graphics out of this route."""
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
     mask = cv2.inRange(hsv, (0, 90, 65), (12, 255, 255)) | cv2.inRange(
@@ -31,7 +34,9 @@ def regions(image):
     )
     contours, _ = cv2.findContours(mask, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
     boxes = []
-    for contour in contours:
+    for contour in sorted(contours, key=cv2.contourArea, reverse=True)[
+        : MAX_CANDIDATES * 4
+    ]:
         x, y, w, h = cv2.boundingRect(contour)
         if min(w, h) < 16 or not 0.65 < w / h < 1.5:
             continue
@@ -52,7 +57,7 @@ def regions(image):
         radius = abs(xx / w - 0.5) + abs(yy / h - 0.5)
         white_annulus = (radius > 0.30) & (radius < 0.40)
         white = (inner[:, :, 1] < 85) & (inner[:, :, 2] > 160)
-        if float(white[white_annulus].mean()) < 0.65:
+        if float(white[white_annulus].mean()) < minimum_white:
             continue
         boxes.append((x, y, w, h))
     # Inner/outer contours of the same red stroke are one candidate. Prefer
@@ -70,7 +75,7 @@ def regions(image):
                 break
         if not duplicate:
             output.append(box)
-    return output
+    return output[:MAX_CANDIDATES]
 
 
 def descriptor(crop):
@@ -110,10 +115,19 @@ def references():
 
 def detect_ghs(image, codes=None):
     image = _bgr(image)
+    original_h, original_w = image.shape[:2]
+    scale = min(1.0, (MAX_WORK_PIXELS / (original_h * original_w)) ** 0.5)
+    if scale < 1:
+        image = cv2.resize(
+            image,
+            (max(1, int(original_w * scale)), max(1, int(original_h * scale))),
+            interpolation=cv2.INTER_AREA,
+        )
     version, refs = references()
     wanted = {normalize_code(c) for c in codes} if codes else GHS_CODES
     output = []
-    for x, y, w, h in regions(image):
+    strict_boxes = set(regions(image))
+    for x, y, w, h in regions(image, minimum_white=0.50):
         vector = descriptor(image[y : y + h, x : x + w])
         scores = []
         for code, ref in refs:
@@ -122,24 +136,51 @@ def detect_ghs(image, codes=None):
             scores.append((score, code))
         scores.sort(reverse=True)
         score, code = scores[0]
-        if (
-            score < PROPOSAL_FLOOR
-            or score - scores[1][0] < MARGIN
-            or code not in wanted
-        ):
-            continue
-        output.append(
-            {
-                "t3777_code": code,
-                "confidence": score,
-                "score": score,
-                "method": METHOD,
-                "bbox": {"x": x, "y": y, "width": w, "height": h},
-                "uncertain": score < THRESHOLD,
-                "reference_version": version,
-                "requires_review": True,
-            }
+        strict = (x, y, w, h) in strict_boxes
+        legacy_allowed = (
+            strict and score >= PROPOSAL_FLOOR and score - scores[1][0] >= MARGIN
         )
+        legacy = {
+            "t3777_code": code,
+            "confidence": score,
+            "score": score,
+            "method": METHOD,
+            "bbox": {"x": x, "y": y, "width": w, "height": h},
+            "uncertain": score < THRESHOLD,
+            "reference_version": version,
+            "requires_review": True,
+        }
+        chosen = legacy if legacy_allowed and score >= THRESHOLD else None
+        if chosen is None:
+            try:
+                from app.services.ghs_specialist import classify
+
+                chosen = classify(image[y : y + h, x : x + w])
+            except Exception:
+                logging.getLogger(__name__).warning(
+                    "GHS specialist unavailable; retaining template route",
+                    exc_info=False,
+                )
+            if chosen is None and legacy_allowed:
+                chosen = legacy
+        if chosen is not None and chosen["t3777_code"] in wanted:
+            sx, sy = original_w / image.shape[1], original_h / image.shape[0]
+            left, top = int(x * sx), int(y * sy)
+            right, bottom = (
+                min(original_w, int(np.ceil((x + w) * sx))),
+                min(original_h, int(np.ceil((y + h) * sy))),
+            )
+            output.append(
+                {
+                    **chosen,
+                    "bbox": {
+                        "x": left,
+                        "y": top,
+                        "width": right - left,
+                        "height": bottom - top,
+                    },
+                }
+            )
     return output
 
 
