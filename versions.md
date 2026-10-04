@@ -2,6 +2,11 @@
 
 ## 4 oktober 2026
 
+**Gevarenpictogrammen op productfoto’s**
+- Schaduw en vervorming op gebogen etiketten worden beter opgevangen bij het herkennen van gevarenpictogrammen.
+- Bestaande duidelijke herkenningen blijven behouden; tegenstrijdige uitkomsten blijven ter beoordeling.
+- De kwaliteit op onafhankelijke praktijkbeelden blijft afzonderlijk gecontroleerd.
+
 **Gevarenpictogrammen in de gewone logoherkenning**
 - De gewone herkenning geeft nu ook voorstellen voor gevaarlijke-stoffenpictogrammen terug, inclusief hun plaats in de afbeelding.
 - Twijfelgevallen blijven apart zichtbaar ter beoordeling; de gevraagde zekerheidsgrens blijft gelden voor herkenningsresultaten.
