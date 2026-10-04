@@ -34,3 +34,6 @@ VERIFIED: verse ACC dockerinspect exactrelease3ef6db149a20dc7cfb080090371032b144
 INFERENCE: dedicated offlineCPU-classifier + gerichteregioselectie en hoofdAPIintegratie is passend; algemene livecroptraining niettoepassen omdat zij batch/families negeert en verkeerde detectietaak traint.
 
 BMadbouw gestart onder zelfstandige gebruikersopdracht. Spec/trainingtool/immutableartifact/inference/tests eigenaar ghs_training_route; root brononderzoek, criteria/release. Geen geneutraliseerde thresholds of claim ausreichend uit developmentset.
+
+## Follow-up: PR #5 CI import formatting
+VERIFIED: GitHub run 37233960439, ML job 111529278150 exits during isort --check-only app/, before pytest. Sole reported violation: app/ml/detector.py standard-library import ordering. Local file places typing before math. Hypothesis confirmed: omitted isort check locally; this is formatting, not recognition/model failure. Owner logoRecognition ML service. Fix direction: reorder math before typing, run all three configured formatting checks, preserve frozen model and algorithm. Node job passed. No ACC merge or deployment has happened. Evidence: /tmp/ghs-ci-ml.log lines 826–829.

@@ -2,8 +2,8 @@
 Logo Detector - Handles logo detection using ML models.
 """
 
-from typing import List, Optional
 import math
+from typing import List, Optional
 
 from PIL import Image
 
