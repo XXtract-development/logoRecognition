@@ -2,6 +2,10 @@
 
 ## 5 oktober 2026
 
+**Voorbereiding voor productie**
+- Het draaiboek bevat nu een afzonderlijk voorbereidingspakket met gecontroleerde bronmodellen en een geslaagde lokale databaseherstelproef.
+- Ontbrekende overdrachten en controles blijven zichtbaar voordat de bestaande productiedienst wordt vervangen.
+
 **Duidelijke gevarensymbolen op witte etiketten**
 - Brede zwarte gevarensymbolen worden beter teruggevonden, ook wanneer andere pictogrammen er vlak naast staan.
 - Tegenstrijdige en onzekere herkenningen blijven uitgesloten bij dit aanvullende herstel.

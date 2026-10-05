@@ -1,0 +1,51 @@
+{
+  "time": "2026-10-05T19:53:29.716560+00:00",
+  "release_sha": "814f6cd396f63dada95411d51dda5dfae3205a6a",
+  "source": "ACC; read-only source measurements",
+  "destination_status": "not-created",
+  "images": {
+    "app": "ghcr.io/xxtract-development/logo-recognition-app@sha256:dba4876ad8cc213da91bd08f52ce5751ec4b7b5c5d629b139981101ed6d87f2f",
+    "ml": "ghcr.io/xxtract-development/logo-recognition-ml@sha256:bfd7f50e2b10e6dc4286d0ce0e0333f680bb78971f9fa348764691c462a82a2e"
+  },
+  "artifacts": [
+    {
+      "name": "GHS specialist",
+      "model_id": "ghs-glyph-v1-58a1db6819e8",
+      "source_path": "/app/app/assets/ghs/specialist/model.json",
+      "source_sha256": "68b9ce1488150d32722bb116790fcd065a89d53525fa43dfd48c3148f63d8974",
+      "transfer": "bundled in frozen ML image",
+      "destination_verified": false
+    },
+    {
+      "name": "EfficientNet comparison weights",
+      "bytes": 21444401,
+      "source_sha256": "7f5810bc96def8f7552d5b7e68d53c4786f81167d28291b21c0d90e1fca14934",
+      "local_verified_sha256": "7f5810bc96def8f7552d5b7e68d53c4786f81167d28291b21c0d90e1fca14934",
+      "local_path": "/Users/frisovanweelden/.codex/production-release-cache/logoRecognition/20261005/efficientnet_b0_rwightman-7f5810bc.pth",
+      "destination_path": "/app/models/torch/hub/checkpoints/efficientnet_b0_rwightman-7f5810bc.pth",
+      "destination_verified": false
+    },
+    {
+      "name": "Nutri-Score A2 weights",
+      "bucket": "training-images",
+      "key": "models/nutriscore-a2/v1/a2_mobilenetv3s.pt",
+      "source_sha256": null,
+      "status": "inventory required; check configured overrides"
+    },
+    {
+      "name": "Nutri-Score A2 metadata",
+      "bucket": "training-images",
+      "key": "models/nutriscore-a2/v1/a2_meta.json",
+      "source_sha256": null,
+      "status": "inventory required; check configured overrides"
+    }
+  ],
+  "object_manifest_complete": false,
+  "data_transfer_complete": false,
+  "destination_endpoint_parity_proven": false,
+  "limitations": [
+    "all required object keys/hashes not yet inventoried",
+    "generic EfficientDet ONNX missing in observed source model directory; mock risk requires route checks",
+    "no independent field-readiness claim for all nine GHS classes"
+  ]
+}

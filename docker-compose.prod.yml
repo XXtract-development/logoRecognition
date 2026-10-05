@@ -1,141 +1,213 @@
-# PROD Environment - Self-contained for Coolify deployment
-# Server: Banana-Prod (10.0.0.2)
-# Database: PostgreSQL on production-database (10.0.0.8:5432)
-# Storage: MinIO with Storage Box mount for persistence
-
-# DEPLOY NOTE: REDIS_URL must point to this Redis service (redis://localhost:6379 with host networking).
-# PIPELINE_SERVICE_KEY must be set as a Coolify secret env var (min 32 chars random string).
-# redis-data volume holds only BullMQ queue state — no backup obligation.
-
+# Prepared dedicated production resource. No live execution is authorized.
+# Default selection is infrastructure only. Explicit provisioning/runtime profiles
+# require the separate approvals and evidence in the preparation guide.
+name: ${PRODUCTION_RESOURCE_NAME:?required dedicated production resource name}
 services:
-  # Redis — BullMQ queue backend (Epic 9, Story 9.1)
-  redis:
-    image: redis:7-alpine
-    network_mode: host
-    command: redis-server --appendonly yes --appendfsync everysec
-    volumes:
-      - redis-data:/data
+  postgres:
+    # Provisional shared-host ceilings; load proof required before live runtime.
+    deploy:
+      resources:
+        limits: {cpus: '1.0', memory: 2G}
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: '3'}
+    image: pgvector/pgvector:0.6.0-pg16@sha256:d88687938e7336e1ecd1d8c2f29a750e6ab033e511b04a57a1f2d6d2219a0435
+    platform: linux/amd64
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?required new production database}
+      POSTGRES_USER: ${POSTGRES_ADMIN_USER:?required new provisioning owner}
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:?required production owner password}
+    volumes: [postgres-data:/var/lib/postgresql/data]
+    networks: [private]
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [CMD-SHELL, 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
-    restart: always
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
-        reservations:
-          cpus: '0.1'
-          memory: 128M
-
-  minio:
-    image: minio/minio:latest
-    command: server /data --console-address ":9001"
-    network_mode: host
-    environment:
-      - MINIO_ROOT_USER=${MINIO_ACCESS_KEY:-minioadmin}
-      - MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY:-minioadmin}
-    volumes:
-      - /mnt/storagebox-home/prod/logo-recognition/minio-data:/data
-    healthcheck:
-      test: ["CMD", "curl", "-sf", "-o", "/dev/null", "http://localhost:9000/minio/health/live"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
     restart: unless-stopped
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
+  redis:
+    # Provisional shared-host ceilings; load proof required before live runtime.
     deploy:
       resources:
-        limits:
-          cpus: '1.0'
-          memory: 1G
-        reservations:
-          cpus: '0.25'
-          memory: 256M
-
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    network_mode: host
-    env_file:
-      - .env
-    environment:
-      - NODE_ENV=production
-      - LOG_LEVEL=warn
-      - ENVIRONMENT=prod
+        limits: {cpus: '0.5', memory: 512M}
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: '3'}
+    image: redis:7-alpine@sha256:6ab0b6e7381779332f97b8ca76193e45b0756f38d4c0dcda72dbb3c32061ab99
+    command: [redis-server, --appendonly, 'yes', --appendfsync, everysec]
+    volumes: [redis-data:/data]
+    networks: [private]
     healthcheck:
-      test: ["CMD", "curl", "-sf", "-o", "/dev/null", "http://localhost:${APP_PORT:-8000}/health"]
+      test: [CMD, redis-cli, ping]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+  minio:
+    # Provisional shared-host ceilings; load proof required before live runtime.
+    deploy:
+      resources:
+        limits: {cpus: '1.0', memory: 1G}
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: '3'}
+    image: minio/minio@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e
+    command: [server, /data, --console-address, ':9001']
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?required production provisioning owner}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?required production owner password}
+    volumes:
+      - type: bind
+        source: ${MINIO_DATA_PATH:?required dedicated production StorageBox directory}
+        target: /data
+        bind: {create_host_path: false}
+    networks: [private]
+    healthcheck:
+      test: [CMD, curl, -sf, -o, /dev/null, 'http://localhost:9000/minio/health/live']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+  initialize-buckets:
+    # Provisional shared-host ceilings; load proof required before live runtime.
+    deploy:
+      resources:
+        limits: {cpus: '0.5', memory: 1G}
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: '3'}
+    image: ghcr.io/xxtract-development/logo-recognition-ml:${RELEASE_SHA:?required frozen ACC release}@${ML_IMAGE_DIGEST:?required frozen ML digest}
+    profiles: [provisioning]
+    entrypoint: [python, /provisioning/initialize-buckets.py]
+    command: []
+    healthcheck: {disable: true}
+    environment:
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?required production provisioning owner}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?required production owner password}
+    volumes: ['./scripts/deployment/production/initialize-buckets.py:/provisioning/initialize-buckets.py:ro']
+    networks: [private]
+    depends_on:
+      minio: {condition: service_healthy}
+    restart: 'no'
+  app:
+    # Provisional shared-host ceilings; load proof required before live runtime.
+    deploy:
+      resources:
+        limits: {cpus: '2.0', memory: 2G}
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: '3'}
+    image: ghcr.io/xxtract-development/logo-recognition-app:${RELEASE_SHA:?required frozen ACC release}@${APP_IMAGE_DIGEST:?required frozen app digest}
+    profiles: [runtime]
+    environment:
+      NODE_ENV: production
+      ENVIRONMENT: prod
+      LOG_LEVEL: warn
+      PORT: '8000'
+      HOST: 0.0.0.0
+      DATABASE_URL: ${APP_DATABASE_URL:?required dedicated production app connection}
+      AUTH_DATABASE_URL: ${AUTH_DATABASE_URL:?required explicit production MySQL auth connection}
+      MEDIASERVER_DOMAIN: ${MEDIASERVER_DOMAIN:?required explicit production media URL}
+      REDIS_URL: redis://redis:6379
+      ML_SERVICE_URL: http://ml-service:8001
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: '9000'
+      MINIO_USE_SSL: 'false'
+      MINIO_ACCESS_KEY: ${MINIO_APP_ACCESS_KEY:?required nonroot production storage key}
+      MINIO_SECRET_KEY: ${MINIO_APP_SECRET_KEY:?required nonroot production storage secret}
+      JWT_SECRET: ${JWT_SECRET:?required production signing secret}
+      COOKIE_SECRET: ${COOKIE_SECRET:?required production cookie secret}
+      PIPELINE_SERVICE_KEY: ${PIPELINE_SERVICE_KEY:?required production service key}
+      CORS_ORIGIN: https://${PRODUCTION_HOSTNAME:?required dedicated production hostname}
+      CATALOG_API_BASE: ${CATALOG_API_BASE:?required explicit production catalog URL}
+      CATALOG_API_KEY: ${CATALOG_API_KEY:?required production catalog key}
+      GHS_REVIEW_INTERNAL_KEY: ${GHS_REVIEW_INTERNAL_KEY:?required production review key}
+      HOLDOUT_MINIMUM: '25'
+    networks: [private, proxy]
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      minio: {condition: service_healthy}
+      ml-service: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, curl, -sf, -o, /dev/null, 'http://localhost:8000/health']
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+    labels:
+      traefik.enable: 'true'
+      traefik.docker.network: ${COOLIFY_PROXY_NETWORK:?required existing proxy network}
+      traefik.http.routers.logo-production-prepared.rule: Host(`${PRODUCTION_HOSTNAME:?required dedicated production hostname}`)
+      traefik.http.routers.logo-production-prepared.entrypoints: https
+      traefik.http.routers.logo-production-prepared.tls: 'true'
+      traefik.http.routers.logo-production-prepared.tls.certresolver: letsencrypt
+      traefik.http.services.logo-production-prepared.loadbalancer.server.port: '8000'
     restart: unless-stopped
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
+  ml-service:
+    # Provisional shared-host ceilings; load proof required before live runtime.
     deploy:
       resources:
-        limits:
-          cpus: '2.0'
-          memory: 4G
-        reservations:
-          cpus: '1.0'
-          memory: 1G
-
-  ml-service:
-    build:
-      context: .
-      dockerfile: apps/ml-service/Dockerfile
-    network_mode: host
-    env_file:
-      - .env
+        limits: {cpus: '4.0', memory: 8G}
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: '3'}
+    image: ghcr.io/xxtract-development/logo-recognition-ml:${RELEASE_SHA:?required frozen ACC release}@${ML_IMAGE_DIGEST:?required frozen ML digest}
+    profiles: [runtime]
+    # Single worker: lifespan writes/rebuilds reference vectors on startup.
+    command: [uvicorn, app.main:app, --host, 0.0.0.0, --port, '8001', --workers, '1']
     environment:
-      - NODE_ENV=production
-      - LOG_LEVEL=warn
-      - ENVIRONMENT=prod
-      - PORT=8001
+      ENVIRONMENT: prod
+      LOG_LEVEL: WARNING
+      PORT: '8001'
+      DATABASE_URL: ${ML_DATABASE_URL:?required dedicated production ML connection}
+      REDIS_URL: redis://redis:6379
+      MINIO_ENDPOINT: minio:9000
+      MINIO_PORT: '9000'
+      MINIO_USE_SSL: 'false'
+      MINIO_ACCESS_KEY: ${MINIO_APP_ACCESS_KEY:?required nonroot production storage key}
+      MINIO_SECRET_KEY: ${MINIO_APP_SECRET_KEY:?required nonroot production storage secret}
+      TORCH_HOME: /app/models/torch
+      ENABLE_GPU: 'false'
+      OMP_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      HOLDOUT_MINIMUM: '25'
+      PIPELINE_SERVICE_KEY: ${PIPELINE_SERVICE_KEY:?required production service key}
+      GHS_REVIEW_INTERNAL_KEY: ${GHS_REVIEW_INTERNAL_KEY:?required production review key}
+      GHS_REVIEW_BASE_URL: ${GHS_REVIEW_BASE_URL:?required approved provider URL}
+      GHS_REVIEW_API_KEY: ${GHS_REVIEW_API_KEY:?required production provider key}
+      GHS_REVIEW_MODEL_A: ${GHS_REVIEW_MODEL_A:?required first reviewer model}
+      GHS_REVIEW_MODEL_B: ${GHS_REVIEW_MODEL_B:?required distinct second reviewer model}
+    # Does not hide bundled /app/app/ml/ghs_model. Cache must be provisioned
+    # for this image's nonroot UID before runtime; see preparation guide.
+    volumes: [torch-cache:/app/models/torch]
+    networks: [private, ml-egress]
+    depends_on:
+      postgres: {condition: service_healthy}
+      minio: {condition: service_healthy}
     healthcheck:
-      test: ["CMD", "curl", "-sf", "-o", "/dev/null", "http://localhost:${ML_PORT:-8001}/health"]
+      test: [CMD, curl, -sf, -o, /dev/null, 'http://localhost:8001/health']
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
     restart: unless-stopped
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-    deploy:
-      resources:
-        limits:
-          cpus: '4.0'
-          memory: 16G
-        reservations:
-          cpus: '2.0'
-          memory: 4G
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-
+networks:
+  private:
+    internal: true
+  # Provider review/model downloads require outgoing connections; no published
+  # ports, proxy attachment or inbound router for ML.
+  ml-egress:
+    driver: bridge
+  proxy:
+    external: true
+    name: ${COOLIFY_PROXY_NETWORK:?required existing proxy network}
 volumes:
-  # BullMQ queue state — survives Redis restarts (crash-resilience NFR1).
-  # Not primary data; no backup obligation.
+  postgres-data:
+    name: ${PRODUCTION_RESOURCE_NAME:?required dedicated production resource name}-postgres-data
   redis-data:
+    name: ${PRODUCTION_RESOURCE_NAME:?required dedicated production resource name}-redis-data
+  torch-cache:
+    name: ${PRODUCTION_RESOURCE_NAME:?required dedicated production resource name}-torch-cache
