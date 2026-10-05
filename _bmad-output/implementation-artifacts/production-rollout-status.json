@@ -1,9 +1,9 @@
 {
-  "time": "2026-10-05T21:32:42.165810+00:00",
+  "time": "2026-10-05T21:41:12.643106+00:00",
   "task_id": "01a0fc7a-28d6-7333-ae26-c6dc972076d8",
   "owner": "Codex/root",
   "status": "active",
-  "phase": "dedicated Coolify resource configured; release CI pending",
+  "phase": "new dedicated infrastructure deployment requested; runtime remains off",
   "authorization": {
     "instruction": "Ga verder totdat alles klaarvis in productie",
     "scope": [
@@ -26,5 +26,6 @@
   "object_count": 1069,
   "production_resource_uuid": "f048gs04scoksggw0okw4oo0",
   "runtime_started": false,
-  "legacy_route_changed": false
+  "legacy_route_changed": false,
+  "infrastructure_deploy_requested": true
 }

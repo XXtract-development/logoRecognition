@@ -99,4 +99,76 @@ class FailClosedContracts(unittest.TestCase):
    with patch.object(rehearsal,'prove_local_docker',return_value='unix:///local.sock'),patch.object(rehearsal.subprocess,'run',side_effect=run),patch.object(rehearsal.time,'monotonic',side_effect=[0,31]):
     with self.assertRaises(RuntimeError):rehearsal.rehearse(folder)
    proof=json.loads((folder/'database-rehearsal.json').read_text());self.assertEqual(proof['status'],'cleanup_failed');self.assertFalse((folder/'local-postgres.env').exists())
+class TargetContracts(unittest.TestCase):
+ def setUp(self):
+  self.plan=SourceFileLoader('target_plan_tests',str(HERE/'transfer-target-plan.py')).load_module()
+  self.target=SourceFileLoader('target_db_tests',str(HERE/'transfer-target-database.py')).load_module()
+  self.env={'PRODUCTION_RESOURCE_NAME':'logo-production-new','POSTGRES_DB':'production_new','POSTGRES_ADMIN_USER':'provision_owner','POSTGRES_ADMIN_PASSWORD':'owner-secret','APP_DATABASE_URL':'postgresql://app_role:'+('a'*32)+'@postgres:5432/production_new','ML_DATABASE_URL':'postgresql://ml_role:'+('b'*32)+'@postgres:5432/production_new'}
+ def test_shared_or_admin_runtime_roles_rejected(self):
+  for change in [{'ML_DATABASE_URL':self.env['APP_DATABASE_URL']},{'APP_DATABASE_URL':self.env['APP_DATABASE_URL'].replace('app_role','provision_owner')},{'ML_DATABASE_URL':self.env['ML_DATABASE_URL'].replace('postgres:5432','10.0.0.6:5432')}]:
+   with self.assertRaises(ValueError):self.plan.runtime_roles({**self.env,**change})
+ def test_runtime_policy_cannot_read_every_bucket_or_administer(self):
+  policy=self.plan.iam_policy()
+  for item in policy['Statement']:
+   self.assertFalse(any(a.startswith('admin:') for a in item['Action']))
+   if 's3:GetObject' in item['Action']:self.assertEqual(set(item['Resource']),{'arn:aws:s3:::'+b+'/*' for b in self.plan.BUCKETS})
+ def test_roles_limited_and_comparison_table_owned_by_ml(self):
+  sql=self.plan.roles_sql(self.env)
+  self.assertIn('ALTER TABLE public.reference_embeddings OWNER TO "ml_role"',sql)
+  self.assertIn('NOBYPASSRLS',sql);self.assertIn('REVOKE ALL ON public._prisma_migrations',sql)
+  self.assertIn("jsonb_build_object('paused',true",sql);self.assertIn("jsonb_build_object('stale',true",sql)
+ def test_target_container_identity_rejects_shared_volume_or_ports(self):
+  base={'Config':{'Env':['POSTGRES_DB=production_new','POSTGRES_USER=provision_owner','POSTGRES_PASSWORD=owner-secret'],'Labels':{'com.docker.compose.service':'postgres'}},'Mounts':[{'Type':'volume','Destination':'/var/lib/postgresql/data','Name':'logo-production-new-postgres-data'}],'HostConfig':{'PortBindings':{}},'State':{'Running':True}}
+  self.target.target_identity(base,self.env)
+  for change in [{'Mounts':[{'Type':'volume','Destination':'/var/lib/postgresql/data','Name':'existing-production-data'}]},{'HostConfig':{'PortBindings':{'5432/tcp':[{'HostPort':'5432'}]}}},{'State':{'Running':False}}]:
+   with self.assertRaises(ValueError):self.target.target_identity({**base,**change},self.env)
+ def test_password_sql_quotes_are_escaped(self):
+  self.assertEqual(self.plan.literal("a'b"),"'a''b'")
+class StorageReviewContracts(unittest.TestCase):
+ def setUp(self):
+  self.storage=SourceFileLoader('target_storage_tests',str(HERE/'transfer-target-storage.py')).load_module()
+ def test_preexisting_identity_policy_or_group_stops_before_changes(self):
+  class Admin:
+   def policy_list(self):return json.dumps(self.policies)
+   def user_list(self):return json.dumps(self.users)
+   def group_list(self):return json.dumps(self.groups)
+  a=Admin();a.policies={};a.users={};a.groups=[]
+  self.storage.fresh_iam(a,'new-runtime')
+  for attr,value in [('policies',{'new-runtime':{}}),('users',{'existing':{}}),('groups',['existing'])]:
+   setattr(a,attr,value)
+   with self.assertRaises(ValueError):self.storage.fresh_iam(a,'new-runtime')
+   setattr(a,attr,[] if attr=='groups' else {})
+ def test_effective_binding_rejects_extra_direct_or_inherited_permissions(self):
+  class Admin:
+   def user_info(self,key):return json.dumps(self.info)
+   def policy_info(self,name):return json.dumps(self.policy)
+   def user_list(self):return '{"runtime":{}}'
+   def group_list(self):return '[]'
+  a=Admin();a.info={'policyName':'intended','status':'enabled','memberOf':[]};a.policy=self.storage.plan.iam_policy()
+  self.storage.effective_binding(a,'runtime','intended')
+  for change in [{'policyName':'intended,consoleAdmin'},{'memberOf':['admins']},{'status':'disabled'}]:
+   a.info={**{'policyName':'intended','status':'enabled','memberOf':[]},**change}
+   with self.assertRaises(ValueError):self.storage.effective_binding(a,'runtime','intended')
+  a.info={'policyName':'intended','status':'enabled','memberOf':[]};a.policy['Statement'].append({'Effect':'Allow','Action':['admin:*'],'Resource':['*']})
+  with self.assertRaises(ValueError):self.storage.effective_binding(a,'runtime','intended')
+ def test_policy_ordering_does_not_change_permission_comparison(self):
+  p=self.storage.plan.iam_policy();q=json.loads(json.dumps(p));q['Statement'].reverse()
+  for statement in q['Statement']:statement['Action'].reverse();statement['Resource'].reverse()
+  self.assertEqual(self.storage.canonical_policy(p),self.storage.canonical_policy(q))
+ def test_put_is_atomic_create_only_even_if_another_writer_wins(self):
+  class Response:
+   def close(self):pass
+   def release_conn(self):pass
+  class Runtime:
+   def _execute(self,method,**kwargs):self.method=method;self.kwargs=kwargs;return Response()
+  r=Runtime();self.storage.conditional_put(r,{'bucket':'training-images','key':'a.png'},b'data')
+  self.assertEqual(r.kwargs['headers']['If-None-Match'],'*');self.assertEqual(r.kwargs['body'],b'data');self.assertEqual(r.method,'PUT')
+  class Exists(Exception):code='PreconditionFailed'
+  r._execute=lambda *a,**k:(_ for _ in ()).throw(Exists())
+  self.storage.conditional_put(r,{'bucket':'training-images','key':'a.png'},b'data')
+ def test_actual_training_and_harvest_methods_have_required_grants(self):
+  plan=self.storage.plan;env={'POSTGRES_DB':'db_new','POSTGRES_ADMIN_USER':'owner','APP_DATABASE_URL':'postgresql://app:'+('a'*32)+'@postgres:5432/db_new','ML_DATABASE_URL':'postgresql://ml:'+('b'*32)+'@postgres:5432/db_new'}
+  sql=plan.roles_sql(env)
+  self.assertIn('GRANT INSERT, UPDATE ON public.training_batches, public.logos, public.declared_harvest_checks',sql)
+  for table in ['training_batches','declared_harvest_checks','artwork_review_items']:self.assertIn('public."'+table+'"',sql)
 if __name__=='__main__':unittest.main()

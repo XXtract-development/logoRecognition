@@ -270,6 +270,20 @@ class ConfigurationTests(unittest.TestCase):
         mutated["services"]["initialize-buckets"]["entrypoint"] = ["uvicorn", "app.main:app"]
         self.assertTrue(checker.validate_compose(yaml.safe_dump(mutated), fixture()))
 
+    def test_only_exact_verified_local_minio_image_id_allowed(self):
+        doc = yaml.safe_load(COMPOSE)
+        self.assertEqual(checker.FROZEN_MINIO_IMAGE_ID, doc["services"]["minio"]["image"])
+        self.assertEqual([], checker.validate_compose(yaml.safe_dump(doc), fixture()))
+        for image in ("sha256:" + "f" * 64, "minio/minio:latest", "minio/minio:RELEASE.2025-09-07T16-13-09Z",
+                      "minio/minio@sha256:" + "f" * 64):
+            mutated = yaml.safe_load(COMPOSE)
+            mutated["services"]["minio"]["image"] = image
+            self.assertTrue(checker.validate_compose(yaml.safe_dump(mutated), fixture()))
+        for service in ("postgres", "redis", "app", "ml-service", "initialize-buckets"):
+            mutated = yaml.safe_load(COMPOSE)
+            mutated["services"][service]["image"] = checker.FROZEN_MINIO_IMAGE_ID
+            self.assertTrue(checker.validate_compose(yaml.safe_dump(mutated), fixture()))
+
     def test_storagebox_contract(self):
         for value in ("/tmp/logo-production-fixture/minio-data", "/mnt/storagebox-home/acc/logo-production-fixture/minio-data",
                       "/mnt/storagebox-home/prod/old-service/minio-data",

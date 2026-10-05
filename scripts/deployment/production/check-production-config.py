@@ -15,6 +15,7 @@ import re
 import sys
 from urllib.parse import urlsplit, unquote
 
+FROZEN_MINIO_IMAGE_ID = "sha256:69b2ec208575b69597784255eec6fa6a2985ee9e1a47f4411a51f7f5fdd193a9"
 DEDICATED_RESOURCE = "logo-production-20261005"
 DEDICATED_MINIO_PATH = "/mnt/storagebox-home/prod/logo-production-20261005/minio-data"
 
@@ -198,7 +199,10 @@ def validate_compose(source, env):
         if set(networks) != expected_networks:
             errors.append(f"Unsafe network attachments: {name}")
         image = SUBSTITUTION.sub(lambda match: env[match[1]], service.get("image", ""))
-        if not re.fullmatch(r"[\w./:-]+@sha256:[0-9a-f]{64}", image):
+        if name == "minio":
+            if image != FROZEN_MINIO_IMAGE_ID:
+                errors.append("Exact verified local MinIO image configuration ID required")
+        elif not re.fullmatch(r"[\w./:-]+@sha256:[0-9a-f]{64}", image):
             errors.append(f"Immutable image required: {name}")
         if name in ("app", "ml-service", "initialize-buckets"):
             kind = "app" if name == "app" else "ml"
