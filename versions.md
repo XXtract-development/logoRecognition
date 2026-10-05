@@ -1,5 +1,16 @@
 # Versiegeschiedenis
 
+## 5 oktober 2026
+
+**Leren van echte productievoorbeelden**
+- De herkenning van gevarenpictogrammen wordt nu ook getraind met gecontroleerde etiketten en veiligheidsbladen van echte productieproducten.
+- Ook voorbeelden van het pictogram voor gezondheidsgevaar op verpakkingen en veiligheidsbladen doen mee aan de training.
+- Licht onderbroken rode randen worden beter opgevangen; twijfelgevallen blijven zichtbaar ter beoordeling.
+- Bij toekomstige trainingen zijn productievoorbeelden verplicht. Voorbeelden van andere producten blijven apart om de herkenning te controleren.
+- Onleesbare en tegenstrijdige voorbeelden worden eerst beoordeeld; ontbrekend bewijs voor betrouwbare herkenning blijft zichtbaar.
+
+---
+
 ## 4 oktober 2026
 
 **Gevarenpictogrammen op productfoto’s**

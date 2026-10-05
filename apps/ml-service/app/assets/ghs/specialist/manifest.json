@@ -1,20 +1,3269 @@
 {
-  "version": "ghs-glyph-v1-46ddcb5bd01b",
-  "sha256": "8d989fa8e183fd83f1921f0fdf60167c2ac6658bfbcdfaa49421407a186dfd7d",
-  "purpose": "Offline trained reference augmentation; not independent field accuracy",
+  "version": "ghs-glyph-v1-58a1db6819e8",
+  "sha256": "68b9ce1488150d32722bb116790fcd065a89d53525fa43dfd48c3148f63d8974",
+  "purpose": "Offline trained GHS glyph model; production participation recorded; not independent field accuracy",
   "featureVersion": "ghs-glyph-hog-v1",
   "trainingPerformed": true,
   "requiresReview": true,
   "provenance": {
+    "classWeightStrategy": "balanced",
+    "classTrainingRows": {
+      "CORROSION": 805,
+      "ENVIRONMENT": 483,
+      "EXCLAMATION_MARK": 966,
+      "EXPLODING_BOMB": 161,
+      "FLAME": 1127,
+      "FLAME_OVER_CIRCLE": 161,
+      "GAS_CYLINDER": 161,
+      "HEALTH_HAZARD": 1127,
+      "SKULL_AND_CROSSBONES": 161,
+      "UNKNOWN": 400
+    },
+    "effectiveClassWeights": {
+      "CORROSION": 0.6896894409937888,
+      "ENVIRONMENT": 1.1494824016563148,
+      "EXCLAMATION_MARK": 0.5747412008281574,
+      "EXPLODING_BOMB": 3.4484472049689443,
+      "FLAME": 0.49263531499556346,
+      "FLAME_OVER_CIRCLE": 3.4484472049689443,
+      "GAS_CYLINDER": 3.4484472049689443,
+      "HEALTH_HAZARD": 0.49263531499556346,
+      "SKULL_AND_CROSSBONES": 3.4484472049689443,
+      "UNKNOWN": 1.388
+    },
     "seed": 1729,
     "augmentationCountPerSource": 160,
-    "trainingRows": 1849,
+    "augmentationVersion": "ghs-glyph-projection-v2",
+    "projectionAugmentation": {
+      "horizontalScale": [
+        0.65,
+        1.0
+      ],
+      "shear": [
+        -0.12,
+        0.12
+      ]
+    },
+    "bootstrapReferenceOnly": false,
+    "productionExamples": 23,
+    "productionImages": 16,
+    "productionFamilies": 10,
+    "usedProductionExamples": 23,
+    "usedProductionImages": 16,
+    "usedProductionFamilies": 10,
+    "productionAugmentedRows": 3680,
+    "productionTrainingRows": 3703,
+    "officialReferenceTrainingRows": 1449,
+    "otherTrainingRows": 0,
+    "trainingRows": 5552,
     "sources": [
       {
+        "id": "prod-add-13-FLAME",
+        "sourceId": "prod-add-13",
+        "sha256": "50f0b0408dac360ee54e04b7be2ff0d3338e5b5254774eabb59571518e646fdd",
+        "familyId": "PROVISIONAL_SOURCE_PRODUCT_COMPONENT:00000042447511",
+        "split": "train",
+        "code": "FLAME",
+        "bbox": {
+          "x": 119,
+          "y": 714,
+          "width": 58,
+          "height": 59
+        },
+        "sourceType": "production-product",
+        "trainingAllowed": true,
+        "labelStatus": "qualified-production-ai-reviewed",
+        "qualification": {
+          "status": "qualified",
+          "context": "product-symbol",
+          "reviewerIds": [
+            "bddaf003-6ac1-4426-ad50-76f8a8b40c63",
+            "a55efdfe-b16c-471e-a366-cc80912f8105"
+          ],
+          "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-13-FLAME.json",
+          "sha256": "2a1ebea25807449703e2afc389dc9f2cb2c23053c3db0bff2e898f7456081d30",
+          "evidenceSchema": "ghs-production-qualification-v1",
+          "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+        },
+        "provenance": {
+          "origin": "mongodb-prod",
+          "productIdentity": "00000042447511",
+          "productJoins": [
+            {
+              "record": "8712165000017-00000042447528-528",
+              "gtin": "00000042447528",
+              "gln": "8712165000017",
+              "targetMarket": "528",
+              "generatedAt": "2026-09-28T12:41:00+02:00"
+            },
+            {
+              "record": "8712165000017-00000042447511-528",
+              "gtin": "00000042447511",
+              "gln": "8712165000017",
+              "targetMarket": "528",
+              "generatedAt": "2026-09-28T11:39:54+02:00"
+            },
+            {
+              "record": "8712165000017-00000042447566-528",
+              "gtin": "00000042447566",
+              "gln": "8712165000017",
+              "targetMarket": "528",
+              "generatedAt": "2026-09-28T11:28:36+02:00"
+            }
+          ],
+          "connectedSourceIds": [
+            "prod-add-13",
+            "prod-add-15",
+            "prod-add-16"
+          ],
+          "sourceURL": "https://gdsnprodwebstorage.blob.core.windows.net/gdsnprodnlwebfileblob/8712165000017/00000042447528/528/Media/35835790/Voor%2520alle%2520kleuren_GUHL%2520Color%2520Foaming%2520Mousse_EU_NL%2520(1).pdf",
+          "sourceURLs": [
+            "https://gdsnprodwebstorage.blob.core.windows.net/gdsnprodnlwebfileblob/8712165000017/00000042447528/528/Media/35835790/Voor%2520alle%2520kleuren_GUHL%2520Color%2520Foaming%2520Mousse_EU_NL%2520(1).pdf",
+            "https://gdsnprodwebstorage.blob.core.windows.net/gdsnprodnlwebfileblob/8712165000017/00000042447511/528/Media/36034974/Voor%2520alle%2520kleuren_GUHL%2520Color%2520Foaming%2520Mousse_EU_NL.pdf",
+            "https://gdsnprodwebstorage.blob.core.windows.net/gdsnprodnlwebfileblob/8712165000017/00000042447566/528/Media/36034703/Voor%2520alle%2520kleuren_GUHL%2520Color%2520Foaming%2520Mousse_EU_NL.pdf"
+          ],
+          "originalHashes": [
+            "54aef7302a1525d5c17888545aeb4eba58d417579e00e9d511da16c0f7f6b05a"
+          ],
+          "originalPaths": [
+            "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-13.pdf"
+          ],
+          "render": {
+            "method": "unchanged whole PDF page rendered100dpi; no crop",
+            "page": 1,
+            "dpi": 100,
+            "command": [
+              "pdftoppm",
+              "-f",
+              "1",
+              "-l",
+              "1",
+              "-r",
+              "100",
+              "-png",
+              "-singlefile",
+              "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-13.pdf",
+              "_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/renders/prod-add-13-p1"
+            ],
+            "pageSelection": "Section2/2.2 label heading located by first3pages text solely to select image; no text labels sent to models"
+          },
+          "license": "unknown; user explicitly authorized internal GHS training",
+          "authorization": {
+            "basis": "explicit-user-request",
+            "date": "2026-10-05",
+            "scope": "internal-ghs-training"
+          },
+          "qualification": {
+            "status": "qualified",
+            "context": "product-symbol",
+            "reviewerIds": [
+              "bddaf003-6ac1-4426-ad50-76f8a8b40c63",
+              "a55efdfe-b16c-471e-a366-cc80912f8105"
+            ],
+            "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-13-FLAME.json",
+            "sha256": "2a1ebea25807449703e2afc389dc9f2cb2c23053c3db0bff2e898f7456081d30",
+            "evidenceSchema": "ghs-production-qualification-v1",
+            "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+          },
+          "familyIndependenceVerified": false,
+          "primaryProductContext": true
+        }
+      },
+      {
+        "id": "prod-add-02-ENVIRONMENT",
+        "sourceId": "prod-add-02",
+        "sha256": "71cc8b01fedae8fadbb75609702d0b18d42331c2f1b6182025fcc7d5e76c60b0",
+        "familyId": "PROVISIONAL_SOURCE_PRODUCT_COMPONENT:00088300196814",
+        "split": "validation",
+        "code": "ENVIRONMENT",
+        "bbox": {
+          "x": 234,
+          "y": 223,
+          "width": 56,
+          "height": 55
+        },
+        "sourceType": "production-product",
+        "trainingAllowed": false,
+        "labelStatus": "qualified-production-ai-reviewed",
+        "qualification": {
+          "status": "qualified",
+          "context": "product-symbol",
+          "reviewerIds": [
+            "8d6056ca-2fd8-4703-b96e-75ab88258318",
+            "873f5eab-f0ba-4516-8cf8-d340503e05f6"
+          ],
+          "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-02-ENVIRONMENT.json",
+          "sha256": "d5accff35482b0c129ba23ab454d61eec26b2f2a86f98d1a9179ea9c66afb62c",
+          "evidenceSchema": "ghs-production-qualification-v1",
+          "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+        },
+        "provenance": {
+          "origin": "mongodb-prod",
+          "productIdentity": "00088300196814",
+          "productJoins": [
+            {
+              "record": "8714252029307-00088300196814-528",
+              "gtin": "00088300196814",
+              "gln": "8714252029307",
+              "targetMarket": "528",
+              "generatedAt": "2026-09-24T10:28:43+02:00"
+            },
+            {
+              "record": "8714252029307-00088300196876-528",
+              "gtin": "00088300196876",
+              "gln": "8714252029307",
+              "targetMarket": "528",
+              "generatedAt": "2026-09-24T10:26:57+02:00"
+            },
+            {
+              "record": "8714252029307-00088300196814-528",
+              "gtin": "00088300196814",
+              "gln": "8714252029307",
+              "targetMarket": "528",
+              "generatedAt": "2026-09-24T10:28:43+02:00"
+            },
+            {
+              "record": "8714252029307-00088300196876-528",
+              "gtin": "00088300196876",
+              "gln": "8714252029307",
+              "targetMarket": "528",
+              "generatedAt": "2026-09-24T10:26:57+02:00"
+            }
+          ],
+          "connectedSourceIds": [
+            "prod-add-02",
+            "prod-add-03",
+            "prod-add-27",
+            "prod-add-28"
+          ],
+          "sourceURL": "https://api.isa.quintens.nl/download/databearer/156efb74d1ae7fd8c306240f4e4fa14c8d8cb96a13589d236d3fddb5997dc907/public",
+          "sourceURLs": [
+            "https://api.isa.quintens.nl/download/databearer/156efb74d1ae7fd8c306240f4e4fa14c8d8cb96a13589d236d3fddb5997dc907/public",
+            "https://api.isa.quintens.nl/download/databearer/4be087c7b3aaea336cf85c3827ec73457a791eabdc17677cb19324fe2f380791/public"
+          ],
+          "originalHashes": [
+            "156efb74d1ae7fd8c306240f4e4fa14c8d8cb96a13589d236d3fddb5997dc907",
+            "4be087c7b3aaea336cf85c3827ec73457a791eabdc17677cb19324fe2f380791"
+          ],
+          "originalPaths": [
+            "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-02.pdf",
+            "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-03.pdf"
+          ],
+          "render": {
+            "method": "unchanged whole PDF page rendered100dpi; no crop",
+            "page": 2,
+            "dpi": 100,
+            "command": [
+              "pdftoppm",
+              "-f",
+              "2",
+              "-l",
+              "2",
+              "-r",
+              "100",
+              "-png",
+              "-singlefile",
+              "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-02.pdf",
+              "_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/renders/prod-add-02-p2"
+            ],
+            "pageSelection": "Section2/2.2 label heading located by first3pages text solely to select image; no text labels sent to models"
+          },
+          "license": "unknown; user explicitly authorized internal GHS training",
+          "authorization": {
+            "basis": "explicit-user-request",
+            "date": "2026-10-05",
+            "scope": "internal-ghs-training"
+          },
+          "qualification": {
+            "status": "qualified",
+            "context": "product-symbol",
+            "reviewerIds": [
+              "8d6056ca-2fd8-4703-b96e-75ab88258318",
+              "873f5eab-f0ba-4516-8cf8-d340503e05f6"
+            ],
+            "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-02-ENVIRONMENT.json",
+            "sha256": "d5accff35482b0c129ba23ab454d61eec26b2f2a86f98d1a9179ea9c66afb62c",
+            "evidenceSchema": "ghs-production-qualification-v1",
+            "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+          },
+          "familyIndependenceVerified": false,
+          "primaryProductContext": true
+        }
+      },
+      {
+        "id": "prod-add-02-EXCLAMATION_MARK",
+        "sourceId": "prod-add-02",
+        "sha256": "71cc8b01fedae8fadbb75609702d0b18d42331c2f1b6182025fcc7d5e76c60b0",
+        "familyId": "PROVISIONAL_SOURCE_PRODUCT_COMPONENT:00088300196814",
+        "split": "validation",
+        "code": "EXCLAMATION_MARK",
+        "bbox": {
+          "x": 176,
+          "y": 223,
+          "width": 55,
+          "height": 55
+        },
+        "sourceType": "production-product",
+        "trainingAllowed": false,
+        "labelStatus": "qualified-production-ai-reviewed",
+        "qualification": {
+          "status": "qualified",
+          "context": "product-symbol",
+          "reviewerIds": [
+            "cd4dce72-dacd-4996-bb33-18a2687b9c66",
+            "50affe23-6594-4a10-b4be-fb7e765b4145"
+          ],
+          "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-02-EXCLAMATION_MARK.json",
+          "sha256": "5ae1bd0d1e23232ba911af31db082d53b1e83645667f69d832297c39aba77019",
+          "evidenceSchema": "ghs-production-qualification-v1",
+          "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+        },
+        "provenance": {
+          "origin": "mongodb-prod",
+          "productIdentity": "00088300196814",
+          "productJoins": [
+            {
+              "record": "8714252029307-00088300196814-528",
+              "gtin": "00088300196814",
+              "gln": "8714252029307",
+              "targetMarket": "528",
+              "generatedAt": "2026-09-24T10:28:43+02:00"
+            },
+            {
+              "record": "8714252029307-00088300196876-528",
+              "gtin": "00088300196876",
+              "gln": "8714252029307",
+              "targetMarket": "528",
+              "generatedAt": "2026-09-24T10:26:57+02:00"
+            },
+            {
+              "record": "8714252029307-00088300196814-528",
+              "gtin": "00088300196814",
+              "gln": "8714252029307",
+              "targetMarket": "528",
+              "generatedAt": "2026-09-24T10:28:43+02:00"
+            },
+            {
+              "record": "8714252029307-00088300196876-528",
+              "gtin": "00088300196876",
+              "gln": "8714252029307",
+              "targetMarket": "528",
+              "generatedAt": "2026-09-24T10:26:57+02:00"
+            }
+          ],
+          "connectedSourceIds": [
+            "prod-add-02",
+            "prod-add-03",
+            "prod-add-27",
+            "prod-add-28"
+          ],
+          "sourceURL": "https://api.isa.quintens.nl/download/databearer/156efb74d1ae7fd8c306240f4e4fa14c8d8cb96a13589d236d3fddb5997dc907/public",
+          "sourceURLs": [
+            "https://api.isa.quintens.nl/download/databearer/156efb74d1ae7fd8c306240f4e4fa14c8d8cb96a13589d236d3fddb5997dc907/public",
+            "https://api.isa.quintens.nl/download/databearer/4be087c7b3aaea336cf85c3827ec73457a791eabdc17677cb19324fe2f380791/public"
+          ],
+          "originalHashes": [
+            "156efb74d1ae7fd8c306240f4e4fa14c8d8cb96a13589d236d3fddb5997dc907",
+            "4be087c7b3aaea336cf85c3827ec73457a791eabdc17677cb19324fe2f380791"
+          ],
+          "originalPaths": [
+            "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-02.pdf",
+            "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-03.pdf"
+          ],
+          "render": {
+            "method": "unchanged whole PDF page rendered100dpi; no crop",
+            "page": 2,
+            "dpi": 100,
+            "command": [
+              "pdftoppm",
+              "-f",
+              "2",
+              "-l",
+              "2",
+              "-r",
+              "100",
+              "-png",
+              "-singlefile",
+              "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-02.pdf",
+              "_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/renders/prod-add-02-p2"
+            ],
+            "pageSelection": "Section2/2.2 label heading located by first3pages text solely to select image; no text labels sent to models"
+          },
+          "license": "unknown; user explicitly authorized internal GHS training",
+          "authorization": {
+            "basis": "explicit-user-request",
+            "date": "2026-10-05",
+            "scope": "internal-ghs-training"
+          },
+          "qualification": {
+            "status": "qualified",
+            "context": "product-symbol",
+            "reviewerIds": [
+              "cd4dce72-dacd-4996-bb33-18a2687b9c66",
+              "50affe23-6594-4a10-b4be-fb7e765b4145"
+            ],
+            "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-02-EXCLAMATION_MARK.json",
+            "sha256": "5ae1bd0d1e23232ba911af31db082d53b1e83645667f69d832297c39aba77019",
+            "evidenceSchema": "ghs-production-qualification-v1",
+            "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+          },
+          "familyIndependenceVerified": false,
+          "primaryProductContext": true
+        }
+      },
+      {
+        "id": "prod-add-02-FLAME",
+        "sourceId": "prod-add-02",
+        "sha256": "71cc8b01fedae8fadbb75609702d0b18d42331c2f1b6182025fcc7d5e76c60b0",
+        "familyId": "PROVISIONAL_SOURCE_PRODUCT_COMPONENT:00088300196814",
+        "split": "validation",
+        "code": "FLAME",
+        "bbox": {
+          "x": 117,
+          "y": 223,
+          "width": 56,
+          "height": 55
+        },
+        "sourceType": "production-product",
+        "trainingAllowed": false,
+        "labelStatus": "qualified-production-ai-reviewed",
+        "qualification": {
+          "status": "qualified",
+          "context": "product-symbol",
+          "reviewerIds": [
+            "9ba0c18f-7b67-4be8-8b49-dbd06554e7b8",
+            "67cd463d-c0b7-4620-baf6-b1b3174f387f"
+          ],
+          "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-02-FLAME.json",
+          "sha256": "48465a2aa70933527670eee50881f45b6146d124f3710426f64d7fc872ce8e96",
+          "evidenceSchema": "ghs-production-qualification-v1",
+          "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+        },
+        "provenance": {
+          "origin": "mongodb-prod",
+          "productIdentity": "00088300196814",
+          "productJoins": [
+            {
+              "record": "8714252029307-00088300196814-528",
+              "gtin": "00088300196814",
+              "gln": "8714252029307",
+              "targetMarket": "528",
+              "generatedAt": "2026-09-24T10:28:43+02:00"
+            },
+            {
+              "record": "8714252029307-00088300196876-528",
+              "gtin": "00088300196876",
+              "gln": "8714252029307",
+              "targetMarket": "528",
+              "generatedAt": "2026-09-24T10:26:57+02:00"
+            },
+            {
+              "record": "8714252029307-00088300196814-528",
+              "gtin": "00088300196814",
+              "gln": "8714252029307",
+              "targetMarket": "528",
+              "generatedAt": "2026-09-24T10:28:43+02:00"
+            },
+            {
+              "record": "8714252029307-00088300196876-528",
+              "gtin": "00088300196876",
+              "gln": "8714252029307",
+              "targetMarket": "528",
+              "generatedAt": "2026-09-24T10:26:57+02:00"
+            }
+          ],
+          "connectedSourceIds": [
+            "prod-add-02",
+            "prod-add-03",
+            "prod-add-27",
+            "prod-add-28"
+          ],
+          "sourceURL": "https://api.isa.quintens.nl/download/databearer/156efb74d1ae7fd8c306240f4e4fa14c8d8cb96a13589d236d3fddb5997dc907/public",
+          "sourceURLs": [
+            "https://api.isa.quintens.nl/download/databearer/156efb74d1ae7fd8c306240f4e4fa14c8d8cb96a13589d236d3fddb5997dc907/public",
+            "https://api.isa.quintens.nl/download/databearer/4be087c7b3aaea336cf85c3827ec73457a791eabdc17677cb19324fe2f380791/public"
+          ],
+          "originalHashes": [
+            "156efb74d1ae7fd8c306240f4e4fa14c8d8cb96a13589d236d3fddb5997dc907",
+            "4be087c7b3aaea336cf85c3827ec73457a791eabdc17677cb19324fe2f380791"
+          ],
+          "originalPaths": [
+            "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-02.pdf",
+            "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-03.pdf"
+          ],
+          "render": {
+            "method": "unchanged whole PDF page rendered100dpi; no crop",
+            "page": 2,
+            "dpi": 100,
+            "command": [
+              "pdftoppm",
+              "-f",
+              "2",
+              "-l",
+              "2",
+              "-r",
+              "100",
+              "-png",
+              "-singlefile",
+              "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-02.pdf",
+              "_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/renders/prod-add-02-p2"
+            ],
+            "pageSelection": "Section2/2.2 label heading located by first3pages text solely to select image; no text labels sent to models"
+          },
+          "license": "unknown; user explicitly authorized internal GHS training",
+          "authorization": {
+            "basis": "explicit-user-request",
+            "date": "2026-10-05",
+            "scope": "internal-ghs-training"
+          },
+          "qualification": {
+            "status": "qualified",
+            "context": "product-symbol",
+            "reviewerIds": [
+              "9ba0c18f-7b67-4be8-8b49-dbd06554e7b8",
+              "67cd463d-c0b7-4620-baf6-b1b3174f387f"
+            ],
+            "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-02-FLAME.json",
+            "sha256": "48465a2aa70933527670eee50881f45b6146d124f3710426f64d7fc872ce8e96",
+            "evidenceSchema": "ghs-production-qualification-v1",
+            "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+          },
+          "familyIndependenceVerified": false,
+          "primaryProductContext": true
+        }
+      },
+      {
+        "id": "prod-add-19-FLAME",
+        "sourceId": "prod-add-19",
+        "sha256": "d4acb07f1ed13134d05e1c82098495ee75760ee0b0b1e0a98f7924ffa186ef88",
+        "familyId": "PROVISIONAL_SOURCE_PRODUCT_COMPONENT:00737052238081",
+        "split": "validation",
+        "code": "FLAME",
+        "bbox": {
+          "x": 115,
+          "y": 167,
+          "width": 60,
+          "height": 58
+        },
+        "sourceType": "production-product",
+        "trainingAllowed": false,
+        "labelStatus": "qualified-production-ai-reviewed",
+        "qualification": {
+          "status": "qualified",
+          "context": "product-symbol",
+          "reviewerIds": [
+            "cf90d130-c259-4744-b306-276502ca8e02",
+            "a74123d4-0024-49e5-a2e4-abf37f74e1cf"
+          ],
+          "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-19-FLAME.json",
+          "sha256": "17021b416676ca0fc45c39788f7766692e15cb3e0a68c84ffefe43cbb314e87e",
+          "evidenceSchema": "ghs-production-qualification-v1",
+          "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+        },
+        "provenance": {
+          "origin": "mongodb-prod",
+          "productIdentity": "00737052238081",
+          "productJoins": [
+            {
+              "record": "8714252029307-00737052238128-528",
+              "gtin": "00737052238128",
+              "gln": "8714252029307",
+              "targetMarket": "528",
+              "generatedAt": "2026-09-24T12:35:19+02:00"
+            },
+            {
+              "record": "8714252029307-00737052238081-528",
+              "gtin": "00737052238081",
+              "gln": "8714252029307",
+              "targetMarket": "528",
+              "generatedAt": "2026-09-24T12:21:16+02:00"
+            }
+          ],
+          "connectedSourceIds": [
+            "prod-add-19",
+            "prod-add-20"
+          ],
+          "sourceURL": "https://gdsnprodwebstorage.blob.core.windows.net/gdsnprodnlwebfileblob/8714252029307/00737052238128/528/Media/57511762/20250124_104956_tTYpDL212Soc2jGFSI0R.pdf",
+          "sourceURLs": [
+            "https://gdsnprodwebstorage.blob.core.windows.net/gdsnprodnlwebfileblob/8714252029307/00737052238128/528/Media/57511762/20250124_104956_tTYpDL212Soc2jGFSI0R.pdf",
+            "https://api.isa.quintens.nl/download/databearer/c8cb680446faf567301a84d0f34fc4db291c61c91b5481dd229bf3b6ec27ddb9/public"
+          ],
+          "originalHashes": [
+            "aa23f585af4a2fc136658c8f5a26c0cd35ae792265b73fc210f2d0b037b0f41c",
+            "c8cb680446faf567301a84d0f34fc4db291c61c91b5481dd229bf3b6ec27ddb9"
+          ],
+          "originalPaths": [
+            "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-19.pdf",
+            "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-20.pdf"
+          ],
+          "render": {
+            "method": "unchanged whole PDF page rendered100dpi; no crop",
+            "page": 2,
+            "dpi": 100,
+            "command": [
+              "pdftoppm",
+              "-f",
+              "2",
+              "-l",
+              "2",
+              "-r",
+              "100",
+              "-png",
+              "-singlefile",
+              "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-19.pdf",
+              "_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/renders/prod-add-19-p2"
+            ],
+            "pageSelection": "Section2/2.2 label heading located by first3pages text solely to select image; no text labels sent to models"
+          },
+          "license": "unknown; user explicitly authorized internal GHS training",
+          "authorization": {
+            "basis": "explicit-user-request",
+            "date": "2026-10-05",
+            "scope": "internal-ghs-training"
+          },
+          "qualification": {
+            "status": "qualified",
+            "context": "product-symbol",
+            "reviewerIds": [
+              "cf90d130-c259-4744-b306-276502ca8e02",
+              "a74123d4-0024-49e5-a2e4-abf37f74e1cf"
+            ],
+            "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-19-FLAME.json",
+            "sha256": "17021b416676ca0fc45c39788f7766692e15cb3e0a68c84ffefe43cbb314e87e",
+            "evidenceSchema": "ghs-production-qualification-v1",
+            "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+          },
+          "familyIndependenceVerified": false,
+          "primaryProductContext": true
+        }
+      },
+      {
+        "id": "prod-add-23-EXCLAMATION_MARK",
+        "sourceId": "prod-add-23",
+        "sha256": "9d825c224814950f363d8f0588090f87eb2a4abca9793928dabe27b7c99b16d5",
+        "familyId": "PROVISIONAL_SOURCE_PRODUCT_COMPONENT:03059941010132",
+        "split": "validation",
+        "code": "EXCLAMATION_MARK",
+        "bbox": {
+          "x": 263,
+          "y": 181,
+          "width": 68,
+          "height": 68
+        },
+        "sourceType": "production-product",
+        "trainingAllowed": false,
+        "labelStatus": "qualified-production-ai-reviewed",
+        "qualification": {
+          "status": "qualified",
+          "context": "product-symbol",
+          "reviewerIds": [
+            "56b595f7-8a26-4b38-81c1-3f66eed20d22",
+            "8fa48053-c2d6-4128-a38b-d4ec60667b9f"
+          ],
+          "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-23-EXCLAMATION_MARK.json",
+          "sha256": "4e8c9912e4c33016fef41c7f29608f3c879b475d6e293594254f2c2f04b6772a",
+          "evidenceSchema": "ghs-production-qualification-v1",
+          "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+        },
+        "provenance": {
+          "origin": "mongodb-prod",
+          "productIdentity": "03059941010132",
+          "productJoins": [
+            {
+              "record": "8710552001005-03059941010156-056",
+              "gtin": "03059941010156",
+              "gln": "8710552001005",
+              "targetMarket": "056",
+              "generatedAt": "2026-10-02T09:57:29+02:00"
+            },
+            {
+              "record": "8710552001005-03059941010132-056",
+              "gtin": "03059941010132",
+              "gln": "8710552001005",
+              "targetMarket": "056",
+              "generatedAt": "2026-10-02T09:57:29+02:00"
+            }
+          ],
+          "connectedSourceIds": [
+            "prod-add-23",
+            "prod-add-24"
+          ],
+          "sourceURL": "https://gdsnprodwebstorage.blob.core.windows.net/gdsnprodnlwebfileblob/8710552001005/03059941010156/056/Media/66626481/3059941010156_SDS_BE.pdf",
+          "sourceURLs": [
+            "https://gdsnprodwebstorage.blob.core.windows.net/gdsnprodnlwebfileblob/8710552001005/03059941010156/056/Media/66626481/3059941010156_SDS_BE.pdf",
+            "https://gdsnprodwebstorage.blob.core.windows.net/gdsnprodnlwebfileblob/8710552001005/03059941010132/056/Media/66626430/3059941010132_SDS_BE.pdf"
+          ],
+          "originalHashes": [
+            "6d8d87d2ac7b619b5d078449ad1c6ce93a716805fa7babe4c19aa3b09e08d564"
+          ],
+          "originalPaths": [
+            "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-23.pdf"
+          ],
+          "render": {
+            "method": "unchanged whole PDF page rendered100dpi; no crop",
+            "page": 2,
+            "dpi": 100,
+            "command": [
+              "pdftoppm",
+              "-f",
+              "2",
+              "-l",
+              "2",
+              "-r",
+              "100",
+              "-png",
+              "-singlefile",
+              "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-23.pdf",
+              "_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/renders/prod-add-23-p2"
+            ],
+            "pageSelection": "Section2/2.2 label heading located by first3pages text solely to select image; no text labels sent to models"
+          },
+          "license": "unknown; user explicitly authorized internal GHS training",
+          "authorization": {
+            "basis": "explicit-user-request",
+            "date": "2026-10-05",
+            "scope": "internal-ghs-training"
+          },
+          "qualification": {
+            "status": "qualified",
+            "context": "product-symbol",
+            "reviewerIds": [
+              "56b595f7-8a26-4b38-81c1-3f66eed20d22",
+              "8fa48053-c2d6-4128-a38b-d4ec60667b9f"
+            ],
+            "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-23-EXCLAMATION_MARK.json",
+            "sha256": "4e8c9912e4c33016fef41c7f29608f3c879b475d6e293594254f2c2f04b6772a",
+            "evidenceSchema": "ghs-production-qualification-v1",
+            "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+          },
+          "familyIndependenceVerified": false,
+          "primaryProductContext": true
+        }
+      },
+      {
+        "id": "prod-add-10-CORROSION",
+        "sourceId": "prod-add-10",
+        "sha256": "3659a28de656687e6d9c046a0d862bd0449c26934de45ca0a5f9af33f4833702",
+        "familyId": "PROVISIONAL_SOURCE_PRODUCT_COMPONENT:03414206000608",
+        "split": "train",
+        "code": "CORROSION",
+        "bbox": {
+          "x": 175,
+          "y": 239,
+          "width": 57,
+          "height": 60
+        },
+        "sourceType": "production-product",
+        "trainingAllowed": true,
+        "labelStatus": "qualified-production-ai-reviewed",
+        "qualification": {
+          "status": "qualified",
+          "context": "product-symbol",
+          "reviewerIds": [
+            "1596de0c-b0c8-4180-a7bb-61f9d0e553f5",
+            "ca665862-8115-4852-a44b-4c999d75b3a8"
+          ],
+          "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-10-CORROSION.json",
+          "sha256": "d47e14aa233f79de37ab688194854577bdb5976dbc1d4e85af02ff386f3b2a8a",
+          "evidenceSchema": "ghs-production-qualification-v1",
+          "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+        },
+        "provenance": {
+          "origin": "mongodb-prod",
+          "productIdentity": "03414206000608",
+          "productJoins": [
+            {
+              "record": "8714252029307-03607345809915-528",
+              "gtin": "03607345809915",
+              "gln": "8714252029307",
+              "targetMarket": "528",
+              "generatedAt": "2026-09-24T11:10:40+02:00"
+            },
+            {
+              "record": "8714252029307-03414206010423-528",
+              "gtin": "03414206010423",
+              "gln": "8714252029307",
+              "targetMarket": "528",
+              "generatedAt": "2026-09-24T11:10:19+02:00"
+            },
+            {
+              "record": "8714252029307-03414206000608-528",
+              "gtin": "03414206000608",
+              "gln": "8714252029307",
+              "targetMarket": "528",
+              "generatedAt": "2026-09-24T10:28:27+02:00"
+            }
+          ],
+          "connectedSourceIds": [
+            "prod-add-10",
+            "prod-add-11",
+            "prod-add-12"
+          ],
+          "sourceURL": "https://api.isa.quintens.nl/download/databearer/16119ee9bae990b5391ef2615e51553dccf292cdf10b95bfc68396c23eaee927/public",
+          "sourceURLs": [
+            "https://api.isa.quintens.nl/download/databearer/16119ee9bae990b5391ef2615e51553dccf292cdf10b95bfc68396c23eaee927/public",
+            "https://api.isa.quintens.nl/download/databearer/51df8c3f8609b49aee1337f0f1cfaf6c0370c07e2cb2ef03ba559f7d16d14d6b/public",
+            "https://api.isa.quintens.nl/download/databearer/706f9ef27de61989ffe3aac49d7fea6231fb4869d12e3d7dd4d55919d45171b0/public"
+          ],
+          "originalHashes": [
+            "16119ee9bae990b5391ef2615e51553dccf292cdf10b95bfc68396c23eaee927",
+            "51df8c3f8609b49aee1337f0f1cfaf6c0370c07e2cb2ef03ba559f7d16d14d6b",
+            "706f9ef27de61989ffe3aac49d7fea6231fb4869d12e3d7dd4d55919d45171b0"
+          ],
+          "originalPaths": [
+            "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-10.pdf",
+            "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-11.pdf",
+            "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-12.pdf"
+          ],
+          "render": {
+            "method": "unchanged whole PDF page rendered100dpi; no crop",
+            "page": 2,
+            "dpi": 100,
+            "command": [
+              "pdftoppm",
+              "-f",
+              "2",
+              "-l",
+              "2",
+              "-r",
+              "100",
+              "-png",
+              "-singlefile",
+              "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-10.pdf",
+              "_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/renders/prod-add-10-p2"
+            ],
+            "pageSelection": "Section2/2.2 label heading located by first3pages text solely to select image; no text labels sent to models"
+          },
+          "license": "unknown; user explicitly authorized internal GHS training",
+          "authorization": {
+            "basis": "explicit-user-request",
+            "date": "2026-10-05",
+            "scope": "internal-ghs-training"
+          },
+          "qualification": {
+            "status": "qualified",
+            "context": "product-symbol",
+            "reviewerIds": [
+              "1596de0c-b0c8-4180-a7bb-61f9d0e553f5",
+              "ca665862-8115-4852-a44b-4c999d75b3a8"
+            ],
+            "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-10-CORROSION.json",
+            "sha256": "d47e14aa233f79de37ab688194854577bdb5976dbc1d4e85af02ff386f3b2a8a",
+            "evidenceSchema": "ghs-production-qualification-v1",
+            "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+          },
+          "familyIndependenceVerified": false,
+          "primaryProductContext": true
+        }
+      },
+      {
+        "id": "prod-add-10-EXCLAMATION_MARK",
+        "sourceId": "prod-add-10",
+        "sha256": "3659a28de656687e6d9c046a0d862bd0449c26934de45ca0a5f9af33f4833702",
+        "familyId": "PROVISIONAL_SOURCE_PRODUCT_COMPONENT:03414206000608",
+        "split": "train",
+        "code": "EXCLAMATION_MARK",
+        "bbox": {
+          "x": 233,
+          "y": 239,
+          "width": 58,
+          "height": 60
+        },
+        "sourceType": "production-product",
+        "trainingAllowed": true,
+        "labelStatus": "qualified-production-ai-reviewed",
+        "qualification": {
+          "status": "qualified",
+          "context": "product-symbol",
+          "reviewerIds": [
+            "1596de0c-b0c8-4180-a7bb-61f9d0e553f5",
+            "ca665862-8115-4852-a44b-4c999d75b3a8"
+          ],
+          "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-10-EXCLAMATION_MARK.json",
+          "sha256": "2ed41bf002709e5a0173b0e892d92e91b7cc90a3a2dcd6712fc35130bbc33b24",
+          "evidenceSchema": "ghs-production-qualification-v1",
+          "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+        },
+        "provenance": {
+          "origin": "mongodb-prod",
+          "productIdentity": "03414206000608",
+          "productJoins": [
+            {
+              "record": "8714252029307-03607345809915-528",
+              "gtin": "03607345809915",
+              "gln": "8714252029307",
+              "targetMarket": "528",
+              "generatedAt": "2026-09-24T11:10:40+02:00"
+            },
+            {
+              "record": "8714252029307-03414206010423-528",
+              "gtin": "03414206010423",
+              "gln": "8714252029307",
+              "targetMarket": "528",
+              "generatedAt": "2026-09-24T11:10:19+02:00"
+            },
+            {
+              "record": "8714252029307-03414206000608-528",
+              "gtin": "03414206000608",
+              "gln": "8714252029307",
+              "targetMarket": "528",
+              "generatedAt": "2026-09-24T10:28:27+02:00"
+            }
+          ],
+          "connectedSourceIds": [
+            "prod-add-10",
+            "prod-add-11",
+            "prod-add-12"
+          ],
+          "sourceURL": "https://api.isa.quintens.nl/download/databearer/16119ee9bae990b5391ef2615e51553dccf292cdf10b95bfc68396c23eaee927/public",
+          "sourceURLs": [
+            "https://api.isa.quintens.nl/download/databearer/16119ee9bae990b5391ef2615e51553dccf292cdf10b95bfc68396c23eaee927/public",
+            "https://api.isa.quintens.nl/download/databearer/51df8c3f8609b49aee1337f0f1cfaf6c0370c07e2cb2ef03ba559f7d16d14d6b/public",
+            "https://api.isa.quintens.nl/download/databearer/706f9ef27de61989ffe3aac49d7fea6231fb4869d12e3d7dd4d55919d45171b0/public"
+          ],
+          "originalHashes": [
+            "16119ee9bae990b5391ef2615e51553dccf292cdf10b95bfc68396c23eaee927",
+            "51df8c3f8609b49aee1337f0f1cfaf6c0370c07e2cb2ef03ba559f7d16d14d6b",
+            "706f9ef27de61989ffe3aac49d7fea6231fb4869d12e3d7dd4d55919d45171b0"
+          ],
+          "originalPaths": [
+            "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-10.pdf",
+            "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-11.pdf",
+            "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-12.pdf"
+          ],
+          "render": {
+            "method": "unchanged whole PDF page rendered100dpi; no crop",
+            "page": 2,
+            "dpi": 100,
+            "command": [
+              "pdftoppm",
+              "-f",
+              "2",
+              "-l",
+              "2",
+              "-r",
+              "100",
+              "-png",
+              "-singlefile",
+              "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-10.pdf",
+              "_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/renders/prod-add-10-p2"
+            ],
+            "pageSelection": "Section2/2.2 label heading located by first3pages text solely to select image; no text labels sent to models"
+          },
+          "license": "unknown; user explicitly authorized internal GHS training",
+          "authorization": {
+            "basis": "explicit-user-request",
+            "date": "2026-10-05",
+            "scope": "internal-ghs-training"
+          },
+          "qualification": {
+            "status": "qualified",
+            "context": "product-symbol",
+            "reviewerIds": [
+              "1596de0c-b0c8-4180-a7bb-61f9d0e553f5",
+              "ca665862-8115-4852-a44b-4c999d75b3a8"
+            ],
+            "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-10-EXCLAMATION_MARK.json",
+            "sha256": "2ed41bf002709e5a0173b0e892d92e91b7cc90a3a2dcd6712fc35130bbc33b24",
+            "evidenceSchema": "ghs-production-qualification-v1",
+            "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+          },
+          "familyIndependenceVerified": false,
+          "primaryProductContext": true
+        }
+      },
+      {
+        "id": "prod-add-10-FLAME",
+        "sourceId": "prod-add-10",
+        "sha256": "3659a28de656687e6d9c046a0d862bd0449c26934de45ca0a5f9af33f4833702",
+        "familyId": "PROVISIONAL_SOURCE_PRODUCT_COMPONENT:03414206000608",
+        "split": "train",
+        "code": "FLAME",
+        "bbox": {
+          "x": 116,
+          "y": 239,
+          "width": 57,
+          "height": 60
+        },
+        "sourceType": "production-product",
+        "trainingAllowed": true,
+        "labelStatus": "qualified-production-ai-reviewed",
+        "qualification": {
+          "status": "qualified",
+          "context": "product-symbol",
+          "reviewerIds": [
+            "1596de0c-b0c8-4180-a7bb-61f9d0e553f5",
+            "ca665862-8115-4852-a44b-4c999d75b3a8"
+          ],
+          "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-10-FLAME.json",
+          "sha256": "fe2c522eff96e6502fb3fc851c7aa089b893d282cf50024f4ad2adb9b3ad8e00",
+          "evidenceSchema": "ghs-production-qualification-v1",
+          "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+        },
+        "provenance": {
+          "origin": "mongodb-prod",
+          "productIdentity": "03414206000608",
+          "productJoins": [
+            {
+              "record": "8714252029307-03607345809915-528",
+              "gtin": "03607345809915",
+              "gln": "8714252029307",
+              "targetMarket": "528",
+              "generatedAt": "2026-09-24T11:10:40+02:00"
+            },
+            {
+              "record": "8714252029307-03414206010423-528",
+              "gtin": "03414206010423",
+              "gln": "8714252029307",
+              "targetMarket": "528",
+              "generatedAt": "2026-09-24T11:10:19+02:00"
+            },
+            {
+              "record": "8714252029307-03414206000608-528",
+              "gtin": "03414206000608",
+              "gln": "8714252029307",
+              "targetMarket": "528",
+              "generatedAt": "2026-09-24T10:28:27+02:00"
+            }
+          ],
+          "connectedSourceIds": [
+            "prod-add-10",
+            "prod-add-11",
+            "prod-add-12"
+          ],
+          "sourceURL": "https://api.isa.quintens.nl/download/databearer/16119ee9bae990b5391ef2615e51553dccf292cdf10b95bfc68396c23eaee927/public",
+          "sourceURLs": [
+            "https://api.isa.quintens.nl/download/databearer/16119ee9bae990b5391ef2615e51553dccf292cdf10b95bfc68396c23eaee927/public",
+            "https://api.isa.quintens.nl/download/databearer/51df8c3f8609b49aee1337f0f1cfaf6c0370c07e2cb2ef03ba559f7d16d14d6b/public",
+            "https://api.isa.quintens.nl/download/databearer/706f9ef27de61989ffe3aac49d7fea6231fb4869d12e3d7dd4d55919d45171b0/public"
+          ],
+          "originalHashes": [
+            "16119ee9bae990b5391ef2615e51553dccf292cdf10b95bfc68396c23eaee927",
+            "51df8c3f8609b49aee1337f0f1cfaf6c0370c07e2cb2ef03ba559f7d16d14d6b",
+            "706f9ef27de61989ffe3aac49d7fea6231fb4869d12e3d7dd4d55919d45171b0"
+          ],
+          "originalPaths": [
+            "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-10.pdf",
+            "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-11.pdf",
+            "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-12.pdf"
+          ],
+          "render": {
+            "method": "unchanged whole PDF page rendered100dpi; no crop",
+            "page": 2,
+            "dpi": 100,
+            "command": [
+              "pdftoppm",
+              "-f",
+              "2",
+              "-l",
+              "2",
+              "-r",
+              "100",
+              "-png",
+              "-singlefile",
+              "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-10.pdf",
+              "_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/renders/prod-add-10-p2"
+            ],
+            "pageSelection": "Section2/2.2 label heading located by first3pages text solely to select image; no text labels sent to models"
+          },
+          "license": "unknown; user explicitly authorized internal GHS training",
+          "authorization": {
+            "basis": "explicit-user-request",
+            "date": "2026-10-05",
+            "scope": "internal-ghs-training"
+          },
+          "qualification": {
+            "status": "qualified",
+            "context": "product-symbol",
+            "reviewerIds": [
+              "1596de0c-b0c8-4180-a7bb-61f9d0e553f5",
+              "ca665862-8115-4852-a44b-4c999d75b3a8"
+            ],
+            "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-10-FLAME.json",
+            "sha256": "fe2c522eff96e6502fb3fc851c7aa089b893d282cf50024f4ad2adb9b3ad8e00",
+            "evidenceSchema": "ghs-production-qualification-v1",
+            "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+          },
+          "familyIndependenceVerified": false,
+          "primaryProductContext": true
+        }
+      },
+      {
+        "id": "prod-add-01-ENVIRONMENT",
+        "sourceId": "prod-add-01",
+        "sha256": "7977a251a0619cf6252ad26475e2ae7a2e19844ecb794a4e5cec120a7e94cd95",
+        "familyId": "PROVISIONAL_SOURCE_PRODUCT_COMPONENT:03607340213267",
+        "split": "train",
+        "code": "ENVIRONMENT",
+        "bbox": {
+          "x": 232,
+          "y": 223,
+          "width": 60,
+          "height": 59
+        },
+        "sourceType": "production-product",
+        "trainingAllowed": true,
+        "labelStatus": "qualified-production-ai-reviewed",
+        "qualification": {
+          "status": "qualified",
+          "context": "product-symbol",
+          "reviewerIds": [
+            "8900dfb1-f26b-48ca-a4fe-7f7f611389de",
+            "38188d83-1fe6-480f-9b71-44481440fd3b"
+          ],
+          "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-01-ENVIRONMENT.json",
+          "sha256": "6781202fdc1b9b04fc1172570e199b6df6c61d8ab2f5b928bf89519dbdcac2c6",
+          "evidenceSchema": "ghs-production-qualification-v1",
+          "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+        },
+        "provenance": {
+          "origin": "mongodb-prod",
+          "productIdentity": "03607340213267",
+          "productJoins": [
+            {
+              "record": "8714252029307-03607340213267-528",
+              "gtin": "03607340213267",
+              "gln": "8714252029307",
+              "targetMarket": "528",
+              "generatedAt": "2026-09-24T10:31:46+02:00"
+            },
+            {
+              "record": "8714252029307-03607340213267-528",
+              "gtin": "03607340213267",
+              "gln": "8714252029307",
+              "targetMarket": "528",
+              "generatedAt": "2026-09-24T10:31:46+02:00"
+            }
+          ],
+          "connectedSourceIds": [
+            "prod-add-01",
+            "prod-add-26"
+          ],
+          "sourceURL": "https://api.isa.quintens.nl/download/databearer/9ae44d46be0d992d5285ee7d86d25132af4640f163e4034f7291a8f2285e3a3c/public",
+          "sourceURLs": [
+            "https://api.isa.quintens.nl/download/databearer/9ae44d46be0d992d5285ee7d86d25132af4640f163e4034f7291a8f2285e3a3c/public"
+          ],
+          "originalHashes": [
+            "9ae44d46be0d992d5285ee7d86d25132af4640f163e4034f7291a8f2285e3a3c"
+          ],
+          "originalPaths": [
+            "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-01.pdf"
+          ],
+          "render": {
+            "method": "unchanged whole PDF page rendered100dpi; no crop",
+            "page": 2,
+            "dpi": 100,
+            "command": [
+              "pdftoppm",
+              "-f",
+              "2",
+              "-l",
+              "2",
+              "-r",
+              "100",
+              "-png",
+              "-singlefile",
+              "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-01.pdf",
+              "_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/renders/prod-add-01-p2"
+            ],
+            "pageSelection": "Section2/2.2 label heading located by first3pages text solely to select image; no text labels sent to models"
+          },
+          "license": "unknown; user explicitly authorized internal GHS training",
+          "authorization": {
+            "basis": "explicit-user-request",
+            "date": "2026-10-05",
+            "scope": "internal-ghs-training"
+          },
+          "qualification": {
+            "status": "qualified",
+            "context": "product-symbol",
+            "reviewerIds": [
+              "8900dfb1-f26b-48ca-a4fe-7f7f611389de",
+              "38188d83-1fe6-480f-9b71-44481440fd3b"
+            ],
+            "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-01-ENVIRONMENT.json",
+            "sha256": "6781202fdc1b9b04fc1172570e199b6df6c61d8ab2f5b928bf89519dbdcac2c6",
+            "evidenceSchema": "ghs-production-qualification-v1",
+            "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+          },
+          "familyIndependenceVerified": false,
+          "primaryProductContext": true
+        }
+      },
+      {
+        "id": "prod-add-01-EXCLAMATION_MARK",
+        "sourceId": "prod-add-01",
+        "sha256": "7977a251a0619cf6252ad26475e2ae7a2e19844ecb794a4e5cec120a7e94cd95",
+        "familyId": "PROVISIONAL_SOURCE_PRODUCT_COMPONENT:03607340213267",
+        "split": "train",
+        "code": "EXCLAMATION_MARK",
+        "bbox": {
+          "x": 173,
+          "y": 223,
+          "width": 60,
+          "height": 59
+        },
+        "sourceType": "production-product",
+        "trainingAllowed": true,
+        "labelStatus": "qualified-production-ai-reviewed",
+        "qualification": {
+          "status": "qualified",
+          "context": "product-symbol",
+          "reviewerIds": [
+            "8900dfb1-f26b-48ca-a4fe-7f7f611389de",
+            "38188d83-1fe6-480f-9b71-44481440fd3b"
+          ],
+          "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-01-EXCLAMATION_MARK.json",
+          "sha256": "f5f8bd4b3f24a9e733771109a242ee8960c25be19d1043f7971af3652063c22a",
+          "evidenceSchema": "ghs-production-qualification-v1",
+          "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+        },
+        "provenance": {
+          "origin": "mongodb-prod",
+          "productIdentity": "03607340213267",
+          "productJoins": [
+            {
+              "record": "8714252029307-03607340213267-528",
+              "gtin": "03607340213267",
+              "gln": "8714252029307",
+              "targetMarket": "528",
+              "generatedAt": "2026-09-24T10:31:46+02:00"
+            },
+            {
+              "record": "8714252029307-03607340213267-528",
+              "gtin": "03607340213267",
+              "gln": "8714252029307",
+              "targetMarket": "528",
+              "generatedAt": "2026-09-24T10:31:46+02:00"
+            }
+          ],
+          "connectedSourceIds": [
+            "prod-add-01",
+            "prod-add-26"
+          ],
+          "sourceURL": "https://api.isa.quintens.nl/download/databearer/9ae44d46be0d992d5285ee7d86d25132af4640f163e4034f7291a8f2285e3a3c/public",
+          "sourceURLs": [
+            "https://api.isa.quintens.nl/download/databearer/9ae44d46be0d992d5285ee7d86d25132af4640f163e4034f7291a8f2285e3a3c/public"
+          ],
+          "originalHashes": [
+            "9ae44d46be0d992d5285ee7d86d25132af4640f163e4034f7291a8f2285e3a3c"
+          ],
+          "originalPaths": [
+            "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-01.pdf"
+          ],
+          "render": {
+            "method": "unchanged whole PDF page rendered100dpi; no crop",
+            "page": 2,
+            "dpi": 100,
+            "command": [
+              "pdftoppm",
+              "-f",
+              "2",
+              "-l",
+              "2",
+              "-r",
+              "100",
+              "-png",
+              "-singlefile",
+              "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-01.pdf",
+              "_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/renders/prod-add-01-p2"
+            ],
+            "pageSelection": "Section2/2.2 label heading located by first3pages text solely to select image; no text labels sent to models"
+          },
+          "license": "unknown; user explicitly authorized internal GHS training",
+          "authorization": {
+            "basis": "explicit-user-request",
+            "date": "2026-10-05",
+            "scope": "internal-ghs-training"
+          },
+          "qualification": {
+            "status": "qualified",
+            "context": "product-symbol",
+            "reviewerIds": [
+              "8900dfb1-f26b-48ca-a4fe-7f7f611389de",
+              "38188d83-1fe6-480f-9b71-44481440fd3b"
+            ],
+            "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-01-EXCLAMATION_MARK.json",
+            "sha256": "f5f8bd4b3f24a9e733771109a242ee8960c25be19d1043f7971af3652063c22a",
+            "evidenceSchema": "ghs-production-qualification-v1",
+            "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+          },
+          "familyIndependenceVerified": false,
+          "primaryProductContext": true
+        }
+      },
+      {
+        "id": "prod-add-01-FLAME",
+        "sourceId": "prod-add-01",
+        "sha256": "7977a251a0619cf6252ad26475e2ae7a2e19844ecb794a4e5cec120a7e94cd95",
+        "familyId": "PROVISIONAL_SOURCE_PRODUCT_COMPONENT:03607340213267",
+        "split": "train",
+        "code": "FLAME",
+        "bbox": {
+          "x": 114,
+          "y": 223,
+          "width": 60,
+          "height": 59
+        },
+        "sourceType": "production-product",
+        "trainingAllowed": true,
+        "labelStatus": "qualified-production-ai-reviewed",
+        "qualification": {
+          "status": "qualified",
+          "context": "product-symbol",
+          "reviewerIds": [
+            "8900dfb1-f26b-48ca-a4fe-7f7f611389de",
+            "38188d83-1fe6-480f-9b71-44481440fd3b"
+          ],
+          "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-01-FLAME.json",
+          "sha256": "f1b0de7ddbaf53d3796382eec2dfd10220117ab36644b1bd6c647eb46ee68426",
+          "evidenceSchema": "ghs-production-qualification-v1",
+          "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+        },
+        "provenance": {
+          "origin": "mongodb-prod",
+          "productIdentity": "03607340213267",
+          "productJoins": [
+            {
+              "record": "8714252029307-03607340213267-528",
+              "gtin": "03607340213267",
+              "gln": "8714252029307",
+              "targetMarket": "528",
+              "generatedAt": "2026-09-24T10:31:46+02:00"
+            },
+            {
+              "record": "8714252029307-03607340213267-528",
+              "gtin": "03607340213267",
+              "gln": "8714252029307",
+              "targetMarket": "528",
+              "generatedAt": "2026-09-24T10:31:46+02:00"
+            }
+          ],
+          "connectedSourceIds": [
+            "prod-add-01",
+            "prod-add-26"
+          ],
+          "sourceURL": "https://api.isa.quintens.nl/download/databearer/9ae44d46be0d992d5285ee7d86d25132af4640f163e4034f7291a8f2285e3a3c/public",
+          "sourceURLs": [
+            "https://api.isa.quintens.nl/download/databearer/9ae44d46be0d992d5285ee7d86d25132af4640f163e4034f7291a8f2285e3a3c/public"
+          ],
+          "originalHashes": [
+            "9ae44d46be0d992d5285ee7d86d25132af4640f163e4034f7291a8f2285e3a3c"
+          ],
+          "originalPaths": [
+            "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-01.pdf"
+          ],
+          "render": {
+            "method": "unchanged whole PDF page rendered100dpi; no crop",
+            "page": 2,
+            "dpi": 100,
+            "command": [
+              "pdftoppm",
+              "-f",
+              "2",
+              "-l",
+              "2",
+              "-r",
+              "100",
+              "-png",
+              "-singlefile",
+              "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-01.pdf",
+              "_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/renders/prod-add-01-p2"
+            ],
+            "pageSelection": "Section2/2.2 label heading located by first3pages text solely to select image; no text labels sent to models"
+          },
+          "license": "unknown; user explicitly authorized internal GHS training",
+          "authorization": {
+            "basis": "explicit-user-request",
+            "date": "2026-10-05",
+            "scope": "internal-ghs-training"
+          },
+          "qualification": {
+            "status": "qualified",
+            "context": "product-symbol",
+            "reviewerIds": [
+              "8900dfb1-f26b-48ca-a4fe-7f7f611389de",
+              "38188d83-1fe6-480f-9b71-44481440fd3b"
+            ],
+            "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-01-FLAME.json",
+            "sha256": "f1b0de7ddbaf53d3796382eec2dfd10220117ab36644b1bd6c647eb46ee68426",
+            "evidenceSchema": "ghs-production-qualification-v1",
+            "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+          },
+          "familyIndependenceVerified": false,
+          "primaryProductContext": true
+        }
+      },
+      {
+        "id": "prod-add-05-CORROSION",
+        "sourceId": "prod-add-05",
+        "sha256": "6a5ce930fdcfbd58a4e8f709776f5482451cd719b8d08f425b0979ebb8b13933",
+        "familyId": "PROVISIONAL_SOURCE_PRODUCT_COMPONENT:03665468401553",
+        "split": "train",
+        "code": "CORROSION",
+        "bbox": {
+          "x": 262,
+          "y": 132,
+          "width": 70,
+          "height": 69
+        },
+        "sourceType": "production-product",
+        "trainingAllowed": true,
+        "labelStatus": "qualified-production-ai-reviewed",
+        "qualification": {
+          "status": "qualified",
+          "context": "product-symbol",
+          "reviewerIds": [
+            "4e51d856-6ae6-403f-a069-ad2a4c132bc6",
+            "a7e87f87-7b52-4b2d-9dad-fab56bb34b1c"
+          ],
+          "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-05-CORROSION.json",
+          "sha256": "6d40d457f35e44270a8e988883f7c862e917f3bff17899f7c58500dcb24e4f3a",
+          "evidenceSchema": "ghs-production-qualification-v1",
+          "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+        },
+        "provenance": {
+          "origin": "mongodb-prod",
+          "productIdentity": "03665468401553",
+          "productJoins": [
+            {
+              "record": "8710552001005-03665468401553-528",
+              "gtin": "03665468401553",
+              "gln": "8710552001005",
+              "targetMarket": "528",
+              "generatedAt": "2026-09-23T11:24:34+02:00"
+            }
+          ],
+          "connectedSourceIds": [
+            "prod-add-05"
+          ],
+          "sourceURL": "https://api.isa.quintens.nl/download/databearer/dc8ad7661f151ee96d42b043b7ec4ada659d54ca16260d2824ba7b4223f1873d/public",
+          "sourceURLs": [
+            "https://api.isa.quintens.nl/download/databearer/dc8ad7661f151ee96d42b043b7ec4ada659d54ca16260d2824ba7b4223f1873d/public"
+          ],
+          "originalHashes": [
+            "dc8ad7661f151ee96d42b043b7ec4ada659d54ca16260d2824ba7b4223f1873d"
+          ],
+          "originalPaths": [
+            "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-05.pdf"
+          ],
+          "render": {
+            "method": "unchanged whole PDF page rendered100dpi; no crop",
+            "page": 2,
+            "dpi": 100,
+            "command": [
+              "pdftoppm",
+              "-f",
+              "2",
+              "-l",
+              "2",
+              "-r",
+              "100",
+              "-png",
+              "-singlefile",
+              "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-05.pdf",
+              "_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/renders/prod-add-05-p2"
+            ],
+            "pageSelection": "Section2/2.2 label heading located by first3pages text solely to select image; no text labels sent to models"
+          },
+          "license": "unknown; user explicitly authorized internal GHS training",
+          "authorization": {
+            "basis": "explicit-user-request",
+            "date": "2026-10-05",
+            "scope": "internal-ghs-training"
+          },
+          "qualification": {
+            "status": "qualified",
+            "context": "product-symbol",
+            "reviewerIds": [
+              "4e51d856-6ae6-403f-a069-ad2a4c132bc6",
+              "a7e87f87-7b52-4b2d-9dad-fab56bb34b1c"
+            ],
+            "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-05-CORROSION.json",
+            "sha256": "6d40d457f35e44270a8e988883f7c862e917f3bff17899f7c58500dcb24e4f3a",
+            "evidenceSchema": "ghs-production-qualification-v1",
+            "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+          },
+          "familyIndependenceVerified": false,
+          "primaryProductContext": true
+        }
+      },
+      {
+        "id": "prod-add-14-FLAME",
+        "sourceId": "prod-add-14",
+        "sha256": "b90d5e51d24cbecabc79c95c9ddd57d0f5bb89eea87152553abe443d96cf50e6",
+        "familyId": "PROVISIONAL_SOURCE_PRODUCT_COMPONENT:05060152828384",
+        "split": "validation",
+        "code": "FLAME",
+        "bbox": {
+          "x": 102,
+          "y": 657,
+          "width": 42,
+          "height": 41
+        },
+        "sourceType": "production-product",
+        "trainingAllowed": false,
+        "labelStatus": "qualified-production-ai-reviewed",
+        "qualification": {
+          "status": "qualified",
+          "context": "product-symbol",
+          "reviewerIds": [
+            "9f19163d-27fa-4f78-94b1-c3e0cae9ccff",
+            "df1721a5-ab9e-4807-afa7-3edcc1d73ed7"
+          ],
+          "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-14-FLAME.json",
+          "sha256": "bc65e0bb072335c5fc0d03f6e8b36e604b28fe884863d5b42c6bb2bccbe49775",
+          "evidenceSchema": "ghs-production-qualification-v1",
+          "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+        },
+        "provenance": {
+          "origin": "mongodb-prod",
+          "productIdentity": "05060152828384",
+          "productJoins": [
+            {
+              "record": "8718781030001-05060152828384-528",
+              "gtin": "05060152828384",
+              "gln": "8718781030001",
+              "targetMarket": "528",
+              "generatedAt": "2026-09-23T04:54:30+02:00"
+            }
+          ],
+          "connectedSourceIds": [
+            "prod-add-14"
+          ],
+          "sourceURL": "https://api.isa.quintens.nl/download/databearer/e52ec286fa525b7c75602b5cd7f04951e6872862b0d1f70688a0bbd7facb2d37/public",
+          "sourceURLs": [
+            "https://api.isa.quintens.nl/download/databearer/e52ec286fa525b7c75602b5cd7f04951e6872862b0d1f70688a0bbd7facb2d37/public"
+          ],
+          "originalHashes": [
+            "e52ec286fa525b7c75602b5cd7f04951e6872862b0d1f70688a0bbd7facb2d37"
+          ],
+          "originalPaths": [
+            "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-14.pdf"
+          ],
+          "render": {
+            "method": "unchanged whole PDF page rendered100dpi; no crop",
+            "page": 1,
+            "dpi": 100,
+            "command": [
+              "pdftoppm",
+              "-f",
+              "1",
+              "-l",
+              "1",
+              "-r",
+              "100",
+              "-png",
+              "-singlefile",
+              "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-14.pdf",
+              "_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/renders/prod-add-14-p1"
+            ],
+            "pageSelection": "Section2/2.2 label heading located by first3pages text solely to select image; no text labels sent to models"
+          },
+          "license": "unknown; user explicitly authorized internal GHS training",
+          "authorization": {
+            "basis": "explicit-user-request",
+            "date": "2026-10-05",
+            "scope": "internal-ghs-training"
+          },
+          "qualification": {
+            "status": "qualified",
+            "context": "product-symbol",
+            "reviewerIds": [
+              "9f19163d-27fa-4f78-94b1-c3e0cae9ccff",
+              "df1721a5-ab9e-4807-afa7-3edcc1d73ed7"
+            ],
+            "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-14-FLAME.json",
+            "sha256": "bc65e0bb072335c5fc0d03f6e8b36e604b28fe884863d5b42c6bb2bccbe49775",
+            "evidenceSchema": "ghs-production-qualification-v1",
+            "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+          },
+          "familyIndependenceVerified": false,
+          "primaryProductContext": true
+        }
+      },
+      {
+        "id": "prod-add-06-CORROSION",
+        "sourceId": "prod-add-06",
+        "sha256": "3985edf9cf0835202435eae986bfa428838f658a42468e51ccda969c5334d9c8",
+        "familyId": "PROVISIONAL_SOURCE_PRODUCT_COMPONENT:08435495862666",
+        "split": "validation",
+        "code": "CORROSION",
+        "bbox": {
+          "x": 102,
+          "y": 613,
+          "width": 42,
+          "height": 42
+        },
+        "sourceType": "production-product",
+        "trainingAllowed": false,
+        "labelStatus": "qualified-production-ai-reviewed",
+        "qualification": {
+          "status": "qualified",
+          "context": "product-symbol",
+          "reviewerIds": [
+            "fcd6edc9-4922-4264-bfa1-97919caca312",
+            "92a4370d-7d8d-4a0d-8507-f132aea6a21b"
+          ],
+          "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-06-CORROSION.json",
+          "sha256": "cc5038c25f8cba550b0013657b6db695cef23d528b5b6cef0eb852b89ba2e8f7",
+          "evidenceSchema": "ghs-production-qualification-v1",
+          "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+        },
+        "provenance": {
+          "origin": "mongodb-prod",
+          "productIdentity": "08435495862666",
+          "productJoins": [
+            {
+              "record": "8719558800001-08435495862666-528",
+              "gtin": "08435495862666",
+              "gln": "8719558800001",
+              "targetMarket": "528",
+              "generatedAt": "2026-10-01T13:43:35+02:00"
+            },
+            {
+              "record": "8719558800001-08435495862666-056",
+              "gtin": "08435495862666",
+              "gln": "8719558800001",
+              "targetMarket": "056",
+              "generatedAt": "2026-10-01T13:43:31+02:00"
+            },
+            {
+              "record": "8719558800001-08435495862666-528",
+              "gtin": "08435495862666",
+              "gln": "8719558800001",
+              "targetMarket": "528",
+              "generatedAt": "2026-10-01T13:43:35+02:00"
+            }
+          ],
+          "connectedSourceIds": [
+            "prod-add-06",
+            "prod-add-29"
+          ],
+          "sourceURL": "https://isa.quintens.nl/download/databearer/35a7ebd839b2989b65dcaacf16185c4288758601c68c935f0cace35580450123/public",
+          "sourceURLs": [
+            "https://isa.quintens.nl/download/databearer/35a7ebd839b2989b65dcaacf16185c4288758601c68c935f0cace35580450123/public"
+          ],
+          "originalHashes": [
+            "35a7ebd839b2989b65dcaacf16185c4288758601c68c935f0cace35580450123"
+          ],
+          "originalPaths": [
+            "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-06.pdf"
+          ],
+          "render": {
+            "method": "unchanged whole PDF page rendered100dpi; no crop",
+            "page": 1,
+            "dpi": 100,
+            "command": [
+              "pdftoppm",
+              "-f",
+              "1",
+              "-l",
+              "1",
+              "-r",
+              "100",
+              "-png",
+              "-singlefile",
+              "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-06.pdf",
+              "_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/renders/prod-add-06-p1"
+            ],
+            "pageSelection": "Section2/2.2 label heading located by first3pages text solely to select image; no text labels sent to models"
+          },
+          "license": "unknown; user explicitly authorized internal GHS training",
+          "authorization": {
+            "basis": "explicit-user-request",
+            "date": "2026-10-05",
+            "scope": "internal-ghs-training"
+          },
+          "qualification": {
+            "status": "qualified",
+            "context": "product-symbol",
+            "reviewerIds": [
+              "fcd6edc9-4922-4264-bfa1-97919caca312",
+              "92a4370d-7d8d-4a0d-8507-f132aea6a21b"
+            ],
+            "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-06-CORROSION.json",
+            "sha256": "cc5038c25f8cba550b0013657b6db695cef23d528b5b6cef0eb852b89ba2e8f7",
+            "evidenceSchema": "ghs-production-qualification-v1",
+            "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+          },
+          "familyIndependenceVerified": false,
+          "primaryProductContext": true
+        }
+      },
+      {
+        "id": "prod-add-17-EXCLAMATION_MARK",
+        "sourceId": "prod-add-17",
+        "sha256": "d2a1f37c28bc3ecbe9a42f4ae85ea89cf681b422f533e6fe5762ac7f103cddad",
+        "familyId": "PROVISIONAL_SOURCE_PRODUCT_COMPONENT:08717591566397",
+        "split": "train",
+        "code": "EXCLAMATION_MARK",
+        "bbox": {
+          "x": 342,
+          "y": 137,
+          "width": 70,
+          "height": 71
+        },
+        "sourceType": "production-product",
+        "trainingAllowed": true,
+        "labelStatus": "qualified-production-ai-reviewed",
+        "qualification": {
+          "status": "qualified",
+          "context": "product-symbol",
+          "reviewerIds": [
+            "94a94a0a-b96f-4c9d-acff-31b589421555",
+            "d4f86a8c-c6d7-4780-811b-37eac7711d34"
+          ],
+          "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-17-EXCLAMATION_MARK.json",
+          "sha256": "4af500f67ebcb0b39d03118972c1351707160860218bbf13c91d83ce5c1619e5",
+          "evidenceSchema": "ghs-production-qualification-v1",
+          "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+        },
+        "provenance": {
+          "origin": "mongodb-prod",
+          "productIdentity": "08717591566397",
+          "productJoins": [
+            {
+              "record": "8717591560005-08717591566397-528",
+              "gtin": "08717591566397",
+              "gln": "8717591560005",
+              "targetMarket": "528",
+              "generatedAt": "2026-09-23T13:36:15+02:00"
+            }
+          ],
+          "connectedSourceIds": [
+            "prod-add-17"
+          ],
+          "sourceURL": "https://gdsnprodwebstorage.blob.core.windows.net/gdsnprodnlwebfileblob/8717591560005/08717591566397/528/Media/8256874/Sensista%2520Primer%2520SDS%2520EU%2520NL%252020200702.pdf",
+          "sourceURLs": [
+            "https://gdsnprodwebstorage.blob.core.windows.net/gdsnprodnlwebfileblob/8717591560005/08717591566397/528/Media/8256874/Sensista%2520Primer%2520SDS%2520EU%2520NL%252020200702.pdf"
+          ],
+          "originalHashes": [
+            "0f433ff2d4ce23b5d18db7396e779333b0e241c98706d601cb0a372cf6e2e9c8"
+          ],
+          "originalPaths": [
+            "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-17.pdf"
+          ],
+          "render": {
+            "method": "unchanged whole PDF page rendered100dpi; no crop",
+            "page": 2,
+            "dpi": 100,
+            "command": [
+              "pdftoppm",
+              "-f",
+              "2",
+              "-l",
+              "2",
+              "-r",
+              "100",
+              "-png",
+              "-singlefile",
+              "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-17.pdf",
+              "_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/renders/prod-add-17-p2"
+            ],
+            "pageSelection": "Section2/2.2 label heading located by first3pages text solely to select image; no text labels sent to models"
+          },
+          "license": "unknown; user explicitly authorized internal GHS training",
+          "authorization": {
+            "basis": "explicit-user-request",
+            "date": "2026-10-05",
+            "scope": "internal-ghs-training"
+          },
+          "qualification": {
+            "status": "qualified",
+            "context": "product-symbol",
+            "reviewerIds": [
+              "94a94a0a-b96f-4c9d-acff-31b589421555",
+              "d4f86a8c-c6d7-4780-811b-37eac7711d34"
+            ],
+            "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-17-EXCLAMATION_MARK.json",
+            "sha256": "4af500f67ebcb0b39d03118972c1351707160860218bbf13c91d83ce5c1619e5",
+            "evidenceSchema": "ghs-production-qualification-v1",
+            "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+          },
+          "familyIndependenceVerified": false,
+          "primaryProductContext": true
+        }
+      },
+      {
+        "id": "prod-add-17-FLAME",
+        "sourceId": "prod-add-17",
+        "sha256": "d2a1f37c28bc3ecbe9a42f4ae85ea89cf681b422f533e6fe5762ac7f103cddad",
+        "familyId": "PROVISIONAL_SOURCE_PRODUCT_COMPONENT:08717591566397",
+        "split": "train",
+        "code": "FLAME",
+        "bbox": {
+          "x": 262,
+          "y": 137,
+          "width": 72,
+          "height": 71
+        },
+        "sourceType": "production-product",
+        "trainingAllowed": true,
+        "labelStatus": "qualified-production-ai-reviewed",
+        "qualification": {
+          "status": "qualified",
+          "context": "product-symbol",
+          "reviewerIds": [
+            "94a94a0a-b96f-4c9d-acff-31b589421555",
+            "d4f86a8c-c6d7-4780-811b-37eac7711d34"
+          ],
+          "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-17-FLAME.json",
+          "sha256": "dc84cd1c7d283473afc7079d10614ff04bfd31ef8627c375172f545ae1c52196",
+          "evidenceSchema": "ghs-production-qualification-v1",
+          "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+        },
+        "provenance": {
+          "origin": "mongodb-prod",
+          "productIdentity": "08717591566397",
+          "productJoins": [
+            {
+              "record": "8717591560005-08717591566397-528",
+              "gtin": "08717591566397",
+              "gln": "8717591560005",
+              "targetMarket": "528",
+              "generatedAt": "2026-09-23T13:36:15+02:00"
+            }
+          ],
+          "connectedSourceIds": [
+            "prod-add-17"
+          ],
+          "sourceURL": "https://gdsnprodwebstorage.blob.core.windows.net/gdsnprodnlwebfileblob/8717591560005/08717591566397/528/Media/8256874/Sensista%2520Primer%2520SDS%2520EU%2520NL%252020200702.pdf",
+          "sourceURLs": [
+            "https://gdsnprodwebstorage.blob.core.windows.net/gdsnprodnlwebfileblob/8717591560005/08717591566397/528/Media/8256874/Sensista%2520Primer%2520SDS%2520EU%2520NL%252020200702.pdf"
+          ],
+          "originalHashes": [
+            "0f433ff2d4ce23b5d18db7396e779333b0e241c98706d601cb0a372cf6e2e9c8"
+          ],
+          "originalPaths": [
+            "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-17.pdf"
+          ],
+          "render": {
+            "method": "unchanged whole PDF page rendered100dpi; no crop",
+            "page": 2,
+            "dpi": 100,
+            "command": [
+              "pdftoppm",
+              "-f",
+              "2",
+              "-l",
+              "2",
+              "-r",
+              "100",
+              "-png",
+              "-singlefile",
+              "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-17.pdf",
+              "_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/renders/prod-add-17-p2"
+            ],
+            "pageSelection": "Section2/2.2 label heading located by first3pages text solely to select image; no text labels sent to models"
+          },
+          "license": "unknown; user explicitly authorized internal GHS training",
+          "authorization": {
+            "basis": "explicit-user-request",
+            "date": "2026-10-05",
+            "scope": "internal-ghs-training"
+          },
+          "qualification": {
+            "status": "qualified",
+            "context": "product-symbol",
+            "reviewerIds": [
+              "94a94a0a-b96f-4c9d-acff-31b589421555",
+              "d4f86a8c-c6d7-4780-811b-37eac7711d34"
+            ],
+            "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-17-FLAME.json",
+            "sha256": "dc84cd1c7d283473afc7079d10614ff04bfd31ef8627c375172f545ae1c52196",
+            "evidenceSchema": "ghs-production-qualification-v1",
+            "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+          },
+          "familyIndependenceVerified": false,
+          "primaryProductContext": true
+        }
+      },
+      {
+        "id": "prod-add-18-EXCLAMATION_MARK",
+        "sourceId": "prod-add-18",
+        "sha256": "fd5bb0914b6240b1e7f6a75ffaae9c7cae8cafb2c0ac58511a641d010e64afeb",
+        "familyId": "PROVISIONAL_SOURCE_PRODUCT_COMPONENT:08717591566496",
+        "split": "validation",
+        "code": "EXCLAMATION_MARK",
+        "bbox": {
+          "x": 340,
+          "y": 923,
+          "width": 71,
+          "height": 72
+        },
+        "sourceType": "production-product",
+        "trainingAllowed": false,
+        "labelStatus": "qualified-production-ai-reviewed",
+        "qualification": {
+          "status": "qualified",
+          "context": "product-symbol",
+          "reviewerIds": [
+            "e081eddb-f78b-45c7-a46b-813ad719cbb9",
+            "cfaa253c-46e9-45e6-b56f-81c4cb6c35ab"
+          ],
+          "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-18-EXCLAMATION_MARK.json",
+          "sha256": "deaaed70d76fcf02876b7882a321f3485499d86a55cac5def1d97bb91497d450",
+          "evidenceSchema": "ghs-production-qualification-v1",
+          "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+        },
+        "provenance": {
+          "origin": "mongodb-prod",
+          "productIdentity": "08717591566496",
+          "productJoins": [
+            {
+              "record": "8717591560005-08717591566496-528",
+              "gtin": "08717591566496",
+              "gln": "8717591560005",
+              "targetMarket": "528",
+              "generatedAt": "2026-09-23T13:26:05+02:00"
+            }
+          ],
+          "connectedSourceIds": [
+            "prod-add-18"
+          ],
+          "sourceURL": "https://gdsnprodwebstorage.blob.core.windows.net/gdsnprodnlwebfileblob/8717591560005/08717591566496/528/Media/8256708/Sensista%2520Cleanser%2520SDS%2520EU%2520NL%252020210916.pdf",
+          "sourceURLs": [
+            "https://gdsnprodwebstorage.blob.core.windows.net/gdsnprodnlwebfileblob/8717591560005/08717591566496/528/Media/8256708/Sensista%2520Cleanser%2520SDS%2520EU%2520NL%252020210916.pdf"
+          ],
+          "originalHashes": [
+            "19051d27901a954b62c70b3f7e29f6b8e3ad4aabbe063686876cf79868dc1c75"
+          ],
+          "originalPaths": [
+            "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-18.pdf"
+          ],
+          "render": {
+            "method": "unchanged whole PDF page rendered100dpi; no crop",
+            "page": 1,
+            "dpi": 100,
+            "command": [
+              "pdftoppm",
+              "-f",
+              "1",
+              "-l",
+              "1",
+              "-r",
+              "100",
+              "-png",
+              "-singlefile",
+              "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-18.pdf",
+              "_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/renders/prod-add-18-p1"
+            ],
+            "pageSelection": "Section2/2.2 label heading located by first3pages text solely to select image; no text labels sent to models"
+          },
+          "license": "unknown; user explicitly authorized internal GHS training",
+          "authorization": {
+            "basis": "explicit-user-request",
+            "date": "2026-10-05",
+            "scope": "internal-ghs-training"
+          },
+          "qualification": {
+            "status": "qualified",
+            "context": "product-symbol",
+            "reviewerIds": [
+              "e081eddb-f78b-45c7-a46b-813ad719cbb9",
+              "cfaa253c-46e9-45e6-b56f-81c4cb6c35ab"
+            ],
+            "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-18-EXCLAMATION_MARK.json",
+            "sha256": "deaaed70d76fcf02876b7882a321f3485499d86a55cac5def1d97bb91497d450",
+            "evidenceSchema": "ghs-production-qualification-v1",
+            "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+          },
+          "familyIndependenceVerified": false,
+          "primaryProductContext": true
+        }
+      },
+      {
+        "id": "prod-add-18-FLAME",
+        "sourceId": "prod-add-18",
+        "sha256": "fd5bb0914b6240b1e7f6a75ffaae9c7cae8cafb2c0ac58511a641d010e64afeb",
+        "familyId": "PROVISIONAL_SOURCE_PRODUCT_COMPONENT:08717591566496",
+        "split": "validation",
+        "code": "FLAME",
+        "bbox": {
+          "x": 262,
+          "y": 923,
+          "width": 69,
+          "height": 71
+        },
+        "sourceType": "production-product",
+        "trainingAllowed": false,
+        "labelStatus": "qualified-production-ai-reviewed",
+        "qualification": {
+          "status": "qualified",
+          "context": "product-symbol",
+          "reviewerIds": [
+            "e081eddb-f78b-45c7-a46b-813ad719cbb9",
+            "cfaa253c-46e9-45e6-b56f-81c4cb6c35ab"
+          ],
+          "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-18-FLAME.json",
+          "sha256": "aac9c1956739f368f693cf9423384e7236b37281a717ad74cc5bb9b29ca6fa0a",
+          "evidenceSchema": "ghs-production-qualification-v1",
+          "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+        },
+        "provenance": {
+          "origin": "mongodb-prod",
+          "productIdentity": "08717591566496",
+          "productJoins": [
+            {
+              "record": "8717591560005-08717591566496-528",
+              "gtin": "08717591566496",
+              "gln": "8717591560005",
+              "targetMarket": "528",
+              "generatedAt": "2026-09-23T13:26:05+02:00"
+            }
+          ],
+          "connectedSourceIds": [
+            "prod-add-18"
+          ],
+          "sourceURL": "https://gdsnprodwebstorage.blob.core.windows.net/gdsnprodnlwebfileblob/8717591560005/08717591566496/528/Media/8256708/Sensista%2520Cleanser%2520SDS%2520EU%2520NL%252020210916.pdf",
+          "sourceURLs": [
+            "https://gdsnprodwebstorage.blob.core.windows.net/gdsnprodnlwebfileblob/8717591560005/08717591566496/528/Media/8256708/Sensista%2520Cleanser%2520SDS%2520EU%2520NL%252020210916.pdf"
+          ],
+          "originalHashes": [
+            "19051d27901a954b62c70b3f7e29f6b8e3ad4aabbe063686876cf79868dc1c75"
+          ],
+          "originalPaths": [
+            "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-18.pdf"
+          ],
+          "render": {
+            "method": "unchanged whole PDF page rendered100dpi; no crop",
+            "page": 1,
+            "dpi": 100,
+            "command": [
+              "pdftoppm",
+              "-f",
+              "1",
+              "-l",
+              "1",
+              "-r",
+              "100",
+              "-png",
+              "-singlefile",
+              "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-18.pdf",
+              "_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/renders/prod-add-18-p1"
+            ],
+            "pageSelection": "Section2/2.2 label heading located by first3pages text solely to select image; no text labels sent to models"
+          },
+          "license": "unknown; user explicitly authorized internal GHS training",
+          "authorization": {
+            "basis": "explicit-user-request",
+            "date": "2026-10-05",
+            "scope": "internal-ghs-training"
+          },
+          "qualification": {
+            "status": "qualified",
+            "context": "product-symbol",
+            "reviewerIds": [
+              "e081eddb-f78b-45c7-a46b-813ad719cbb9",
+              "cfaa253c-46e9-45e6-b56f-81c4cb6c35ab"
+            ],
+            "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-18-FLAME.json",
+            "sha256": "aac9c1956739f368f693cf9423384e7236b37281a717ad74cc5bb9b29ca6fa0a",
+            "evidenceSchema": "ghs-production-qualification-v1",
+            "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+          },
+          "familyIndependenceVerified": false,
+          "primaryProductContext": true
+        }
+      },
+      {
+        "id": "prod-add-09-EXCLAMATION_MARK",
+        "sourceId": "prod-add-09",
+        "sha256": "a33e04279fe687c94589c19bba64530e197c0dd6cfe2c072c53526badda5c419",
+        "familyId": "PROVISIONAL_SOURCE_PRODUCT_COMPONENT:08718452701612",
+        "split": "validation",
+        "code": "EXCLAMATION_MARK",
+        "bbox": {
+          "x": 235,
+          "y": 926,
+          "width": 38,
+          "height": 37
+        },
+        "sourceType": "production-product",
+        "trainingAllowed": false,
+        "labelStatus": "qualified-production-ai-reviewed",
+        "qualification": {
+          "status": "qualified",
+          "context": "product-symbol",
+          "reviewerIds": [
+            "3a65ca07-a263-4a62-9e4d-a24ce7f08dff",
+            "c438d396-bd14-42b8-8c35-63962dce6f08"
+          ],
+          "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-09-EXCLAMATION_MARK.json",
+          "sha256": "86c8c42bbc076eb3cc89c912ea2b35b5ae9b83d03b68c0c73933247564f73ebd",
+          "evidenceSchema": "ghs-production-qualification-v1",
+          "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+        },
+        "provenance": {
+          "origin": "mongodb-prod",
+          "productIdentity": "08718452701612",
+          "productJoins": [
+            {
+              "record": "8717591560005-08718452701612-528",
+              "gtin": "08718452701612",
+              "gln": "8717591560005",
+              "targetMarket": "528",
+              "generatedAt": "2026-09-23T14:05:58+02:00"
+            }
+          ],
+          "connectedSourceIds": [
+            "prod-add-09"
+          ],
+          "sourceURL": "https://gdsnprodwebstorage.blob.core.windows.net/gdsnprodnlwebfileblob/8717591560005/08718452701612/528/Media/60245356/SDS-Jumbo_WC_reiniger_Lavendel_1L_EAN_8718452701612-NL.pdf",
+          "sourceURLs": [
+            "https://gdsnprodwebstorage.blob.core.windows.net/gdsnprodnlwebfileblob/8717591560005/08718452701612/528/Media/60245356/SDS-Jumbo_WC_reiniger_Lavendel_1L_EAN_8718452701612-NL.pdf"
+          ],
+          "originalHashes": [
+            "f0590e18b0908bf0587955eebc196aa4483c593a1b3c7df025f5bbbe780dff2c"
+          ],
+          "originalPaths": [
+            "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-09.pdf"
+          ],
+          "render": {
+            "method": "unchanged whole PDF page rendered100dpi; no crop",
+            "page": 1,
+            "dpi": 100,
+            "command": [
+              "pdftoppm",
+              "-f",
+              "1",
+              "-l",
+              "1",
+              "-r",
+              "100",
+              "-png",
+              "-singlefile",
+              "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-09.pdf",
+              "_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/renders/prod-add-09-p1"
+            ],
+            "pageSelection": "Section2/2.2 label heading located by first3pages text solely to select image; no text labels sent to models"
+          },
+          "license": "unknown; user explicitly authorized internal GHS training",
+          "authorization": {
+            "basis": "explicit-user-request",
+            "date": "2026-10-05",
+            "scope": "internal-ghs-training"
+          },
+          "qualification": {
+            "status": "qualified",
+            "context": "product-symbol",
+            "reviewerIds": [
+              "3a65ca07-a263-4a62-9e4d-a24ce7f08dff",
+              "c438d396-bd14-42b8-8c35-63962dce6f08"
+            ],
+            "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-09-EXCLAMATION_MARK.json",
+            "sha256": "86c8c42bbc076eb3cc89c912ea2b35b5ae9b83d03b68c0c73933247564f73ebd",
+            "evidenceSchema": "ghs-production-qualification-v1",
+            "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+          },
+          "familyIndependenceVerified": false,
+          "primaryProductContext": true
+        }
+      },
+      {
+        "id": "prod-add-04-EXCLAMATION_MARK",
+        "sourceId": "prod-add-04",
+        "sha256": "91c57aa7e2086d3f177cc2a71878231818ff3e7db7ccb99445fa994225da12c5",
+        "familyId": "PROVISIONAL_SOURCE_PRODUCT_COMPONENT:08718452701629",
+        "split": "validation",
+        "code": "EXCLAMATION_MARK",
+        "bbox": {
+          "x": 236,
+          "y": 926,
+          "width": 36,
+          "height": 37
+        },
+        "sourceType": "production-product",
+        "trainingAllowed": false,
+        "labelStatus": "qualified-production-ai-reviewed",
+        "qualification": {
+          "status": "qualified",
+          "context": "product-symbol",
+          "reviewerIds": [
+            "787700b2-0398-4772-b263-615f39a5afdf",
+            "f308e52d-0d0f-44b0-a3cf-af5916c744cc"
+          ],
+          "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-04-EXCLAMATION_MARK.json",
+          "sha256": "cdfbd68b0eaa17e08b05eaee71ed248b48ddfa3f460b391949811d80aa79e717",
+          "evidenceSchema": "ghs-production-qualification-v1",
+          "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+        },
+        "provenance": {
+          "origin": "mongodb-prod",
+          "productIdentity": "08718452701629",
+          "productJoins": [
+            {
+              "record": "8717591560005-08718452701629-528",
+              "gtin": "08718452701629",
+              "gln": "8717591560005",
+              "targetMarket": "528",
+              "generatedAt": "2026-09-23T14:06:42+02:00"
+            }
+          ],
+          "connectedSourceIds": [
+            "prod-add-04"
+          ],
+          "sourceURL": "https://gdsnprodwebstorage.blob.core.windows.net/gdsnprodnlwebfileblob/8717591560005/08718452701629/528/Media/60246067/SDS-Jumbo_WC_Reiniger_Ocean_Fresh_EAN_8718452701629.pdf",
+          "sourceURLs": [
+            "https://gdsnprodwebstorage.blob.core.windows.net/gdsnprodnlwebfileblob/8717591560005/08718452701629/528/Media/60246067/SDS-Jumbo_WC_Reiniger_Ocean_Fresh_EAN_8718452701629.pdf"
+          ],
+          "originalHashes": [
+            "f8fc061983d854bfa1e5947f29396437cf6f1093a4c90dbe4127bbd97b49fd14"
+          ],
+          "originalPaths": [
+            "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-04.pdf"
+          ],
+          "render": {
+            "method": "unchanged whole PDF page rendered100dpi; no crop",
+            "page": 1,
+            "dpi": 100,
+            "command": [
+              "pdftoppm",
+              "-f",
+              "1",
+              "-l",
+              "1",
+              "-r",
+              "100",
+              "-png",
+              "-singlefile",
+              "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-04.pdf",
+              "_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/renders/prod-add-04-p1"
+            ],
+            "pageSelection": "Section2/2.2 label heading located by first3pages text solely to select image; no text labels sent to models"
+          },
+          "license": "unknown; user explicitly authorized internal GHS training",
+          "authorization": {
+            "basis": "explicit-user-request",
+            "date": "2026-10-05",
+            "scope": "internal-ghs-training"
+          },
+          "qualification": {
+            "status": "qualified",
+            "context": "product-symbol",
+            "reviewerIds": [
+              "787700b2-0398-4772-b263-615f39a5afdf",
+              "f308e52d-0d0f-44b0-a3cf-af5916c744cc"
+            ],
+            "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-04-EXCLAMATION_MARK.json",
+            "sha256": "cdfbd68b0eaa17e08b05eaee71ed248b48ddfa3f460b391949811d80aa79e717",
+            "evidenceSchema": "ghs-production-qualification-v1",
+            "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+          },
+          "familyIndependenceVerified": false,
+          "primaryProductContext": true
+        }
+      },
+      {
+        "id": "prod-add-22-EXCLAMATION_MARK",
+        "sourceId": "prod-add-22",
+        "sha256": "1193cac614125b0979ea4c02997ad290eff2fc3c5d8d2685840b7f8835e00f87",
+        "familyId": "PROVISIONAL_SOURCE_PRODUCT_COMPONENT:08719558808922",
+        "split": "train",
+        "code": "EXCLAMATION_MARK",
+        "bbox": {
+          "x": 102,
+          "y": 613,
+          "width": 42,
+          "height": 40
+        },
+        "sourceType": "production-product",
+        "trainingAllowed": true,
+        "labelStatus": "qualified-production-ai-reviewed",
+        "qualification": {
+          "status": "qualified",
+          "context": "product-symbol",
+          "reviewerIds": [
+            "13bd06fc-e482-4c99-99d5-625a3b90762c",
+            "1dba7247-49ff-4b50-a907-4b0819ac3ab4"
+          ],
+          "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-22-EXCLAMATION_MARK.json",
+          "sha256": "1481178dfe6dc36fbfbc142f4d79c5d9a5cb82eb06c8f29d7509d365cb7269f2",
+          "evidenceSchema": "ghs-production-qualification-v1",
+          "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+        },
+        "provenance": {
+          "origin": "mongodb-prod",
+          "productIdentity": "08719558808922",
+          "productJoins": [
+            {
+              "record": "8719558800001-08719558808922-528",
+              "gtin": "08719558808922",
+              "gln": "8719558800001",
+              "targetMarket": "528",
+              "generatedAt": "2026-10-03T13:10:33+02:00"
+            }
+          ],
+          "connectedSourceIds": [
+            "prod-add-22"
+          ],
+          "sourceURL": "https://isa.quintens.nl/download/databearer/18c8b1274494fbab74fa6b75ec524cb768b7fcb2888e9e1f1f8732678dbb26ed/public",
+          "sourceURLs": [
+            "https://isa.quintens.nl/download/databearer/18c8b1274494fbab74fa6b75ec524cb768b7fcb2888e9e1f1f8732678dbb26ed/public"
+          ],
+          "originalHashes": [
+            "18c8b1274494fbab74fa6b75ec524cb768b7fcb2888e9e1f1f8732678dbb26ed"
+          ],
+          "originalPaths": [
+            "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-22.pdf"
+          ],
+          "render": {
+            "method": "unchanged whole PDF page rendered100dpi; no crop",
+            "page": 1,
+            "dpi": 100,
+            "command": [
+              "pdftoppm",
+              "-f",
+              "1",
+              "-l",
+              "1",
+              "-r",
+              "100",
+              "-png",
+              "-singlefile",
+              "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-22.pdf",
+              "_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/renders/prod-add-22-p1"
+            ],
+            "pageSelection": "Section2/2.2 label heading located by first3pages text solely to select image; no text labels sent to models"
+          },
+          "license": "unknown; user explicitly authorized internal GHS training",
+          "authorization": {
+            "basis": "explicit-user-request",
+            "date": "2026-10-05",
+            "scope": "internal-ghs-training"
+          },
+          "qualification": {
+            "status": "qualified",
+            "context": "product-symbol",
+            "reviewerIds": [
+              "13bd06fc-e482-4c99-99d5-625a3b90762c",
+              "1dba7247-49ff-4b50-a907-4b0819ac3ab4"
+            ],
+            "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-22-EXCLAMATION_MARK.json",
+            "sha256": "1481178dfe6dc36fbfbc142f4d79c5d9a5cb82eb06c8f29d7509d365cb7269f2",
+            "evidenceSchema": "ghs-production-qualification-v1",
+            "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+          },
+          "familyIndependenceVerified": false,
+          "primaryProductContext": true
+        }
+      },
+      {
+        "id": "prod-add-21-EXCLAMATION_MARK",
+        "sourceId": "prod-add-21",
+        "sha256": "dd8c1be6e6725b5b47b399078c1173d7c193ca88ccce60883f500b47b3ec69d2",
+        "familyId": "PROVISIONAL_SOURCE_PRODUCT_COMPONENT:08720065014430",
+        "split": "validation",
+        "code": "EXCLAMATION_MARK",
+        "bbox": {
+          "x": 262,
+          "y": 190,
+          "width": 70,
+          "height": 68
+        },
+        "sourceType": "production-product",
+        "trainingAllowed": false,
+        "labelStatus": "qualified-production-ai-reviewed",
+        "qualification": {
+          "status": "qualified",
+          "context": "product-symbol",
+          "reviewerIds": [
+            "f19a3ffa-b973-48eb-8f3f-b20c4b7f7b19",
+            "de3d9394-5711-4451-9a79-e73d53f7fb10"
+          ],
+          "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-21-EXCLAMATION_MARK.json",
+          "sha256": "18fb68ddc69f96aea463343da86ee0bc66692d3cbdae54da3feb42264debc658",
+          "evidenceSchema": "ghs-production-qualification-v1",
+          "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+        },
+        "provenance": {
+          "origin": "mongodb-prod",
+          "productIdentity": "08720065014430",
+          "productJoins": [
+            {
+              "record": "8720065000006-08720065014430-056",
+              "gtin": "08720065014430",
+              "gln": "8720065000006",
+              "targetMarket": "056",
+              "generatedAt": "2026-09-23T20:06:28+02:00"
+            },
+            {
+              "record": "8720065000006-08720065014430-528",
+              "gtin": "08720065014430",
+              "gln": "8720065000006",
+              "targetMarket": "528",
+              "generatedAt": "2026-09-23T20:05:28+02:00"
+            }
+          ],
+          "connectedSourceIds": [
+            "prod-add-21"
+          ],
+          "sourceURL": "https://api.isa.quintens.nl/download/databearer/2783e6db3d7fdbde94dfe4fa21fe3969d3938fb49c6daef14a483e1864eb69b1/public",
+          "sourceURLs": [
+            "https://api.isa.quintens.nl/download/databearer/2783e6db3d7fdbde94dfe4fa21fe3969d3938fb49c6daef14a483e1864eb69b1/public"
+          ],
+          "originalHashes": [
+            "2783e6db3d7fdbde94dfe4fa21fe3969d3938fb49c6daef14a483e1864eb69b1"
+          ],
+          "originalPaths": [
+            "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-21.pdf"
+          ],
+          "render": {
+            "method": "unchanged whole PDF page rendered100dpi; no crop",
+            "page": 2,
+            "dpi": 100,
+            "command": [
+              "pdftoppm",
+              "-f",
+              "2",
+              "-l",
+              "2",
+              "-r",
+              "100",
+              "-png",
+              "-singlefile",
+              "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-21.pdf",
+              "_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/renders/prod-add-21-p2"
+            ],
+            "pageSelection": "Section2/2.2 label heading located by first3pages text solely to select image; no text labels sent to models"
+          },
+          "license": "unknown; user explicitly authorized internal GHS training",
+          "authorization": {
+            "basis": "explicit-user-request",
+            "date": "2026-10-05",
+            "scope": "internal-ghs-training"
+          },
+          "qualification": {
+            "status": "qualified",
+            "context": "product-symbol",
+            "reviewerIds": [
+              "f19a3ffa-b973-48eb-8f3f-b20c4b7f7b19",
+              "de3d9394-5711-4451-9a79-e73d53f7fb10"
+            ],
+            "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-21-EXCLAMATION_MARK.json",
+            "sha256": "18fb68ddc69f96aea463343da86ee0bc66692d3cbdae54da3feb42264debc658",
+            "evidenceSchema": "ghs-production-qualification-v1",
+            "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+          },
+          "familyIndependenceVerified": false,
+          "primaryProductContext": true
+        }
+      },
+      {
+        "id": "prod-add-08-CORROSION",
+        "sourceId": "prod-add-08",
+        "sha256": "850ca3feeab1d7e4b68835f50db31df14e30b3a5d5ea7eb84fca5a58986eabbe",
+        "familyId": "PROVISIONAL_SOURCE_PRODUCT_COMPONENT:08720254337883",
+        "split": "validation",
+        "code": "CORROSION",
+        "bbox": {
+          "x": 55,
+          "y": 788,
+          "width": 60,
+          "height": 63
+        },
+        "sourceType": "production-product",
+        "trainingAllowed": false,
+        "labelStatus": "qualified-production-ai-reviewed",
+        "qualification": {
+          "status": "qualified",
+          "context": "product-symbol",
+          "reviewerIds": [
+            "194223b4-6a8b-4ec2-883b-dfccb304e5a5",
+            "37cf440b-a736-41a9-927c-cc485c60b270"
+          ],
+          "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-08-CORROSION.json",
+          "sha256": "003be58d3cfbc2ff486359c0b56be096c589a6622207eae7b8921f57d761d095",
+          "evidenceSchema": "ghs-production-qualification-v1",
+          "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+        },
+        "provenance": {
+          "origin": "mongodb-prod",
+          "productIdentity": "08720254337883",
+          "productJoins": [
+            {
+              "record": "8719189416008-08720254337883-528",
+              "gtin": "08720254337883",
+              "gln": "8719189416008",
+              "targetMarket": "528",
+              "generatedAt": "2026-09-28T10:14:16+02:00"
+            },
+            {
+              "record": "8719189416008-08720254337883-276",
+              "gtin": "08720254337883",
+              "gln": "8719189416008",
+              "targetMarket": "276",
+              "generatedAt": "2026-09-24T09:47:56+02:00"
+            },
+            {
+              "record": "8719189416008-08720254337883-056",
+              "gtin": "08720254337883",
+              "gln": "8719189416008",
+              "targetMarket": "056",
+              "generatedAt": "2026-09-24T09:40:10+02:00"
+            }
+          ],
+          "connectedSourceIds": [
+            "prod-add-08"
+          ],
+          "sourceURL": "https://api.isa.quintens.nl/download/databearer/6203b93aee868c54858685e80af23470dc91256ab1859992703f7259e8525bc6/public",
+          "sourceURLs": [
+            "https://api.isa.quintens.nl/download/databearer/6203b93aee868c54858685e80af23470dc91256ab1859992703f7259e8525bc6/public"
+          ],
+          "originalHashes": [
+            "6203b93aee868c54858685e80af23470dc91256ab1859992703f7259e8525bc6"
+          ],
+          "originalPaths": [
+            "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-08.pdf"
+          ],
+          "render": {
+            "method": "unchanged whole PDF page rendered100dpi; no crop",
+            "page": 1,
+            "dpi": 100,
+            "command": [
+              "pdftoppm",
+              "-f",
+              "1",
+              "-l",
+              "1",
+              "-r",
+              "100",
+              "-png",
+              "-singlefile",
+              "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-08.pdf",
+              "_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/renders/prod-add-08-p1"
+            ],
+            "pageSelection": "Section2/2.2 label heading located by first3pages text solely to select image; no text labels sent to models"
+          },
+          "license": "unknown; user explicitly authorized internal GHS training",
+          "authorization": {
+            "basis": "explicit-user-request",
+            "date": "2026-10-05",
+            "scope": "internal-ghs-training"
+          },
+          "qualification": {
+            "status": "qualified",
+            "context": "product-symbol",
+            "reviewerIds": [
+              "194223b4-6a8b-4ec2-883b-dfccb304e5a5",
+              "37cf440b-a736-41a9-927c-cc485c60b270"
+            ],
+            "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-08-CORROSION.json",
+            "sha256": "003be58d3cfbc2ff486359c0b56be096c589a6622207eae7b8921f57d761d095",
+            "evidenceSchema": "ghs-production-qualification-v1",
+            "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+          },
+          "familyIndependenceVerified": false,
+          "primaryProductContext": true
+        }
+      },
+      {
+        "id": "prod-add-07-CORROSION",
+        "sourceId": "prod-add-07",
+        "sha256": "5eb0d07fb0a0da8d9b0e6915df1cda49ed5ca94880734f7c42ac718e638bd66a",
+        "familyId": "PROVISIONAL_SOURCE_PRODUCT_COMPONENT:08720254337982",
+        "split": "validation",
+        "code": "CORROSION",
+        "bbox": {
+          "x": 58,
+          "y": 849,
+          "width": 81,
+          "height": 80
+        },
+        "sourceType": "production-product",
+        "trainingAllowed": false,
+        "labelStatus": "qualified-production-ai-reviewed",
+        "qualification": {
+          "status": "qualified",
+          "context": "product-symbol",
+          "reviewerIds": [
+            "9a4adf09-4d16-410a-bcd6-8d7d9852bb37",
+            "e75ce9f9-4fee-4dbb-989d-1d0ffbf49b92"
+          ],
+          "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-07-CORROSION.json",
+          "sha256": "f3b9fc0fa7507522be49ddf98d9141e09f2e25d4b16b614d4a8c88df86c2cdcf",
+          "evidenceSchema": "ghs-production-qualification-v1",
+          "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+        },
+        "provenance": {
+          "origin": "mongodb-prod",
+          "productIdentity": "08720254337982",
+          "productJoins": [
+            {
+              "record": "8719189416008-08720254337982-056",
+              "gtin": "08720254337982",
+              "gln": "8719189416008",
+              "targetMarket": "056",
+              "generatedAt": "2026-09-28T10:19:17+02:00"
+            },
+            {
+              "record": "8719189416008-08720254337982-276",
+              "gtin": "08720254337982",
+              "gln": "8719189416008",
+              "targetMarket": "276",
+              "generatedAt": "2026-09-28T10:17:42+02:00"
+            },
+            {
+              "record": "8719189416008-08720254337982-528",
+              "gtin": "08720254337982",
+              "gln": "8719189416008",
+              "targetMarket": "528",
+              "generatedAt": "2026-09-28T10:15:22+02:00"
+            }
+          ],
+          "connectedSourceIds": [
+            "prod-add-07"
+          ],
+          "sourceURL": "https://api.isa.quintens.nl/download/databearer/d6ce54eb9c516c1b8db12a2a01c767861374086c2eaa4b2c853e5d822f9a456a/public",
+          "sourceURLs": [
+            "https://api.isa.quintens.nl/download/databearer/d6ce54eb9c516c1b8db12a2a01c767861374086c2eaa4b2c853e5d822f9a456a/public"
+          ],
+          "originalHashes": [
+            "d6ce54eb9c516c1b8db12a2a01c767861374086c2eaa4b2c853e5d822f9a456a"
+          ],
+          "originalPaths": [
+            "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-07.pdf"
+          ],
+          "render": {
+            "method": "unchanged whole PDF page rendered100dpi; no crop",
+            "page": 1,
+            "dpi": 100,
+            "command": [
+              "pdftoppm",
+              "-f",
+              "1",
+              "-l",
+              "1",
+              "-r",
+              "100",
+              "-png",
+              "-singlefile",
+              "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-07.pdf",
+              "_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/renders/prod-add-07-p1"
+            ],
+            "pageSelection": "Section2/2.2 label heading located by first3pages text solely to select image; no text labels sent to models"
+          },
+          "license": "unknown; user explicitly authorized internal GHS training",
+          "authorization": {
+            "basis": "explicit-user-request",
+            "date": "2026-10-05",
+            "scope": "internal-ghs-training"
+          },
+          "qualification": {
+            "status": "qualified",
+            "context": "product-symbol",
+            "reviewerIds": [
+              "9a4adf09-4d16-410a-bcd6-8d7d9852bb37",
+              "e75ce9f9-4fee-4dbb-989d-1d0ffbf49b92"
+            ],
+            "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-07-CORROSION.json",
+            "sha256": "f3b9fc0fa7507522be49ddf98d9141e09f2e25d4b16b614d4a8c88df86c2cdcf",
+            "evidenceSchema": "ghs-production-qualification-v1",
+            "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+          },
+          "familyIndependenceVerified": false,
+          "primaryProductContext": true
+        }
+      },
+      {
+        "id": "prod-add-25-EXCLAMATION_MARK",
+        "sourceId": "prod-add-25",
+        "sha256": "dc4991be5946a5d9e6e12735beb0083cb487f8e14cc8846134edc02aae8368ad",
+        "familyId": "PROVISIONAL_SOURCE_PRODUCT_COMPONENT:08721516201904",
+        "split": "validation",
+        "code": "EXCLAMATION_MARK",
+        "bbox": {
+          "x": 234,
+          "y": 189,
+          "width": 39,
+          "height": 38
+        },
+        "sourceType": "production-product",
+        "trainingAllowed": false,
+        "labelStatus": "qualified-production-ai-reviewed",
+        "qualification": {
+          "status": "qualified",
+          "context": "product-symbol",
+          "reviewerIds": [
+            "7f0b96f8-9b4f-42ad-bbef-931a6370b39a",
+            "780cc9a3-ed8f-4a59-8fe7-f84de899041d"
+          ],
+          "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-25-EXCLAMATION_MARK.json",
+          "sha256": "96ed326ed2eff0d0322e8e4c0e57b955faeb4c3b9f3acbae39f7caea6f129289",
+          "evidenceSchema": "ghs-production-qualification-v1",
+          "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+        },
+        "provenance": {
+          "origin": "mongodb-prod",
+          "productIdentity": "08721516201904",
+          "productJoins": [
+            {
+              "record": "8719189416008-08721516201904-528",
+              "gtin": "08721516201904",
+              "gln": "8719189416008",
+              "targetMarket": "528",
+              "generatedAt": "2026-10-03T13:16:29+02:00"
+            },
+            {
+              "record": "8719189416008-08721516201928-528",
+              "gtin": "08721516201928",
+              "gln": "8719189416008",
+              "targetMarket": "528",
+              "generatedAt": "2026-10-01T15:47:33+02:00"
+            }
+          ],
+          "connectedSourceIds": [
+            "prod-add-25"
+          ],
+          "sourceURL": "https://isa.quintens.nl/download/databearer/16630ace2964d6c6fb49a95136b1166627d62dd5c2ab46a99caece0eec1029cd/public",
+          "sourceURLs": [
+            "https://isa.quintens.nl/download/databearer/16630ace2964d6c6fb49a95136b1166627d62dd5c2ab46a99caece0eec1029cd/public"
+          ],
+          "originalHashes": [
+            "16630ace2964d6c6fb49a95136b1166627d62dd5c2ab46a99caece0eec1029cd"
+          ],
+          "originalPaths": [
+            "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-25.pdf"
+          ],
+          "render": {
+            "method": "unchanged whole PDF page rendered100dpi; no crop",
+            "page": 2,
+            "dpi": 100,
+            "command": [
+              "pdftoppm",
+              "-f",
+              "2",
+              "-l",
+              "2",
+              "-r",
+              "100",
+              "-png",
+              "-singlefile",
+              "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/originals/prod-add-25.pdf",
+              "_bmad-output/planning-artifacts/research/ghs-production-additional-20261005/renders/prod-add-25-p2"
+            ],
+            "pageSelection": "Section2/2.2 label heading located by first3pages text solely to select image; no text labels sent to models"
+          },
+          "license": "unknown; user explicitly authorized internal GHS training",
+          "authorization": {
+            "basis": "explicit-user-request",
+            "date": "2026-10-05",
+            "scope": "internal-ghs-training"
+          },
+          "qualification": {
+            "status": "qualified",
+            "context": "product-symbol",
+            "reviewerIds": [
+              "7f0b96f8-9b4f-42ad-bbef-931a6370b39a",
+              "780cc9a3-ed8f-4a59-8fe7-f84de899041d"
+            ],
+            "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v3/records/prod-add-25-EXCLAMATION_MARK.json",
+            "sha256": "96ed326ed2eff0d0322e8e4c0e57b955faeb4c3b9f3acbae39f7caea6f129289",
+            "evidenceSchema": "ghs-production-qualification-v1",
+            "bboxMethod": "Exact source crop for02; otherwise outward rounded ModelA primary product symbol"
+          },
+          "familyIndependenceVerified": false,
+          "primaryProductContext": true
+        }
+      },
+      {
+        "id": "rare-review-04-HEALTH_HAZARD",
+        "sourceId": "rare-review-04",
+        "sha256": "0c737c93770d4e5792ba30416eb83571d7f609ca38a89f04612221d65ead90ef",
+        "familyId": "air-wick-supplier-8720065000006-provisional",
+        "split": "train",
+        "code": "HEALTH_HAZARD",
+        "bbox": {
+          "x": 995,
+          "y": 617,
+          "width": 138,
+          "height": 139
+        },
+        "sourceType": "production-product",
+        "trainingAllowed": true,
+        "labelStatus": "qualified-production-ai-reviewed",
+        "qualification": {
+          "status": "qualified",
+          "context": "product-symbol",
+          "reviewerIds": [
+            "f3b512fc-dae7-4375-9b1d-fcefb8d06d76",
+            "06926df2-9d3b-4c09-8d94-896d019fe420"
+          ],
+          "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v4/records/rare-review-04-HEALTH_HAZARD.json",
+          "sha256": "d2d83fc0ba2d4e1259d6b3aa5b9e625c9da8b6798390e360b27cf71c16f8a52b",
+          "evidenceSchema": "ghs-production-qualification-v1",
+          "bboxMethod": "ModelA projected product symbol, integer outward rounding"
+        },
+        "provenance": {
+          "origin": "mongodb-prod",
+          "productIdentity": "03059943024564",
+          "productJoins": [
+            {
+              "gtin": "03059943024564",
+              "gln": "8720065000006",
+              "record_id": "8720065000006-03059943024564-056",
+              "source_url": "https://gdsnprodwebstorage.blob.core.windows.net/gdsnprodnlwebfileblob/8720065000006/03059943024564/056/Media/48683449/03059943024564_A7N1.tiff",
+              "original_path": "originals/03059943024564-4.tiff",
+              "original_sha256": "cfd0b07c161359eeadc68e0c2fa30303252fc8796f1cd25f3516871b4f0c12ae",
+              "pdf_page_1based": null,
+              "rare_code_selection": [
+                "HEALTH_HAZARD"
+              ]
+            }
+          ],
+          "sourceURL": "https://gdsnprodwebstorage.blob.core.windows.net/gdsnprodnlwebfileblob/8720065000006/03059943024564/056/Media/48683449/03059943024564_A7N1.tiff",
+          "sourceURLs": [
+            "https://gdsnprodwebstorage.blob.core.windows.net/gdsnprodnlwebfileblob/8720065000006/03059943024564/056/Media/48683449/03059943024564_A7N1.tiff"
+          ],
+          "originalHashes": [
+            "cfd0b07c161359eeadc68e0c2fa30303252fc8796f1cd25f3516871b4f0c12ae"
+          ],
+          "originalPaths": [
+            "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-rare-search-20261005/originals/03059943024564-4.tiff"
+          ],
+          "license": "unknown; user explicitly authorized internal GHS training",
+          "authorization": {
+            "basis": "explicit-user-request",
+            "date": "2026-10-05",
+            "scope": "internal-ghs-training"
+          },
+          "qualification": {
+            "status": "qualified",
+            "context": "product-symbol",
+            "reviewerIds": [
+              "f3b512fc-dae7-4375-9b1d-fcefb8d06d76",
+              "06926df2-9d3b-4c09-8d94-896d019fe420"
+            ],
+            "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v4/records/rare-review-04-HEALTH_HAZARD.json",
+            "sha256": "d2d83fc0ba2d4e1259d6b3aa5b9e625c9da8b6798390e360b27cf71c16f8a52b",
+            "evidenceSchema": "ghs-production-qualification-v1",
+            "bboxMethod": "ModelA projected product symbol, integer outward rounding"
+          },
+          "familyIndependenceVerified": false,
+          "primaryProductContext": true
+        }
+      },
+      {
+        "id": "rare-review-09-HEALTH_HAZARD",
+        "sourceId": "rare-review-09",
+        "sha256": "1ffb8d58fdfa253b9108f54c494d30e3b1171a481664e1c2b882c25a1ee315ac",
+        "familyId": "air-wick-supplier-8720065000006-provisional",
+        "split": "train",
+        "code": "HEALTH_HAZARD",
+        "bbox": {
+          "x": 262,
+          "y": 296,
+          "width": 70,
+          "height": 65
+        },
+        "sourceType": "production-product",
+        "trainingAllowed": true,
+        "labelStatus": "qualified-production-ai-reviewed",
+        "qualification": {
+          "status": "qualified",
+          "context": "product-symbol",
+          "reviewerIds": [
+            "dc5af4b9-cad5-4006-8d27-33dc4eab34ac",
+            "55ff6721-acef-4cfe-99c8-af121e4f1d3d"
+          ],
+          "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v4/records/rare-review-09-HEALTH_HAZARD.json",
+          "sha256": "1dfc9674681340f9ee8c12ea35ced813ad0cc62e41617dfaa1e2006d257fb80a",
+          "evidenceSchema": "ghs-production-qualification-v1",
+          "bboxMethod": "ModelA projected product symbol, integer outward rounding"
+        },
+        "provenance": {
+          "origin": "mongodb-prod",
+          "productIdentity": "03059943024588",
+          "productJoins": [
+            {
+              "gtin": "03059943024588",
+              "gln": "8720065000006",
+              "record_id": "8720065000006-03059943024588-056",
+              "source_url": "https://api.isa.quintens.nl/download/databearer/58df074b482b15198633e32fd571fa4ad209154855fef48851fea6ba3f56be3a/public",
+              "original_path": "originals/03059943024588-2.pdf",
+              "original_sha256": "58df074b482b15198633e32fd571fa4ad209154855fef48851fea6ba3f56be3a",
+              "pdf_page_1based": 2,
+              "rare_code_selection": [
+                "HEALTH_HAZARD"
+              ]
+            }
+          ],
+          "sourceURL": "https://api.isa.quintens.nl/download/databearer/58df074b482b15198633e32fd571fa4ad209154855fef48851fea6ba3f56be3a/public",
+          "sourceURLs": [
+            "https://api.isa.quintens.nl/download/databearer/58df074b482b15198633e32fd571fa4ad209154855fef48851fea6ba3f56be3a/public"
+          ],
+          "originalHashes": [
+            "58df074b482b15198633e32fd571fa4ad209154855fef48851fea6ba3f56be3a"
+          ],
+          "originalPaths": [
+            "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-rare-search-20261005/originals/03059943024588-2.pdf"
+          ],
+          "license": "unknown; user explicitly authorized internal GHS training",
+          "authorization": {
+            "basis": "explicit-user-request",
+            "date": "2026-10-05",
+            "scope": "internal-ghs-training"
+          },
+          "qualification": {
+            "status": "qualified",
+            "context": "product-symbol",
+            "reviewerIds": [
+              "dc5af4b9-cad5-4006-8d27-33dc4eab34ac",
+              "55ff6721-acef-4cfe-99c8-af121e4f1d3d"
+            ],
+            "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v4/records/rare-review-09-HEALTH_HAZARD.json",
+            "sha256": "1dfc9674681340f9ee8c12ea35ced813ad0cc62e41617dfaa1e2006d257fb80a",
+            "evidenceSchema": "ghs-production-qualification-v1",
+            "bboxMethod": "ModelA projected product symbol, integer outward rounding"
+          },
+          "familyIndependenceVerified": false,
+          "primaryProductContext": true
+        }
+      },
+      {
+        "id": "rare-review-05-HEALTH_HAZARD",
+        "sourceId": "rare-review-05",
+        "sha256": "2415c3ef7b9e643ec0ba448cc278f01939104e3c911c005bbebb4a22657a530c",
+        "familyId": "air-wick-supplier-8720065000006-provisional",
+        "split": "train",
+        "code": "HEALTH_HAZARD",
+        "bbox": {
+          "x": 262,
+          "y": 306,
+          "width": 70,
+          "height": 69
+        },
+        "sourceType": "production-product",
+        "trainingAllowed": true,
+        "labelStatus": "qualified-production-ai-reviewed",
+        "qualification": {
+          "status": "qualified",
+          "context": "product-symbol",
+          "reviewerIds": [
+            "1bd15bf2-d514-4f1b-a01c-065becb13d66",
+            "23ef4d6e-e878-46f0-8729-e06f7380bc72"
+          ],
+          "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v4/records/rare-review-05-HEALTH_HAZARD.json",
+          "sha256": "19ae4c75d3e514a59d2877f260e1ff34a348465069708afdbb00221aa2fc5ad4",
+          "evidenceSchema": "ghs-production-qualification-v1",
+          "bboxMethod": "ModelA projected product symbol, integer outward rounding"
+        },
+        "provenance": {
+          "origin": "mongodb-prod",
+          "productIdentity": "08720065008842",
+          "productJoins": [
+            {
+              "gtin": "08720065008842",
+              "gln": "8720065000006",
+              "record_id": "8720065000006-08720065008842-056",
+              "source_url": "https://gdsnprodwebstorage.blob.core.windows.net/gdsnprodnlwebfileblob/8720065000006/08720065008842/056/Media/29639742/08720065008842%2520-%25203282924%2520(1).pdf",
+              "original_path": "originals/08720065008842-1.pdf",
+              "original_sha256": "be724fd251ef3096323f59eff38256f3b070764239db6ff75f785e739c9846a4",
+              "pdf_page_1based": 2,
+              "rare_code_selection": [
+                "HEALTH_HAZARD"
+              ]
+            },
+            {
+              "gtin": "08720065008842",
+              "gln": "8720065000006",
+              "record_id": "8720065000006-08720065008842-056",
+              "source_url": "https://api.isa.quintens.nl/download/databearer/be724fd251ef3096323f59eff38256f3b070764239db6ff75f785e739c9846a4/public",
+              "original_path": "originals/08720065008842-2.pdf",
+              "original_sha256": "be724fd251ef3096323f59eff38256f3b070764239db6ff75f785e739c9846a4",
+              "pdf_page_1based": 2,
+              "rare_code_selection": [
+                "HEALTH_HAZARD"
+              ]
+            }
+          ],
+          "sourceURL": "https://gdsnprodwebstorage.blob.core.windows.net/gdsnprodnlwebfileblob/8720065000006/08720065008842/056/Media/29639742/08720065008842%2520-%25203282924%2520(1).pdf",
+          "sourceURLs": [
+            "https://api.isa.quintens.nl/download/databearer/be724fd251ef3096323f59eff38256f3b070764239db6ff75f785e739c9846a4/public",
+            "https://gdsnprodwebstorage.blob.core.windows.net/gdsnprodnlwebfileblob/8720065000006/08720065008842/056/Media/29639742/08720065008842%2520-%25203282924%2520(1).pdf"
+          ],
+          "originalHashes": [
+            "be724fd251ef3096323f59eff38256f3b070764239db6ff75f785e739c9846a4"
+          ],
+          "originalPaths": [
+            "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-rare-search-20261005/originals/08720065008842-1.pdf",
+            "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-rare-search-20261005/originals/08720065008842-2.pdf"
+          ],
+          "license": "unknown; user explicitly authorized internal GHS training",
+          "authorization": {
+            "basis": "explicit-user-request",
+            "date": "2026-10-05",
+            "scope": "internal-ghs-training"
+          },
+          "qualification": {
+            "status": "qualified",
+            "context": "product-symbol",
+            "reviewerIds": [
+              "1bd15bf2-d514-4f1b-a01c-065becb13d66",
+              "23ef4d6e-e878-46f0-8729-e06f7380bc72"
+            ],
+            "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v4/records/rare-review-05-HEALTH_HAZARD.json",
+            "sha256": "19ae4c75d3e514a59d2877f260e1ff34a348465069708afdbb00221aa2fc5ad4",
+            "evidenceSchema": "ghs-production-qualification-v1",
+            "bboxMethod": "ModelA projected product symbol, integer outward rounding"
+          },
+          "familyIndependenceVerified": false,
+          "primaryProductContext": true
+        }
+      },
+      {
+        "id": "rare-review-07-HEALTH_HAZARD",
+        "sourceId": "rare-review-07",
+        "sha256": "51a3073cbe96bbbeef4884b1ef73ac126b6f5197e0ae1b29ca23de856a06a5af",
+        "familyId": "air-wick-supplier-8720065000006-provisional",
+        "split": "train",
+        "code": "HEALTH_HAZARD",
+        "bbox": {
+          "x": 263,
+          "y": 297,
+          "width": 69,
+          "height": 64
+        },
+        "sourceType": "production-product",
+        "trainingAllowed": true,
+        "labelStatus": "qualified-production-ai-reviewed",
+        "qualification": {
+          "status": "qualified",
+          "context": "product-symbol",
+          "reviewerIds": [
+            "afa41759-03f2-49d2-b2dd-cf2cd454dbdf",
+            "c8f62251-4d63-4807-ae77-df13e50c3dc4"
+          ],
+          "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v4/records/rare-review-07-HEALTH_HAZARD.json",
+          "sha256": "997ad0a60383d983f1630356c782a89a5562a6423722d09cfe513e51984da1f9",
+          "evidenceSchema": "ghs-production-qualification-v1",
+          "bboxMethod": "ModelA projected product symbol, integer outward rounding"
+        },
+        "provenance": {
+          "origin": "mongodb-prod",
+          "productIdentity": "03059943024588",
+          "productJoins": [
+            {
+              "gtin": "03059943024588",
+              "gln": "8720065000006",
+              "record_id": "8720065000006-03059943024588-056",
+              "source_url": "https://gdsnprodwebstorage.blob.core.windows.net/gdsnprodnlwebfileblob/8720065000006/03059943024588/056/Media/3361950/3059943024588.pdf",
+              "original_path": "originals/03059943024588-1.pdf",
+              "original_sha256": "18078aadb20475304d661494063efd79cfbc1c4c3a9f5cfe7c99e50e2666d37b",
+              "pdf_page_1based": 2,
+              "rare_code_selection": [
+                "HEALTH_HAZARD"
+              ]
+            }
+          ],
+          "sourceURL": "https://gdsnprodwebstorage.blob.core.windows.net/gdsnprodnlwebfileblob/8720065000006/03059943024588/056/Media/3361950/3059943024588.pdf",
+          "sourceURLs": [
+            "https://gdsnprodwebstorage.blob.core.windows.net/gdsnprodnlwebfileblob/8720065000006/03059943024588/056/Media/3361950/3059943024588.pdf"
+          ],
+          "originalHashes": [
+            "18078aadb20475304d661494063efd79cfbc1c4c3a9f5cfe7c99e50e2666d37b"
+          ],
+          "originalPaths": [
+            "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-rare-search-20261005/originals/03059943024588-1.pdf"
+          ],
+          "license": "unknown; user explicitly authorized internal GHS training",
+          "authorization": {
+            "basis": "explicit-user-request",
+            "date": "2026-10-05",
+            "scope": "internal-ghs-training"
+          },
+          "qualification": {
+            "status": "qualified",
+            "context": "product-symbol",
+            "reviewerIds": [
+              "afa41759-03f2-49d2-b2dd-cf2cd454dbdf",
+              "c8f62251-4d63-4807-ae77-df13e50c3dc4"
+            ],
+            "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v4/records/rare-review-07-HEALTH_HAZARD.json",
+            "sha256": "997ad0a60383d983f1630356c782a89a5562a6423722d09cfe513e51984da1f9",
+            "evidenceSchema": "ghs-production-qualification-v1",
+            "bboxMethod": "ModelA projected product symbol, integer outward rounding"
+          },
+          "familyIndependenceVerified": false,
+          "primaryProductContext": true
+        }
+      },
+      {
+        "id": "rare-review-02-HEALTH_HAZARD",
+        "sourceId": "rare-review-02",
+        "sha256": "d692bffa2669d9a623c85e748e28f420dd10ef9cd9dd570088304e2d50eaf984",
+        "familyId": "air-wick-supplier-8720065000006-provisional",
+        "split": "train",
+        "code": "HEALTH_HAZARD",
+        "bbox": {
+          "x": 262,
+          "y": 112,
+          "width": 71,
+          "height": 68
+        },
+        "sourceType": "production-product",
+        "trainingAllowed": true,
+        "labelStatus": "qualified-production-ai-reviewed",
+        "qualification": {
+          "status": "qualified",
+          "context": "product-symbol",
+          "reviewerIds": [
+            "b0bae483-7fcb-4629-a354-bcade08f56a9",
+            "ce832caa-bdf9-44b0-ad4d-f85b832042d9"
+          ],
+          "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v4/records/rare-review-02-HEALTH_HAZARD.json",
+          "sha256": "557fa58c6d37d06f654b6baa0523c878cf5200441630ef7e7c9a64db0332ab5c",
+          "evidenceSchema": "ghs-production-qualification-v1",
+          "bboxMethod": "ModelA projected product symbol, integer outward rounding"
+        },
+        "provenance": {
+          "origin": "mongodb-prod",
+          "productIdentity": "03059943024564",
+          "productJoins": [
+            {
+              "gtin": "03059943024564",
+              "gln": "8720065000006",
+              "record_id": "8720065000006-03059943024564-056",
+              "source_url": "https://gdsnprodwebstorage.blob.core.windows.net/gdsnprodnlwebfileblob/8720065000006/03059943024564/056/Media/3361924/03059943024564.pdf",
+              "original_path": "originals/03059943024564-1.pdf",
+              "original_sha256": "08f2a0f9ca7b527deec3d92efc8432ba14870081f7bc92690834b7cc163858ef",
+              "pdf_page_1based": 2,
+              "rare_code_selection": [
+                "HEALTH_HAZARD"
+              ]
+            },
+            {
+              "gtin": "03059943024564",
+              "gln": "8720065000006",
+              "record_id": "8720065000006-03059943024564-056",
+              "source_url": "https://api.isa.quintens.nl/download/databearer/08f2a0f9ca7b527deec3d92efc8432ba14870081f7bc92690834b7cc163858ef/public",
+              "original_path": "originals/03059943024564-2.pdf",
+              "original_sha256": "08f2a0f9ca7b527deec3d92efc8432ba14870081f7bc92690834b7cc163858ef",
+              "pdf_page_1based": 2,
+              "rare_code_selection": [
+                "HEALTH_HAZARD"
+              ]
+            }
+          ],
+          "sourceURL": "https://gdsnprodwebstorage.blob.core.windows.net/gdsnprodnlwebfileblob/8720065000006/03059943024564/056/Media/3361924/03059943024564.pdf",
+          "sourceURLs": [
+            "https://api.isa.quintens.nl/download/databearer/08f2a0f9ca7b527deec3d92efc8432ba14870081f7bc92690834b7cc163858ef/public",
+            "https://gdsnprodwebstorage.blob.core.windows.net/gdsnprodnlwebfileblob/8720065000006/03059943024564/056/Media/3361924/03059943024564.pdf"
+          ],
+          "originalHashes": [
+            "08f2a0f9ca7b527deec3d92efc8432ba14870081f7bc92690834b7cc163858ef"
+          ],
+          "originalPaths": [
+            "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-rare-search-20261005/originals/03059943024564-1.pdf",
+            "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-rare-search-20261005/originals/03059943024564-2.pdf"
+          ],
+          "license": "unknown; user explicitly authorized internal GHS training",
+          "authorization": {
+            "basis": "explicit-user-request",
+            "date": "2026-10-05",
+            "scope": "internal-ghs-training"
+          },
+          "qualification": {
+            "status": "qualified",
+            "context": "product-symbol",
+            "reviewerIds": [
+              "b0bae483-7fcb-4629-a354-bcade08f56a9",
+              "ce832caa-bdf9-44b0-ad4d-f85b832042d9"
+            ],
+            "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v4/records/rare-review-02-HEALTH_HAZARD.json",
+            "sha256": "557fa58c6d37d06f654b6baa0523c878cf5200441630ef7e7c9a64db0332ab5c",
+            "evidenceSchema": "ghs-production-qualification-v1",
+            "bboxMethod": "ModelA projected product symbol, integer outward rounding"
+          },
+          "familyIndependenceVerified": false,
+          "primaryProductContext": true
+        }
+      },
+      {
+        "id": "rare-review-12-HEALTH_HAZARD",
+        "sourceId": "rare-review-12",
+        "sha256": "fcede8540d4312efe6415713736a6fc69ce8e280e0db5d8276d002c04e7371d5",
+        "familyId": "air-wick-supplier-8720065000006-provisional",
+        "split": "train",
+        "code": "HEALTH_HAZARD",
+        "bbox": {
+          "x": 987,
+          "y": 616,
+          "width": 138,
+          "height": 143
+        },
+        "sourceType": "production-product",
+        "trainingAllowed": true,
+        "labelStatus": "qualified-production-ai-reviewed",
+        "qualification": {
+          "status": "qualified",
+          "context": "product-symbol",
+          "reviewerIds": [
+            "53a042c7-b709-44da-b596-f8f0f890520b",
+            "04bc400f-a965-4ac7-92ea-6cdeca783de7"
+          ],
+          "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v4/records/rare-review-12-HEALTH_HAZARD.json",
+          "sha256": "9f7280294e898344fca87fd90c711189c2997e63182014dbca9a9b59615d1909",
+          "evidenceSchema": "ghs-production-qualification-v1",
+          "bboxMethod": "ModelA projected product symbol, integer outward rounding"
+        },
+        "provenance": {
+          "origin": "mongodb-prod",
+          "productIdentity": "03059943024588",
+          "productJoins": [
+            {
+              "gtin": "03059943024588",
+              "gln": "8720065000006",
+              "record_id": "8720065000006-03059943024588-056",
+              "source_url": "https://gdsnprodwebstorage.blob.core.windows.net/gdsnprodnlwebfileblob/8720065000006/03059943024588/056/Media/48683469/03059943024588_A7N1.tiff",
+              "original_path": "originals/03059943024588-4.tiff",
+              "original_sha256": "9af25fe66a3f002b4e16fce1ba797ecf882117c1273084b9bf1dc643526b00ec",
+              "pdf_page_1based": null,
+              "rare_code_selection": [
+                "HEALTH_HAZARD"
+              ]
+            }
+          ],
+          "sourceURL": "https://gdsnprodwebstorage.blob.core.windows.net/gdsnprodnlwebfileblob/8720065000006/03059943024588/056/Media/48683469/03059943024588_A7N1.tiff",
+          "sourceURLs": [
+            "https://gdsnprodwebstorage.blob.core.windows.net/gdsnprodnlwebfileblob/8720065000006/03059943024588/056/Media/48683469/03059943024588_A7N1.tiff"
+          ],
+          "originalHashes": [
+            "9af25fe66a3f002b4e16fce1ba797ecf882117c1273084b9bf1dc643526b00ec"
+          ],
+          "originalPaths": [
+            "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-rare-search-20261005/originals/03059943024588-4.tiff"
+          ],
+          "license": "unknown; user explicitly authorized internal GHS training",
+          "authorization": {
+            "basis": "explicit-user-request",
+            "date": "2026-10-05",
+            "scope": "internal-ghs-training"
+          },
+          "qualification": {
+            "status": "qualified",
+            "context": "product-symbol",
+            "reviewerIds": [
+              "53a042c7-b709-44da-b596-f8f0f890520b",
+              "04bc400f-a965-4ac7-92ea-6cdeca783de7"
+            ],
+            "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v4/records/rare-review-12-HEALTH_HAZARD.json",
+            "sha256": "9f7280294e898344fca87fd90c711189c2997e63182014dbca9a9b59615d1909",
+            "evidenceSchema": "ghs-production-qualification-v1",
+            "bboxMethod": "ModelA projected product symbol, integer outward rounding"
+          },
+          "familyIndependenceVerified": false,
+          "primaryProductContext": true
+        }
+      },
+      {
+        "id": "official-CORROSION",
         "sha256": "feb027a2231f7e94273b156b86d0ff7c904559d12d39713d06a8481d1d80632d",
         "familyId": "ccohs-official-ghs-corrosion",
         "split": "reference",
         "code": "CORROSION",
+        "sourceType": "official-reference",
         "provenance": {
           "sourceURL": "https://www.ccohs.ca/images/whmis2015/for_download/corrosion.png",
           "license": "CCOHS freely downloadable pictograms kit"
@@ -24,10 +3273,12 @@
         "officialReference": true
       },
       {
+        "id": "official-ENVIRONMENT",
         "sha256": "32873788a465c8c3da42c13d4f908feebc66b2f0abb37f2fb4685f2cd57d13df",
         "familyId": "ccohs-official-ghs-environment",
         "split": "reference",
         "code": "ENVIRONMENT",
+        "sourceType": "official-reference",
         "provenance": {
           "sourceURL": "https://www.ccohs.ca/images/whmis2015/for_download/environment.png",
           "license": "CCOHS freely downloadable pictograms kit"
@@ -37,10 +3288,12 @@
         "officialReference": true
       },
       {
+        "id": "official-EXCLAMATION_MARK",
         "sha256": "c96ce2a9e72f93a2c8a7c3bfd5c7edf7574750f0f2cd7ded4586b60a62d62504",
         "familyId": "ccohs-official-ghs-exclamation_mark",
         "split": "reference",
         "code": "EXCLAMATION_MARK",
+        "sourceType": "official-reference",
         "provenance": {
           "sourceURL": "https://www.ccohs.ca/images/whmis2015/for_download/exclamation_mark.png",
           "license": "CCOHS freely downloadable pictograms kit"
@@ -50,10 +3303,12 @@
         "officialReference": true
       },
       {
+        "id": "official-EXPLODING_BOMB",
         "sha256": "821b9aa570d9337058ef0c72f846389d4a614b528f469515f49b11aa95cf988e",
         "familyId": "ccohs-official-ghs-exploding_bomb",
         "split": "reference",
         "code": "EXPLODING_BOMB",
+        "sourceType": "official-reference",
         "provenance": {
           "sourceURL": "https://www.ccohs.ca/images/whmis2015/for_download/exploding_bomb.png",
           "license": "CCOHS freely downloadable pictograms kit"
@@ -63,10 +3318,12 @@
         "officialReference": true
       },
       {
+        "id": "official-FLAME",
         "sha256": "1a227810e24420c6a24d90dc37abd77170cb0cc1b06ccff7e11386ddc744f17c",
         "familyId": "ccohs-official-ghs-flame",
         "split": "reference",
         "code": "FLAME",
+        "sourceType": "official-reference",
         "provenance": {
           "sourceURL": "https://www.ccohs.ca/images/whmis2015/for_download/flame.png",
           "license": "CCOHS freely downloadable pictograms kit"
@@ -76,10 +3333,12 @@
         "officialReference": true
       },
       {
+        "id": "official-FLAME_OVER_CIRCLE",
         "sha256": "5431a8c6aff66119dcacf90f253523e7a71a4430aa28475bd52eb6ef3ee92546",
         "familyId": "ccohs-official-ghs-flame_over_circle",
         "split": "reference",
         "code": "FLAME_OVER_CIRCLE",
+        "sourceType": "official-reference",
         "provenance": {
           "sourceURL": "https://www.ccohs.ca/images/whmis2015/for_download/flame_circle.png",
           "license": "CCOHS freely downloadable pictograms kit"
@@ -89,10 +3348,12 @@
         "officialReference": true
       },
       {
+        "id": "official-GAS_CYLINDER",
         "sha256": "a854d88dda48c5e0cffac2eb11cd4b867a3a5cfb039a7a71181660b5185cfb91",
         "familyId": "ccohs-official-ghs-gas_cylinder",
         "split": "reference",
         "code": "GAS_CYLINDER",
+        "sourceType": "official-reference",
         "provenance": {
           "sourceURL": "https://www.ccohs.ca/images/whmis2015/for_download/gas_cylinder.png",
           "license": "CCOHS freely downloadable pictograms kit"
@@ -102,10 +3363,12 @@
         "officialReference": true
       },
       {
+        "id": "official-HEALTH_HAZARD",
         "sha256": "a8692e3906c0309580779d136e7477c7926973d4a377bcfb8e5f313b4a60ffb3",
         "familyId": "ccohs-official-ghs-health_hazard",
         "split": "reference",
         "code": "HEALTH_HAZARD",
+        "sourceType": "official-reference",
         "provenance": {
           "sourceURL": "https://www.ccohs.ca/images/whmis2015/for_download/health_hazard.png",
           "license": "CCOHS freely downloadable pictograms kit"
@@ -115,10 +3378,12 @@
         "officialReference": true
       },
       {
+        "id": "official-SKULL_AND_CROSSBONES",
         "sha256": "5fb5861112da20edd7a9b52656ce8078316cb768d6b223d9f37466e695a2d016",
         "familyId": "ccohs-official-ghs-skull_and_crossbones",
         "split": "reference",
         "code": "SKULL_AND_CROSSBONES",
+        "sourceType": "official-reference",
         "provenance": {
           "sourceURL": "https://www.ccohs.ca/images/whmis2015/for_download/skull_crossbones.png",
           "license": "CCOHS freely downloadable pictograms kit"
@@ -126,6 +3391,568 @@
         "labelStatus": "official-reference-not-field-truth",
         "trainingAllowed": true,
         "officialReference": true
+      },
+      {
+        "id": "input-15-FLAME",
+        "sha256": "0adf5f8fe59477c764281020102988e12e5fd6970a3f16f74cb01679f620bf1f",
+        "familyId": "production-gtin:00088300107438",
+        "split": "train",
+        "code": "FLAME",
+        "bbox": {
+          "x": 115,
+          "y": 166,
+          "width": 60,
+          "height": 60
+        },
+        "sourceType": "production-product",
+        "labelStatus": "qualified-production-ai-reviewed",
+        "trainingAllowed": true,
+        "qualification": {
+          "status": "qualified",
+          "context": "product-symbol",
+          "sourceId": "input-15",
+          "reviewerIds": [
+            "1e87b2c1-f0dd-4f36-8ab4-e8f0be5df3da",
+            "1f8182ed-af3e-424b-8139-9d18d5dc0f94"
+          ],
+          "reviewEvidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-sources-20261004/annotations/raw/input-15.json",
+          "reviewEvidenceSha256": "d6bee54936e073e0191f97e54d12dcc82e7ef141de0542e04a77af1d3861f681",
+          "labelAgreement": true,
+          "locationIoU": 0.6852996506315506,
+          "humanGold": false,
+          "sourceHintsSent": false,
+          "bboxMethod": "ModelA projected whole-symbol bounds from two agreeing AI annotations; integer outward rounding",
+          "sha256": "0e4881310b607e03032766972c3ea14cf16c75cf221bd05ce5c5305cc46780d3",
+          "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v2/records/input-15-FLAME.json",
+          "evidenceSchema": "ghs-production-qualification-v1"
+        },
+        "provenance": {
+          "recordId": "8714252029307-00088300107438-528",
+          "sourceURL": "https://isa.quintens.nl/download/databearer/9f83e2f55156bfa807b6cecf4b16c7815b1b25fcd80ec3a238063acf81dc0572/public",
+          "originalSha256": "9f83e2f55156bfa807b6cecf4b16c7815b1b25fcd80ec3a238063acf81dc0572",
+          "originalPath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-sources-20261004/prod/originals/00088300107438-sds-sds.pdf",
+          "sourceKind": "sds",
+          "license": "No external reuse license established; explicit user authorization for internal project training",
+          "authorization": {
+            "basis": "explicit-user-request",
+            "date": "2026-10-05",
+            "scope": "internal-ghs-training"
+          },
+          "qualification": {
+            "status": "qualified",
+            "context": "product-symbol",
+            "sourceId": "input-15",
+            "reviewerIds": [
+              "1e87b2c1-f0dd-4f36-8ab4-e8f0be5df3da",
+              "1f8182ed-af3e-424b-8139-9d18d5dc0f94"
+            ],
+            "reviewEvidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-sources-20261004/annotations/raw/input-15.json",
+            "reviewEvidenceSha256": "d6bee54936e073e0191f97e54d12dcc82e7ef141de0542e04a77af1d3861f681",
+            "labelAgreement": true,
+            "locationIoU": 0.6852996506315506,
+            "humanGold": false,
+            "sourceHintsSent": false,
+            "bboxMethod": "ModelA projected whole-symbol bounds from two agreeing AI annotations; integer outward rounding",
+            "sha256": "0e4881310b607e03032766972c3ea14cf16c75cf221bd05ce5c5305cc46780d3",
+            "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v2/records/input-15-FLAME.json",
+            "evidenceSchema": "ghs-production-qualification-v1"
+          },
+          "origin": "mongodb-prod",
+          "productIdentity": "00088300107438"
+        }
+      },
+      {
+        "id": "input-23-ENVIRONMENT",
+        "sha256": "619662439e175aa9fb737c62971d6dd10f654644939d1be23a2eb19245109343",
+        "familyId": "production-gtin:03614222398264",
+        "split": "train",
+        "code": "ENVIRONMENT",
+        "bbox": {
+          "x": 233,
+          "y": 221,
+          "width": 58,
+          "height": 58
+        },
+        "sourceType": "production-product",
+        "labelStatus": "qualified-production-ai-reviewed",
+        "trainingAllowed": true,
+        "qualification": {
+          "status": "qualified",
+          "context": "product-symbol",
+          "sourceId": "input-23",
+          "reviewerIds": [
+            "aed90ba1-ce51-4aae-bae0-fe393601e7bc",
+            "7441640d-963e-46a4-a7b5-be36043b9070"
+          ],
+          "reviewEvidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-sources-20261004/annotations/raw/input-23.json",
+          "reviewEvidenceSha256": "0b5a3e7e7ae5c23f6cd8c3d0806c0f12fa7b71339d402b1406cdcb9f5e9e53a6",
+          "labelAgreement": true,
+          "locationIoU": 0.9313812481514345,
+          "humanGold": false,
+          "sourceHintsSent": false,
+          "bboxMethod": "ModelA projected whole-symbol bounds from two agreeing AI annotations; integer outward rounding",
+          "sha256": "9f8256688f360d73565157cd66d658e4a5b7ca626c93ec114d4fc2b40fe9010c",
+          "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v2/records/input-23-ENVIRONMENT.json",
+          "evidenceSchema": "ghs-production-qualification-v1"
+        },
+        "provenance": {
+          "recordId": "8714252029307-03614222398264-528",
+          "sourceURL": "https://api.isa.quintens.nl/download/databearer/48240dc33e825f50824f7b4d32350ac2d1ffff5a779af486c97fad97e936a492/public",
+          "originalSha256": "48240dc33e825f50824f7b4d32350ac2d1ffff5a779af486c97fad97e936a492",
+          "originalPath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-sources-20261004/prod/originals/03614222398264-sds-sds.pdf",
+          "sourceKind": "sds",
+          "license": "No external reuse license established; explicit user authorization for internal project training",
+          "authorization": {
+            "basis": "explicit-user-request",
+            "date": "2026-10-05",
+            "scope": "internal-ghs-training"
+          },
+          "qualification": {
+            "status": "qualified",
+            "context": "product-symbol",
+            "sourceId": "input-23",
+            "reviewerIds": [
+              "aed90ba1-ce51-4aae-bae0-fe393601e7bc",
+              "7441640d-963e-46a4-a7b5-be36043b9070"
+            ],
+            "reviewEvidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-sources-20261004/annotations/raw/input-23.json",
+            "reviewEvidenceSha256": "0b5a3e7e7ae5c23f6cd8c3d0806c0f12fa7b71339d402b1406cdcb9f5e9e53a6",
+            "labelAgreement": true,
+            "locationIoU": 0.9313812481514345,
+            "humanGold": false,
+            "sourceHintsSent": false,
+            "bboxMethod": "ModelA projected whole-symbol bounds from two agreeing AI annotations; integer outward rounding",
+            "sha256": "9f8256688f360d73565157cd66d658e4a5b7ca626c93ec114d4fc2b40fe9010c",
+            "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v2/records/input-23-ENVIRONMENT.json",
+            "evidenceSchema": "ghs-production-qualification-v1"
+          },
+          "origin": "mongodb-prod",
+          "productIdentity": "03614222398264"
+        }
+      },
+      {
+        "id": "input-23-EXCLAMATION_MARK",
+        "sha256": "619662439e175aa9fb737c62971d6dd10f654644939d1be23a2eb19245109343",
+        "familyId": "production-gtin:03614222398264",
+        "split": "train",
+        "code": "EXCLAMATION_MARK",
+        "bbox": {
+          "x": 174,
+          "y": 221,
+          "width": 58,
+          "height": 58
+        },
+        "sourceType": "production-product",
+        "labelStatus": "qualified-production-ai-reviewed",
+        "trainingAllowed": true,
+        "qualification": {
+          "status": "qualified",
+          "context": "product-symbol",
+          "sourceId": "input-23",
+          "reviewerIds": [
+            "aed90ba1-ce51-4aae-bae0-fe393601e7bc",
+            "7441640d-963e-46a4-a7b5-be36043b9070"
+          ],
+          "reviewEvidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-sources-20261004/annotations/raw/input-23.json",
+          "reviewEvidenceSha256": "0b5a3e7e7ae5c23f6cd8c3d0806c0f12fa7b71339d402b1406cdcb9f5e9e53a6",
+          "labelAgreement": true,
+          "locationIoU": 0.9653948535936113,
+          "humanGold": false,
+          "sourceHintsSent": false,
+          "bboxMethod": "ModelA projected whole-symbol bounds from two agreeing AI annotations; integer outward rounding",
+          "sha256": "2bf68ff5ffaeb0edc2459e377506fee279072bc9f31cca5f93939fe49e24e9dc",
+          "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v2/records/input-23-EXCLAMATION_MARK.json",
+          "evidenceSchema": "ghs-production-qualification-v1"
+        },
+        "provenance": {
+          "recordId": "8714252029307-03614222398264-528",
+          "sourceURL": "https://api.isa.quintens.nl/download/databearer/48240dc33e825f50824f7b4d32350ac2d1ffff5a779af486c97fad97e936a492/public",
+          "originalSha256": "48240dc33e825f50824f7b4d32350ac2d1ffff5a779af486c97fad97e936a492",
+          "originalPath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-sources-20261004/prod/originals/03614222398264-sds-sds.pdf",
+          "sourceKind": "sds",
+          "license": "No external reuse license established; explicit user authorization for internal project training",
+          "authorization": {
+            "basis": "explicit-user-request",
+            "date": "2026-10-05",
+            "scope": "internal-ghs-training"
+          },
+          "qualification": {
+            "status": "qualified",
+            "context": "product-symbol",
+            "sourceId": "input-23",
+            "reviewerIds": [
+              "aed90ba1-ce51-4aae-bae0-fe393601e7bc",
+              "7441640d-963e-46a4-a7b5-be36043b9070"
+            ],
+            "reviewEvidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-sources-20261004/annotations/raw/input-23.json",
+            "reviewEvidenceSha256": "0b5a3e7e7ae5c23f6cd8c3d0806c0f12fa7b71339d402b1406cdcb9f5e9e53a6",
+            "labelAgreement": true,
+            "locationIoU": 0.9653948535936113,
+            "humanGold": false,
+            "sourceHintsSent": false,
+            "bboxMethod": "ModelA projected whole-symbol bounds from two agreeing AI annotations; integer outward rounding",
+            "sha256": "2bf68ff5ffaeb0edc2459e377506fee279072bc9f31cca5f93939fe49e24e9dc",
+            "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v2/records/input-23-EXCLAMATION_MARK.json",
+            "evidenceSchema": "ghs-production-qualification-v1"
+          },
+          "origin": "mongodb-prod",
+          "productIdentity": "03614222398264"
+        }
+      },
+      {
+        "id": "input-23-FLAME",
+        "sha256": "619662439e175aa9fb737c62971d6dd10f654644939d1be23a2eb19245109343",
+        "familyId": "production-gtin:03614222398264",
+        "split": "train",
+        "code": "FLAME",
+        "bbox": {
+          "x": 116,
+          "y": 221,
+          "width": 58,
+          "height": 58
+        },
+        "sourceType": "production-product",
+        "labelStatus": "qualified-production-ai-reviewed",
+        "trainingAllowed": true,
+        "qualification": {
+          "status": "qualified",
+          "context": "product-symbol",
+          "sourceId": "input-23",
+          "reviewerIds": [
+            "aed90ba1-ce51-4aae-bae0-fe393601e7bc",
+            "7441640d-963e-46a4-a7b5-be36043b9070"
+          ],
+          "reviewEvidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-sources-20261004/annotations/raw/input-23.json",
+          "reviewEvidenceSha256": "0b5a3e7e7ae5c23f6cd8c3d0806c0f12fa7b71339d402b1406cdcb9f5e9e53a6",
+          "labelAgreement": true,
+          "locationIoU": 0.9511978704525288,
+          "humanGold": false,
+          "sourceHintsSent": false,
+          "bboxMethod": "ModelA projected whole-symbol bounds from two agreeing AI annotations; integer outward rounding",
+          "sha256": "37e80095f154d515e60225895c212c225fc995bfbac65882ebeebd41b01266e5",
+          "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v2/records/input-23-FLAME.json",
+          "evidenceSchema": "ghs-production-qualification-v1"
+        },
+        "provenance": {
+          "recordId": "8714252029307-03614222398264-528",
+          "sourceURL": "https://api.isa.quintens.nl/download/databearer/48240dc33e825f50824f7b4d32350ac2d1ffff5a779af486c97fad97e936a492/public",
+          "originalSha256": "48240dc33e825f50824f7b4d32350ac2d1ffff5a779af486c97fad97e936a492",
+          "originalPath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-sources-20261004/prod/originals/03614222398264-sds-sds.pdf",
+          "sourceKind": "sds",
+          "license": "No external reuse license established; explicit user authorization for internal project training",
+          "authorization": {
+            "basis": "explicit-user-request",
+            "date": "2026-10-05",
+            "scope": "internal-ghs-training"
+          },
+          "qualification": {
+            "status": "qualified",
+            "context": "product-symbol",
+            "sourceId": "input-23",
+            "reviewerIds": [
+              "aed90ba1-ce51-4aae-bae0-fe393601e7bc",
+              "7441640d-963e-46a4-a7b5-be36043b9070"
+            ],
+            "reviewEvidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-sources-20261004/annotations/raw/input-23.json",
+            "reviewEvidenceSha256": "0b5a3e7e7ae5c23f6cd8c3d0806c0f12fa7b71339d402b1406cdcb9f5e9e53a6",
+            "labelAgreement": true,
+            "locationIoU": 0.9511978704525288,
+            "humanGold": false,
+            "sourceHintsSent": false,
+            "bboxMethod": "ModelA projected whole-symbol bounds from two agreeing AI annotations; integer outward rounding",
+            "sha256": "37e80095f154d515e60225895c212c225fc995bfbac65882ebeebd41b01266e5",
+            "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v2/records/input-23-FLAME.json",
+            "evidenceSchema": "ghs-production-qualification-v1"
+          },
+          "origin": "mongodb-prod",
+          "productIdentity": "03614222398264"
+        }
+      },
+      {
+        "id": "input-13-EXCLAMATION_MARK",
+        "sha256": "49548feacb61676a26c6bc2f624725d66425004c5a099f8114fa2e3d93349cca",
+        "familyId": "production-gtin:08710552324395",
+        "split": "validation",
+        "code": "EXCLAMATION_MARK",
+        "bbox": {
+          "x": 262,
+          "y": 161,
+          "width": 71,
+          "height": 69
+        },
+        "sourceType": "production-product",
+        "labelStatus": "qualified-production-ai-reviewed",
+        "trainingAllowed": false,
+        "qualification": {
+          "status": "qualified",
+          "context": "product-symbol",
+          "sourceId": "input-13",
+          "reviewerIds": [
+            "c827fdd6-187a-402f-a608-ba11413ffde9",
+            "41d1ed14-3230-4c62-bb92-7b1c7722c977"
+          ],
+          "reviewEvidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-sources-20261004/annotations/raw/input-13.json",
+          "reviewEvidenceSha256": "c76b46f693593776eaf629fd05ae657197fe4a25ccd073ba2263d340f68daca8",
+          "labelAgreement": true,
+          "locationIoU": 0.9444003177124702,
+          "humanGold": false,
+          "sourceHintsSent": false,
+          "bboxMethod": "ModelA projected whole-symbol bounds from two agreeing AI annotations; integer outward rounding",
+          "sha256": "b23f9aecdf862512c47c02fcbffc0ae0635d57d72db6b4fba39ddb885b245ffd",
+          "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v2/records/input-13-EXCLAMATION_MARK.json",
+          "evidenceSchema": "ghs-production-qualification-v1"
+        },
+        "provenance": {
+          "recordId": "8710552001005-08710552324395-528",
+          "sourceURL": "https://api.isa.quintens.nl/download/databearer/7552dfe2ed3dba6e3c0a99fbe016d3d1d8a3b223cf0acc4a6dee1b99a42f04a9/public",
+          "originalSha256": "7552dfe2ed3dba6e3c0a99fbe016d3d1d8a3b223cf0acc4a6dee1b99a42f04a9",
+          "originalPath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-sources-20261004/prod/originals/08710552324395-sds-sds.pdf",
+          "sourceKind": "sds",
+          "license": "No external reuse license established; explicit user authorization for internal project training",
+          "authorization": {
+            "basis": "explicit-user-request",
+            "date": "2026-10-05",
+            "scope": "internal-ghs-training"
+          },
+          "qualification": {
+            "status": "qualified",
+            "context": "product-symbol",
+            "sourceId": "input-13",
+            "reviewerIds": [
+              "c827fdd6-187a-402f-a608-ba11413ffde9",
+              "41d1ed14-3230-4c62-bb92-7b1c7722c977"
+            ],
+            "reviewEvidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-sources-20261004/annotations/raw/input-13.json",
+            "reviewEvidenceSha256": "c76b46f693593776eaf629fd05ae657197fe4a25ccd073ba2263d340f68daca8",
+            "labelAgreement": true,
+            "locationIoU": 0.9444003177124702,
+            "humanGold": false,
+            "sourceHintsSent": false,
+            "bboxMethod": "ModelA projected whole-symbol bounds from two agreeing AI annotations; integer outward rounding",
+            "sha256": "b23f9aecdf862512c47c02fcbffc0ae0635d57d72db6b4fba39ddb885b245ffd",
+            "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v2/records/input-13-EXCLAMATION_MARK.json",
+            "evidenceSchema": "ghs-production-qualification-v1"
+          },
+          "origin": "mongodb-prod",
+          "productIdentity": "08710552324395"
+        }
+      },
+      {
+        "id": "input-24-EXCLAMATION_MARK",
+        "sha256": "dbf54dff213887865016a3da85bc650763ccbc9f8a42e7a194a51d1a05db3778",
+        "familyId": "production-gtin:08719189416091",
+        "split": "validation",
+        "code": "EXCLAMATION_MARK",
+        "bbox": {
+          "x": 78,
+          "y": 799,
+          "width": 40,
+          "height": 38
+        },
+        "sourceType": "production-product",
+        "labelStatus": "qualified-production-ai-reviewed",
+        "trainingAllowed": false,
+        "qualification": {
+          "status": "qualified",
+          "context": "product-symbol",
+          "sourceId": "input-24",
+          "reviewerIds": [
+            "caeb6df4-14d9-4840-bdaf-9df846b4db55",
+            "cc130a23-f350-4272-9607-40bb12b28b27"
+          ],
+          "reviewEvidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-sources-20261004/annotations/raw/input-24.json",
+          "reviewEvidenceSha256": "5da6b7a9d60a2720a1b15a9c760f2dbb82a529e07df8c6cfa58e7340b4de59b3",
+          "labelAgreement": true,
+          "locationIoU": 0.8976063829787234,
+          "humanGold": false,
+          "sourceHintsSent": false,
+          "bboxMethod": "ModelA projected whole-symbol bounds from two agreeing AI annotations; integer outward rounding",
+          "sha256": "76832c27d0910a60b047ee0229ce8c34d744822909f55bde97f83a59b5a28ee6",
+          "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v2/records/input-24-EXCLAMATION_MARK.json",
+          "evidenceSchema": "ghs-production-qualification-v1"
+        },
+        "provenance": {
+          "recordId": "8719189416008-08719189416091-528",
+          "sourceURL": "https://gdsnprodwebstorage.blob.core.windows.net/gdsnprodnlwebfileblob/8719189416008/08719189416091/528/Media/39323/8719189416091.pdf",
+          "originalSha256": "b7b2e6fe36774984f8942fda597dd83482c16ac7fb02e36b74d8b4bc5b50335f",
+          "originalPath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-sources-20261004/prod/originals/08719189416091-sds-sds.pdf",
+          "sourceKind": "sds",
+          "license": "No external reuse license established; explicit user authorization for internal project training",
+          "authorization": {
+            "basis": "explicit-user-request",
+            "date": "2026-10-05",
+            "scope": "internal-ghs-training"
+          },
+          "qualification": {
+            "status": "qualified",
+            "context": "product-symbol",
+            "sourceId": "input-24",
+            "reviewerIds": [
+              "caeb6df4-14d9-4840-bdaf-9df846b4db55",
+              "cc130a23-f350-4272-9607-40bb12b28b27"
+            ],
+            "reviewEvidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-sources-20261004/annotations/raw/input-24.json",
+            "reviewEvidenceSha256": "5da6b7a9d60a2720a1b15a9c760f2dbb82a529e07df8c6cfa58e7340b4de59b3",
+            "labelAgreement": true,
+            "locationIoU": 0.8976063829787234,
+            "humanGold": false,
+            "sourceHintsSent": false,
+            "bboxMethod": "ModelA projected whole-symbol bounds from two agreeing AI annotations; integer outward rounding",
+            "sha256": "76832c27d0910a60b047ee0229ce8c34d744822909f55bde97f83a59b5a28ee6",
+            "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v2/records/input-24-EXCLAMATION_MARK.json",
+            "evidenceSchema": "ghs-production-qualification-v1"
+          },
+          "origin": "mongodb-prod",
+          "productIdentity": "08719189416091"
+        }
+      },
+      {
+        "id": "input-22-CORROSION",
+        "sha256": "70782f298748b7d9589df840647751188462cfa87a1edba75333cc635091787d",
+        "familyId": "production-gtin:08720065008323",
+        "split": "train",
+        "code": "CORROSION",
+        "bbox": {
+          "x": 984,
+          "y": 500,
+          "width": 55,
+          "height": 55
+        },
+        "sourceType": "production-product",
+        "labelStatus": "qualified-production-ai-reviewed",
+        "trainingAllowed": true,
+        "qualification": {
+          "status": "qualified",
+          "context": "product-symbol",
+          "sourceId": "input-22",
+          "reviewerIds": [
+            "2473ed29-e123-4169-b373-979b74ba2bb6",
+            "345cf5a5-4045-4324-aefd-84e226cd0555"
+          ],
+          "reviewEvidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification/reviews/finish-glyph.json",
+          "reviewEvidenceSha256": "db387cc689d81001b0cdb44e9abd7585f1171eb26a29edb51a5f860933cb606c",
+          "labelAgreement": true,
+          "locationIoU": 0.997,
+          "humanGold": false,
+          "sourceHintsSent": false,
+          "rootOriginalVisuallyVerified": true,
+          "bboxMethod": "Original full-page render; physical red border component bbox in manually visually selected region, exact pixel crop, no removal or replacement of guides/print",
+          "cropSha256": "dcae37328be0ca05075122609eab5506de3b3244e2aafcce5043577c8bba321a",
+          "croppingRecordPath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification/finish-glyph.json",
+          "wholePageAnnotationDisagreementPreserved": true,
+          "wholePageExtraLabelsApproved": false,
+          "sha256": "400528bac721fdd78e7504a42e55d22c2a91f28ac9f5dd0989ded250fff8c963",
+          "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v2/records/input-22-CORROSION.json",
+          "evidenceSchema": "ghs-production-qualification-v1"
+        },
+        "provenance": {
+          "recordId": "8710552001005-08720065008323-056",
+          "sourceURL": "https://media.stage.xxtract.com/8710552001005/PACKAGING_ARTWORK/1111111/08720065008323/056/8033cc057e1f85614416f7e54abb55dd9989282ec3a3563b663fe8f8a112b245.pdf",
+          "originalSha256": "8033cc057e1f85614416f7e54abb55dd9989282ec3a3563b663fe8f8a112b245",
+          "originalPath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-sources-20261004/prod/originals/08720065008323-label-52354.pdf",
+          "sourceKind": "label",
+          "license": "No external reuse license established; explicit user authorization for internal project training",
+          "authorization": {
+            "basis": "explicit-user-request",
+            "date": "2026-10-05",
+            "scope": "internal-ghs-training"
+          },
+          "qualification": {
+            "status": "qualified",
+            "context": "product-symbol",
+            "sourceId": "input-22",
+            "reviewerIds": [
+              "2473ed29-e123-4169-b373-979b74ba2bb6",
+              "345cf5a5-4045-4324-aefd-84e226cd0555"
+            ],
+            "reviewEvidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification/reviews/finish-glyph.json",
+            "reviewEvidenceSha256": "db387cc689d81001b0cdb44e9abd7585f1171eb26a29edb51a5f860933cb606c",
+            "labelAgreement": true,
+            "locationIoU": 0.997,
+            "humanGold": false,
+            "sourceHintsSent": false,
+            "rootOriginalVisuallyVerified": true,
+            "bboxMethod": "Original full-page render; physical red border component bbox in manually visually selected region, exact pixel crop, no removal or replacement of guides/print",
+            "cropSha256": "dcae37328be0ca05075122609eab5506de3b3244e2aafcce5043577c8bba321a",
+            "croppingRecordPath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification/finish-glyph.json",
+            "wholePageAnnotationDisagreementPreserved": true,
+            "wholePageExtraLabelsApproved": false,
+            "sha256": "400528bac721fdd78e7504a42e55d22c2a91f28ac9f5dd0989ded250fff8c963",
+            "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v2/records/input-22-CORROSION.json",
+            "evidenceSchema": "ghs-production-qualification-v1"
+          },
+          "origin": "mongodb-prod",
+          "productIdentity": "08720065008323"
+        }
+      },
+      {
+        "id": "input-21-CORROSION",
+        "sha256": "e2e776d85e022dafe0ca30b0a6a9ced2333283c89977c9c63ace943ebb422936",
+        "familyId": "production-gtin:08720065008323",
+        "split": "train",
+        "code": "CORROSION",
+        "bbox": {
+          "x": 262,
+          "y": 132,
+          "width": 71,
+          "height": 67
+        },
+        "sourceType": "production-product",
+        "labelStatus": "qualified-production-ai-reviewed",
+        "trainingAllowed": true,
+        "qualification": {
+          "status": "qualified",
+          "context": "product-symbol",
+          "sourceId": "input-21",
+          "reviewerIds": [
+            "4411d8a6-1be3-4e7c-8f7e-e21d002ce1ba",
+            "261da0c4-a2fb-4061-ba3f-89d70c035569"
+          ],
+          "reviewEvidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-sources-20261004/annotations/raw/input-21.json",
+          "reviewEvidenceSha256": "0d42e3464625a704df89281a96a8336c3c2030b6d8fdc461edc1f91db67f06bd",
+          "labelAgreement": true,
+          "locationIoU": 0.9642857142857143,
+          "humanGold": false,
+          "sourceHintsSent": false,
+          "bboxMethod": "ModelA projected whole-symbol bounds from two agreeing AI annotations; integer outward rounding",
+          "sha256": "630bb2fb88f7f3fb052027311dc9d553c100ad08cf0f7ad4d965e780d76e1b4d",
+          "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v2/records/input-21-CORROSION.json",
+          "evidenceSchema": "ghs-production-qualification-v1"
+        },
+        "provenance": {
+          "recordId": "8710552001005-08720065008323-056",
+          "sourceURL": "https://api.isa.quintens.nl/download/databearer/7ca8fcbee69a914d4f9a42f684688a0288d31f898f97e463ada0242b245af792/public",
+          "originalSha256": "7ca8fcbee69a914d4f9a42f684688a0288d31f898f97e463ada0242b245af792",
+          "originalPath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-sources-20261004/prod/originals/08720065008323-sds-sds.pdf",
+          "sourceKind": "sds",
+          "license": "No external reuse license established; explicit user authorization for internal project training",
+          "authorization": {
+            "basis": "explicit-user-request",
+            "date": "2026-10-05",
+            "scope": "internal-ghs-training"
+          },
+          "qualification": {
+            "status": "qualified",
+            "context": "product-symbol",
+            "sourceId": "input-21",
+            "reviewerIds": [
+              "4411d8a6-1be3-4e7c-8f7e-e21d002ce1ba",
+              "261da0c4-a2fb-4061-ba3f-89d70c035569"
+            ],
+            "reviewEvidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-sources-20261004/annotations/raw/input-21.json",
+            "reviewEvidenceSha256": "0d42e3464625a704df89281a96a8336c3c2030b6d8fdc461edc1f91db67f06bd",
+            "labelAgreement": true,
+            "locationIoU": 0.9642857142857143,
+            "humanGold": false,
+            "sourceHintsSent": false,
+            "bboxMethod": "ModelA projected whole-symbol bounds from two agreeing AI annotations; integer outward rounding",
+            "sha256": "630bb2fb88f7f3fb052027311dc9d553c100ad08cf0f7ad4d965e780d76e1b4d",
+            "evidencePath": "/Users/frisovanweelden/Documents/projects/logoRecognition/_bmad-output/planning-artifacts/research/ghs-production-training-20261005/qualification-v2/records/input-21-CORROSION.json",
+            "evidenceSchema": "ghs-production-qualification-v1"
+          },
+          "origin": "mongodb-prod",
+          "productIdentity": "08720065008323"
+        }
       }
     ],
     "syntheticUnknowns": 400,
