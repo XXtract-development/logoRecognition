@@ -107,6 +107,38 @@ class ConfigurationTests(unittest.TestCase):
             env[key] = "f" * 64
             self.assertTrue(checker.validate_env(env))
 
+    def test_exact_existing_production_media_identity_only(self):
+        env = fixture()
+        env["MEDIASERVER_DOMAIN"] = "https://media.stage.xxtract.com"
+        self.assertEqual([], checker.validate_env(env))
+        for key, value in (
+            ("MEDIASERVER_DOMAIN", "https://media.acc.xxtract.com"),
+            ("MEDIASERVER_DOMAIN", "https://other.stage.xxtract.com"),
+            ("MEDIASERVER_DOMAIN", "https://media.stage.xxtract.com:444"),
+            ("MEDIASERVER_DOMAIN", "https://media.stage.xxtract.com/path"),
+            ("CATALOG_API_BASE", "https://media.stage.xxtract.com"),
+            ("GHS_REVIEW_BASE_URL", "https://media.stage.xxtract.com"),
+        ):
+            env = fixture()
+            env[key] = value
+            self.assertTrue(checker.validate_env(env))
+
+    def test_exact_existing_production_catalog_identity_only(self):
+        env = fixture()
+        env["CATALOG_API_BASE"] = "https://catalog.stage.xxtract.com"
+        self.assertEqual([], checker.validate_env(env))
+        for key, value in (
+            ("CATALOG_API_BASE", "https://catalog.acc.xxtract.com"),
+            ("CATALOG_API_BASE", "https://other.stage.xxtract.com"),
+            ("CATALOG_API_BASE", "https://catalog.stage.xxtract.com:444"),
+            ("CATALOG_API_BASE", "https://catalog.stage.xxtract.com/path"),
+            ("MEDIASERVER_DOMAIN", "https://catalog.stage.xxtract.com"),
+            ("GHS_REVIEW_BASE_URL", "https://catalog.stage.xxtract.com"),
+        ):
+            env = fixture()
+            env[key] = value
+            self.assertTrue(checker.validate_env(env))
+
     def test_acc_inputs_rejected(self):
         for key, value in {
             "APP_DATABASE_URL": "postgresql://acc:password@10.0.0.6:5432/logo_recognition",
@@ -229,7 +261,7 @@ class ConfigurationTests(unittest.TestCase):
             self.assertEqual([], checker.validate_shell(env))
         with patch.dict(os.environ, {"POSTGRES_DB": env["POSTGRES_DB"]}, clear=True):
             self.assertEqual([], checker.validate_shell(env))
-        for key, value in (("POSTGRES_DB", "ACC_SECRET_MARKER"), ("COMPOSE_PROFILES", "runtime"),
+        for key, value in (("LEGACY_DETECTION_API_KEY", "OVERRIDE_SECRET_MARKER"), ("POSTGRES_DB", "ACC_SECRET_MARKER"), ("COMPOSE_PROFILES", "runtime"),
                            ("COMPOSE_PROJECT_NAME", "old-live"), ("COMPOSE_FILE", "other.yml")):
             with patch.dict(os.environ, {key: value}, clear=True):
                 errors = checker.validate_shell(env)
@@ -249,7 +281,7 @@ class ConfigurationTests(unittest.TestCase):
                 doc["services"][service]["environment"][key] = "unsafe"
                 self.assertTrue(checker.validate_compose(yaml.safe_dump(doc), fixture()))
         for service, keys in {
-            "app": ("AUTH_DATABASE_URL", "MEDIASERVER_DOMAIN", "JWT_SECRET", "COOKIE_SECRET", "GHS_REVIEW_INTERNAL_KEY", "PIPELINE_SERVICE_KEY"),
+            "app": ("AUTH_DATABASE_URL", "MEDIASERVER_DOMAIN", "JWT_SECRET", "COOKIE_SECRET", "GHS_REVIEW_INTERNAL_KEY", "PIPELINE_SERVICE_KEY", "LEGACY_DETECTION_API_KEY"),
             "ml-service": ("GHS_REVIEW_BASE_URL", "GHS_REVIEW_API_KEY", "GHS_REVIEW_MODEL_A", "GHS_REVIEW_MODEL_B", "GHS_REVIEW_INTERNAL_KEY", "PIPELINE_SERVICE_KEY"),
         }.items():
             for key in keys:

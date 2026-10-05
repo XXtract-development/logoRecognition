@@ -2,6 +2,11 @@
 
 ## 5 oktober 2026
 
+**Bestaande koppelingen bij overgang naar productie**
+- Bestaande productkoppelingen kunnen de vernieuwde herkenning met dezelfde aanroep blijven gebruiken.
+- Twijfelgevallen worden niet als bevestigde logo’s doorgestuurd.
+- Trainingsbeelden en modellen worden bij de overdracht op volledigheid gecontroleerd.
+
 **Voorbereiding voor productie**
 - Het draaiboek bevat nu een afzonderlijk voorbereidingspakket met gecontroleerde bronmodellen en een geslaagde lokale databaseherstelproef.
 - Ontbrekende overdrachten en controles blijven zichtbaar voordat de bestaande productiedienst wordt vervangen.

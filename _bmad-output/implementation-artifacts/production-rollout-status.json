@@ -1,0 +1,27 @@
+{
+  "time": "2026-10-05T21:31:19.103782+00:00",
+  "task_id": "01a0fc7a-28d6-7333-ae26-c6dc972076d8",
+  "owner": "Codex/root",
+  "status": "active",
+  "phase": "reviewed release publication and paired image build",
+  "authorization": {
+    "instruction": "Ga verder totdat alles klaarvis in productie",
+    "scope": [
+      "reviewed dedicated production resource creation",
+      "selected data and model transfer",
+      "staged starts and deployment",
+      "verified public endpoint cutover"
+    ],
+    "constraints": [
+      "preserve legacy rollback resource/cache",
+      "no unrelated production databases modified",
+      "no destructive resets",
+      "cutover only after required checks"
+    ]
+  },
+  "production_changed": false,
+  "open_approval": null,
+  "source_release": "814f6cd396f63dada95411d51dda5dfae3205a6a",
+  "transfer_rehearsal": "passed",
+  "object_count": 1069
+}

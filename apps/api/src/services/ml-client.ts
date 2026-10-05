@@ -22,6 +22,7 @@ export interface Detection {
   category: string;
   value: string;
   confidence: number;
+  match_confidence?: number;
   bbox: BoundingBox;
   embedding?: number[];
   uncertain?: boolean;

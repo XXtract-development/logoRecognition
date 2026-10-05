@@ -1,6 +1,6 @@
-# Prepared dedicated production resource. No live execution is authorized.
-# Default selection is infrastructure only. Explicit provisioning/runtime profiles
-# require the separate approvals and evidence in the preparation guide.
+# Dedicated production resource; rollout is authorized in the current task.
+# Default selection is infrastructure only. Provisioning and runtime remain
+# staged until their documented data and model checks pass.
 name: ${PRODUCTION_RESOURCE_NAME:?required dedicated production resource name}
 services:
   postgres:
@@ -118,6 +118,7 @@ services:
       MINIO_SECRET_KEY: ${MINIO_APP_SECRET_KEY:?required nonroot production storage secret}
       JWT_SECRET: ${JWT_SECRET:?required production signing secret}
       COOKIE_SECRET: ${COOKIE_SECRET:?required production cookie secret}
+      LEGACY_DETECTION_API_KEY: ${LEGACY_DETECTION_API_KEY:?required existing production integration key}
       PIPELINE_SERVICE_KEY: ${PIPELINE_SERVICE_KEY:?required production service key}
       CORS_ORIGIN: https://${PRODUCTION_HOSTNAME:?required dedicated production hostname}
       CATALOG_API_BASE: ${CATALOG_API_BASE:?required explicit production catalog URL}

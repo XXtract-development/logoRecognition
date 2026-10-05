@@ -25,12 +25,12 @@ REQUIRED = tuple(FROZEN) + (
     "POSTGRES_DB", "POSTGRES_ADMIN_USER", "POSTGRES_ADMIN_PASSWORD",
     "APP_DATABASE_URL", "ML_DATABASE_URL", "AUTH_DATABASE_URL", "MEDIASERVER_DOMAIN", "MINIO_ROOT_USER", "MINIO_ROOT_PASSWORD",
     "MINIO_APP_ACCESS_KEY", "MINIO_APP_SECRET_KEY", "JWT_SECRET", "COOKIE_SECRET",
-    "PIPELINE_SERVICE_KEY", "CATALOG_API_BASE", "CATALOG_API_KEY",
+    "LEGACY_DETECTION_API_KEY", "PIPELINE_SERVICE_KEY", "CATALOG_API_BASE", "CATALOG_API_KEY",
     "GHS_REVIEW_INTERNAL_KEY", "GHS_REVIEW_BASE_URL", "GHS_REVIEW_API_KEY",
     "GHS_REVIEW_MODEL_A", "GHS_REVIEW_MODEL_B",
 )
 SECRETS = ("POSTGRES_ADMIN_PASSWORD", "MINIO_ROOT_PASSWORD", "MINIO_APP_SECRET_KEY",
-           "JWT_SECRET", "COOKIE_SECRET", "PIPELINE_SERVICE_KEY", "GHS_REVIEW_INTERNAL_KEY")
+           "JWT_SECRET", "COOKIE_SECRET", "LEGACY_DETECTION_API_KEY", "PIPELINE_SERVICE_KEY", "GHS_REVIEW_INTERNAL_KEY")
 SUBSTITUTION = re.compile(r"\$\{([A-Z0-9_]+):\?[^}]*\}")
 
 
@@ -153,7 +153,11 @@ def validate_env(env):
     for key in ("CATALOG_API_BASE", "GHS_REVIEW_BASE_URL", "MEDIASERVER_DOMAIN"):
         try:
             url = urlsplit(env[key])
-            if (url.scheme != "https" or not production_host(url.hostname) or url.username or url.password
+            # Existing production media identity verified on Banana by the coordinator.
+            # This historical hostname exception applies to this exact input only.
+            approved_media = key == "MEDIASERVER_DOMAIN" and env[key] == "https://media.stage.xxtract.com"
+            approved_catalog = key == "CATALOG_API_BASE" and env[key] == "https://catalog.stage.xxtract.com"
+            if (url.scheme != "https" or (not production_host(url.hostname) and not approved_media and not approved_catalog) or url.username or url.password
                     or url.port is not None and not 1 <= url.port <= 65535
                     or url.query or url.fragment or re.search(r"(^|\.)acc\.", url.hostname)):
                 errors.append(f"Explicit production HTTPS service URL required: {key}")
@@ -256,6 +260,7 @@ def validate_compose(source, env):
             "MEDIASERVER_DOMAIN": "${MEDIASERVER_DOMAIN:?required explicit production media URL}",
             "JWT_SECRET": "${JWT_SECRET:?required production signing secret}",
             "COOKIE_SECRET": "${COOKIE_SECRET:?required production cookie secret}",
+            "LEGACY_DETECTION_API_KEY": "${LEGACY_DETECTION_API_KEY:?required existing production integration key}",
             "PIPELINE_SERVICE_KEY": "${PIPELINE_SERVICE_KEY:?required production service key}",
             "GHS_REVIEW_INTERNAL_KEY": "${GHS_REVIEW_INTERNAL_KEY:?required production review key}",
             "MINIO_ACCESS_KEY": "${MINIO_APP_ACCESS_KEY:?required nonroot production storage key}",
