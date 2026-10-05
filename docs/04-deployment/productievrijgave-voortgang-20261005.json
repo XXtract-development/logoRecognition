@@ -1,0 +1,1493 @@
+{
+  "version": 1,
+  "documentId": "acc-prod-20261005",
+  "sourceHash": "61c0e15132cfd12a417c2d7a372002d7ba220d147666252199a15a7a464d627a",
+  "updatedAt": "2026-10-05T23:27:13.893828+00:00",
+  "items": {
+    "p1-scope": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Consistente ACC-selectie, oorspronkelijke productievoorbeelden en doelbeleid vastgelegd. Nieuw afgescheiden doel; bestaande productie blijft behouden.",
+      "evidence": "docs/04-deployment/data-rehearsal-evidence-20261005.json",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "p1-images": {
+      "status": "pending",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Definitief nieuw app-/ML-imagepaar na laatste code- en CI-correcties nog niet live vastgelegd.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": ""
+    },
+    "p1-targets": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Nieuwe resource logo-production-20261005 en infrastructuur gezond. Bestaande /detect-afnemer en zijn contract onderzocht. Openbare omschakeling nog niet uitgevoerd.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json; docs/04-deployment/production-legacy-detect-contract.md",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "p1-manifest": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Samenhangende geselecteerde rijen en 1.069 objecten volledig gecontroleerd; bestanden voor/na export stabiel en alle SHA256 vergeleken.",
+      "evidence": "docs/04-deployment/data-rehearsal-evidence-20261005.json",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "p2-branch": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Nieuwe lege, eigen database gekozen en identiteit vóór herstel bevestigd; geen herstel over een bestaande productiegegevensbank.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/database",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "p2-backup": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Doelbackup en objectarchief veiliggesteld; identieke afzonderlijke kopie op een andere computer geverifieerd. Bestaande legacydienst en cache behouden.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/backup; docs/04-deployment/production-rollout-evidence-20261005.json#/independent_backup_copy",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "p2-restore": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Nieuwe getimede doelbackup en afgescheiden herstel bewezen: pg_dump 0.356 s; daadwerkelijke pg_restore 0.494 s; gehele backup-/herstel-/verificatieproef 13.837 s. Alle 35 tabelfingerprints gelijk, inclusief 542 referentievectoren en 21 ledgerregistraties; 1.069 objecten via archief teruggelezen. Eigen testcontainer en volumes verwijderd.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/backup/timing; docs/04-deployment/production-rollout-evidence-20261005.json#/backup",
+      "updatedAt": "2026-10-05T23:27:13.893828+00:00",
+      "completedAt": "2026-10-05T23:25:49.103330+00:00"
+    },
+    "p3-schema": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "34 toepassingstabellen plus echte ledger met 21 voltooide registraties; schema, relaties, rechten en releasechecksums gecontroleerd. Geen fictieve baselining.",
+      "evidence": "docs/04-deployment/data-rehearsal-evidence-20261005.json; docs/04-deployment/production-rollout-evidence-20261005.json#/database",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "p3-rights": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "App- en ML-rollen onderscheiden en beperkt; echte ML-rol bezit reference_embeddings, herindexering en teruggedraaide schrijfrechtenproeven geslaagd.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/database",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "p3-data": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Gevulde selectieve import lokaal gerepeteerd en opnieuw uit backup hersteld; relaties, bronfamilies en oorspronkelijke rijvingerafdrukken behouden.",
+      "evidence": "docs/04-deployment/data-rehearsal-evidence-20261005.json",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "migration-1": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Migratie 0001: structuur en echte voltooide bronledgerregistratie in goedgekeurd nieuw doel geverifieerd; releasechecksum gelijk. Geen extra uitvoering door checklist.",
+      "evidence": "docs/04-deployment/data-rehearsal-evidence-20261005.json#/ledger_release_checksum_match; docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/_prisma_migrations",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "migration-2": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Migratie 0002: structuur en echte voltooide bronledgerregistratie in goedgekeurd nieuw doel geverifieerd; releasechecksum gelijk. Geen extra uitvoering door checklist.",
+      "evidence": "docs/04-deployment/data-rehearsal-evidence-20261005.json#/ledger_release_checksum_match; docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/_prisma_migrations",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "migration-3": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Migratie 0003: structuur en echte voltooide bronledgerregistratie in goedgekeurd nieuw doel geverifieerd; releasechecksum gelijk. Geen extra uitvoering door checklist.",
+      "evidence": "docs/04-deployment/data-rehearsal-evidence-20261005.json#/ledger_release_checksum_match; docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/_prisma_migrations",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "migration-4": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Migratie 0004: structuur en echte voltooide bronledgerregistratie in goedgekeurd nieuw doel geverifieerd; releasechecksum gelijk. Geen extra uitvoering door checklist.",
+      "evidence": "docs/04-deployment/data-rehearsal-evidence-20261005.json#/ledger_release_checksum_match; docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/_prisma_migrations",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "migration-5": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Migratie 0005: structuur en echte voltooide bronledgerregistratie in goedgekeurd nieuw doel geverifieerd; releasechecksum gelijk. Geen extra uitvoering door checklist.",
+      "evidence": "docs/04-deployment/data-rehearsal-evidence-20261005.json#/ledger_release_checksum_match; docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/_prisma_migrations",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "migration-6": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Migratie 0006: structuur en echte voltooide bronledgerregistratie in goedgekeurd nieuw doel geverifieerd; releasechecksum gelijk. Geen extra uitvoering door checklist.",
+      "evidence": "docs/04-deployment/data-rehearsal-evidence-20261005.json#/ledger_release_checksum_match; docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/_prisma_migrations",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "migration-7": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Migratie 0007: structuur en echte voltooide bronledgerregistratie in goedgekeurd nieuw doel geverifieerd; releasechecksum gelijk. Geen extra uitvoering door checklist.",
+      "evidence": "docs/04-deployment/data-rehearsal-evidence-20261005.json#/ledger_release_checksum_match; docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/_prisma_migrations",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "migration-8": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Migratie 0008: structuur en echte voltooide bronledgerregistratie in goedgekeurd nieuw doel geverifieerd; releasechecksum gelijk. Geen extra uitvoering door checklist.",
+      "evidence": "docs/04-deployment/data-rehearsal-evidence-20261005.json#/ledger_release_checksum_match; docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/_prisma_migrations",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "migration-9": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Migratie 0009: structuur en echte voltooide bronledgerregistratie in goedgekeurd nieuw doel geverifieerd; releasechecksum gelijk. Geen extra uitvoering door checklist.",
+      "evidence": "docs/04-deployment/data-rehearsal-evidence-20261005.json#/ledger_release_checksum_match; docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/_prisma_migrations",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "migration-10": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Migratie 0010: structuur en echte voltooide bronledgerregistratie in goedgekeurd nieuw doel geverifieerd; releasechecksum gelijk. Geen extra uitvoering door checklist.",
+      "evidence": "docs/04-deployment/data-rehearsal-evidence-20261005.json#/ledger_release_checksum_match; docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/_prisma_migrations",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "migration-11": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Migratie 0011: structuur en echte voltooide bronledgerregistratie in goedgekeurd nieuw doel geverifieerd; releasechecksum gelijk. Geen extra uitvoering door checklist.",
+      "evidence": "docs/04-deployment/data-rehearsal-evidence-20261005.json#/ledger_release_checksum_match; docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/_prisma_migrations",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "migration-12": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Migratie 0012: structuur en echte voltooide bronledgerregistratie in goedgekeurd nieuw doel geverifieerd; releasechecksum gelijk. Geen extra uitvoering door checklist.",
+      "evidence": "docs/04-deployment/data-rehearsal-evidence-20261005.json#/ledger_release_checksum_match; docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/_prisma_migrations",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "migration-13": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Migratie 0013: structuur en echte voltooide bronledgerregistratie in goedgekeurd nieuw doel geverifieerd; releasechecksum gelijk. Geen extra uitvoering door checklist.",
+      "evidence": "docs/04-deployment/data-rehearsal-evidence-20261005.json#/ledger_release_checksum_match; docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/_prisma_migrations",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "migration-14": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Migratie 0014: structuur en echte voltooide bronledgerregistratie in goedgekeurd nieuw doel geverifieerd; releasechecksum gelijk. Geen extra uitvoering door checklist.",
+      "evidence": "docs/04-deployment/data-rehearsal-evidence-20261005.json#/ledger_release_checksum_match; docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/_prisma_migrations",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "migration-15": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Migratie 0015: structuur en echte voltooide bronledgerregistratie in goedgekeurd nieuw doel geverifieerd; releasechecksum gelijk. Geen extra uitvoering door checklist.",
+      "evidence": "docs/04-deployment/data-rehearsal-evidence-20261005.json#/ledger_release_checksum_match; docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/_prisma_migrations",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "migration-16": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Migratie 0016: structuur en echte voltooide bronledgerregistratie in goedgekeurd nieuw doel geverifieerd; releasechecksum gelijk. Geen extra uitvoering door checklist.",
+      "evidence": "docs/04-deployment/data-rehearsal-evidence-20261005.json#/ledger_release_checksum_match; docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/_prisma_migrations",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "migration-17": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Migratie 0017: structuur en echte voltooide bronledgerregistratie in goedgekeurd nieuw doel geverifieerd; releasechecksum gelijk. Geen extra uitvoering door checklist.",
+      "evidence": "docs/04-deployment/data-rehearsal-evidence-20261005.json#/ledger_release_checksum_match; docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/_prisma_migrations",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "migration-18": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Migratie 0018: structuur en echte voltooide bronledgerregistratie in goedgekeurd nieuw doel geverifieerd; releasechecksum gelijk. Geen extra uitvoering door checklist.",
+      "evidence": "docs/04-deployment/data-rehearsal-evidence-20261005.json#/ledger_release_checksum_match; docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/_prisma_migrations",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "migration-19": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Migratie 0019: structuur en echte voltooide bronledgerregistratie in goedgekeurd nieuw doel geverifieerd; releasechecksum gelijk. Geen extra uitvoering door checklist.",
+      "evidence": "docs/04-deployment/data-rehearsal-evidence-20261005.json#/ledger_release_checksum_match; docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/_prisma_migrations",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "migration-20": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Migratie 0020: structuur en echte voltooide bronledgerregistratie in goedgekeurd nieuw doel geverifieerd; releasechecksum gelijk. Geen extra uitvoering door checklist.",
+      "evidence": "docs/04-deployment/data-rehearsal-evidence-20261005.json#/ledger_release_checksum_match; docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/_prisma_migrations",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "migration-21": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Migratie 0021: structuur en echte voltooide bronledgerregistratie in goedgekeurd nieuw doel geverifieerd; releasechecksum gelijk. Geen extra uitvoering door checklist.",
+      "evidence": "docs/04-deployment/data-rehearsal-evidence-20261005.json#/ledger_release_checksum_match; docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/_prisma_migrations",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "p4-compose": {
+      "status": "pending",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Definitieve imagefreeze en werkelijk gerenderde runtimecompose wachten op laatste geslaagde bouw.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": ""
+    },
+    "p4-config": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Eigen productieverbindingen en beperkte credentials geconfigureerd; aparte authenticatiebron uitsluitend SELECT. Catalogus-/mediabronnen gecontroleerd. Geheimen buiten checklist.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/database; docs/04-deployment/production-legacy-detect-contract.md",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "p4-models": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Werkelijke private ML gebruikt embeddingcache, 542 actieve referentievectoren, gelijk GHS-modelgewicht en overgezette NutriScore A2-bestanden. Generieke mockdetector is uitgesloten van /detect.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/model_cache; docs/04-deployment/production-rollout-evidence-20261005.json#/ml_runtime; docs/04-deployment/data-rehearsal-evidence-20261005.json#/objects/nutriscore_a2",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "p4-definition": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Coolify-compose en infrastructuurroute beoordeeld en gecontroleerd uitgevoerd. Private ML apart gestart; openbare app blijft wachten op definitief gebouwd imagepaar.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/infrastructure; docs/04-deployment/production-preparation-20261005.md",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "p5-data-approval": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Gebruiker gaf expliciet opdracht om de productieovergang inclusief database en gegevens uit te voeren en zelfstandig door te gaan tot gereed.",
+      "evidence": "Menselijke opdrachten in hoofdgesprek: “Oké, doe dat” en “Ga verder totdat alles klaarvis in productie”.",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "p5-deploy-approval": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Expliciete productieopdracht omvat begrensde inrichting, start en uitrol. Uitvoering van publiekscutover blijft een afzonderlijke technische controle en staat nog open.",
+      "evidence": "Menselijke productieopdracht in hoofdgesprek; coördinator bewaakt vrijgavevoorwaarden.",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "p6-jobs": {
+      "status": "pending",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Flywheel is persistent gepauzeerd en Redis is eigen; volledige app-worker-/queue-/schedulercontrole volgt bij gecontroleerde appstart.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": ""
+    },
+    "p6-provision": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Eigen PostgreSQL, MinIO en Redis ingericht en gezond. Nieuwe database-identiteit en private volumes gecontroleerd; legacy behouden.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/infrastructure; docs/04-deployment/production-rollout-evidence-20261005.json#/database",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "p6-ddl": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Goedgekeurde nieuwe database bevat schema, 21 echte ledgerregistraties en beperkte runtime-rollen; relaties en herindexeringsrechten bewezen.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/database; docs/04-deployment/data-rehearsal-evidence-20261005.json#/ledger_release_checksum_match",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "p6-restore-target": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Nieuwe getimede doelbackup en afgescheiden herstel bewezen: pg_dump 0.356 s; daadwerkelijke pg_restore 0.494 s; gehele backup-/herstel-/verificatieproef 13.837 s. Alle 35 tabelfingerprints gelijk, inclusief 542 referentievectoren en 21 ledgerregistraties; 1.069 objecten via archief teruggelezen. Eigen testcontainer en volumes verwijderd.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/backup/timing; docs/04-deployment/production-rollout-evidence-20261005.json#/backup",
+      "updatedAt": "2026-10-05T23:27:13.893828+00:00",
+      "completedAt": "2026-10-05T23:25:49.103330+00:00"
+    },
+    "p7-buckets": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "models, training-images, recognition-images en thumbnails bestaan en zijn alle vier private.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/storage",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "p7-permissions": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Echt beperkte nonroot opslagaccount plaatste en las objecten terug; beheertoegang geweigerd, één effectief beleid en geen extra groepen bewezen.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/storage",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "p7-objects": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "1.069 objecten / 40.487.281 bytes volledig overgezet en teruggelezen met dezelfde SHA256. Voorwaardelijk plaatsen zonder overschrijven.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/storage",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "p8-identity": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Geen ACC-gebruikers, wachtwoorden of organisaties gekopieerd. Geselecteerde relaties gecontroleerd; productieauthenticatie heeft een afzonderlijke beperkte leesverbinding.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/database; docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "p8-import": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Alle geselecteerde rijvingerafdrukken komen overeen. Uitgesloten transactionele/auditgegevens bewust niet gekopieerd; nieuwe doelinstellingen apart aangemaakt.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/database",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "p8-verify": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Alle 34 tabellen plus ledger aanwezig; geselecteerde aantallen gelijk en alle verwijzende relaties geldig. Actieve reference_embeddings daarna opnieuw opgebouwd: 542.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/database; docs/04-deployment/production-rollout-evidence-20261005.json#/ml_runtime",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "table-organizations": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/organizations",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "table-users": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/users",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "table-logos": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Selectief overgezet: 41 rijen. Volledige geselecteerde bron-/doelvingerafdruk en relaties gecontroleerd; geen productrijgegevens opgenomen in deze checklist.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/logos",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "table-logo_images": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Selectief overgezet: 876 rijen. Volledige geselecteerde bron-/doelvingerafdruk en relaties gecontroleerd; geen productrijgegevens opgenomen in deze checklist.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/logo_images",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "table-training_batches": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/training_batches",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "table-training_data": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Selectief overgezet: 930 rijen. Volledige geselecteerde bron-/doelvingerafdruk en relaties gecontroleerd; geen productrijgegevens opgenomen in deze checklist.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/training_data",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "table-annotations": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/annotations",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "table-model_versions": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/model_versions",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "table-logo_embeddings": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/logo_embeddings",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "table-reference_logos": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Selectief overgezet: 604 rijen. Volledige geselecteerde bron-/doelvingerafdruk en relaties gecontroleerd; geen productrijgegevens opgenomen in deze checklist.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/reference_logos",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "table-reference_embeddings": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Structuur/rechten bewezen. Bronvectoren niet blind gekopieerd; private ML herbouwde 542 actieve reference_embeddings.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/ml_runtime",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "table-reference_candidates": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/reference_candidates",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "table-candidate_embeddings": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/candidate_embeddings",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "table-hard_negatives": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Selectief overgezet: 72 rijen. Volledige geselecteerde bron-/doelvingerafdruk en relaties gecontroleerd; geen productrijgegevens opgenomen in deze checklist.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/hard_negatives",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "table-promotion_batches": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/promotion_batches",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "table-gold_set_records": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Selectief overgezet: 900 rijen. Volledige geselecteerde bron-/doelvingerafdruk en relaties gecontroleerd; geen productrijgegevens opgenomen in deze checklist.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/gold_set_records",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "table-system_settings": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Structuur aanwezig; 3 productie-eigen instellingen aangemaakt. ACC-instellingen niet blind geïmporteerd; flywheel blijvend gepauzeerd.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/system_settings",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "table-outlier_findings": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/outlier_findings",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "table-threshold_changes": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/threshold_changes",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "table-artwork_import_runs": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/artwork_import_runs",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "table-artwork_imports": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/artwork_imports",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "table-artwork_review_items": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/artwork_review_items",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "table-declared_harvest_checks": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/declared_harvest_checks",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "table-bootstrap_queue": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/bootstrap_queue",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "table-mismatch_events": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/mismatch_events",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "table-recognition_logs": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/recognition_logs",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "table-recognition_results": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/recognition_results",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "table-feedback_queue": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/feedback_queue",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "table-retraining_notifications": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/retraining_notifications",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "table-model_activation_logs": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/model_activation_logs",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "table-search_history": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/search_history",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "table-query_stats": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/query_stats",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "table-health_checks": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/health_checks",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "table-backup_history": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/backup_history",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "p9-startup": {
+      "status": "pending",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Private ML is gestart; openbare app en het definitieve nieuwe imagepaar zijn nog niet gestart of bewezen.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": ""
+    },
+    "p9-vectors": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Private ML herbouwde 542 actieve referentievectoren onder de echte beperkte ML-rol; herindexering en werkelijke oorspronkelijke productie-ROI-vectorzoektocht bewezen.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/ml_runtime; docs/04-deployment/production-rollout-evidence-20261005.json#/trained_model_runtime_probes",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "p9-upload": {
+      "status": "pending",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Echte geauthenticeerde app-upload met teruggelezen origineel én preview nog niet uitgevoerd.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": ""
+    },
+    "p9-test-cleanup": {
+      "status": "pending",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Cleanup van toekomstige app-uploadtestkeys volgt pas na die nog niet uitgevoerde test; tijdelijke herstelproefmiddelen zijn al verwijderd.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": ""
+    },
+    "p9-deep": {
+      "status": "pending",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Private model/ROI-proeven bestaan; integrale publieke endpointvergelijking inclusief negatieve beelden en geheugenbelasting ontbreekt nog.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": ""
+    },
+    "accept-0": {
+      "status": "pending",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Live inspectie van beide definitieve nieuwe images ontbreekt.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": ""
+    },
+    "accept-1": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Nieuwe productie-identiteit, 34 toepassingstabellen plus ledger en gecontroleerde beperkte rollen bewezen.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/database; docs/04-deployment/production-rollout-evidence-20261005.json#/backup",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "accept-2": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Geselecteerde bronvingerafdrukken en natuurlijke sleutels/relaties gecontroleerd; beschermde bron/testgroepen ongewijzigd behouden.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/database; docs/04-deployment/data-rehearsal-evidence-20261005.json",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "accept-3": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Vier private buckets, productie-eigen mount en beperkte rechten; alle 1.069 objecten volledig teruggelezen en geverifieerd.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/storage",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "accept-4": {
+      "status": "pending",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Upload en preview via echte geauthenticeerde app zijn nog niet bewezen.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": ""
+    },
+    "accept-5": {
+      "status": "done",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Alle 542 actieve referenties geladen en opnieuw gevectoriseerd; daadwerkelijke ML-rol en herindexeringsroute bewezen. Dit is gereedheidsbewijs, geen alle-logo-kwaliteitsclaim.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/ml_runtime; docs/04-deployment/production-rollout-evidence-20261005.json#/actual_refinement_proof",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": "2026-10-05T23:20:26.590568+00:00"
+    },
+    "accept-6": {
+      "status": "pending",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Infrastructuur en private ML zijn gezond; volledige openbare app en diepe eindcontrole wachten.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": ""
+    },
+    "accept-7": {
+      "status": "pending",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Beperkte authenticatieverbinding is voorbereid; productie-login/API-key/ongeautoriseerde publieke gatewaychecks nog niet uitgevoerd.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": ""
+    },
+    "accept-8": {
+      "status": "pending",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Adaptercontract is getest; werkelijke publieke endpoint- en n8n-doorvoercontrole nog niet uitgevoerd.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": ""
+    },
+    "accept-9": {
+      "status": "pending",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Geen integrale publieke voor/na-kwaliteitsvergelijking afgerond. Green Dot onder 0,99 blijft terecht review.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": ""
+    },
+    "accept-10": {
+      "status": "pending",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "GHS-gewichten en reviewbeleid aanwezig; openbare route-/reviewkanaalcontrole nog niet uitgevoerd. Geen claim dat alle negen typen onafhankelijk bewezen zijn.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": ""
+    },
+    "accept-11": {
+      "status": "pending",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Lokale drempel-/reviewtests geslaagd; echte publieke route met normale en hoge drempel nog te controleren.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": ""
+    },
+    "accept-12": {
+      "status": "pending",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Volledige daadwerkelijke app-workerinventaris en eerste gecontroleerde verwerking ontbreken nog.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": ""
+    },
+    "accept-13": {
+      "status": "pending",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Backup/herstel is bewezen; daadwerkelijke publieke terugkeerroute/oefening bij cutover nog niet afgerond.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": ""
+    },
+    "p10-decision": {
+      "status": "pending",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Go/no-go volgt na alle nog open runtime-acceptatiecontroles.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": ""
+    },
+    "p11-switch": {
+      "status": "pending",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Publieksroute is aantoonbaar ongewijzigd; cutover pas na geslaagde eindcontrole.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": ""
+    },
+    "p11-resume": {
+      "status": "pending",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Automatische taken pas gefaseerd vrijgeven na gecontroleerde start en beoordeling.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": ""
+    },
+    "p11-recovery": {
+      "status": "pending",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Legacy en backups blijven behouden; actuele terugkeerdrempels en omgang met nieuw publiek verkeer nog te bevestigen.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": ""
+    },
+    "p12-15min": {
+      "status": "pending",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Observatieperiode begint pas na echte publieke omschakeling; nog niet verstreken.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": ""
+    },
+    "p12-1hour": {
+      "status": "pending",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Observatieperiode begint pas na echte publieke omschakeling; nog niet verstreken.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": ""
+    },
+    "p12-24hour": {
+      "status": "pending",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Observatieperiode begint pas na echte publieke omschakeling; nog niet verstreken.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": ""
+    },
+    "p13-retain": {
+      "status": "pending",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Herstelmateriaal en legacy worden behouden; exacte bewaartermijn/eindbesluit nog vastleggen.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": ""
+    },
+    "p13-approval": {
+      "status": "pending",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Geen afzonderlijk menselijk akkoord voor uitfaseren/stoppen/verwijderen gegeven.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": ""
+    },
+    "p13-cleanup": {
+      "status": "pending",
+      "owner": "Codex/root — productiecoördinator",
+      "note": "Legacy is niet uitgefaseerd of verwijderd; afzonderlijk besluit en verslag volgen later.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
+      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "completedAt": ""
+    }
+  },
+  "fields": {
+    "field-0": "Codex/root — productiecoördinator; implementatie- en controlebewijs uit hoofdtaak en onafhankelijke reviews.",
+    "field-1": "Consistente geselecteerde bronexport vóór uitvoer; bewijs geregistreerd 2026-10-05T21:29:14.628458+00:00. Eigenaar: Codex/root. Bestandstabiliteit voor/na lezen gecontroleerd.",
+    "field-2": "`814f6cd396f63dada95411d51dda5dfae3205a6a`",
+    "field-3": "Open: definitieve release-SHA na laatste geslaagde CI en imagebouw.",
+    "field-4": "Open: definitief nieuw app-/ML-imagepaar nog te bevestigen; oude bronimage-digests zijn geen eindvrijgavebewijs.",
+    "field-5": "MinIO lokale onveranderlijke imageconfig sha256:69b2ec208575b69597784255eec6fa6a2985ee9e1a47f4411a51f7f5fdd193a9; Redis sha256:6ab0b6e7381779332f97b8ca76193e45b0756f38d4c0dcda72dbb3c32061ab99.",
+    "field-6": "21 releasechecksums gelijk aan echte bronledger; definitieve runtimecomposehash nog te bevriezen.",
+    "field-7": "logo-production-20261005 / Banana. Afgescheiden productievoorziening; geen private adressen opgenomen.",
+    "field-8": "Nieuwe eigen PostgreSQL16-database en public-schema; identiteit vóór herstel bewezen. Verbindingsgegevens blijven beveiligd buiten checklist.",
+    "field-9": "App- en ML-runtime afzonderlijk en beperkt; migratiehistorie niet schrijfbaar voor app; geen superuser/runtimebeheerrechten.",
+    "field-10": "Echte ML-rol eigenaar reference_embeddings; herindexering bewezen; 542 actieve vectoren opnieuw opgebouwd.",
+    "field-11": "34 toepassingstabellen plus 21 echte voltooide migratieregistraties; geselecteerd nieuw doel zonder oude productiegegevens te vervangen.",
+    "field-12": "Nieuwste doelbackup SHA256 2e29893afee7265d8cff7d13d63aeff0dc299ba176a2a13138afb3de4a95c2d0; objectarchief SHA256 aacf2bcba20ecc97b2a5add5a352dd2f48151507e6746a598f65e142325a21da. Afzonderlijke Mac-kopie geverifieerd; vorige backups en bestaand byte-identiek objectarchief behouden. Private paden niet opgenomen.",
+    "field-13": "Codex/root; 2026-10-05T23:25:35.266816+00:00 tot 2026-10-05T23:25:49.103330+00:00. pg_dump 0.356 s; werkelijk databaseherstel pg_restore 0.494 s; volledige proef inclusief export, herstel, alle tabelhashes, objectarchief en cleanup 13.837 s. Alle 35 openbare tabelfingerprints gelijk; eigen testcontainer/volumes verwijderd.",
+    "field-14": "Rijmanifest SHA256 7d17673341d4d078db5cd36f9874325684e244c333456155ec799552848c7ff4. Selectieve tabellen/relaties gelijk, uitgesloten geschiedenis bewust leeg, nieuwe doelinstellingen apart.",
+    "field-15": "1.069 objecten, 40.487.281 bytes; manifest SHA256 a8485579d5d173e276fbae30281a5c1588fbe3812c1c7b9ee524a4681e9e8dac. Alle doelreadbacks gelijk; vrije ruimte/inrichting gecontroleerd bij provisioning.",
+    "field-16": "Vier private buckets en beperkte nonroot runtimeaccount bewezen; 1.069 put/readbacks geslaagd; admin geweigerd. Echte app-upload/preview en testcleanup blijven open.",
+    "field-17": "Eigen Redis zonder ACC-jobs; flywheel persistent gepauzeerd. Volledige app-worker-/schedulercontrole en vrijgave blijven open.",
+    "field-18": "Prodverbindingen en afzonderlijke authenticatiebron beperkt voorbereid; secrets niet opgenomen. Laatste releaseconfig/finale gatewaychecks wachten.",
+    "field-19": "Private ML gestart en werkelijke modellen/referentievectoren gecontroleerd. Nieuwe openbare app/verificatieroute nog niet bewezen.",
+    "field-20": "Bestaande /detect-consument onderzocht, timeout 180 seconden; adapter totaalbudget 165 seconden. Werkelijke nieuwe publieke contractcontrole nog open.",
+    "field-21": "Publieksroute nog ongewijzigd; cutovermoment nog niet uitgevoerd.",
+    "field-22": "Legacydienst, cache en gecontroleerde backups behouden. Terugkeerroute/einddrempels vóór omschakeling te bevestigen door coördinator.",
+    "field-23": "Open: operationele terugkeerdrempels bij daadwerkelijke omschakeling en belasting vastleggen.",
+    "field-24": "Publiek nieuw verkeer nog niet gestart. Geen blinde herstelactie over nieuwe productiegegevens; bij terugkeer gegevens behouden/archiveren.",
+    "field-25": "Gebruiker gaf expliciet opdracht om de productieovergang inclusief database en gegevens uit te voeren en zelfstandig door te gaan tot gereed.",
+    "field-26": "Expliciete productieopdracht omvat begrensde inrichting, start en uitrol. Uitvoering van publiekscutover blijft een afzonderlijke technische controle en staat nog open.",
+    "field-27": "Open: niet alle publieke acceptatiecontroles zijn afgerond; geen go/no-go verzonnen.",
+    "field-28": "Uitgevoerd: eigen infrastructuur, schema/rollen, geselecteerde gegevens/objecten, backup/herstel, private ML/542 vectoren/modelgewichten. Niet uitgevoerd: openbare app/cutover/eindcontroles/observatie/uitfasering.",
+    "field-29": "15 minuten / 1 uur / 24 uur: allemaal open; wachten op echte publieke omschakeling en verstreken tijd.",
+    "field-30": "Eigen lokale hersteltestcontainer/volumes verwijderd. Legacy, modelcache, backups en manifesten behouden; uitfasering vereist afzonderlijk akkoord."
+  },
+  "history": [
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Reikwijdte en bronmomentopname vastleggen",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/data-rehearsal-evidence-20261005.json · Consistente ACC-selectie, oorspronkelijke productievoorbeelden en doelbeleid vastgelegd. Nieuw afgescheiden doel; bestaande productie blijft behouden."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "App, ML en GHS-model vastleggen",
+      "change": "Codex/root — productiecoördinator · Open · docs/04-deployment/production-rollout-evidence-20261005.json · Definitief nieuw app-/ML-imagepaar na laatste code- en CI-correcties nog niet live vastgelegd."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Productiedoelen en afnemers identificeren",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json; docs/04-deployment/production-legacy-detect-contract.md · Nieuwe resource logo-production-20261005 en infrastructuur gezond. Bestaande /detect-afnemer en zijn contract onderzocht. Openbare omschakeling nog niet uitgevoerd."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Samenhangende rij- en objectmanifesten maken",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/data-rehearsal-evidence-20261005.json · Samenhangende geselecteerde rijen en 1.069 objecten volledig gecontroleerd; bestanden voor/na export stabiel en alle SHA256 vergeleken."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Bestaande of nieuwe lege database kiezen",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/database · Nieuwe lege, eigen database gekozen en identiteit vóór herstel bevestigd; geen herstel over een bestaande productiegegevensbank."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Backups en legacy-herstelset veiligstellen",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/backup; docs/04-deployment/production-rollout-evidence-20261005.json#/independent_backup_copy · Doelbackup en objectarchief veiliggesteld; identieke afzonderlijke kopie op een andere computer geverifieerd. Bestaande legacydienst en cache behouden."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Herstel in afgescheiden omgeving bewijzen",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/backup · Gevulde backup hersteld op een eigen afgescheiden testdoel; alle 35 openbare tabelfingerprints inclusief ledger gelijk. Eigen testcontainer en volumes verwijderd."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Schema, extensies en migratiehistorie vergelijken",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/data-rehearsal-evidence-20261005.json; docs/04-deployment/production-rollout-evidence-20261005.json#/database · 34 toepassingstabellen plus echte ledger met 21 voltooide registraties; schema, relaties, rechten en releasechecksums gecontroleerd. Geen fictieve baselining."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "ML-herindexeringsrechten beproeven",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/database · App- en ML-rollen onderscheiden en beperkt; echte ML-rol bezit reference_embeddings, herindexering en teruggedraaide schrijfrechtenproeven geslaagd."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Import en conflictafhandeling oefenen",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/data-rehearsal-evidence-20261005.json · Gevulde selectieve import lokaal gerepeteerd en opnieuw uit backup hersteld; relaties, bronfamilies en oorspronkelijke rijvingerafdrukken behouden."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "0001_initial",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/data-rehearsal-evidence-20261005.json#/ledger_release_checksum_match; docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/_prisma_migrations · Migratie 0001: structuur en echte voltooide bronledgerregistratie in goedgekeurd nieuw doel geverifieerd; releasechecksum gelijk. Geen extra uitvoering door checklist."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "0002_add_holdout_to_training_data",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/data-rehearsal-evidence-20261005.json#/ledger_release_checksum_match; docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/_prisma_migrations · Migratie 0002: structuur en echte voltooide bronledgerregistratie in goedgekeurd nieuw doel geverifieerd; releasechecksum gelijk. Geen extra uitvoering door checklist."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "0003_add_metrics_to_model_version",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/data-rehearsal-evidence-20261005.json#/ledger_release_checksum_match; docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/_prisma_migrations · Migratie 0003: structuur en echte voltooide bronledgerregistratie in goedgekeurd nieuw doel geverifieerd; releasechecksum gelijk. Geen extra uitvoering door checklist."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "0004_add_reference_logos",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/data-rehearsal-evidence-20261005.json#/ledger_release_checksum_match; docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/_prisma_migrations · Migratie 0004: structuur en echte voltooide bronledgerregistratie in goedgekeurd nieuw doel geverifieerd; releasechecksum gelijk. Geen extra uitvoering door checklist."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "0005_add_reference_embeddings",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/data-rehearsal-evidence-20261005.json#/ledger_release_checksum_match; docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/_prisma_migrations · Migratie 0005: structuur en echte voltooide bronledgerregistratie in goedgekeurd nieuw doel geverifieerd; releasechecksum gelijk. Geen extra uitvoering door checklist."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "0006_add_artwork_pipeline",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/data-rehearsal-evidence-20261005.json#/ledger_release_checksum_match; docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/_prisma_migrations · Migratie 0006: structuur en echte voltooide bronledgerregistratie in goedgekeurd nieuw doel geverifieerd; releasechecksum gelijk. Geen extra uitvoering door checklist."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "0007_add_retraining_notifications",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/data-rehearsal-evidence-20261005.json#/ledger_release_checksum_match; docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/_prisma_migrations · Migratie 0007: structuur en echte voltooide bronledgerregistratie in goedgekeurd nieuw doel geverifieerd; releasechecksum gelijk. Geen extra uitvoering door checklist."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "0008_add_model_activation_log",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/data-rehearsal-evidence-20261005.json#/ledger_release_checksum_match; docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/_prisma_migrations · Migratie 0008: structuur en echte voltooide bronledgerregistratie in goedgekeurd nieuw doel geverifieerd; releasechecksum gelijk. Geen extra uitvoering door checklist."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "0009_add_field_type_to_reference_logos",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/data-rehearsal-evidence-20261005.json#/ledger_release_checksum_match; docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/_prisma_migrations · Migratie 0009: structuur en echte voltooide bronledgerregistratie in goedgekeurd nieuw doel geverifieerd; releasechecksum gelijk. Geen extra uitvoering door checklist."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "0010_field_type_gs1_codelist_names",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/data-rehearsal-evidence-20261005.json#/ledger_release_checksum_match; docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/_prisma_migrations · Migratie 0010: structuur en echte voltooide bronledgerregistratie in goedgekeurd nieuw doel geverifieerd; releasechecksum gelijk. Geen extra uitvoering door checklist."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "0011_nutriscore_fieldtype_nutritionalscore",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/data-rehearsal-evidence-20261005.json#/ledger_release_checksum_match; docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/_prisma_migrations · Migratie 0011: structuur en echte voltooide bronledgerregistratie in goedgekeurd nieuw doel geverifieerd; releasechecksum gelijk. Geen extra uitvoering door checklist."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "0012_flywheel_nomination_tables",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/data-rehearsal-evidence-20261005.json#/ledger_release_checksum_match; docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/_prisma_migrations · Migratie 0012: structuur en echte voltooide bronledgerregistratie in goedgekeurd nieuw doel geverifieerd; releasechecksum gelijk. Geen extra uitvoering door checklist."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "0013_add_gold_set_records",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/data-rehearsal-evidence-20261005.json#/ledger_release_checksum_match; docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/_prisma_migrations · Migratie 0013: structuur en echte voltooide bronledgerregistratie in goedgekeurd nieuw doel geverifieerd; releasechecksum gelijk. Geen extra uitvoering door checklist."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "0014_add_promotion_batches",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/data-rehearsal-evidence-20261005.json#/ledger_release_checksum_match; docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/_prisma_migrations · Migratie 0014: structuur en echte voltooide bronledgerregistratie in goedgekeurd nieuw doel geverifieerd; releasechecksum gelijk. Geen extra uitvoering door checklist."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "0015_add_system_settings",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/data-rehearsal-evidence-20261005.json#/ledger_release_checksum_match; docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/_prisma_migrations · Migratie 0015: structuur en echte voltooide bronledgerregistratie in goedgekeurd nieuw doel geverifieerd; releasechecksum gelijk. Geen extra uitvoering door checklist."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "0016_add_outlier_findings",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/data-rehearsal-evidence-20261005.json#/ledger_release_checksum_match; docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/_prisma_migrations · Migratie 0016: structuur en echte voltooide bronledgerregistratie in goedgekeurd nieuw doel geverifieerd; releasechecksum gelijk. Geen extra uitvoering door checklist."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "0017_add_threshold_changes",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/data-rehearsal-evidence-20261005.json#/ledger_release_checksum_match; docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/_prisma_migrations · Migratie 0017: structuur en echte voltooide bronledgerregistratie in goedgekeurd nieuw doel geverifieerd; releasechecksum gelijk. Geen extra uitvoering door checklist."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "0018_add_mismatch_events",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/data-rehearsal-evidence-20261005.json#/ledger_release_checksum_match; docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/_prisma_migrations · Migratie 0018: structuur en echte voltooide bronledgerregistratie in goedgekeurd nieuw doel geverifieerd; releasechecksum gelijk. Geen extra uitvoering door checklist."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "0019_add_bootstrap_queue",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/data-rehearsal-evidence-20261005.json#/ledger_release_checksum_match; docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/_prisma_migrations · Migratie 0019: structuur en echte voltooide bronledgerregistratie in goedgekeurd nieuw doel geverifieerd; releasechecksum gelijk. Geen extra uitvoering door checklist."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "0020_add_gln_backfill_reason",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/data-rehearsal-evidence-20261005.json#/ledger_release_checksum_match; docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/_prisma_migrations · Migratie 0020: structuur en echte voltooide bronledgerregistratie in goedgekeurd nieuw doel geverifieerd; releasechecksum gelijk. Geen extra uitvoering door checklist."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "0021_add_declared_harvest_checks",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/data-rehearsal-evidence-20261005.json#/ledger_release_checksum_match; docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/_prisma_migrations · Migratie 0021: structuur en echte voltooide bronledgerregistratie in goedgekeurd nieuw doel geverifieerd; releasechecksum gelijk. Geen extra uitvoering door checklist."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Productiecompose en netwerk voorbereiden",
+      "change": "Codex/root — productiecoördinator · Open · docs/04-deployment/production-rollout-evidence-20261005.json · Definitieve imagefreeze en werkelijk gerenderde runtimecompose wachten op laatste geslaagde bouw."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Productieconfiguratie en toegang voorbereiden",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/database; docs/04-deployment/production-legacy-detect-contract.md · Eigen productieverbindingen en beperkte credentials geconfigureerd; aparte authenticatiebron uitsluitend SELECT. Catalogus-/mediabronnen gecontroleerd. Geheimen buiten checklist."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Alle gebruikte modellen en caches verifiëren",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/model_cache; docs/04-deployment/production-rollout-evidence-20261005.json#/ml_runtime; docs/04-deployment/data-rehearsal-evidence-20261005.json#/objects/nutriscore_a2 · Werkelijke private ML gebruikt embeddingcache, 542 actieve referentievectoren, gelijk GHS-modelgewicht en overgezette NutriScore A2-bestanden. Generieke mockdetector is uitgesloten van /detect."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Coolify-definitie en uitrolroute beoordelen",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/infrastructure; docs/04-deployment/production-preparation-20261005.md · Coolify-compose en infrastructuurroute beoordeeld en gecontroleerd uitgevoerd. Private ML apart gestart; openbare app blijft wachten op definitief gebouwd imagepaar."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Expliciet akkoord database en gegevensselectie vastleggen",
+      "change": "Codex/root — productiecoördinator · Afgerond · Menselijke opdrachten in hoofdgesprek: “Oké, doe dat” en “Ga verder totdat alles klaarvis in productie”. · Gebruiker gaf expliciet opdracht om de productieovergang inclusief database en gegevens uit te voeren en zelfstandig door te gaan tot gereed."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Expliciet akkoord start, deploy en omschakeling vastleggen",
+      "change": "Codex/root — productiecoördinator · Afgerond · Menselijke productieopdracht in hoofdgesprek; coördinator bewaakt vrijgavevoorwaarden. · Expliciete productieopdracht omvat begrensde inrichting, start en uitrol. Uitvoering van publiekscutover blijft een afzonderlijke technische controle en staat nog open."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Schrijvers, werkers en automatische taken beheersen",
+      "change": "Codex/root — productiecoördinator · Open · docs/04-deployment/production-rollout-evidence-20261005.json · Flywheel is persistent gepauzeerd en Redis is eigen; volledige app-worker-/queue-/schedulercontrole volgt bij gecontroleerde appstart."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Goedgekeurde nieuwe voorzieningen klaarzetten",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/infrastructure; docs/04-deployment/production-rollout-evidence-20261005.json#/database · Eigen PostgreSQL, MinIO en Redis ingericht en gezond. Nieuwe database-identiteit en private volumes gecontroleerd; legacy behouden."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Goedgekeurd schema- en rechtenplan uitvoeren",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/database; docs/04-deployment/data-rehearsal-evidence-20261005.json#/ledger_release_checksum_match · Goedgekeurde nieuwe database bevat schema, 21 echte ledgerregistraties en beperkte runtime-rollen; relaties en herindexeringsrechten bewezen."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Doeleigen backup en herstelproef plannen en uitvoeren",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/backup · Productie-eigen gevulde backup hersteld op eigen afgescheiden doel; alle tabelfingerprints en objectarchief gecontroleerd; testmiddelen opgeruimd."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Alle vier private buckets aanmaken en controleren",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/storage · models, training-images, recognition-images en thumbnails bestaan en zijn alle vier private."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Opslagrechten van echte app en ML controleren",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/storage · Echt beperkte nonroot opslagaccount plaatste en las objecten terug; beheertoegang geweigerd, één effectief beleid en geen extra groepen bewezen."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Objecten kopiëren en alle hashes vergelijken",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/storage · 1.069 objecten / 40.487.281 bytes volledig overgezet en teruggelezen met dezelfde SHA256. Voorwaardelijk plaatsen zonder overschrijven."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Productie-identiteiten en ID-mapping regelen",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/database; docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints · Geen ACC-gebruikers, wachtwoorden of organisaties gekopieerd. Geselecteerde relaties gecontroleerd; productieauthenticatie heeft een afzonderlijke beperkte leesverbinding."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Geselecteerde gegevens in relatievolgorde importeren",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/database · Alle geselecteerde rijvingerafdrukken komen overeen. Uitgesloten transactionele/auditgegevens bewust niet gekopieerd; nieuwe doelinstellingen apart aangemaakt."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Aantallen, sleutels en relaties verifiëren",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/database; docs/04-deployment/production-rollout-evidence-20261005.json#/ml_runtime · Alle 34 tabellen plus ledger aanwezig; geselecteerde aantallen gelijk en alle verwijzende relaties geldig. Actieve reference_embeddings daarna opnieuw opgebouwd: 542."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "organizations",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/organizations · Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "users",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/users · Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "logos",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/logos · Selectief overgezet: 41 rijen. Volledige geselecteerde bron-/doelvingerafdruk en relaties gecontroleerd; geen productrijgegevens opgenomen in deze checklist."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "logo_images",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/logo_images · Selectief overgezet: 876 rijen. Volledige geselecteerde bron-/doelvingerafdruk en relaties gecontroleerd; geen productrijgegevens opgenomen in deze checklist."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "training_batches",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/training_batches · Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "training_data",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/training_data · Selectief overgezet: 930 rijen. Volledige geselecteerde bron-/doelvingerafdruk en relaties gecontroleerd; geen productrijgegevens opgenomen in deze checklist."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "annotations",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/annotations · Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "model_versions",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/model_versions · Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "logo_embeddings",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/logo_embeddings · Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "reference_logos",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/reference_logos · Selectief overgezet: 604 rijen. Volledige geselecteerde bron-/doelvingerafdruk en relaties gecontroleerd; geen productrijgegevens opgenomen in deze checklist."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "reference_embeddings",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/ml_runtime · Structuur/rechten bewezen. Bronvectoren niet blind gekopieerd; private ML herbouwde 542 actieve reference_embeddings."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "reference_candidates",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/reference_candidates · Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "candidate_embeddings",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/candidate_embeddings · Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "hard_negatives",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/hard_negatives · Selectief overgezet: 72 rijen. Volledige geselecteerde bron-/doelvingerafdruk en relaties gecontroleerd; geen productrijgegevens opgenomen in deze checklist."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "promotion_batches",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/promotion_batches · Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "gold_set_records",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/gold_set_records · Selectief overgezet: 900 rijen. Volledige geselecteerde bron-/doelvingerafdruk en relaties gecontroleerd; geen productrijgegevens opgenomen in deze checklist."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "system_settings",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/system_settings · Structuur aanwezig; 3 productie-eigen instellingen aangemaakt. ACC-instellingen niet blind geïmporteerd; flywheel blijvend gepauzeerd."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "outlier_findings",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/outlier_findings · Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "threshold_changes",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/threshold_changes · Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "artwork_import_runs",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/artwork_import_runs · Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "artwork_imports",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/artwork_imports · Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "artwork_review_items",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/artwork_review_items · Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "declared_harvest_checks",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/declared_harvest_checks · Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "bootstrap_queue",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/bootstrap_queue · Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "mismatch_events",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/mismatch_events · Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "recognition_logs",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/recognition_logs · Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "recognition_results",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/recognition_results · Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "feedback_queue",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/feedback_queue · Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "retraining_notifications",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/retraining_notifications · Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "model_activation_logs",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/model_activation_logs · Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "search_history",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/search_history · Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "query_stats",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/query_stats · Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "health_checks",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/health_checks · Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "backup_history",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/backup/table_fingerprints/backup_history · Structuur aanwezig; 0 rijen volgens bewust selectiebeleid. Geen ACC-identiteiten, transactionele geschiedenis, audit of oude jobs gekopieerd. Leegte is gecontroleerd, geen fictieve kopieaantallen."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "ML en app volgens goedgekeurd plan starten",
+      "change": "Codex/root — productiecoördinator · Open · docs/04-deployment/production-rollout-evidence-20261005.json · Private ML is gestart; openbare app en het definitieve nieuwe imagepaar zijn nog niet gestart of bewezen."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Herbouw en indexzoekwerking onder echte ML-rol controleren",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/ml_runtime; docs/04-deployment/production-rollout-evidence-20261005.json#/trained_model_runtime_probes · Private ML herbouwde 542 actieve referentievectoren onder de echte beperkte ML-rol; herindexering en werkelijke oorspronkelijke productie-ROI-vectorzoektocht bewezen."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Echte upload en gegenereerde preview testen",
+      "change": "Codex/root — productiecoördinator · Open · docs/04-deployment/production-rollout-evidence-20261005.json · Echte geauthenticeerde app-upload met teruggelezen origineel én preview nog niet uitgevoerd."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Alleen eigen testrecords en testobjecten opruimen",
+      "change": "Codex/root — productiecoördinator · Open · docs/04-deployment/production-rollout-evidence-20261005.json · Cleanup van toekomstige app-uploadtestkeys volgt pas na die nog niet uitgevoerde test; tijdelijke herstelproefmiddelen zijn al verwijderd."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Versies, gezondheid en echte herkenning controleren",
+      "change": "Codex/root — productiecoördinator · Open · docs/04-deployment/production-rollout-evidence-20261005.json · Private model/ROI-proeven bestaan; integrale publieke endpointvergelijking inclusief negatieve beelden en geheugenbelasting ontbreekt nog."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Release-identiteit",
+      "change": "Codex/root — productiecoördinator · Open · docs/04-deployment/production-rollout-evidence-20261005.json · Live inspectie van beide definitieve nieuwe images ontbreekt."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Database",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/database; docs/04-deployment/production-rollout-evidence-20261005.json#/backup · Nieuwe productie-identiteit, 34 toepassingstabellen plus ledger en gecontroleerde beperkte rollen bewezen."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Gegevens",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/database; docs/04-deployment/data-rehearsal-evidence-20261005.json · Geselecteerde bronvingerafdrukken en natuurlijke sleutels/relaties gecontroleerd; beschermde bron/testgroepen ongewijzigd behouden."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Objectopslag",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/storage · Vier private buckets, productie-eigen mount en beperkte rechten; alle 1.069 objecten volledig teruggelezen en geverifieerd."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Nieuwe upload",
+      "change": "Codex/root — productiecoördinator · Open · docs/04-deployment/production-rollout-evidence-20261005.json · Upload en preview via echte geauthenticeerde app zijn nog niet bewezen."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Referentieherkenning",
+      "change": "Codex/root — productiecoördinator · Afgerond · docs/04-deployment/production-rollout-evidence-20261005.json#/ml_runtime; docs/04-deployment/production-rollout-evidence-20261005.json#/actual_refinement_proof · Alle 542 actieve referenties geladen en opnieuw gevectoriseerd; daadwerkelijke ML-rol en herindexeringsroute bewezen. Dit is gereedheidsbewijs, geen alle-logo-kwaliteitsclaim."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Gezondheid",
+      "change": "Codex/root — productiecoördinator · Open · docs/04-deployment/production-rollout-evidence-20261005.json · Infrastructuur en private ML zijn gezond; volledige openbare app en diepe eindcontrole wachten."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Authenticatie",
+      "change": "Codex/root — productiecoördinator · Open · docs/04-deployment/production-rollout-evidence-20261005.json · Beperkte authenticatieverbinding is voorbereid; productie-login/API-key/ongeautoriseerde publieke gatewaychecks nog niet uitgevoerd."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Extern contract",
+      "change": "Codex/root — productiecoördinator · Open · docs/04-deployment/production-rollout-evidence-20261005.json · Adaptercontract is getest; werkelijke publieke endpoint- en n8n-doorvoercontrole nog niet uitgevoerd."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Herkenningskwaliteit",
+      "change": "Codex/root — productiecoördinator · Open · docs/04-deployment/production-rollout-evidence-20261005.json · Geen integrale publieke voor/na-kwaliteitsvergelijking afgerond. Green Dot onder 0,99 blijft terecht review."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "GHS-gedrag",
+      "change": "Codex/root — productiecoördinator · Open · docs/04-deployment/production-rollout-evidence-20261005.json · GHS-gewichten en reviewbeleid aanwezig; openbare route-/reviewkanaalcontrole nog niet uitgevoerd. Geen claim dat alle negen typen onafhankelijk bewezen zijn."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Grenzen/drempels",
+      "change": "Codex/root — productiecoördinator · Open · docs/04-deployment/production-rollout-evidence-20261005.json · Lokale drempel-/reviewtests geslaagd; echte publieke route met normale en hoge drempel nog te controleren."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Automatische taken",
+      "change": "Codex/root — productiecoördinator · Open · docs/04-deployment/production-rollout-evidence-20261005.json · Volledige daadwerkelijke app-workerinventaris en eerste gecontroleerde verwerking ontbreken nog."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Herstel",
+      "change": "Codex/root — productiecoördinator · Open · docs/04-deployment/production-rollout-evidence-20261005.json · Backup/herstel is bewezen; daadwerkelijke publieke terugkeerroute/oefening bij cutover nog niet afgerond."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Go/no-go en akkoord op omschakeling registreren",
+      "change": "Codex/root — productiecoördinator · Open · docs/04-deployment/production-rollout-evidence-20261005.json · Go/no-go volgt na alle nog open runtime-acceptatiecontroles."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Publieksroute gecontroleerd omschakelen",
+      "change": "Codex/root — productiecoördinator · Open · docs/04-deployment/production-rollout-evidence-20261005.json · Publieksroute is aantoonbaar ongewijzigd; cutover pas na geslaagde eindcontrole."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Automatische taken gefaseerd vrijgeven",
+      "change": "Codex/root — productiecoördinator · Open · docs/04-deployment/production-rollout-evidence-20261005.json · Automatische taken pas gefaseerd vrijgeven na gecontroleerde start en beoordeling."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Terugkeer gereedhouden",
+      "change": "Codex/root — productiecoördinator · Open · docs/04-deployment/production-rollout-evidence-20261005.json · Legacy en backups blijven behouden; actuele terugkeerdrempels en omgang met nieuw publiek verkeer nog te bevestigen."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Controle na 15minuten registreren",
+      "change": "Codex/root — productiecoördinator · Open · docs/04-deployment/production-rollout-evidence-20261005.json · Observatieperiode begint pas na echte publieke omschakeling; nog niet verstreken."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Controle na 1uur registreren",
+      "change": "Codex/root — productiecoördinator · Open · docs/04-deployment/production-rollout-evidence-20261005.json · Observatieperiode begint pas na echte publieke omschakeling; nog niet verstreken."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Controle na 24uur registreren",
+      "change": "Codex/root — productiecoördinator · Open · docs/04-deployment/production-rollout-evidence-20261005.json · Observatieperiode begint pas na echte publieke omschakeling; nog niet verstreken."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Bewaartermijn en herstelmateriaal bevestigen",
+      "change": "Codex/root — productiecoördinator · Open · docs/04-deployment/production-rollout-evidence-20261005.json · Herstelmateriaal en legacy worden behouden; exacte bewaartermijn/eindbesluit nog vastleggen."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Afzonderlijk akkoord op uitfaseren vastleggen",
+      "change": "Codex/root — productiecoördinator · Open · docs/04-deployment/production-rollout-evidence-20261005.json · Geen afzonderlijk menselijk akkoord voor uitfaseren/stoppen/verwijderen gegeven."
+    },
+    {
+      "at": "2026-10-05T23:20:26.590568+00:00",
+      "label": "Goedgekeurde uitfasering en eindresultaat registreren",
+      "change": "Codex/root — productiecoördinator · Open · docs/04-deployment/production-rollout-evidence-20261005.json · Legacy is niet uitgefaseerd of verwijderd; afzonderlijk besluit en verslag volgen later."
+    },
+    {
+      "at": "2026-10-05T23:24:55.649125+00:00",
+      "label": "p2-restore",
+      "change": "Codex/root — productiecoördinator · Correctie na onafhankelijke review: open tot exacte gemeten hersteltijd bewezen is; bestaand backup-/herstelbewijs blijft behouden. · docs/04-deployment/production-rollout-evidence-20261005.json#/backup"
+    },
+    {
+      "at": "2026-10-05T23:24:55.649125+00:00",
+      "label": "p6-restore-target",
+      "change": "Codex/root — productiecoördinator · Correctie na onafhankelijke review: open tot exacte gemeten hersteltijd bewezen is; bestaand backup-/herstelbewijs blijft behouden. · docs/04-deployment/production-rollout-evidence-20261005.json#/backup"
+    },
+    {
+      "at": "2026-10-05T23:27:13.893828+00:00",
+      "label": "p2-restore",
+      "change": "Codex/root — productiecoördinator · Afgerond na nieuwe gemeten herstelproef · docs/04-deployment/production-rollout-evidence-20261005.json#/backup/timing; docs/04-deployment/production-rollout-evidence-20261005.json#/backup · Nieuwe getimede doelbackup en afgescheiden herstel bewezen: pg_dump 0.356 s; daadwerkelijke pg_restore 0.494 s; gehele backup-/herstel-/verificatieproef 13.837 s. Alle 35 tabelfingerprints gelijk, inclusief 542 referentievectoren en 21 ledgerregistraties; 1.069 objecten via archief teruggelezen. Eigen testcontainer en volumes verwijderd."
+    },
+    {
+      "at": "2026-10-05T23:27:13.893828+00:00",
+      "label": "p6-restore-target",
+      "change": "Codex/root — productiecoördinator · Afgerond na nieuwe gemeten herstelproef · docs/04-deployment/production-rollout-evidence-20261005.json#/backup/timing; docs/04-deployment/production-rollout-evidence-20261005.json#/backup · Nieuwe getimede doelbackup en afgescheiden herstel bewezen: pg_dump 0.356 s; daadwerkelijke pg_restore 0.494 s; gehele backup-/herstel-/verificatieproef 13.837 s. Alle 35 tabelfingerprints gelijk, inclusief 542 referentievectoren en 21 ledgerregistraties; 1.069 objecten via archief teruggelezen. Eigen testcontainer en volumes verwijderd."
+    }
+  ]
+}

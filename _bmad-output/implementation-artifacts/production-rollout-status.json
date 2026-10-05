@@ -1,9 +1,9 @@
 {
-  "time": "2026-10-05T23:12:11.827924+00:00",
+  "time": "2026-10-05T23:49:26.952507+00:00",
   "task_id": "01a0fc7a-28d6-7333-ae26-c6dc972076d8",
   "owner": "Codex/root",
   "status": "active",
-  "phase": "full ML suite recovered; CI repeat before ACC merge",
+  "phase": "reviewed DNS and same-origin preview fixes ready for paired release",
   "authorization": {
     "instruction": "Ga verder totdat alles klaarvis in productie",
     "scope": [
@@ -21,16 +21,16 @@
   },
   "production_changed": true,
   "open_approval": null,
-  "source_release": "814f6cd396f63dada95411d51dda5dfae3205a6a",
+  "source_release": "f247881863ac218690e1af93de1ac6141e77f8c7",
   "transfer_rehearsal": "passed",
   "object_count": 1069,
   "production_resource_uuid": "f048gs04scoksggw0okw4oo0",
-  "runtime_started": false,
+  "runtime_started": true,
   "legacy_route_changed": false,
   "infrastructure_deploy_requested": true,
   "infrastructure_healthy": true,
   "database_transferred": true,
-  "legacy_detection_acceptance": "pending actual new endpoint; real A2 production ROI positive proven",
+  "legacy_detection_acceptance": "blocked before inference by confirmed Node20 pinned lookup all:true signature mismatch",
   "storage_transferred": true,
   "target_backup_restore_passed": true,
   "torch_cache_verified": true,
@@ -44,7 +44,7 @@
     "independent_provider_review": "passed",
     "refinement_review_tiny_region": "passed; 33 refinement and strict endpoint tests independently repeated",
     "actual_a2_production_roi_score": 0.999698877,
-    "public_app_started": false,
+    "public_app_started": true,
     "public_endpoint_cutover": false,
     "actual_green_roi_refinement": "all 542 templates; three distinct regions including visible Green Dot; 26.68 seconds",
     "ghs_source_catalog_routing": "all nine canonical classes passed with nonghs-only reference catalog; review-only",
@@ -54,6 +54,36 @@
       "skipped": 14,
       "runtime_changed_for_ci_repair": false
     },
-    "ci_failure_recovery": "current module fixture identity fixed; independent review passed"
-  }
+    "ci_failure_recovery": "current module fixture identity fixed; independent review passed",
+    "source_freeze_recheck": "passed: same selected table fingerprints and all 1069 live source object hashes after healthy ACC release",
+    "dns_download_correction": "12 regression tests, independent review passed; Node20 actual corrected callback downloads production PNG200",
+    "actual_auth_runtime_readonly": "SELECT-only dedicated production identity connects to xxtractdb03",
+    "actual_upload_storage": "201 own record; image/thumbnail actual200; own record and objects cleanup200",
+    "public_upload_preview": "same-origin signed route implemented; independent review passed; actual live readback awaits deployment",
+    "api_full_suite": {
+      "passed": 1352,
+      "skipped": 2,
+      "todo": 67
+    },
+    "independent_dns_preview_review": "passed; reviewer repeated36 tests",
+    "standalone_production_nutri_b": {
+      "status": 200,
+      "seconds": 28.064,
+      "actual_score": 0.9992493987083435,
+      "mode": "controlled standalone; corrected callback; not live HTTP"
+    },
+    "standalone_production_ghs": {
+      "status": 200,
+      "seconds": 6.581,
+      "code": "FLAME",
+      "actual_score": 0.9930426917007643,
+      "requires_review": true,
+      "mode": "controlled standalone; corrected callback; not live HTTP"
+    }
+  },
+  "dataset_source_release": "814f6cd396f63dada95411d51dda5dfae3205a6a",
+  "paired_build_run": 37388171163,
+  "paired_images_verified": true,
+  "runtime_deployment_uuid": "ncww4wg80ss484k4g4o00ssk",
+  "configuration_commit": "d4bcfb7b1a0f336a47ac8262583f53cf2b8bc5b0"
 }
