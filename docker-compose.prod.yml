@@ -79,7 +79,7 @@ services:
     image: ghcr.io/xxtract-development/logo-recognition-ml:${RELEASE_SHA:?required frozen ACC release}@${ML_IMAGE_DIGEST:?required frozen ML digest}
     profiles: [provisioning]
     entrypoint: [python, /provisioning/initialize-buckets.py]
-    command: []
+    command: ''
     healthcheck: {disable: true}
     environment:
       MINIO_ENDPOINT: minio:9000

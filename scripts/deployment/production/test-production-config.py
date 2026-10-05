@@ -189,7 +189,7 @@ class ConfigurationTests(unittest.TestCase):
         doc = yaml.safe_load(COMPOSE)
         init = doc["services"]["initialize-buckets"]
         self.assertEqual(["python", "/provisioning/initialize-buckets.py"], init["entrypoint"])
-        self.assertEqual([], init["command"])
+        self.assertEqual("", init["command"])
         self.assertEqual({"disable": True}, init["healthcheck"])
 
     def test_runtime_wiring_and_infrastructure_dependency_rejected(self):
@@ -257,6 +257,18 @@ class ConfigurationTests(unittest.TestCase):
         env["PRODUCTION_RESOURCE_NAME"] = "logo-production-other"
         env["MINIO_DATA_PATH"] = "/mnt/storagebox-home/prod/logo-production-other/minio-data"
         self.assertTrue(checker.validate_env(env))
+
+    def test_provisioning_empty_command_survives_yaml_roundtrip(self):
+        doc = yaml.safe_load(COMPOSE)
+        self.assertEqual("", doc["services"]["initialize-buckets"]["command"])
+        self.assertEqual([], checker.validate_compose(yaml.safe_dump(doc), fixture()))
+        for invalid in ({}, [], None, "uvicorn app.main:app"):
+            mutated = yaml.safe_load(COMPOSE)
+            mutated["services"]["initialize-buckets"]["command"] = invalid
+            self.assertTrue(checker.validate_compose(yaml.safe_dump(mutated), fixture()))
+        mutated = yaml.safe_load(COMPOSE)
+        mutated["services"]["initialize-buckets"]["entrypoint"] = ["uvicorn", "app.main:app"]
+        self.assertTrue(checker.validate_compose(yaml.safe_dump(mutated), fixture()))
 
     def test_storagebox_contract(self):
         for value in ("/tmp/logo-production-fixture/minio-data", "/mnt/storagebox-home/acc/logo-production-fixture/minio-data",

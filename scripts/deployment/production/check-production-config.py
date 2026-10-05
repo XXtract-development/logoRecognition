@@ -256,7 +256,7 @@ def validate_compose(source, env):
     if pg.get("image") != "pgvector/pgvector:0.6.0-pg16@sha256:d88687938e7336e1ecd1d8c2f29a750e6ab033e511b04a57a1f2d6d2219a0435" or pg.get("platform") != "linux/amd64":
         errors.append("Verified PostgreSQL16/vector0.6 AMD64 image required")
     initializer = services.get("initialize-buckets", {})
-    if initializer.get("entrypoint") != ["python", "/provisioning/initialize-buckets.py"] or initializer.get("command") != []:
+    if initializer.get("entrypoint") != ["python", "/provisioning/initialize-buckets.py"] or initializer.get("command") != "":
         errors.append("Provisioning must bypass application startup")
     required_runtime_env = {
         "app": {
