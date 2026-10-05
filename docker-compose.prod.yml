@@ -58,7 +58,7 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?required production owner password}
     volumes:
       - type: bind
-        source: ${MINIO_DATA_PATH:?required dedicated production StorageBox directory}
+        source: /mnt/storagebox-home/prod/logo-production-20261005/minio-data
         target: /data
         bind: {create_host_path: false}
     networks: [private]
@@ -138,13 +138,13 @@ services:
       retries: 3
       start_period: 40s
     labels:
-      traefik.enable: 'true'
-      traefik.docker.network: ${COOLIFY_PROXY_NETWORK:?required existing proxy network}
-      traefik.http.routers.logo-production-prepared.rule: Host(`${PRODUCTION_HOSTNAME:?required dedicated production hostname}`)
-      traefik.http.routers.logo-production-prepared.entrypoints: https
-      traefik.http.routers.logo-production-prepared.tls: 'true'
-      traefik.http.routers.logo-production-prepared.tls.certresolver: letsencrypt
-      traefik.http.services.logo-production-prepared.loadbalancer.server.port: '8000'
+      - traefik.enable=true
+      - traefik.docker.network=${COOLIFY_PROXY_NETWORK:?required existing proxy network}
+      - traefik.http.routers.logo-production-prepared.rule=Host(`${PRODUCTION_HOSTNAME:?required dedicated production hostname}`)
+      - traefik.http.routers.logo-production-prepared.entrypoints=https
+      - traefik.http.routers.logo-production-prepared.tls=true
+      - traefik.http.routers.logo-production-prepared.tls.certresolver=letsencrypt
+      - traefik.http.services.logo-production-prepared.loadbalancer.server.port=8000
     restart: unless-stopped
   ml-service:
     # Provisional shared-host ceilings; load proof required before live runtime.

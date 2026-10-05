@@ -15,6 +15,9 @@ import re
 import sys
 from urllib.parse import urlsplit, unquote
 
+DEDICATED_RESOURCE = "logo-production-20261005"
+DEDICATED_MINIO_PATH = "/mnt/storagebox-home/prod/logo-production-20261005/minio-data"
+
 FROZEN = {
     "RELEASE_SHA": "814f6cd396f63dada95411d51dda5dfae3205a6a",
     "APP_IMAGE_DIGEST": "sha256:dba4876ad8cc213da91bd08f52ce5751ec4b7b5c5d629b139981101ed6d87f2f",
@@ -111,6 +114,8 @@ def validate_env(env):
         errors.append("Production hostname must be a valid bare DNS name")
     if env["PRODUCTION_HOSTNAME"].lower() == "logo-detection.xxtract.com":
         errors.append("Legacy live hostname cannot be claimed by prepared runtime")
+    if env["PRODUCTION_RESOURCE_NAME"] != DEDICATED_RESOURCE or env["MINIO_DATA_PATH"] != DEDICATED_MINIO_PATH:
+        errors.append("Frozen dedicated production resource and StorageBox path required")
     resource = env["PRODUCTION_RESOURCE_NAME"]
     storage = env["MINIO_DATA_PATH"]
     if (not storage.startswith("/mnt/storagebox-home/") or "//" in storage
@@ -214,7 +219,7 @@ def validate_compose(source, env):
         expected_mounts = {
             "postgres": ["postgres-data:/var/lib/postgresql/data"],
             "redis": ["redis-data:/data"], "minio": [{
-                "type": "bind", "source": "${MINIO_DATA_PATH:?required dedicated production StorageBox directory}",
+                "type": "bind", "source": DEDICATED_MINIO_PATH,
                 "target": "/data", "bind": {"create_host_path": False},
             }],
             "app": [], "ml-service": ["torch-cache:/app/models/torch"],
@@ -284,6 +289,17 @@ def validate_compose(source, env):
             "REDIS_URL": "redis://redis:6379", "TORCH_HOME": "/app/models/torch", "ENABLE_GPU": "false",
         },
     }
+    expected_labels = [
+        "traefik.enable=true",
+        "traefik.docker.network=${COOLIFY_PROXY_NETWORK:?required existing proxy network}",
+        "traefik.http.routers.logo-production-prepared.rule=Host(`${PRODUCTION_HOSTNAME:?required dedicated production hostname}`)",
+        "traefik.http.routers.logo-production-prepared.entrypoints=https",
+        "traefik.http.routers.logo-production-prepared.tls=true",
+        "traefik.http.routers.logo-production-prepared.tls.certresolver=letsencrypt",
+        "traefik.http.services.logo-production-prepared.loadbalancer.server.port=8000",
+    ]
+    if services.get("app", {}).get("labels") != expected_labels:
+        errors.append("Exact sequence-form proxy labels required for Coolify compatibility")
     required_infra_env = {
         "postgres": {
             "POSTGRES_DB": "${POSTGRES_DB:?required new production database}",

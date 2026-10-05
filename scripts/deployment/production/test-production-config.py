@@ -34,10 +34,10 @@ def fixture():
     env = {key: f"test-only-{key.lower()}-" + "a" * 40 for key in checker.REQUIRED}
     env.update(checker.FROZEN)
     env.update(
-        PRODUCTION_RESOURCE_NAME="logo-production-fixture",
+        PRODUCTION_RESOURCE_NAME="logo-production-20261005",
         PRODUCTION_HOSTNAME="logo-production-fixture.example.com",
         COOLIFY_PROXY_NETWORK="fixture-proxy",
-        MINIO_DATA_PATH="/mnt/storagebox-home/prod/logo-production-fixture/minio-data",
+        MINIO_DATA_PATH="/mnt/storagebox-home/prod/logo-production-20261005/minio-data",
         AUTH_DATABASE_URL="mysql://fixture_auth:fixture-password@10.0.0.8:3306/authentication",
         MEDIASERVER_DOMAIN="https://media.example.com",
         POSTGRES_DB="logo_production_fixture", POSTGRES_ADMIN_USER="fixture_owner",
@@ -241,6 +241,22 @@ class ConfigurationTests(unittest.TestCase):
             env = fixture()
             env["PRODUCTION_HOSTNAME"] = hostname
             self.assertTrue(checker.validate_env(env))
+
+    def test_coolify_literal_bind_and_sequence_labels(self):
+        doc = yaml.safe_load(COMPOSE)
+        self.assertEqual(checker.DEDICATED_MINIO_PATH, doc["services"]["minio"]["volumes"][0]["source"])
+        self.assertTrue(all(isinstance(label, str) and "=" in label for label in doc["services"]["app"]["labels"]))
+        for source in ("${MINIO_DATA_PATH:?required path}", "${MINIO_DATA_PATH}", "/mnt/storagebox-home/prod/old-service/minio-data"):
+            mutated = yaml.safe_load(COMPOSE)
+            mutated["services"]["minio"]["volumes"][0]["source"] = source
+            self.assertTrue(checker.validate_compose(yaml.safe_dump(mutated), fixture()))
+        mutated = yaml.safe_load(COMPOSE)
+        mutated["services"]["app"]["labels"] = {label.split("=", 1)[0]: label.split("=", 1)[1] for label in mutated["services"]["app"]["labels"]}
+        self.assertTrue(checker.validate_compose(yaml.safe_dump(mutated), fixture()))
+        env = fixture()
+        env["PRODUCTION_RESOURCE_NAME"] = "logo-production-other"
+        env["MINIO_DATA_PATH"] = "/mnt/storagebox-home/prod/logo-production-other/minio-data"
+        self.assertTrue(checker.validate_env(env))
 
     def test_storagebox_contract(self):
         for value in ("/tmp/logo-production-fixture/minio-data", "/mnt/storagebox-home/acc/logo-production-fixture/minio-data",

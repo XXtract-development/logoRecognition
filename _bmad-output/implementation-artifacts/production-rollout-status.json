@@ -1,9 +1,9 @@
 {
-  "time": "2026-10-05T21:31:19.103782+00:00",
+  "time": "2026-10-05T21:32:42.165810+00:00",
   "task_id": "01a0fc7a-28d6-7333-ae26-c6dc972076d8",
   "owner": "Codex/root",
   "status": "active",
-  "phase": "reviewed release publication and paired image build",
+  "phase": "dedicated Coolify resource configured; release CI pending",
   "authorization": {
     "instruction": "Ga verder totdat alles klaarvis in productie",
     "scope": [
@@ -19,9 +19,12 @@
       "cutover only after required checks"
     ]
   },
-  "production_changed": false,
+  "production_changed": true,
   "open_approval": null,
   "source_release": "814f6cd396f63dada95411d51dda5dfae3205a6a",
   "transfer_rehearsal": "passed",
-  "object_count": 1069
+  "object_count": 1069,
+  "production_resource_uuid": "f048gs04scoksggw0okw4oo0",
+  "runtime_started": false,
+  "legacy_route_changed": false
 }
