@@ -19,6 +19,7 @@ MARGIN = 0.035
 MAX_CANDIDATES = 64
 MAX_WORK_PIXELS = 4_000_000
 PHOTO_PREPROCESSING = "neutral-quad-v1"
+PARTIAL_PREPROCESSING = "partial-quad-v1"
 MIN_PHOTO_SIDE = 32
 
 
@@ -32,13 +33,14 @@ def _overlap(a, b):
 
 
 def _photo_candidates(image):
-    """Closed red quads only; postpone inner/outer stroke dedup until classification."""
+    """Closed or physically near-complete quads; dedup after classification."""
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
     mask = cv2.inRange(hsv, (0, 90, 65), (12, 255, 255)) | cv2.inRange(
         hsv, (165, 90, 65), (180, 255, 255)
     )
     contours, _ = cv2.findContours(mask, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
     groups = []
+    covered_red = None
     for contour in sorted(contours, key=cv2.contourArea, reverse=True)[
         : MAX_CANDIDATES * 4
     ]:
@@ -46,12 +48,30 @@ def _photo_candidates(image):
         if min(w, h) < MIN_PHOTO_SIDE or not 0.65 < w / h < 1.5:
             continue
         quad = cv2.approxPolyDP(contour, 0.035 * cv2.arcLength(contour, True), True)
+        preprocessing = PHOTO_PREPROCESSING
         if (
             len(quad) != 4
             or not cv2.isContourConvex(quad)
             or not 0.30 < cv2.contourArea(contour) / (w * h) < 0.72
         ):
-            continue
+            hull = cv2.convexHull(contour)
+            quad = cv2.approxPolyDP(hull, 0.035 * cv2.arcLength(hull, True), True)
+            if len(quad) != 4 or not 0.30 < cv2.contourArea(hull) / (w * h) < 0.72:
+                continue
+            # A convex hull alone would invent edges for open artwork. Require
+            # real red pixels on every edge, with only one pixel of raster tolerance.
+            if covered_red is None:
+                covered_red = cv2.dilate(mask, np.ones((3, 3), np.uint8))
+            points = quad.reshape(-1, 2)
+            coverage = []
+            for index in range(4):
+                edge = np.round(
+                    np.linspace(points[index], points[(index + 1) % 4], 64)
+                ).astype(int)
+                coverage.append(float((covered_red[edge[:, 1], edge[:, 0]] > 0).mean()))
+            if min(coverage) < 0.90 or float(np.mean(coverage)) < 0.95:
+                continue
+            preprocessing = PARTIAL_PREPROCESSING
         vertices = (quad.reshape(-1, 2) - [x, y]) / [w, h]
         expected = np.array([[0.5, 0], [1, 0.5], [0.5, 1], [0, 0.5]])
         if any(
@@ -59,7 +79,7 @@ def _photo_candidates(image):
         ):
             continue
         box = (x, y, w, h)
-        candidate = (box, quad.reshape(-1, 2).astype(np.float32))
+        candidate = (box, quad.reshape(-1, 2).astype(np.float32), preprocessing)
         group = next((g for g in groups if _overlap(g[0][0], box) > 0.5), None)
         if group is not None:
             if len(group) < 2:
@@ -121,24 +141,25 @@ def _photo_recovery(image, existing, wanted):
         ):
             continue
         proposals = []
-        for candidate_box, quad in group:
+        for candidate in group:
+            candidate_box, quad = candidate[:2]
+            preprocessing = candidate[2] if len(candidate) > 2 else PHOTO_PREPROCESSING
             glyph = _photo_glyph(image, candidate_box, quad)
             learned = classify(glyph) if glyph is not None else None
             if learned is not None:
-                proposals.append(learned)
+                proposals.append({**learned, "_preprocessing": preprocessing})
         # Inconsistent interpretations of the same physical stroke are ambiguous.
         if not proposals or len({p["t3777_code"] for p in proposals}) != 1:
             continue
         chosen = max(proposals, key=lambda p: p["support_similarity"])
         if chosen["t3777_code"] not in wanted:
             continue
+        preprocessing = chosen.pop("_preprocessing")
         x, y, w, h = box
         additions.append(
             {
                 **chosen,
-                "reference_version": chosen["reference_version"]
-                + ":"
-                + PHOTO_PREPROCESSING,
+                "reference_version": chosen["reference_version"] + ":" + preprocessing,
                 "bbox": {"x": x, "y": y, "width": w, "height": h},
             }
         )

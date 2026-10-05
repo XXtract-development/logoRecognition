@@ -1,0 +1,56 @@
+{
+  "recordedAt": "2026-10-05T10:39:16.618302+00:00",
+  "modelVersion": "ghs-glyph-v1-58a1db6819e8",
+  "modelSha256": "68b9ce1488150d32722bb116790fcd065a89d53525fa43dfd48c3148f63d8974",
+  "localTrainingEvidenceSha256": "51d7a208f6e0c8cd8747b3dff619e9630a51d13c510afea7fa0410472df249a3",
+  "actualProductionExamples": 23,
+  "productionImages": 16,
+  "provisionalSourceProductGroups": 10,
+  "trainingRows": 5552,
+  "productionRows": 3703,
+  "twoByteIdenticalTrainingRuns": true,
+  "policyUnchanged": true,
+  "pythonTests": {
+    "passed": 575,
+    "skipped": 14,
+    "warnings": 8,
+    "elapsedSeconds": 61.84,
+    "liveDatabaseAccess": false
+  },
+  "nodeApiTests": {
+    "passed": 45,
+    "files": 2,
+    "elapsedSeconds": 2.04,
+    "authenticatedPublicRuntime": false
+  },
+  "formatting": {
+    "blackFiles": 50,
+    "isort": true,
+    "ruff": true,
+    "whitespace": true
+  },
+  "review": {
+    "typedSourceBinding": true,
+    "splitIndependenceByRecordedIdentity": true,
+    "fieldFamilyIndependenceProven": false,
+    "artifactAndQualificationChecksums": true,
+    "independentCodeReviewPassed": true,
+    "transportMetadataOmissionProbesRejected": 2
+  },
+  "sourceHashes": {
+    "apps/ml-service/scripts/train_ghs_specialist.py": "aac4d906c3a375819b979dc21f0cc04a8fb7fbb85c66cf043f0c4060de1ded3b",
+    "apps/ml-service/tests/test_ghs_specialist.py": "4dbd69abc8dfb88c5131c33f6e438851297667b439b081ecbb7df959d0c22a5d",
+    "apps/ml-service/app/services/ghs_reference.py": "fea4a46b7b57064d4b48b5003d7d2cad2c3e7222fbf37657176329740c4a63c4",
+    "apps/ml-service/scripts/ghs-specialist.md": "0c5d38d748bebc3b6161c6ff425c158dbb356cb0e70fcbacea3fd4f122b7ce79",
+    "apps/ml-service/app/assets/ghs/specialist/model.json": "68b9ce1488150d32722bb116790fcd065a89d53525fa43dfd48c3148f63d8974",
+    "apps/ml-service/app/assets/ghs/specialist/manifest.json": "342242f726a1fbe7ee37ab567517cecf80bfec59eadfbfe8a3266fee6e9d65cf",
+    "AGENTS.md": "903861c7d8305f88b5053342d33ff15f3b75961ffdc874007431fedba81c43d9",
+    "versions.md": "26539e9169dbe8839fda55ba17aaec97d6ad3a71f385ade4384882ae985ccc58",
+    "_bmad-output/implementation-artifacts/release/verify-ghs-specialist-acc.py": "0c93c13f818356fc585c24001eddce89f3a4b1d7642ee9a997f1598f3e33aa08",
+    "_bmad-output/implementation-artifacts/release/verify-ghs-app-transport-acc.py": "8ac486ed83fd4be9310f176d0dbcfd3954f770283de2346e0f8576c68bbfabc4",
+    "_bmad-output/implementation-artifacts/release/summarize-ghs-production-runtime.py": "154da309e51c32c7d87bf82bee7c1f6c006a1dc6503dc98934740985c492a73d"
+  },
+  "independentFinalBenchmark": false,
+  "humanGold": false,
+  "ACCDeploymentPerformed": false
+}

@@ -5,6 +5,7 @@ import base64
 import hashlib
 import importlib.util
 import json
+import os
 import sys
 import types
 from pathlib import Path
@@ -31,6 +32,8 @@ def runtime(monkeypatch):
     package.__path__ = [str(ROOT / "app/services")]
     monkeypatch.setitem(sys.modules, "app.services", package)
     specialist = module(ROOT / "app/services/ghs_specialist.py", "test_specialist")
+    if os.environ.get("GHS_TEST_ARTIFACT_ROOT"):
+        specialist.ARTIFACT_ROOT = Path(os.environ["GHS_TEST_ARTIFACT_ROOT"]).resolve()
     monkeypatch.setitem(sys.modules, "app.services.ghs_specialist", specialist)
     reference = module(ROOT / "app/services/ghs_reference.py", "test_reference")
     monkeypatch.setitem(sys.modules, "app.services.ghs_reference", reference)
@@ -322,8 +325,10 @@ def test_training_split_guards_and_source_authorisation(runtime):
 def test_training_deterministic_order_and_provenance(runtime):
     _, _, _, training = runtime
     samples = training.official_samples(ROOT / "app/assets/ghs")
-    a = training.train(samples, augmentation_count=2)
-    b = training.train(list(reversed(samples)), augmentation_count=2)
+    a = training.train(samples, augmentation_count=2, bootstrap_reference_only=True)
+    b = training.train(
+        list(reversed(samples)), augmentation_count=2, bootstrap_reference_only=True
+    )
     assert a == b
     assert a["provenance"]["independentFieldGroups"] == 0
     assert not a["provenance"]["fieldCalibration"]
@@ -375,7 +380,7 @@ def test_real_learned_recovery_reaches_normal_api(runtime):
 
 
 def test_uncertainty_means_low_score_not_uncalibrated(runtime):
-    _, reference, _, _ = runtime
+    specialist, reference, _, _ = runtime
     original = cv2.imread(str(ROOT / "app/assets/ghs/EXPLODING_BOMB.png"))
     varied = cv2.erode(original, np.ones((4, 4), np.uint8))
     result = reference.detect_ghs(varied)[0]
@@ -383,7 +388,10 @@ def test_uncertainty_means_low_score_not_uncalibrated(runtime):
         result["method"] == "ghs-specialist"
         and result["t3777_code"] == "EXPLODING_BOMB"
     )
-    assert 0.70 <= result["score"] < 0.87 and result["uncertain"]
+    policy = specialist.load_model()[0]["policy"]
+    assert policy["uncertaintyScore"] == 0.87
+    assert result["uncertain"] == (result["score"] < policy["uncertaintyScore"])
+    assert result["support_similarity"] >= policy["minimumSupportSimilarity"]
     assert result["confidence_kind"] == "uncalibrated-classifier-score"
     assert result["requires_review"]
 
@@ -673,3 +681,729 @@ def test_large_photo_recovery_restores_independent_original_bbox(runtime):
     assert result["reference_version"].endswith(":neutral-quad-v1")
     assert not result["uncertain"]
     assert all(abs(result["bbox"][key] - expected[key]) <= 5 for key in expected)
+
+
+def _qualified_production_fixture(training, tmp_path):
+    """Synthetic contract fixture; never actual-production training evidence."""
+    image = np.full((170, 230, 3), 255, np.uint8)
+    reference = cv2.imread(str(ROOT / "app/assets/ghs/EXCLAMATION_MARK.png"))
+    reference = cv2.resize(reference, (80, 80))
+    image[20:100, 20:100] = reference
+    image[65:145, 125:205] = reference
+    path = tmp_path / "unit-fixture-not-production.png"
+    cv2.imwrite(str(path), image)
+    row = {
+        "sourceId": "unit-fixture-not-production",
+        "imagePath": str(path),
+        "sha256": training.digest(path),
+        "familyId": "unit-fixture-family",
+        "split": "train",
+        "code": "EXCLAMATION_MARK",
+        "bbox": {"x": 20, "y": 20, "width": 80, "height": 80},
+        "sourceType": "production-product",
+        "trainingAllowed": True,
+        "labelStatus": "qualified-production-ai-reviewed",
+        "provenance": {
+            "origin": "mongodb-prod",
+            "productIdentity": "00000000000001",
+            "sourceURL": "fixture://not-an-actual-production-source",
+            "license": "Synthetic unit fixture, no actual-production claim",
+            "authorization": {
+                "basis": "explicit-user-request",
+                "date": "2026-10-05",
+                "scope": "internal-ghs-training",
+            },
+            "qualification": {
+                "status": "qualified",
+                "sha256": "pending",
+                "evidencePath": "pending",
+                "reviewerIds": ["unit-review-a", "unit-review-b"],
+                "context": "product-symbol",
+            },
+        },
+    }
+
+    return _bind_production_fixture(training, row, tmp_path)
+
+
+def _bind_production_fixture(training, row, tmp_path, *, crop=False):
+    import copy
+
+    row = copy.deepcopy(row)
+    folder = tmp_path / f"qualification-{len(list(tmp_path.glob('qualification-*')))}"
+    folder.mkdir()
+    q = row["provenance"]["qualification"]
+    image = {"path": row["imagePath"], "sha256": row["sha256"]}
+    raw_bbox = row["bbox"]
+    source = cv2.imread(row["imagePath"])
+    if crop:
+        x, y, w, h = (int(row["bbox"][k]) for k in ("x", "y", "width", "height"))
+        source = source[y : y + h, x : x + w]
+        crop_path = folder / "raw-crop.png"
+        cv2.imwrite(str(crop_path), source)
+        image.update(
+            path=str(crop_path), sha256=training.digest(crop_path), cropBbox=row["bbox"]
+        )
+        raw_bbox = {"x": 0, "y": 0, "width": w, "height": h}
+    raw = {
+        "httpStatus": 200,
+        "imageSha256": image["sha256"],
+        "response": {
+            "status": "ai-reviewed",
+            "image": {
+                "sha256": image["sha256"],
+                "width": source.shape[1],
+                "height": source.shape[0],
+            },
+            "reviews": [
+                {
+                    "reviewId": reviewer,
+                    "status": "succeeded",
+                    "projectedAnnotations": [
+                        {"code": row["code"], "bbox": raw_bbox, "uncertain": False}
+                    ],
+                }
+                for reviewer in q["reviewerIds"]
+            ],
+        },
+    }
+    raw_path = folder / "synthetic-unit-raw-review.json"
+    raw_path.write_text(json.dumps(raw))
+    record = {
+        "schema": "ghs-production-qualification-v1",
+        "status": "qualified",
+        "context": "product-symbol",
+        "humanGold": False,
+        "sourceHintsSent": False,
+        "sourceSha256": row["sha256"],
+        "code": row["code"],
+        "bbox": row["bbox"],
+        "productIdentity": row["provenance"]["productIdentity"],
+        "reviewerIds": q["reviewerIds"],
+        "reviewEvidence": {"path": str(raw_path), "sha256": training.digest(raw_path)},
+        "reviewingImage": image,
+    }
+    record_path = folder / "synthetic-unit-qualification.json"
+    record_path.write_text(json.dumps(record))
+    q.update(evidencePath=str(record_path), sha256=training.digest(record_path))
+    return row
+
+
+def test_normal_training_requires_production_and_explicit_bootstrap(runtime):
+    _, _, _, training = runtime
+    samples = training.official_samples(ROOT / "app/assets/ghs")
+    with pytest.raises(ValueError, match="requires qualified production"):
+        training.train(samples, augmentation_count=2)
+    bootstrap = training.train(
+        samples, augmentation_count=2, bootstrap_reference_only=True
+    )
+    assert bootstrap["provenance"]["bootstrapReferenceOnly"]
+    assert bootstrap["provenance"]["usedProductionExamples"] == 0
+
+
+def test_production_contributes_actual_rows_and_crop_order_is_deterministic(
+    runtime, tmp_path
+):
+    _, _, _, training = runtime
+    official = training.official_samples(ROOT / "app/assets/ghs")
+    a = _qualified_production_fixture(training, tmp_path)
+    b = {
+        **a,
+        "sourceId": "second-crop",
+        "bbox": {"x": 125, "y": 65, "width": 80, "height": 80},
+    }
+    b = _bind_production_fixture(training, b, tmp_path)
+    first = training.train(official + [a, b], augmentation_count=2)
+    second = training.train(list(reversed(official + [a, b])), augmentation_count=2)
+    assert first == second
+    p = first["provenance"]
+    assert not p["bootstrapReferenceOnly"]
+    assert p["productionExamples"] == p["usedProductionExamples"] == 2
+    assert p["productionFamilies"] == p["usedProductionFamilies"] == 1
+    assert p["productionImages"] == p["usedProductionImages"] == 1
+    assert p["productionTrainingRows"] == 6 and p["productionAugmentedRows"] == 4
+    assert (
+        p["trainingRows"]
+        == p["productionTrainingRows"]
+        + p["officialReferenceTrainingRows"]
+        + p["otherTrainingRows"]
+        + 400
+    )
+    bootstrap = training.train(
+        official, augmentation_count=2, bootstrap_reference_only=True
+    )
+    assert first["weights"] != bootstrap["weights"]
+    assert first["policy"] == bootstrap["policy"]
+
+
+def test_production_metadata_without_feature_contribution_fails(
+    runtime, monkeypatch, tmp_path
+):
+    _, _, _, training = runtime
+    a = _qualified_production_fixture(training, tmp_path)
+    # Only train split is decoded; constant blank annotations yield no usable features.
+    blank = np.full((100, 100, 3), 255, np.uint8)
+    path = tmp_path / "blank.png"
+    cv2.imwrite(str(path), blank)
+    a.update(
+        imagePath=str(path),
+        sha256=training.digest(path),
+        bbox={"x": 0, "y": 0, "width": 100, "height": 100},
+    )
+    a = _bind_production_fixture(training, a, tmp_path)
+    with pytest.raises(ValueError, match="contributed feature vectors"):
+        training.train(
+            training.official_samples(ROOT / "app/assets/ghs") + [a],
+            augmentation_count=2,
+        )
+
+
+@pytest.mark.parametrize("field", ["authorization", "qualification", "productIdentity"])
+def test_unqualified_production_cannot_be_silently_trained(runtime, tmp_path, field):
+    _, _, _, training = runtime
+    a = _qualified_production_fixture(training, tmp_path)
+    a["provenance"].pop(field)
+    with pytest.raises(ValueError, match="qualified visible|canonical 14-digit"):
+        training.train(
+            training.official_samples(ROOT / "app/assets/ghs") + [a],
+            augmentation_count=2,
+        )
+
+
+def test_same_production_product_cannot_escape_family_guard(runtime, tmp_path):
+    _, _, _, training = runtime
+    a = _qualified_production_fixture(training, tmp_path)
+    b = {
+        **a,
+        "familyId": "fake-other-family",
+        "bbox": {"x": 125, "y": 65, "width": 80, "height": 80},
+    }
+    b = _bind_production_fixture(training, b, tmp_path)
+    with pytest.raises(ValueError, match="identity crosses"):
+        training.validate_samples([a, b])
+    a["split"] = "validation"
+    with pytest.raises(ValueError, match="requires qualified production"):
+        training.train(
+            training.official_samples(ROOT / "app/assets/ghs") + [a],
+            augmentation_count=2,
+        )
+
+
+@pytest.mark.parametrize("coordinate", [float("nan"), float("inf"), -0.1, 9999])
+def test_training_bbox_is_finite_and_inside_real_image(runtime, tmp_path, coordinate):
+    _, _, _, training = runtime
+    a = _qualified_production_fixture(training, tmp_path)
+    a["bbox"]["x"] = coordinate
+    if np.isfinite(coordinate) and coordinate >= 0:
+        a = _bind_production_fixture(training, a, tmp_path)
+    with pytest.raises(ValueError, match="Source box"):
+        training.train(
+            training.official_samples(ROOT / "app/assets/ghs") + [a],
+            augmentation_count=2,
+        )
+
+
+def test_cli_refuses_missing_production_and_preserves_frozen_output(tmp_path):
+    import subprocess
+
+    output = tmp_path / "output"
+    command = [
+        sys.executable,
+        str(ROOT / "scripts/train_ghs_specialist.py"),
+        "--output",
+        str(output),
+        "--augmentations",
+        "2",
+    ]
+    result = subprocess.run(command, capture_output=True)
+    assert result.returncode != 0 and b"qualified production manifest" in result.stderr
+    assert not output.exists()
+    output.mkdir()
+    frozen = output / "model.json"
+    frozen.write_bytes(b"unchanged frozen output")
+    result = subprocess.run(
+        command + ["--bootstrap-reference-only"], capture_output=True
+    )
+    assert result.returncode != 0 and b"Refusing to overwrite" in result.stderr
+    assert frozen.read_bytes() == b"unchanged frozen output"
+
+
+def test_production_training_does_not_decode_validation_family(
+    runtime, tmp_path, monkeypatch
+):
+    _, _, _, training = runtime
+    train_row = _qualified_production_fixture(training, tmp_path)
+    validation = _qualified_production_fixture(training, tmp_path)
+    validation_path = tmp_path / "validation.png"
+    image = cv2.imread(validation["imagePath"])
+    image[0, 0] = (1, 2, 3)
+    cv2.imwrite(str(validation_path), image)
+    validation.update(
+        imagePath=str(validation_path),
+        sha256=training.digest(validation_path),
+        familyId="validation-family",
+        split="validation",
+        trainingAllowed=False,
+    )
+    validation["provenance"]["productIdentity"] = "00000000000002"
+    validation = _bind_production_fixture(training, validation, tmp_path)
+    original = training.cv2.imread
+    decoded = []
+
+    def record(path):
+        decoded.append(path)
+        assert path != str(
+            validation_path
+        ), "Validation family must not be decoded during training"
+        return original(path)
+
+    monkeypatch.setattr(training.cv2, "imread", record)
+    result = training.train(
+        training.official_samples(ROOT / "app/assets/ghs") + [train_row, validation],
+        augmentation_count=2,
+    )
+    assert str(train_row["imagePath"]) in decoded
+    assert result["provenance"]["usedProductionExamples"] == 1
+    assert result["provenance"]["productionFamilies"] == 1
+
+
+def test_qualification_hash_or_disputed_context_cannot_train(runtime, tmp_path):
+    _, _, _, training = runtime
+    row = _qualified_production_fixture(training, tmp_path)
+    row["provenance"]["qualification"]["context"] = "ingredient"
+    with pytest.raises(ValueError, match="qualified visible"):
+        training.validate_samples([row])
+    row["provenance"]["qualification"]["context"] = "product-symbol"
+    Path(row["provenance"]["qualification"]["evidencePath"]).write_text(
+        "changed qualification evidence"
+    )
+    with pytest.raises(ValueError, match="evidence checksum"):
+        training.validate_samples([row])
+
+
+def test_same_production_annotation_cannot_inflate_example_count(runtime, tmp_path):
+    _, _, _, training = runtime
+    row = _qualified_production_fixture(training, tmp_path)
+    with pytest.raises(ValueError, match="Duplicate production annotation"):
+        training.validate_samples(
+            [row, {**row, "sourceId": "different-id-same-annotation"}]
+        )
+
+
+@pytest.mark.parametrize(
+    "target_score,expected_uncertain",
+    [
+        (0.82, True),
+        (np.nextafter(0.87, 0), True),
+        (np.nextafter(0.87, 1), False),
+        (0.92, False),
+    ],
+)
+def test_actual_classifier_uncertainty_boundary_with_controlled_logits(
+    runtime, monkeypatch, target_score, expected_uncertain
+):
+    specialist, reference, _, _ = runtime
+    image = cv2.imread(str(ROOT / "app/assets/ghs/FLAME.png"))
+    x, y, w, h = max(reference.regions(image), key=lambda box: box[2] * box[3])
+    crop = image[y : y + h, x : x + w]
+    vector = specialist.features(crop)
+    model, weights, bias, support = specialist.load_model()
+    controlled = np.full(10, np.log((1 - target_score) / 9))
+    controlled[model["labels"].index("FLAME")] = np.log(target_score)
+    monkeypatch.setattr(
+        specialist,
+        "load_model",
+        lambda: (model, np.zeros_like(weights), controlled, np.asarray([vector])),
+    )
+    learned = specialist.classify(crop)
+    assert learned["t3777_code"] == "FLAME"
+    assert learned["score"] == pytest.approx(target_score)
+    assert learned["uncertain"] is expected_uncertain
+    assert learned["confidence_kind"] == "uncalibrated-classifier-score"
+    assert learned["requires_review"]
+
+
+def test_noncanonical_production_gtin_cannot_hide_shared_family(runtime, tmp_path):
+    _, _, _, training = runtime
+    row = _qualified_production_fixture(training, tmp_path)
+    row["provenance"]["productIdentity"] = "8720065008323"
+    with pytest.raises(ValueError, match="canonical 14-digit GTIN"):
+        training.validate_samples([row])
+
+
+def test_equivalent_numeric_bboxes_cannot_inflate_production_training(
+    runtime, tmp_path
+):
+    _, _, _, training = runtime
+    row = _qualified_production_fixture(training, tmp_path)
+    alias = {
+        **row,
+        "sourceId": "float-alias",
+        "bbox": {key: float(value) for key, value in row["bbox"].items()},
+    }
+    with pytest.raises(ValueError, match="Duplicate production annotation"):
+        training.validate_samples([row, alias])
+
+
+@pytest.mark.parametrize("target_score", [0.82, 0.92])
+def test_real_normal_api_respects_controlled_classifier_low_score(
+    runtime, monkeypatch, target_score
+):
+    specialist, reference, _, _ = runtime
+    bgr = cv2.erode(
+        cv2.imread(str(ROOT / "app/assets/ghs/EXPLODING_BOMB.png")),
+        np.ones((4, 4), np.uint8),
+    )
+    x, y, w, h = max(reference.regions(bgr), key=lambda box: box[2] * box[3])
+    vector = specialist.features(bgr[y : y + h, x : x + w])
+    model, weights, _, _ = specialist.load_model()
+    logits = np.full(10, np.log((1 - target_score) / 9))
+    logits[model["labels"].index("EXPLODING_BOMB")] = np.log(target_score)
+    monkeypatch.setattr(
+        specialist,
+        "load_model",
+        lambda: (model, np.zeros_like(weights), logits, np.asarray([vector])),
+    )
+    image = Image.fromarray(cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB))
+    api = module(ROOT / "app/api/detection.py", "test_controlled_uncertainty_api")
+    response = asyncio.run(
+        api.detect_logos(
+            api.DetectionRequest(
+                image=base64.b64encode(_png(image)).decode(), confidence_threshold=0.87
+            )
+        )
+    )
+    results = response.review_proposals if target_score < 0.87 else response.detections
+    assert len(results) == 1
+    assert results[0].value == "EXPLODING_BOMB"
+    assert results[0].method == "ghs-specialist"
+    assert results[0].confidence == pytest.approx(target_score)
+    assert results[0].uncertain is (target_score < 0.87)
+    assert results[0].requires_review
+    assert results[0].confidence_kind == "uncalibrated-classifier-score"
+    assert (
+        (not response.detections)
+        if target_score < 0.87
+        else (not response.review_proposals)
+    )
+
+
+def _small_gap_corrosion():
+    image = cv2.imread(str(ROOT / "app/assets/ghs/CORROSION.png"))
+    # A blue artwork guide interrupts a small part of one real red side.
+    # The source glyph stays intact; no guide removal is performed by inference.
+    cv2.rectangle(image, (74, 74), (88, 88), (255, 100, 0), -1)
+    return image
+
+
+def test_physically_nearly_complete_red_border_reaches_normal_api(runtime):
+    specialist, reference, _, _ = runtime
+    bgr = _small_gap_corrosion()
+    assert reference.regions(bgr, 0.5) == []
+    detection = reference.detect_ghs(bgr)
+    assert len(detection) == 1
+    result = detection[0]
+    assert result["t3777_code"] == "CORROSION"
+    assert result["reference_version"].endswith(":partial-quad-v1")
+    assert result["model_version"] == specialist.load_model()[0]["version"]
+    assert result["bbox"] == {"x": 7, "y": 10, "width": 276, "height": 276}
+    assert result["confidence"] >= 0.87 and result["requires_review"]
+    image = Image.fromarray(cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB))
+    api = module(ROOT / "app/api/detection.py", "test_partial_border_api")
+    response = asyncio.run(
+        api.detect_logos(
+            api.DetectionRequest(image=base64.b64encode(_png(image)).decode())
+        )
+    )
+    matches = response.detections + response.review_proposals
+    assert len(matches) == 1
+    match = matches[0]
+    assert match.value == "CORROSION" and match.requires_review
+    assert match.confidence == pytest.approx(result["confidence"])
+    assert match.reference_version.endswith(":partial-quad-v1")
+    assert match.bbox.model_dump() == result["bbox"]
+    assert bool(response.detections) is (result["confidence"] >= 0.99)
+    assert bool(response.review_proposals) is (result["confidence"] < 0.99)
+    at_review_threshold = asyncio.run(
+        api.detect_logos(
+            api.DetectionRequest(
+                image=base64.b64encode(_png(image)).decode(), confidence_threshold=0.87
+            )
+        )
+    )
+    assert (
+        len(at_review_threshold.detections) == 1
+        and not at_review_threshold.review_proposals
+    )
+    assert at_review_threshold.detections[0].value == "CORROSION"
+    assert at_review_threshold.detections[0].confidence == pytest.approx(
+        result["confidence"]
+    )
+    assert not at_review_threshold.detections[0].uncertain
+
+
+@pytest.mark.parametrize("mode", ["missing-side", "large-gap", "partial-artwork"])
+def test_partial_border_does_not_invent_missing_edges_or_glyphs(runtime, mode):
+    _, reference, _, _ = runtime
+    image = np.full((200, 200, 3), 255, np.uint8)
+    quad = np.array([[100, 10], [190, 100], [100, 190], [10, 100]])
+    if mode == "missing-side":
+        cv2.polylines(image, [quad], False, (0, 0, 220), 4)
+    else:
+        cv2.polylines(image, [quad], True, (0, 0, 220), 4)
+        cv2.rectangle(image, (42, 42), (60, 60), (255, 255, 255), -1)
+        if mode == "large-gap":
+            cv2.rectangle(image, (25, 25), (78, 78), (255, 255, 255), -1)
+    cv2.putText(image, "42", (60, 118), cv2.FONT_HERSHEY_SIMPLEX, 1.3, (0, 0, 0), 3)
+    assert reference.detect_ghs(image) == []
+
+
+def test_large_partial_border_preserves_original_source_coordinates(runtime):
+    _, reference, _, _ = runtime
+    image = _small_gap_corrosion()
+    h, w = image.shape[:2]
+    canvas = np.full((3100, 2900, 3), 255, np.uint8)
+    canvas[1700 : 1700 + h, 1200 : 1200 + w] = image
+    results = reference.detect_ghs(canvas)
+    assert len(results) == 1
+    assert results[0]["t3777_code"] == "CORROSION"
+    assert results[0]["reference_version"].endswith(":partial-quad-v1")
+    expected = {"x": 1207, "y": 1710, "width": 276, "height": 276}
+    assert all(
+        abs(results[0]["bbox"][key] - value) <= 5 for key, value in expected.items()
+    )
+
+
+def test_production_reference_cannot_supply_training_features(runtime, tmp_path):
+    _, _, _, training = runtime
+    row = _qualified_production_fixture(training, tmp_path)
+    row["split"] = "reference"
+    with pytest.raises(ValueError, match="cannot use the reference split"):
+        training.train(
+            training.official_samples(ROOT / "app/assets/ghs") + [row],
+            augmentation_count=2,
+        )
+
+
+def test_concurrent_publication_claim_preserves_both_artifacts(
+    runtime, tmp_path, monkeypatch
+):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+
+    _, _, _, training = runtime
+    output = tmp_path / "concurrent-artifact"
+    barrier = Barrier(2)
+    payload = {
+        "version": "concurrency-unit-fixture",
+        "featureVersion": training.FEATURE_VERSION,
+        "provenance": {
+            "trainingRows": 1,
+            "productionExamples": 1,
+            "productionFamilies": 1,
+        },
+    }
+
+    def simultaneous_training(*args, **kwargs):
+        barrier.wait(timeout=10)
+        return payload
+
+    monkeypatch.setattr(training, "train", simultaneous_training)
+    monkeypatch.setattr(
+        sys, "argv", ["trainer", "--bootstrap-reference-only", "--output", str(output)]
+    )
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        futures = [executor.submit(training.main) for _ in range(2)]
+        failures = [f.exception(timeout=20) for f in futures]
+    assert sum(error is None for error in failures) == 1
+    assert sum(isinstance(error, FileExistsError) for error in failures) == 1
+    frozen_model = (output / "model.json").read_bytes()
+    frozen_manifest = (output / "manifest.json").read_bytes()
+    assert json.loads(frozen_model) == payload
+    assert (
+        json.loads(frozen_manifest)["sha256"]
+        == hashlib.sha256(frozen_model).hexdigest()
+    )
+    with pytest.raises(ValueError, match="Refusing to overwrite"):
+        training.main()
+    assert (output / "model.json").read_bytes() == frozen_model
+    assert (output / "manifest.json").read_bytes() == frozen_manifest
+
+
+@pytest.mark.parametrize("mode", ["missing-side", "large-gap"])
+def test_physical_coverage_rejects_even_a_recognizable_real_glyph(runtime, mode):
+    specialist, reference, _, _ = runtime
+    image = cv2.imread(str(ROOT / "app/assets/ghs/CORROSION.png"))
+    box = max(reference.regions(image), key=lambda b: b[2] * b[3])
+    x, y, w, h = box
+    if mode == "missing-side":
+        cv2.line(image, (x + w // 2, y + h - 1), (x, y + h // 2), (255, 255, 255), 32)
+    else:
+        cv2.rectangle(image, (25, 25), (105, 105), (255, 255, 255), -1)
+    learned = specialist.classify(image[y : y + h, x : x + w])
+    assert learned and learned["t3777_code"] == "CORROSION"
+    assert learned["score"] >= 0.87 and not learned["uncertain"]
+    assert reference.detect_ghs(image) == []
+
+
+@pytest.mark.parametrize(
+    "field", ["code", "bbox", "sourceSha256", "productIdentity", "reviewerIds"]
+)
+def test_qualification_record_binds_exact_source_annotation(runtime, tmp_path, field):
+    _, _, _, training = runtime
+    row = _qualified_production_fixture(training, tmp_path)
+    if field == "code":
+        row["code"] = "GAS_CYLINDER"
+    elif field == "bbox":
+        row["bbox"]["x"] += 1
+    elif field == "sourceSha256":
+        row["sha256"] = "0" * 64
+    elif field == "productIdentity":
+        row["provenance"]["productIdentity"] = "00000000000002"
+    else:
+        row["provenance"]["qualification"]["reviewerIds"] = [
+            "different-a",
+            "different-b",
+        ]
+    with pytest.raises(ValueError, match="does not bind"):
+        training.validate_samples([row])
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        "wrong-code",
+        "wrong-box",
+        "uncertain",
+        "failed-review",
+        "wrong-id",
+        "wrong-image",
+        "http-failed",
+        "raw-hash",
+    ],
+)
+def test_qualification_requires_matching_successful_actual_raw_reviews(
+    runtime, tmp_path, mutation
+):
+    _, _, _, training = runtime
+    row = _qualified_production_fixture(training, tmp_path)
+    q = row["provenance"]["qualification"]
+    record_path = Path(q["evidencePath"])
+    record = json.loads(record_path.read_text())
+    raw_path = Path(record["reviewEvidence"]["path"])
+    raw = json.loads(raw_path.read_text())
+    review = raw["response"]["reviews"][1]
+    if mutation == "wrong-code":
+        review["projectedAnnotations"][0]["code"] = "GAS_CYLINDER"
+    elif mutation == "wrong-box":
+        review["projectedAnnotations"][0]["bbox"]["x"] = 9999
+    elif mutation == "uncertain":
+        review["projectedAnnotations"][0]["uncertain"] = True
+    elif mutation == "failed-review":
+        review["status"] = "failed"
+    elif mutation == "wrong-id":
+        review["reviewId"] = "someone-else"
+    elif mutation == "wrong-image":
+        raw["response"]["image"]["sha256"] = "0" * 64
+    elif mutation == "http-failed":
+        raw["httpStatus"] = 500
+    if mutation == "raw-hash":
+        raw["tampered"] = True
+    raw_path.write_text(json.dumps(raw))
+    if mutation != "raw-hash":
+        record["reviewEvidence"]["sha256"] = training.digest(raw_path)
+        record_path.write_text(json.dumps(record))
+        q["sha256"] = training.digest(record_path)
+    with pytest.raises(ValueError, match="Production"):
+        training.validate_samples([row])
+
+
+def test_reviewed_raw_crop_is_bound_to_original_source_pixels(runtime, tmp_path):
+    _, _, _, training = runtime
+    row = _qualified_production_fixture(training, tmp_path)
+    row = _bind_production_fixture(training, row, tmp_path, crop=True)
+    official = training.official_samples(ROOT / "app/assets/ghs")
+    result = training.train(official + [row], augmentation_count=1)
+    assert result["provenance"]["usedProductionExamples"] == 1
+    q = row["provenance"]["qualification"]
+    record_path = Path(q["evidencePath"])
+    record = json.loads(record_path.read_text())
+    crop_path = Path(record["reviewingImage"]["path"])
+    crop = cv2.imread(str(crop_path))
+    crop[0, 0] = (1, 2, 3)
+    cv2.imwrite(str(crop_path), crop)
+    altered_sha = training.digest(crop_path)
+    record["reviewingImage"]["sha256"] = altered_sha
+    raw_path = Path(record["reviewEvidence"]["path"])
+    raw = json.loads(raw_path.read_text())
+    raw["imageSha256"] = raw["response"]["image"]["sha256"] = altered_sha
+    raw_path.write_text(json.dumps(raw))
+    record["reviewEvidence"]["sha256"] = training.digest(raw_path)
+    record_path.write_text(json.dumps(record))
+    q["sha256"] = training.digest(record_path)
+    with pytest.raises(ValueError, match="crop pixels differ"):
+        training.train(official + [row], augmentation_count=1)
+
+
+def test_production_imbalance_is_actually_balanced_in_fitting(
+    runtime, tmp_path, monkeypatch
+):
+    _, _, _, training = runtime
+    real = training.LogisticRegression
+    calls = []
+
+    def record(**kwargs):
+        calls.append(kwargs)
+        return real(**kwargs)
+
+    monkeypatch.setattr(training, "LogisticRegression", record)
+    row = _qualified_production_fixture(training, tmp_path)
+    model = training.train(
+        training.official_samples(ROOT / "app/assets/ghs") + [row], augmentation_count=2
+    )
+    assert calls[0]["class_weight"] == "balanced"
+    p = model["provenance"]
+    assert p["classWeightStrategy"] == "balanced"
+    assert (
+        p["classTrainingRows"]["EXCLAMATION_MARK"]
+        > p["classTrainingRows"]["FLAME_OVER_CIRCLE"]
+    )
+    assert sum(p["classTrainingRows"].values()) == p["trainingRows"]
+    for label, count in p["classTrainingRows"].items():
+        assert count * p["effectiveClassWeights"][label] == pytest.approx(
+            p["trainingRows"] / 10
+        )
+    assert p["usedProductionExamples"] == 1 and p["productionTrainingRows"] == 3
+
+
+def test_projection_augmentation_preserves_original_and_deterministic_views(
+    runtime, monkeypatch
+):
+    _, _, _, training = runtime
+    image = cv2.imread(str(ROOT / "app/assets/ghs/FLAME_OVER_CIRCLE.png"))
+    real_warp = training.cv2.warpAffine
+    aspect_ratios = []
+
+    def record_projection(image, matrix, *args, **kwargs):
+        singular_values = np.linalg.svd(matrix[:, :2], compute_uv=False)
+        aspect_ratios.append(singular_values.min() / singular_values.max())
+        return real_warp(image, matrix, *args, **kwargs)
+
+    monkeypatch.setattr(training.cv2, "warpAffine", record_projection)
+    first = list(training.augment(image, np.random.default_rng(1729), 12))
+    second = list(training.augment(image, np.random.default_rng(1729), 12))
+    assert len(first) == 13
+    assert (
+        min(aspect_ratios) < 0.8
+    ), "Uniform scale/rotation cannot cover curved-label compression"
+    assert np.array_equal(
+        first[0], cv2.resize(image, (128, 128), interpolation=cv2.INTER_AREA)
+    )
+    assert all(np.array_equal(a, b) for a, b in zip(first, second))
+    assert all(
+        a.shape == (128, 128, 3) and training.features(a) is not None for a in first
+    )
+    assert any(
+        not np.allclose(training.features(a), training.features(first[0]))
+        for a in first[1:]
+    )
