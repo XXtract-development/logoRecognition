@@ -20,6 +20,7 @@ MAX_CANDIDATES = 64
 MAX_WORK_PIXELS = 4_000_000
 PHOTO_PREPROCESSING = "neutral-quad-v1"
 PARTIAL_PREPROCESSING = "partial-quad-v1"
+EDGE_PAPER_PREPROCESSING = "edge-paper-ring-v1"
 MIN_PHOTO_SIDE = 32
 
 
@@ -89,7 +90,7 @@ def _photo_candidates(image):
     return groups
 
 
-def _photo_glyph(image, box, quad):
+def _photo_glyph(image, box, quad, diagnostics=None):
     """Physical contour rectification and automatic neutral-paper segmentation."""
     x, y, w, h = box
     points = quad - [x, y]
@@ -119,8 +120,21 @@ def _photo_glyph(image, box, quad):
         return None
     threshold, _ = cv2.threshold(values, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     annulus = (radius > 0.30) & (radius < 0.40)
-    if float((neutral & (gray > threshold))[annulus].mean()) < 0.50:
-        return None
+    white = neutral & (gray > threshold)
+    if float(white[annulus].mean()) < 0.50:
+        # Dense glyphs can occupy the inner annulus. Border-adjacent paper
+        # must remain neutral and light on every physical side independently.
+        ring = (radius > 0.40) & (radius < 0.46)
+        for sector in (
+            (xx >= 64) & (yy < 64),
+            (xx >= 64) & (yy >= 64),
+            (xx < 64) & (yy >= 64),
+            (xx < 64) & (yy < 64),
+        ):
+            if float(white[ring & sector].mean()) < 0.65:
+                return None
+        if diagnostics is not None:
+            diagnostics["preprocessing"] = EDGE_PAPER_PREPROCESSING
     binary = np.where(neutral & (gray <= threshold), 0, 255).astype(np.uint8)
     return cv2.cvtColor(binary, cv2.COLOR_GRAY2BGR)
 
@@ -144,17 +158,30 @@ def _photo_recovery(image, existing, wanted):
         for candidate in group:
             candidate_box, quad = candidate[:2]
             preprocessing = candidate[2] if len(candidate) > 2 else PHOTO_PREPROCESSING
-            glyph = _photo_glyph(image, candidate_box, quad)
+            diagnostics = {}
+            glyph = _photo_glyph(image, candidate_box, quad, diagnostics)
+            if diagnostics.get("preprocessing"):
+                preprocessing += ":" + diagnostics["preprocessing"]
             learned = classify(glyph) if glyph is not None else None
             if learned is not None:
-                proposals.append({**learned, "_preprocessing": preprocessing})
+                eligible = (
+                    diagnostics.get("preprocessing") != EDGE_PAPER_PREPROCESSING
+                    or learned.get("uncertain", True) is False
+                )
+                proposals.append(
+                    {**learned, "_preprocessing": preprocessing, "_eligible": eligible}
+                )
         # Inconsistent interpretations of the same physical stroke are ambiguous.
         if not proposals or len({p["t3777_code"] for p in proposals}) != 1:
+            continue
+        proposals = [p for p in proposals if p["_eligible"]]
+        if not proposals:
             continue
         chosen = max(proposals, key=lambda p: p["support_similarity"])
         if chosen["t3777_code"] not in wanted:
             continue
         preprocessing = chosen.pop("_preprocessing")
+        chosen.pop("_eligible")
         x, y, w, h = box
         additions.append(
             {

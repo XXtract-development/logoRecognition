@@ -1407,3 +1407,314 @@ def test_projection_augmentation_preserves_original_and_deterministic_views(
         not np.allclose(training.features(a), training.features(first[0]))
         for a in first[1:]
     )
+
+
+def _dense_public_fixture(ident):
+    directory = ROOT / "tests/fixtures/ghs-dense-public"
+    manifest = json.loads((directory / "attribution.json").read_text())
+    row = next(row for row in manifest["images"] if row["id"] == ident)
+    path = directory / row["file"]
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == row["sha256"]
+    return cv2.imread(str(path)), row
+
+
+@pytest.mark.parametrize(
+    "ident", ["public-dev-009", "public-dev-011", "public-dev-018"]
+)
+def test_dense_public_health_has_white_edge_paper_and_reaches_api(
+    runtime, monkeypatch, ident
+):
+    specialist, reference, _, _ = runtime
+    image, row = _dense_public_fixture(ident)
+    annotation = next(a for a in row["annotations"] if a["code"] == "HEALTH_HAZARD")
+    expected = tuple(annotation["bbox"][k] for k in ["x", "y", "width", "height"])
+    candidates = [
+        c
+        for g in reference._photo_candidates(image)
+        for c in g
+        if reference._overlap(c[0], expected) >= 0.5
+    ]
+    captured = []
+    warp = cv2.warpPerspective
+
+    def capture(*args, **kwargs):
+        result = warp(*args, **kwargs)
+        captured.append(result)
+        return result
+
+    monkeypatch.setattr(cv2, "warpPerspective", capture)
+    accepted = []
+    for box, quad, _ in candidates:
+        diagnostics = {}
+        glyph = reference._photo_glyph(image, box, quad, diagnostics)
+        if (
+            glyph is not None
+            and diagnostics.get("preprocessing") == "edge-paper-ring-v1"
+        ):
+            accepted.append((glyph, captured[-1]))
+    assert accepted
+    glyph, rectified = accepted[0]
+    gray = cv2.cvtColor(rectified, cv2.COLOR_BGR2GRAY)
+    neutral = cv2.cvtColor(rectified, cv2.COLOR_BGR2HSV)[:, :, 1] < 85
+    yy, xx = np.indices((128, 128))
+    radius = abs(xx / 127 - 0.5) + abs(yy / 127 - 0.5)
+    threshold, _ = cv2.threshold(
+        gray[neutral & (radius < 0.4)], 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU
+    )
+    white = neutral & (gray > threshold)
+    assert white[(radius > 0.3) & (radius < 0.4)].mean() < 0.5
+    ring = (radius > 0.4) & (radius < 0.46)
+    for sector in [
+        (xx >= 64) & (yy < 64),
+        (xx >= 64) & (yy >= 64),
+        (xx < 64) & (yy >= 64),
+        (xx < 64) & (yy < 64),
+    ]:
+        assert white[ring & sector].mean() >= 0.65
+    assert specialist.classify(glyph)["t3777_code"] == "HEALTH_HAZARD"
+    api = module(ROOT / "app/api/detection.py", "test_dense_health_api")
+    response = asyncio.run(
+        api.detect_logos(
+            api.DetectionRequest(
+                image=base64.b64encode(
+                    _png(Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB)))
+                ).decode(),
+                confidence_threshold=0.87,
+            )
+        )
+    )
+    predictions = response.detections + response.review_proposals
+    health = [p for p in predictions if p.value == "HEALTH_HAZARD"]
+    assert len(health) == 1
+    assert (
+        reference._overlap(tuple(health[0].bbox.model_dump().values()), expected) >= 0.5
+    )
+    assert health[0].reference_version.endswith(":edge-paper-ring-v1")
+    assert health[0].model_version == specialist.load_model()[0]["version"]
+    assert health[0].requires_review
+    assert len(predictions) == len(row["annotations"])
+    assert {p.value for p in predictions} == {a["code"] for a in row["annotations"]}
+
+
+@pytest.mark.parametrize("color", [(0, 0, 0), (255, 80, 0)])
+@pytest.mark.parametrize("sector_index", range(4))
+def test_dense_edge_paper_requires_each_neutral_white_sector(
+    runtime, color, sector_index
+):
+    _, reference, _, _ = runtime
+    yy, xx = np.indices((128, 128))
+    radius = abs(xx / 127 - 0.5) + abs(yy / 127 - 0.5)
+    image = np.full((128, 128, 3), 255, np.uint8)
+    image[(radius > 0.28) & (radius < 0.4)] = 0
+    image[radius < 0.15] = 0
+    sectors = [
+        (xx >= 64) & (yy < 64),
+        (xx >= 64) & (yy >= 64),
+        (xx < 64) & (yy >= 64),
+        (xx < 64) & (yy < 64),
+    ]
+    quad = np.array([[64, 0], [127, 64], [64, 127], [0, 64]], np.float32)
+    diagnostics = {}
+    assert (
+        reference._photo_glyph(image, (0, 0, 128, 128), quad, diagnostics) is not None
+    )
+    assert diagnostics["preprocessing"] == "edge-paper-ring-v1"
+    image[(radius > 0.4) & (radius < 0.46) & sectors[sector_index]] = color
+    assert reference._photo_glyph(image, (0, 0, 128, 128), quad) is None
+
+
+def test_dense_non_ghs_pattern_still_abstains(runtime):
+    specialist, reference, _, _ = runtime
+    yy, xx = np.indices((128, 128))
+    radius = abs(xx / 127 - 0.5) + abs(yy / 127 - 0.5)
+    image = np.full((128, 128, 3), 255, np.uint8)
+    image[(radius > 0.28) & (radius < 0.4)] = 0
+    image[radius < 0.15] = 0
+    cv2.polylines(
+        image,
+        [np.array([[64, 0], [127, 64], [64, 127], [0, 64]])],
+        True,
+        (0, 0, 220),
+        3,
+    )
+    quads = reference._photo_candidates(image)
+    glyphs = [
+        reference._photo_glyph(image, box, quad)
+        for group in quads
+        for box, quad, _ in group
+    ]
+    assert any(glyph is not None for glyph in glyphs)
+    # Segmentation alone does not adjudicate semantics. This known artwork
+    # obtains an uncertain classifier suggestion; the new route must reject it.
+    learned = [specialist.classify(glyph) for glyph in glyphs if glyph is not None]
+    assert all(result is None or result["uncertain"] for result in learned)
+    assert reference.detect_ghs(image) == []
+    api = module(ROOT / "app/api/detection.py", "test_dense_artwork_api")
+    response = asyncio.run(
+        api.detect_logos(
+            api.DetectionRequest(
+                image=base64.b64encode(
+                    _png(Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB)))
+                ).decode(),
+                confidence_threshold=0.87,
+            )
+        )
+    )
+    assert not response.detections and not response.review_proposals
+
+
+@pytest.mark.parametrize("mode", ["checker", "bars"])
+def test_dense_unrelated_patterns_are_rejected_by_classifier(runtime, mode):
+    specialist, reference, _, _ = runtime
+    yy, xx = np.indices((128, 128))
+    radius = abs(xx / 127 - 0.5) + abs(yy / 127 - 0.5)
+    image = np.full((128, 128, 3), 255, np.uint8)
+    pattern = ((xx // 7 + yy // 7) % 3 != 0) if mode == "checker" else (xx % 10 < 7)
+    image[(radius < 0.4) & pattern] = 0
+    cv2.polylines(
+        image,
+        [np.array([[64, 0], [127, 64], [64, 127], [0, 64]])],
+        True,
+        (0, 0, 220),
+        3,
+    )
+    glyphs = []
+    for group in reference._photo_candidates(image):
+        for box, quad, _ in group:
+            diagnostics = {}
+            glyph = reference._photo_glyph(image, box, quad, diagnostics)
+            if glyph is not None:
+                assert diagnostics["preprocessing"] == "edge-paper-ring-v1"
+                glyphs.append(glyph)
+    assert glyphs
+    assert all(specialist.classify(glyph) is None for glyph in glyphs)
+    assert reference.detect_ghs(image) == []
+
+
+@pytest.mark.parametrize("edge_route", [True, False])
+@pytest.mark.parametrize("uncertain", [False, True, None])
+def test_only_new_edge_paper_route_requires_existing_classifier_certainty(
+    runtime, monkeypatch, edge_route, uncertain
+):
+    specialist, reference, _, _ = runtime
+    monkeypatch.setattr(
+        reference, "_photo_candidates", lambda image: [[((0, 0, 128, 128), None)]]
+    )
+
+    def glyph(image, box, quad, diagnostics):
+        if edge_route:
+            diagnostics["preprocessing"] = "edge-paper-ring-v1"
+        return np.zeros((128, 128, 3), np.uint8)
+
+    monkeypatch.setattr(reference, "_photo_glyph", glyph)
+    learned = {
+        "t3777_code": "HEALTH_HAZARD",
+        "support_similarity": 0.8,
+        "reference_version": "unit-fixture",
+        "confidence": 0.95,
+    }
+    if uncertain is not None:
+        learned["uncertain"] = uncertain
+    monkeypatch.setattr(specialist, "classify", lambda image: learned)
+    results = reference._photo_recovery(
+        np.zeros((128, 128, 3), np.uint8), [], {"HEALTH_HAZARD"}
+    )
+    assert bool(results) is (not edge_route or uncertain is False)
+
+
+def test_normal_paper_route_does_not_consult_contaminated_edge_ring(runtime):
+    _, reference, _, _ = runtime
+    yy, xx = np.indices((128, 128))
+    radius = abs(xx / 127 - 0.5) + abs(yy / 127 - 0.5)
+    image = np.full((128, 128, 3), 255, np.uint8)
+    image[radius < 0.2] = 0
+    image[(radius > 0.4) & (radius < 0.46)] = (255, 80, 0)
+    quad = np.array([[64, 0], [127, 64], [64, 127], [0, 64]], np.float32)
+    diagnostics = {}
+    assert (
+        reference._photo_glyph(image, (0, 0, 128, 128), quad, diagnostics) is not None
+    )
+    assert diagnostics == {}
+
+
+@pytest.mark.parametrize("reverse", [False, True])
+@pytest.mark.parametrize("routes", [(True, True), (True, False), (False, True)])
+@pytest.mark.parametrize("conflict", [False, True])
+def test_edge_certainty_preserves_all_stroke_conflicts_before_selection(
+    runtime, monkeypatch, reverse, routes, conflict
+):
+    specialist, reference, _, _ = runtime
+    uncertain_edge, confident_edge = routes
+    strokes = [
+        ((0, 0, 128, 128), (True, uncertain_edge)),
+        ((10, 10, 108, 108), (False, confident_edge)),
+    ]
+    if reverse:
+        strokes.reverse()
+    monkeypatch.setattr(reference, "_photo_candidates", lambda image: [strokes])
+
+    def glyph(image, box, quad, diagnostics):
+        uncertain, edge = quad
+        if edge:
+            diagnostics["preprocessing"] = "edge-paper-ring-v1"
+        return np.full((128, 128, 3), int(uncertain), np.uint8)
+
+    def classify(image):
+        uncertain = bool(image[0, 0, 0])
+        return {
+            "t3777_code": "HEALTH_HAZARD" if uncertain or not conflict else "FLAME",
+            "support_similarity": 0.95 if uncertain else 0.75,
+            "reference_version": "unit-fixture",
+            "confidence": 0.75 if uncertain else 0.95,
+            "uncertain": uncertain,
+        }
+
+    monkeypatch.setattr(reference, "_photo_glyph", glyph)
+    monkeypatch.setattr(specialist, "classify", classify)
+    results = reference._photo_recovery(
+        np.zeros((128, 128, 3), np.uint8), [], {"HEALTH_HAZARD", "FLAME"}
+    )
+    if conflict:
+        assert results == []
+    else:
+        assert len(results) == 1
+        # An uncertain old-route result remains eligible; an uncertain new-route
+        # result cannot win merely because its support is higher.
+        assert results[0]["uncertain"] is (not uncertain_edge)
+        assert results[0]["support_similarity"] == (0.75 if uncertain_edge else 0.95)
+
+
+@pytest.mark.parametrize("sector_index", range(4))
+@pytest.mark.parametrize("white_pixels", [283, 284])
+def test_edge_paper_integer_pixel_boundary_with_local_contamination(
+    runtime, sector_index, white_pixels
+):
+    _, reference, _, _ = runtime
+    yy, xx = np.indices((128, 128))
+    radius = abs(xx / 127 - 0.5) + abs(yy / 127 - 0.5)
+    sectors = [
+        (xx >= 64) & (yy < 64),
+        (xx >= 64) & (yy >= 64),
+        (xx < 64) & (yy >= 64),
+        (xx < 64) & (yy < 64),
+    ]
+    ring = (radius > 0.4) & (radius < 0.46)
+    affected = np.argwhere(ring & sectors[sector_index])
+    assert len(affected) == 436
+    image = np.full((128, 128, 3), 255, np.uint8)
+    image[(radius > 0.28) & (radius < 0.4)] = 0
+    image[radius < 0.15] = 0
+    # Contaminate one local section of one side; the other sides stay all white.
+    contaminated = affected[: len(affected) - white_pixels]
+    image[contaminated[:, 0], contaminated[:, 1]] = 0
+    white = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) > 0
+    assert np.count_nonzero(white[ring & sectors[sector_index]]) == white_pixels
+    for index, sector in enumerate(sectors):
+        if index != sector_index:
+            assert white[ring & sector].all()
+    assert (white_pixels / len(affected) >= 0.65) is (white_pixels == 284)
+    quad = np.array([[64, 0], [127, 64], [64, 127], [0, 64]], np.float32)
+    diagnostics = {}
+    glyph = reference._photo_glyph(image, (0, 0, 128, 128), quad, diagnostics)
+    assert (glyph is not None) is (white_pixels == 284)
+    assert bool(diagnostics) is (white_pixels == 284)
