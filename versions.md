@@ -7,6 +7,8 @@
 - Een storing of onvolledige beoordeling wordt duidelijk gemeld en niet als een etiket zonder logo’s teruggegeven.
 - Getrainde Nutri-Score-herkenning kan een zwakkere, gelijkluidende uitlezing bevestigen; tegenstrijdige uitkomsten blijven ter beoordeling.
 - Back-ups van alle nieuwe productietabellen en trainingsbestanden zijn gecontroleerd en afzonderlijk bewaard.
+- Productie-etiketten kunnen via de herkenningskoppeling worden opgehaald.
+- Geüploade afbeeldingen en voorbeelden openen beveiligd vanuit de toepassing.
 
 ---
 

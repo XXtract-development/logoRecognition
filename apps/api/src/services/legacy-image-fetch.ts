@@ -50,7 +50,10 @@ export async function fetchLegacyImage(value: string): Promise<Buffer> {
       method: 'GET', agent: false,
       headers: { Accept: 'image/png,image/jpeg,image/webp' },
       // Keep original hostname for TLS verification/SNI, pin the network destination.
-      lookup: (_host, _options, callback) => callback(null, pinned, 4),
+      lookup: (_host, options, callback) => {
+        if (options.all) callback(null, [{ address: pinned, family: 4 }]);
+        else callback(null, pinned, 4);
+      },
     }, res => {
       if (res.statusCode !== 200) {
         res.destroy(); reject(new LegacyImageError('Image download failed; redirects are not allowed')); return;

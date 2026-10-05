@@ -357,8 +357,7 @@ export async function getReferenceLogoUrl(
   expiresInSeconds: number = 3600
 ): Promise<string | null> {
   try {
-    const adapter = getStorageAdapter();
-    return await adapter.presignedGetObject(BUCKETS.TRAINING, storagePath, expiresInSeconds);
+    return createPreviewUrl(BUCKETS.TRAINING, storagePath, expiresInSeconds);
   } catch (error) {
     logger.error('Failed to generate reference logo URL', {
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -378,8 +377,7 @@ export async function getSignedUrl(
   try {
     const [bucket, ...pathParts] = storagePath.split('/');
     const objectPath = pathParts.join('/');
-    const adapter = getStorageAdapter();
-    return await adapter.presignedGetObject(bucket, objectPath, expiresInSeconds);
+    return createPreviewUrl(bucket, objectPath, expiresInSeconds);
   } catch (error) {
     logger.error('Failed to generate signed URL', {
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -387,6 +385,81 @@ export async function getSignedUrl(
     });
     return null;
   }
+}
+
+const PREVIEW_TTL_SECONDS = 86400; // Preserve existing explicit 24-hour export links; normal previews default to one hour.
+export const MAX_PREVIEW_BYTES = 20 * 1024 * 1024;
+export const PREVIEW_TIMEOUT_MS = 10000;
+let previewReaders = 0;
+
+export class StoragePreviewError extends Error {
+  constructor(public readonly statusCode: number, message: string) { super(message); }
+}
+
+function validPreviewPath(bucket: string, key: string): boolean {
+  return Object.values(BUCKETS).some(value => value === bucket) && key.length > 0 && key.length <= 1024 &&
+    !/[\\\u0000-\u001f\u007f]/.test(key) && key.split('/').every(part => part !== '' && part !== '.' && part !== '..');
+}
+
+function previewSignature(bucket: string, key: string, expires: number): string {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) throw new StoragePreviewError(503, 'Preview signing unavailable');
+  const signingKey = crypto.createHmac('sha256', secret).update('logoRecognition:storage-preview:v1').digest();
+  return crypto.createHmac('sha256', signingKey).update(JSON.stringify([bucket, key, expires])).digest('hex');
+}
+
+function createPreviewUrl(bucket: string, key: string, ttl: number): string {
+  if (!validPreviewPath(bucket, key) || !Number.isInteger(ttl) || ttl < 1 || ttl > PREVIEW_TTL_SECONDS) {
+    throw new StoragePreviewError(400, 'Invalid preview path or expiry');
+  }
+  const expires = Math.floor(Date.now() / 1000) + ttl;
+  const query = new URLSearchParams({bucket, key, expires: String(expires), signature: previewSignature(bucket, key, expires)});
+  return `/api/v1/storage/preview?${query}`;
+}
+
+export function verifyPreviewSignature(bucket: string, key: string, expiry: string, signature: string): boolean {
+  const now = Math.floor(Date.now() / 1000);
+  const expires = Number(expiry);
+  if (!validPreviewPath(bucket, key) || !/^\d{10}$/.test(expiry) || !Number.isSafeInteger(expires) ||
+    expires <= now || expires > now + PREVIEW_TTL_SECONDS || !/^[a-f0-9]{64}$/.test(signature)) return false;
+  return crypto.timingSafeEqual(Buffer.from(signature, 'hex'), Buffer.from(previewSignature(bucket, key, expires), 'hex'));
+}
+
+/** Bounded private object read. A timed-out opening retains admission until it actually finishes. */
+export async function readPreviewImage(bucket: string, key: string): Promise<{buffer: Buffer; mimeType: string}> {
+  if (!validPreviewPath(bucket, key)) throw new StoragePreviewError(403, 'Invalid preview');
+  if (previewReaders >= 4) throw new StoragePreviewError(503, 'Preview service busy');
+  previewReaders++;
+  let stream: Readable | undefined;
+  let expired = false;
+  let timer: NodeJS.Timeout | undefined;
+  const work = (async () => {
+    try {
+      stream = await getStorageAdapter().getObject(bucket, key);
+      if (expired) { stream.destroy(); throw new StoragePreviewError(504, 'Preview timed out'); }
+      const chunks: Buffer[] = []; let size = 0;
+      for await (const chunk of stream) {
+        const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+        size += bytes.length;
+        if (size > MAX_PREVIEW_BYTES) throw new StoragePreviewError(413, 'Preview exceeds size limit');
+        chunks.push(bytes);
+      }
+      const buffer = Buffer.concat(chunks);
+      let mimeType: string;
+      if (buffer.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10]))) mimeType = 'image/png';
+      else if (buffer.length >= 3 && buffer[0] === 255 && buffer[1] === 216 && buffer[2] === 255) mimeType = 'image/jpeg';
+      else if (buffer.length >= 12 && buffer.toString('ascii',0,4) === 'RIFF' && buffer.toString('ascii',8,12) === 'WEBP') mimeType = 'image/webp';
+      else throw new StoragePreviewError(415, 'Unsupported preview image');
+      return {buffer, mimeType};
+    } finally { stream?.destroy(); previewReaders--; }
+  })();
+  try {
+    return await Promise.race([work, new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        expired = true; stream?.destroy(); reject(new StoragePreviewError(504, 'Preview timed out'));
+      }, PREVIEW_TIMEOUT_MS);
+    })]);
+  } finally { clearTimeout(timer); }
 }
 
 /**
