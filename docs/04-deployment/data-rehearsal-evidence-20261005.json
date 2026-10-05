@@ -1,0 +1,76 @@
+{
+  "time": "2026-10-05T21:29:14.628458+00:00",
+  "scope": "ACC read-only selective export; local filled database restore and second backup restore",
+  "database": {
+    "scope": "local filled selective database and backup restore; no live changes",
+    "container": "logo-release-rehearsal-9f6ed041",
+    "image": "pgvector/pgvector@sha256:b81748da2ec31adb8af4b22e471a78087ee89cce2612bc5aecc9450302652cce",
+    "status": "passed",
+    "docker_endpoint": "unix:///Users/frisovanweelden/.orbstack/run/docker.sock",
+    "database_manifest_sha256": "60b0b9992ca8b55a800746ae089410689d0dd860386aa8ae073379bb1ecb91b8",
+    "archive_sha256": "b6632056d264be6a7a2ecce7e0d001fd2518079e5457db8460c5860eee4c72b0",
+    "rows_sha256": "7d17673341d4d078db5cd36f9874325684e244c333456155ec799552848c7ff4",
+    "table_fingerprints_match": true,
+    "table_counts": {
+      "_prisma_migrations": 21,
+      "logos": 41,
+      "logo_images": 876,
+      "training_data": 930,
+      "reference_logos": 604,
+      "gold_set_records": 900,
+      "hard_negatives": 72,
+      "model_versions": 0,
+      "logo_embeddings": 0
+    },
+    "application_tables": 34,
+    "excluded_tables_empty": true,
+    "foreign_keys_validated": true,
+    "real_prisma_ledger_rows": 21,
+    "filled_backup_restore_match": true,
+    "test_container_and_anonymous_volumes_removed": true
+  },
+  "ledger_release_checksum_match": true,
+  "objects": {
+    "requested": 1069,
+    "downloaded": 1069,
+    "bytes": 40487281,
+    "missing": 0,
+    "each_local_size_and_sha256_verified": true,
+    "each_source_size_and_etag_stable_before_after_get": true,
+    "buckets": {
+      "training-images": 1069
+    },
+    "nutriscore_a2": [
+      {
+        "key": "models/nutriscore-a2/v1/a2_meta.json",
+        "size": 587,
+        "sha256": "5ba683d42691122489baed2c6de5a9db80fa38d47be1b9204ffca11da1761ee7"
+      },
+      {
+        "key": "models/nutriscore-a2/v1/a2_mobilenetv3s.pt",
+        "size": 6228042,
+        "sha256": "be3522c9ba39e986088dc46adb286854273ad582e5a50a9b34fedac9ac194e91"
+      }
+    ],
+    "offline_verified_manifest": {
+      "status": "passed",
+      "requested": 1069,
+      "downloaded": 1069,
+      "bytes": 40487281,
+      "rows_sha256": "7d17673341d4d078db5cd36f9874325684e244c333456155ec799552848c7ff4",
+      "object_manifest_sha256": "a8485579d5d173e276fbae30281a5c1588fbe3812c1c7b9ee524a4681e9e8dac"
+    }
+  },
+  "contract_tests_passed": 29,
+  "source_writes": false,
+  "production_writes": false,
+  "remaining": [
+    "Target MinIO upload and re-read hash parity",
+    "Target PostgreSQL limited runtime roles and ML ownership",
+    "Reference embeddings rebuild and endpoint parity",
+    "Source revalidation before production cutover"
+  ],
+  "private_package_path": "/Users/frisovanweelden/.codex/production-release-cache/logoRecognition/20261005/transfer-package",
+  "guard_followup": "Reviewed failure guards corrected; fresh isolated local filled restore and second backup restore passed, source objects revalidated offline without re-download.",
+  "target_provisioning_helpers": "Prepared locally only; no target execution or container starts by this agent"
+}

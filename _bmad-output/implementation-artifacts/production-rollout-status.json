@@ -1,0 +1,59 @@
+{
+  "time": "2026-10-05T23:12:11.827924+00:00",
+  "task_id": "01a0fc7a-28d6-7333-ae26-c6dc972076d8",
+  "owner": "Codex/root",
+  "status": "active",
+  "phase": "full ML suite recovered; CI repeat before ACC merge",
+  "authorization": {
+    "instruction": "Ga verder totdat alles klaarvis in productie",
+    "scope": [
+      "reviewed dedicated production resource creation",
+      "selected data and model transfer",
+      "staged starts and deployment",
+      "verified public endpoint cutover"
+    ],
+    "constraints": [
+      "preserve legacy rollback resource/cache",
+      "no unrelated production databases modified",
+      "no destructive resets",
+      "cutover only after required checks"
+    ]
+  },
+  "production_changed": true,
+  "open_approval": null,
+  "source_release": "814f6cd396f63dada95411d51dda5dfae3205a6a",
+  "transfer_rehearsal": "passed",
+  "object_count": 1069,
+  "production_resource_uuid": "f048gs04scoksggw0okw4oo0",
+  "runtime_started": false,
+  "legacy_route_changed": false,
+  "infrastructure_deploy_requested": true,
+  "infrastructure_healthy": true,
+  "database_transferred": true,
+  "legacy_detection_acceptance": "pending actual new endpoint; real A2 production ROI positive proven",
+  "storage_transferred": true,
+  "target_backup_restore_passed": true,
+  "torch_cache_verified": true,
+  "ml_runtime_started": true,
+  "ml_runtime_ready": true,
+  "active_reference_embeddings": 542,
+  "release_checks": {
+    "api_tests": 84,
+    "ml_targeted_tests": 78,
+    "offline_preparation_tests": 72,
+    "independent_provider_review": "passed",
+    "refinement_review_tiny_region": "passed; 33 refinement and strict endpoint tests independently repeated",
+    "actual_a2_production_roi_score": 0.999698877,
+    "public_app_started": false,
+    "public_endpoint_cutover": false,
+    "actual_green_roi_refinement": "all 542 templates; three distinct regions including visible Green Dot; 26.68 seconds",
+    "ghs_source_catalog_routing": "all nine canonical classes passed with nonghs-only reference catalog; review-only",
+    "independent_canonical_ghs_review": "passed: exact nine Python canonical specialist classes, review-only, nonghs catalog regression",
+    "ml_full_suite": {
+      "passed": 679,
+      "skipped": 14,
+      "runtime_changed_for_ci_repair": false
+    },
+    "ci_failure_recovery": "current module fixture identity fixed; independent review passed"
+  }
+}

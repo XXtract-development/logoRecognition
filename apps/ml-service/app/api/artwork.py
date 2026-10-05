@@ -19,15 +19,18 @@ Endpoints:
     embedding/classifier routes; consumed by the cross-check flow (8.5).
 """
 
+import asyncio
 import base64
+import functools
 import hashlib
 import os
 import tempfile
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from contextvars import ContextVar
+from typing import Any, Dict, List, Literal, Optional, Tuple
 
 import numpy as np
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field, StrictStr, model_validator
 
 from app.core.logging import logger
@@ -36,6 +39,202 @@ from app.services.reference_category import ABSENT, resolve_reference_category
 from app.services.storage import storage_service
 
 router = APIRouter()
+
+
+# Opt-in strict callers retain admission until their actual processing task ends.
+_STRICT_TASKS = set()
+_STRICT_CONTROL = ContextVar("strict_artwork_runtime", default=None)
+
+
+class StrictRuntimeControl:
+    def __init__(self, http_request, budget_ms):
+        self.http_request = http_request
+        self.deadline = time.monotonic() + budget_ms / 1000
+        self.storage_client = None
+        self.blocking_tasks = set()
+
+    def remaining(self):
+        remaining = self.deadline - time.monotonic()
+        if remaining <= 0:
+            raise HTTPException(status_code=504, detail="Recognition deadline exceeded")
+        return remaining
+
+    async def checkpoint(self):
+        self.remaining()
+        if self.http_request is not None and await self.http_request.is_disconnected():
+            raise HTTPException(
+                status_code=499, detail="Recognition client disconnected"
+            )
+
+
+def strict_runtime_endpoint(function):
+    @functools.wraps(function)
+    async def wrapper(*args, **kwargs):
+        payload = kwargs.get("request") or args[0]
+        if (
+            getattr(payload, "proposal_strategy", None) == "visual"
+            and not payload.strict_runtime
+        ):
+            raise HTTPException(
+                status_code=422, detail="Visual proposals require strict runtime"
+            )
+        if not payload.strict_runtime:
+            return await function(*args, **kwargs)
+        if getattr(payload, "persist_crops", False):
+            raise HTTPException(
+                status_code=422, detail="Strict crop persistence is unsupported"
+            )
+        if len(_STRICT_TASKS) >= 2:
+            raise HTTPException(status_code=503, detail="Recognition capacity busy")
+        control = StrictRuntimeControl(
+            kwargs.get("http_request"), payload.remaining_budget_ms or 165000
+        )
+
+        async def run():
+            token = _STRICT_CONTROL.set(control)
+            try:
+                await control.checkpoint()
+                return await function(*args, **kwargs)
+            finally:
+                # A thread cannot be force-cancelled safely. Admission stays held
+                # until every admitted operation has actually finished.
+                if control.blocking_tasks:
+                    await asyncio.gather(
+                        *control.blocking_tasks, return_exceptions=True
+                    )
+                if control.storage_client is not None:
+                    control.storage_client._http.clear()
+                _STRICT_CONTROL.reset(token)
+
+        task = asyncio.create_task(run())
+        _STRICT_TASKS.add(task)
+
+        def completed(done):
+            _STRICT_TASKS.discard(done)
+            if not done.cancelled():
+                done.exception()  # Observe failures even after HTTP caller cancellation.
+
+        task.add_done_callback(completed)
+        try:
+            return await asyncio.wait_for(asyncio.shield(task), control.remaining())
+        except asyncio.TimeoutError as exc:
+            raise HTTPException(
+                status_code=504, detail="Recognition deadline exceeded"
+            ) from exc
+
+    return wrapper
+
+
+async def _strict_checkpoint():
+    control = _STRICT_CONTROL.get()
+    if control is not None:
+        await control.checkpoint()
+
+
+def _localization_match_budget():
+    from app.services.localization import LOCALIZE_TIME_BUDGET_S
+
+    control = _STRICT_CONTROL.get()
+    if control is None:
+        return LOCALIZE_TIME_BUDGET_S
+    remaining = control.remaining()
+    # Leave classification time within the caller's shared deadline. Strict
+    # callers can complete a real label instead of inheriting the UI's 30s cap.
+    return remaining - min(20.0, remaining * 0.2)
+
+
+async def strict_blocking(function, *args, **kwargs):
+    """Run blocking work off-loop while retaining strict admission until finish."""
+    control = _STRICT_CONTROL.get()
+    if control is None:
+        return function(*args, **kwargs)
+    await control.checkpoint()
+    task = asyncio.create_task(asyncio.to_thread(function, *args, **kwargs))
+    control.blocking_tasks.add(task)
+    try:
+        return await asyncio.wait_for(asyncio.shield(task), control.remaining())
+    finally:
+        if task.done():
+            control.blocking_tasks.discard(task)
+
+
+def _training_image_bytes(path, strict_runtime=False, bucket=None):
+    if not strict_runtime:
+        return storage_service.get_training_image(path)
+    control = _STRICT_CONTROL.get()
+    if control is None:
+        raise RuntimeError("Strict runtime context required")
+    remaining = control.remaining()
+    if control.storage_client is None:
+        import urllib3
+        from minio import Minio
+
+        from app.core.config import settings
+
+        endpoint = settings.MINIO_ENDPOINT
+        if ":" not in endpoint:
+            endpoint = f"{endpoint}:{os.environ.get('MINIO_PORT', '9000')}"
+        control.storage_client = Minio(
+            endpoint,
+            access_key=settings.MINIO_ACCESS_KEY,
+            secret_key=settings.MINIO_SECRET_KEY,
+            secure=settings.MINIO_USE_SSL,
+            http_client=urllib3.PoolManager(
+                timeout=urllib3.Timeout(
+                    connect=min(3, remaining), read=min(5, remaining)
+                ),
+                retries=False,
+            ),
+        )
+    response = control.storage_client.get_object(
+        bucket or storage_service.TRAINING_BUCKET, path
+    )
+    try:
+        parts = []
+        size = 0
+        while True:
+            control.remaining()
+            # read1 performs one bounded network read, so slow chunk streams
+            # cannot postpone the total deadline until an entire image arrives.
+            chunk = response.read1(64 * 1024)
+            if not chunk:
+                break
+            size += len(chunk)
+            if size > 16 * 1024 * 1024:
+                raise RuntimeError("Reference image exceeds strict size limit")
+            parts.append(chunk)
+        control.remaining()
+        return b"".join(parts)
+    finally:
+        response.close()
+        response.release_conn()
+
+
+async def _classification_runtime_ready():
+    from app.ml.model_manager import model_manager
+    from app.services.database import db_service
+
+    if (
+        not model_manager.is_loaded
+        or model_manager.embedding_model is None
+        or model_manager.embedding_model.__class__.__name__ == "MockEmbeddingModel"
+    ):
+        raise RuntimeError("Embedding model is not ready")
+    control = _STRICT_CONTROL.get()
+
+    async def query_ready():
+        async with db_service.get_connection() as conn:
+            return await conn.fetchval(
+                """SELECT EXISTS (
+            SELECT 1 FROM reference_embeddings re JOIN reference_logos rl
+            ON re.reference_logo_id = rl.id WHERE rl.active = true AND re.embedding IS NOT NULL
+        )""",
+                timeout=control.remaining(),
+            )
+
+    ready = await asyncio.wait_for(query_ready(), control.remaining())
+    if not ready:
+        raise RuntimeError("Active reference embedding index is empty")
 
 
 # ---------------------------------------------------------------------------
@@ -64,6 +263,7 @@ ARTWORK_CROP_MARGIN: float = float(os.environ.get("ARTWORK_CROP_MARGIN", "0.25")
 
 # (loaded_at_monotonic, templates) — templates is a list of {t3777_code, image}.
 _TEMPLATE_CACHE: Tuple[float, Optional[List[Dict[str, Any]]]] = (0.0, None)
+_TEMPLATE_CACHE_STRICT = False
 
 
 def reset_template_cache() -> None:
@@ -72,7 +272,7 @@ def reset_template_cache() -> None:
     _TEMPLATE_CACHE = (0.0, None)
 
 
-async def _load_reference_templates() -> List[Dict[str, Any]]:
+async def _load_reference_templates(strict_runtime=False) -> List[Dict[str, Any]]:
     """Load active reference variants as decoded BGRA templates from storage.
 
     Mirrors synthesis._load_references_by_class: each active reference variant's
@@ -83,21 +283,33 @@ async def _load_reference_templates() -> List[Dict[str, Any]]:
     """
     from app.services.database import db_service
 
-    refs = await db_service.get_active_reference_logos()
+    control = _STRICT_CONTROL.get()
+    refs = (
+        await asyncio.wait_for(
+            db_service.get_active_reference_logos(), control.remaining()
+        )
+        if strict_runtime
+        else await db_service.get_active_reference_logos()
+    )
     templates: List[Dict[str, Any]] = []
     for ref in refs:
         code = ref["t3777_code"]
         path = ref["storage_path"]
+        await _strict_checkpoint()
         try:
-            data = storage_service.get_training_image(path)
-            img = _decode_image_bytes(data, with_alpha=True)
+            data = await strict_blocking(_training_image_bytes, path, strict_runtime)
+            img = await strict_blocking(_decode_image_bytes, data, with_alpha=True)
         except Exception as exc:  # pragma: no cover - IO failure path
+            if strict_runtime:
+                raise RuntimeError("Required reference template unavailable") from exc
             logger.warning(
                 "Skipping reference template (fetch/decode failed)",
                 extra={"t3777_code": code, "storage_path": path, "error": str(exc)},
             )
             continue
         if img is None or getattr(img, "size", 0) == 0:
+            if strict_runtime:
+                raise RuntimeError("Required reference image is invalid")
             continue
         templates.append({"t3777_code": code, "image": img})
     return templates
@@ -124,15 +336,20 @@ def filter_templates_by_codes(
     return [t for t in templates if normalize_code(t["t3777_code"]) in wanted]
 
 
-async def _get_reference_templates_cached() -> List[Dict[str, Any]]:
+async def _get_reference_templates_cached(strict_runtime=False) -> List[Dict[str, Any]]:
     """Return the cached reference templates, reloading if the TTL expired."""
-    global _TEMPLATE_CACHE
+    global _TEMPLATE_CACHE, _TEMPLATE_CACHE_STRICT
     loaded_at, cached = _TEMPLATE_CACHE
     now = time.monotonic()
-    if cached is not None and (now - loaded_at) < TEMPLATE_CACHE_TTL_S:
+    if (
+        cached is not None
+        and (now - loaded_at) < TEMPLATE_CACHE_TTL_S
+        and (not strict_runtime or _TEMPLATE_CACHE_STRICT)
+    ):
         return cached
-    templates = await _load_reference_templates()
+    templates = await _load_reference_templates(strict_runtime)
     _TEMPLATE_CACHE = (now, templates)
+    _TEMPLATE_CACHE_STRICT = strict_runtime
     logger.info(
         "Reference templates loaded into cache",
         extra={"count": len(templates), "ttl_s": TEMPLATE_CACHE_TTL_S},
@@ -406,6 +623,9 @@ class LocalizeRequest(BaseModel):
     supply templates (meet-scripts, tests) keep the exact same behaviour.
     """
 
+    proposal_strategy: Literal["templates", "visual"] = "templates"
+    strict_runtime: bool = False
+    remaining_budget_ms: Optional[int] = Field(None, ge=1, le=165000)
     storage_path: Optional[str] = Field(
         None,
         description="Object key in the training bucket, e.g. artwork/{gtin}/{file}.page-1.png",
@@ -472,7 +692,10 @@ def _decode_image(b64: str, with_alpha: bool = False) -> np.ndarray:
 
 
 @router.post("/artwork/localize", response_model=LocalizeResponse)
-async def localize_artwork(request: LocalizeRequest) -> LocalizeResponse:
+@strict_runtime_endpoint
+async def localize_artwork(
+    request: LocalizeRequest, http_request: Request = None
+) -> LocalizeResponse:
     """
     Localize certification marks on an artwork image (Story 8.3 + 8.3R).
 
@@ -492,7 +715,6 @@ async def localize_artwork(request: LocalizeRequest) -> LocalizeResponse:
         LOCALIZE_MIN_SCORE,
         LOCALIZE_OVERLAP,
         LOCALIZE_TILE_SIZE,
-        LOCALIZE_TIME_BUDGET_S,
         match_templates,
         merge_detections,
         prepare_scaled_templates,
@@ -502,8 +724,14 @@ async def localize_artwork(request: LocalizeRequest) -> LocalizeResponse:
     # Load source image (storage_path takes precedence over inline b64) — AC3
     if request.storage_path:
         try:
-            img_bytes = storage_service.get_training_image(request.storage_path)
+            img_bytes = await strict_blocking(
+                _training_image_bytes, request.storage_path, request.strict_runtime
+            )
         except Exception as exc:
+            if request.strict_runtime:
+                raise HTTPException(
+                    status_code=503, detail="Source storage unavailable"
+                ) from exc
             logger.warning(
                 "Could not fetch localize source from storage",
                 extra={"storage_path": request.storage_path, "error": str(exc)},
@@ -513,7 +741,7 @@ async def localize_artwork(request: LocalizeRequest) -> LocalizeResponse:
                 detail=f"Kon bronbeeld niet ophalen uit storage: {request.storage_path}",
             )
         img_arr = np.frombuffer(img_bytes, dtype=np.uint8)
-        img = cv2.imdecode(img_arr, cv2.IMREAD_COLOR)
+        img = await strict_blocking(cv2.imdecode, img_arr, cv2.IMREAD_COLOR)
         if img is None:
             raise HTTPException(
                 status_code=422,
@@ -521,7 +749,7 @@ async def localize_artwork(request: LocalizeRequest) -> LocalizeResponse:
             )
     elif request.image_b64:
         try:
-            img = _decode_image(request.image_b64)
+            img = await strict_blocking(_decode_image, request.image_b64)
         except Exception as exc:
             raise HTTPException(status_code=400, detail=f"Invalid image_b64: {exc}")
     else:
@@ -540,7 +768,53 @@ async def localize_artwork(request: LocalizeRequest) -> LocalizeResponse:
 
     from app.services.ghs_reference import detect_ghs
 
-    ghs_detections = detect_ghs(img, request.codes)
+    ghs_detections = await strict_blocking(
+        detect_ghs,
+        img,
+        request.codes,
+        **({"strict_runtime": True} if request.strict_runtime else {}),
+    )
+
+    if request.proposal_strategy == "visual":
+        if not request.strict_runtime:
+            raise HTTPException(
+                status_code=422, detail="Visual proposals require strict runtime"
+            )
+        try:
+            await _classification_runtime_ready()
+            from app.services.artwork_proposals import visual_proposals
+
+            proposed = await visual_proposals(
+                img, request.codes, _STRICT_CONTROL.get().remaining
+            )
+            refined = []
+            if proposed:
+                from app.services.artwork_template_refinement import refine_proposals
+
+                templates = await _get_reference_templates_cached(strict_runtime=True)
+                if not templates:
+                    raise RuntimeError("Active spatial reference library is empty")
+                for proposal in proposed:
+                    await _strict_checkpoint()
+                    spatial_boxes = await strict_blocking(
+                        refine_proposals, img, proposal["bbox"], templates
+                    )
+                    refined.extend({"bbox": box} for box in spatial_boxes)
+            boxes = {}
+            for detection in proposed + refined + ghs_detections:
+                box = detection["bbox"]
+                key = tuple(box[k] for k in ("x", "y", "width", "height"))
+                boxes[key] = detection
+            if len(boxes) > 64:
+                raise ValueError("Proposal union exceeds capacity")
+            await _strict_checkpoint()
+            return LocalizeResponse(detections=list(boxes.values()), truncated=False)
+        except HTTPException:
+            raise
+        except Exception as exc:
+            raise HTTPException(
+                status_code=503, detail="Visual localization unavailable"
+            ) from exc
 
     # Templates: caller-supplied (decode b64) OR loaded ML-side from the active
     # reference library with a TTL cache when omitted (Story 8-3O, decision 2).
@@ -548,7 +822,9 @@ async def localize_artwork(request: LocalizeRequest) -> LocalizeResponse:
     if request.templates is not None:
         for tmpl in request.templates:
             try:
-                tmpl_img = _decode_image(tmpl.image_b64, with_alpha=True)
+                tmpl_img = await strict_blocking(
+                    _decode_image, tmpl.image_b64, with_alpha=True
+                )
             except Exception as exc:
                 logger.warning(
                     "Skipping template with invalid image",
@@ -557,7 +833,14 @@ async def localize_artwork(request: LocalizeRequest) -> LocalizeResponse:
                 continue
             templates.append({"t3777_code": tmpl.t3777_code, "image": tmpl_img})
     else:
-        templates = await _get_reference_templates_cached()
+        try:
+            templates = await _get_reference_templates_cached(request.strict_runtime)
+        except Exception as exc:
+            if request.strict_runtime:
+                raise HTTPException(
+                    status_code=503, detail="Reference localization backend unavailable"
+                ) from exc
+            raise
         # Story 12.8 (AC4b): a codes-filter restricts the ML-side library to the
         # declared (alias-mapped) subset so the localize ladder only builds
         # variants for the codes the GTIN actually declares — the candidate
@@ -568,6 +851,10 @@ async def localize_artwork(request: LocalizeRequest) -> LocalizeResponse:
         templates = filter_templates_by_codes(templates, request.codes)
 
     if not templates:
+        if request.strict_runtime:
+            raise HTTPException(
+                status_code=503, detail="Active reference template library is empty"
+            )
         # Open-input gate (AC2): an empty library / all-invalid templates — or a
         # codes-filter that matches nothing — yields an empty detection list plus
         # a warning, never an error.
@@ -577,13 +864,20 @@ async def localize_artwork(request: LocalizeRequest) -> LocalizeResponse:
         return LocalizeResponse(detections=ghs_detections)
 
     # Build the scale ladder ONCE per request (design decisions 1+2)
-    variants = prepare_scaled_templates(
+    variants = await strict_blocking(
+        prepare_scaled_templates,
         templates,
         scale_min_px=request.scale_min_px,
         scale_max_px=request.scale_max_px,
         scale_step=request.scale_step,
         tile_size=eff_tile_size,
     )
+
+    await _strict_checkpoint()
+    if request.strict_runtime and not variants:
+        raise HTTPException(
+            status_code=503, detail="Reference localization ladder is empty"
+        )
 
     # Effective collapse top-k: request overrides env default (8-3P).
     eff_collapse_top_k = (
@@ -599,8 +893,11 @@ async def localize_artwork(request: LocalizeRequest) -> LocalizeResponse:
     # the k best-scoring ones whose centres are farther apart than the
     # suppression radius (the variant max-dim) — two real instances in one tile
     # survive, near-duplicate scale echoes collapse to the highest scorer.
-    tiles = tile_image(img, tile_size=eff_tile_size, overlap=eff_overlap)
-    deadline = time.monotonic() + LOCALIZE_TIME_BUDGET_S
+    tiles = await strict_blocking(
+        tile_image, img, tile_size=eff_tile_size, overlap=eff_overlap
+    )
+    matching_budget = _localization_match_budget()
+    deadline = time.monotonic() + matching_budget
     truncated = False
     per_tile_peaks: Dict[Any, List[Dict[str, Any]]] = {}
 
@@ -608,6 +905,7 @@ async def localize_artwork(request: LocalizeRequest) -> LocalizeResponse:
         return (bbox["x"] + bbox["width"] / 2.0, bbox["y"] + bbox["height"] / 2.0)
 
     for tile_idx, tile in enumerate(tiles):
+        await _strict_checkpoint()
         if time.monotonic() > deadline:
             truncated = True
             logger.warning(
@@ -615,13 +913,16 @@ async def localize_artwork(request: LocalizeRequest) -> LocalizeResponse:
                 extra={
                     "processed_tiles": tile_idx,
                     "total_tiles": len(tiles),
-                    "budget_s": LOCALIZE_TIME_BUDGET_S,
+                    "budget_s": matching_budget,
                 },
             )
             break
         # match_templates returns score-descending; process in that order so the
         # location-distinct top-k keeps the highest scorers.
-        for match in match_templates(tile["image"], variants, min_score=eff_min_score):
+        matches = await strict_blocking(
+            match_templates, tile["image"], variants, min_score=eff_min_score
+        )
+        for match in matches:
             key = (match["t3777_code"], tile_idx)
             abs_match = dict(match)
             abs_match["bbox"] = {
@@ -651,7 +952,7 @@ async def localize_artwork(request: LocalizeRequest) -> LocalizeResponse:
     raw_detections = [d for peaks in per_tile_peaks.values() for d in peaks]
 
     # Merge overlapping detections across tile boundaries
-    merged = merge_detections(raw_detections)
+    merged = await strict_blocking(merge_detections, raw_detections)
 
     logger.info(
         "Artwork localization complete",
@@ -663,8 +964,10 @@ async def localize_artwork(request: LocalizeRequest) -> LocalizeResponse:
             "truncated": truncated,
         },
     )
+    await _strict_checkpoint()
     return LocalizeResponse(
-        detections=merge_detections(merged + ghs_detections), truncated=truncated
+        detections=await strict_blocking(merge_detections, merged + ghs_detections),
+        truncated=truncated,
     )
 
 
@@ -689,6 +992,8 @@ class ClassifyRequest(BaseModel):
     single region. ``confidence_threshold`` overrides the per-method default.
     """
 
+    strict_runtime: bool = False
+    remaining_budget_ms: Optional[int] = Field(None, ge=1, le=165000)
     storage_path: Optional[str] = None
     image_b64: Optional[str] = None
     crops: Optional[List[CropBBox]] = None
@@ -706,6 +1011,7 @@ class ClassifyResult(BaseModel):
     method: str
     uncertain: bool = False
     # Optional provenance for the GHS pilot; existing result fields remain unchanged.
+    evidence: Optional[Dict[str, Any]] = None
     reference_version: Optional[str] = None
     requires_review: Optional[bool] = None
     # Set only when persist_crops=True: MinIO object key of the saved crop PNG.
@@ -731,7 +1037,10 @@ class ClassifyResponse(BaseModel):
 
 
 @router.post("/artwork/classify", response_model=ClassifyResponse)
-async def classify_artwork(request: ClassifyRequest) -> ClassifyResponse:
+@strict_runtime_endpoint
+async def classify_artwork(
+    request: ClassifyRequest, http_request: Request = None
+) -> ClassifyResponse:
     """
     Classify each localised region of an artwork to a T3777 keurmerk (FR47).
 
@@ -747,19 +1056,25 @@ async def classify_artwork(request: ClassifyRequest) -> ClassifyResponse:
     # Load the source image (storage_path takes precedence over inline b64).
     if request.storage_path:
         try:
-            img_bytes = storage_service.get_training_image(request.storage_path)
+            img_bytes = await strict_blocking(
+                _training_image_bytes, request.storage_path, request.strict_runtime
+            )
         except Exception as exc:
+            if request.strict_runtime:
+                raise HTTPException(
+                    status_code=503, detail="Source storage unavailable"
+                ) from exc
             raise HTTPException(
                 status_code=422,
                 detail=f"Kon artwork niet ophalen uit storage: {request.storage_path}",
             ) from exc
         img_arr = np.frombuffer(img_bytes, dtype=np.uint8)
-        img = cv2.imdecode(img_arr, cv2.IMREAD_COLOR)
+        img = await strict_blocking(cv2.imdecode, img_arr, cv2.IMREAD_COLOR)
         if img is None:
             raise HTTPException(status_code=422, detail="Kon artwork niet decoderen")
     elif request.image_b64:
         try:
-            img = _decode_image(request.image_b64)
+            img = await strict_blocking(_decode_image, request.image_b64)
         except Exception as exc:
             raise HTTPException(status_code=400, detail=f"Invalid image_b64: {exc}")
     else:
@@ -791,12 +1106,41 @@ async def classify_artwork(request: ClassifyRequest) -> ClassifyResponse:
     persist = request.persist_crops and bool(request.gtin)
     source_label = request.storage_path or "inline"
 
+    if request.strict_runtime:
+        try:
+            await _strict_checkpoint()
+            await _classification_runtime_ready()
+        except HTTPException:
+            raise
+        except Exception as exc:
+            raise HTTPException(
+                status_code=503, detail="Classification runtime is not ready"
+            ) from exc
     results: List[ClassifyResult] = []
     for region in regions:
-        outcome = await classify_crop(
-            region["crop"],
-            confidence_threshold=request.confidence_threshold,
-        )
+        await _strict_checkpoint()
+        try:
+            if request.strict_runtime:
+                outcome = await asyncio.wait_for(
+                    classify_crop(
+                        region["crop"],
+                        confidence_threshold=request.confidence_threshold,
+                        strict_runtime=True,
+                    ),
+                    timeout=_STRICT_CONTROL.get().remaining(),
+                )
+            else:
+                outcome = await classify_crop(
+                    region["crop"], confidence_threshold=request.confidence_threshold
+                )
+        except Exception as exc:
+            if request.strict_runtime:
+                raise HTTPException(
+                    status_code=503,
+                    detail="Required classification backend unavailable",
+                ) from exc
+            raise
+        await _strict_checkpoint()
 
         crop_path: Optional[str] = None
         if persist:
@@ -848,6 +1192,7 @@ async def classify_artwork(request: ClassifyRequest) -> ClassifyResponse:
                 method=outcome.get("method", "embedding"),
                 uncertain=bool(outcome.get("uncertain", False)),
                 crop_path=crop_path,
+                evidence=outcome.get("evidence"),
                 reference_version=outcome.get("reference_version"),
                 requires_review=outcome.get("requires_review"),
             )

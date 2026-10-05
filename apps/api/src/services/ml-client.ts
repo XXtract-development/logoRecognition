@@ -22,6 +22,7 @@ export interface Detection {
   category: string;
   value: string;
   confidence: number;
+  match_confidence?: number;
   bbox: BoundingBox;
   embedding?: number[];
   uncertain?: boolean;
@@ -401,16 +402,19 @@ export class MLClient {
    * the whole-library behaviour.
    */
   async localizeArtwork(request: {
+    proposal_strategy?: 'templates' | 'visual';
+    strict_runtime?: boolean;
+    remaining_budget_ms?: number;
     storage_path?: string;
     image_b64?: string;
     templates?: Array<{ t3777_code: string; image_b64: string }>;
     codes?: string[];
-  }): Promise<{ detections: Array<Record<string, unknown>>; truncated: boolean }> {
+  }, options: { timeoutMs?: number } = {}): Promise<{ detections: Array<Record<string, unknown>>; truncated: boolean }> {
     try {
       const response = await this.client.post<{
         detections: Array<Record<string, unknown>>;
         truncated: boolean;
-      }>('/ml/artwork/localize', request);
+      }>('/ml/artwork/localize', request, { timeout: options.timeoutMs ?? 120000 });
       return response.data;
     } catch (error) {
       throw this.handleError(error, 'Artwork localization failed');
@@ -428,24 +432,29 @@ export class MLClient {
    * are unaffected.
    */
   async classifyArtwork(request: {
+    strict_runtime?: boolean;
+    remaining_budget_ms?: number;
     storage_path?: string;
     image_b64?: string;
     crops?: Array<{ x: number; y: number; width: number; height: number }>;
     confidence_threshold?: number;
     gtin?: string;
     persist_crops?: boolean;
-  }): Promise<{
+  }, options: { timeoutMs?: number } = {}): Promise<{
     results: Array<{
       bbox?: { x: number; y: number; width: number; height: number } | null;
       t3777_code: string;
       confidence: number;
       method: string;
       uncertain?: boolean;
+      requires_review?: boolean;
+      evidence?: Record<string, unknown> | null;
+      reference_version?: string | null;
       crop_path?: string | null;
     }>;
   }> {
     try {
-      const response = await this.client.post('/ml/artwork/classify', request);
+      const response = await this.client.post('/ml/artwork/classify', request, { timeout: options.timeoutMs ?? 120000 });
       return response.data;
     } catch (error) {
       throw this.handleError(error, 'Artwork classification failed');

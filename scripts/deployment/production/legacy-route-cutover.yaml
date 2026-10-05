@@ -1,0 +1,28 @@
+# Install atomically ONLY after the new application's actual HTTPS smoke checks pass.
+# Own file: /data/coolify/proxy/dynamic/logo-recognition-production-20261005.yaml
+# Roll back by removing only that file; the existing Docker router remains intact.
+http:
+  routers:
+    logo-recognition-production-20261005-https:
+      rule: Host(`logo-detection.xxtract.com`)
+      entryPoints: [https]
+      priority: 200
+      service: logo-recognition-production-20261005
+      tls:
+        certResolver: letsencrypt
+    logo-recognition-production-20261005-http:
+      rule: Host(`logo-detection.xxtract.com`)
+      entryPoints: [http]
+      priority: 200
+      service: logo-recognition-production-20261005
+      middlewares: [logo-recognition-production-20261005-redirect]
+  middlewares:
+    logo-recognition-production-20261005-redirect:
+      redirectScheme:
+        scheme: https
+        permanent: true
+  services:
+    logo-recognition-production-20261005:
+      loadBalancer:
+        servers:
+          - url: http://f048gs04scoksggw0okw4oo0-app-1:8000

@@ -154,6 +154,13 @@ class ModelManager:
             return self.detection_model.detect(img_array)
 
     async def generate_embedding(self, image: Image.Image) -> np.ndarray:
+        # Preserve existing callers; strict HTTP work dispatches the synchronous
+        # implementation through its admission-controlled worker helper.
+        return self.generate_embedding_sync(image)
+
+    def generate_embedding_sync(
+        self, image: Image.Image, strict_runtime=False
+    ) -> np.ndarray:
         """
         Generate embedding vector for an image.
 
@@ -207,6 +214,8 @@ class ModelManager:
             return embedding
 
         except ImportError:
+            if strict_runtime:
+                raise RuntimeError("Embedding runtime dependency unavailable")
             # Mock embedding
             return np.random.randn(512).astype(np.float32)
 

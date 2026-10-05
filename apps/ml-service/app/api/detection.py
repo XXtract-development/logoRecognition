@@ -34,6 +34,8 @@ class Detection(BaseModel):
     category: str
     value: str
     confidence: float
+    # Classification similarity is distinct from the localization detector score.
+    match_confidence: Optional[float] = None
     bbox: BoundingBox
     embedding: Optional[List[float]] = None
     uncertain: bool = False

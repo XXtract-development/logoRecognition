@@ -1,0 +1,27 @@
+# Production Coolify compose loading investigation
+
+## Symptom and evidence
+The new dedicated application f048gs04scoksggw0okw4oo0 exists and has its private production environment. A synchronous loadComposeFile reads the correct published compose file, saves docker_compose_raw, then the normal parser refuses the bind source `${MINIO_DATA_PATH:?required dedicated production StorageBox directory}` as an unsafe literal Docker volume path. No deployment or container start occurred. Existing production is unchanged.
+
+## Hypotheses
+- Confirmed: default Coolify parser treats an otherwise valid Compose env substitution in the bind path as forbidden shell syntax.
+- Refuted: missing repository access; the raw compose was downloaded before parser failure.
+- Open: dedicated raw-compose deployment can preserve the reviewed env substitutions, networks, profiles and explicit staged start command.
+
+## Owner and fix direction
+Deployment integration owned by this repository and the new dedicated Coolify application settings. Inspect installed deployment implementation, then enable only this application’s supported raw-compose setting if its command and environment handling meet the reviewed contract. Validate the rendered file privately before any deployment; otherwise use concrete safe deployment-specific paths. Do not alter global Coolify parsing or existing applications.
+
+## Confirmed correction and verification
+The installed deployment calls loadComposeFile even in raw mode, and oldRawParser appends sequence labels. The dedicated bind source is now literal and the validator requires exactly the corresponding production resource and env path; all Traefik labels are strings in a list. All 32 offline configuration checks pass. Banana mountpoint/findmnt confirmed cifs StorageBox before the owned directory was created; it did not exist previously. The new authentication identity was created with SELECT only on the existing central users table, restricted to Banana private address, without modifying existing users. The staged raw custom command refers to the installed writer's docker-compose.yaml under the new application's own workdir, with an explicit project name/directory and only the three infrastructure services. The build command is config --quiet, not an image build.
+
+## Follow-up: empty command serialization
+After the literal-path/label fix, installed loadComposeFile completed and raw mode is enabled for this application only. The privately captured raw file differs from source only in initialize-buckets.command: PHP's YAML round trip converts the empty sequence [] to the mapping {}. The validator correctly rejects it with `Provisioning must bypass application startup`, and no containers started. Confirmed owner is Compose serialization compatibility; fix direction is the equivalent explicit empty string command, retaining the fixed Python entrypoint and rejecting empty mappings. Add a regression and repeat actual installed roundtrip/render before deployment.
+
+## Follow-up: custom start executes inside helper
+Infrastructure deployment qs48kg004sgwkkw4o04ocooc failed before container creation. Actual log shows the custom start runs inside docker exec <deployment helper> under /artifacts/<deployment>; the injected --env-file /data/coolify/applications/<uuid>/.env is only present on the host, not mounted into that helper. Host directory contains its generated env and compose, confirming missing host file is refuted; incorrect execution context is confirmed. Source save_runtime_environment_variables writes the helper workdir/.env as well as host configuration_dir/.env. Fix direction: supply explicit relative --env-file .env and -f docker-compose.prod.yml plus --project-directory . in the custom command, all resolved from the proven helper workdir, and keep exact project/service selection. Verify the installed flag-injection function retains those explicit relative values before retry. No existing production runtime, route or database was changed.
+
+## Follow-up: source MinIO image availability
+Retry pcswog8o8csck4c8oossgsk0 passed command/env context but stopped at image pull: Docker reports pull access denied for minio/minio at the verified source digest. No target containers exist. The immutable source image remains cached on ACC. Confirmed failure is registry availability, not credentials to application data or runtime configuration. Investigate the official alternate registry with the exact digest, or transfer the verified cached artifact preserving config-image identity and immutable release evidence; do not substitute an unverified latest build.
+
+## Registry diagnosis and artifact-preserving correction
+Both official quay.io/minio/minio exact digest and exact source release tag return no such manifest. The cached ACC image is config sha256:69b2ec208575b69597784255eec6fa6a2985ee9e1a47f4411a51f7f5fdd193a9, release RELEASE.2025-09-07T16-13-09Z, created 2025-09-07T18:42:37, 175494058 bytes. Use read-only Docker archive export of that exact config image, transfer via private files, verify compressed archive SHA and destination config ID/rootfs layers against source, then pin exactly that immutable local config ID in Compose. This avoids unavailable registry pulls while retaining the exact source software. Validator allows only that one evidenced MinIO ID; all other images retain immutable registry digest requirements.

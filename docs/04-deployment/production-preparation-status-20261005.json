@@ -1,0 +1,22 @@
+{
+  "time": "2026-10-05T19:58:04.201376+00:00",
+  "task_id": "01a0fc7a-28d6-7333-ae26-c6dc972076d8",
+  "owner": "Codex/root",
+  "status": "complete",
+  "current_phase": "local preparation complete; production transfer not executed",
+  "open_approval": null,
+  "production_changed": false,
+  "local_checks": {
+    "offline_tests": 29,
+    "migration_sql_files": 21,
+    "created_and_restored_tables": 34,
+    "test_container_removed": true,
+    "workflow_tests": 11
+  },
+  "remaining": [
+    "consistent filled source-data/object manifest and rehearsal",
+    "production resource provisioning approval",
+    "public endpoint cutover approval"
+  ],
+  "review_findings_resolved": 20
+}

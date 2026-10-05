@@ -1,6 +1,25 @@
 # Versiegeschiedenis
 
+## 6 oktober 2026
+
+**Controleerbare overgang naar productie**
+- De herkenningsaanroep gebruikt de overgezette referenties en modellen.
+- Een storing of onvolledige beoordeling wordt duidelijk gemeld en niet als een etiket zonder logo’s teruggegeven.
+- Getrainde Nutri-Score-herkenning kan een zwakkere, gelijkluidende uitlezing bevestigen; tegenstrijdige uitkomsten blijven ter beoordeling.
+- Back-ups van alle nieuwe productietabellen en trainingsbestanden zijn gecontroleerd en afzonderlijk bewaard.
+
+---
+
 ## 5 oktober 2026
+
+**Bestaande koppelingen bij overgang naar productie**
+- Bestaande productkoppelingen kunnen de vernieuwde herkenning met dezelfde aanroep blijven gebruiken.
+- Twijfelgevallen worden niet als bevestigde logo’s doorgestuurd.
+- Trainingsbeelden en modellen worden bij de overdracht op volledigheid gecontroleerd.
+
+**Voorbereiding voor productie**
+- Het draaiboek bevat nu een afzonderlijk voorbereidingspakket met gecontroleerde bronmodellen en een geslaagde lokale databaseherstelproef.
+- Ontbrekende overdrachten en controles blijven zichtbaar voordat de bestaande productiedienst wordt vervangen.
 
 **Duidelijke gevarensymbolen op witte etiketten**
 - Brede zwarte gevarensymbolen worden beter teruggevonden, ook wanneer andere pictogrammen er vlak naast staan.

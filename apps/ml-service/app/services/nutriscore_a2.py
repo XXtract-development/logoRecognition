@@ -71,7 +71,7 @@ def min_conf() -> float:
     return DEFAULT_MIN_CONF
 
 
-def _load():
+def _load(load_bytes=None):
     """Lazy singleton-load van model + klassen uit MinIO. Raise bij elke fout;
     een mislukte load wordt _FAIL_COOLDOWN_S niet opnieuw geprobeerd (M3).
     De load is synchroon (~2-4 s eenmalig per worker, consistent met de
@@ -95,14 +95,15 @@ def _load():
         try:
             model_key = os.environ.get("NUTRISCORE_A2_MODEL_KEY", _MODEL_KEY_DEFAULT)
             meta_key = os.environ.get("NUTRISCORE_A2_META_KEY", _META_KEY_DEFAULT)
-            meta_raw = storage_service.get_training_image(meta_key)
+            read_bytes = load_bytes or storage_service.get_training_image
+            meta_raw = read_bytes(meta_key)
             meta = json.loads(
                 meta_raw.decode("utf-8")
                 if isinstance(meta_raw, (bytes, bytearray))
                 else meta_raw
             )
             classes = list(meta["classes"])
-            state_raw = storage_service.get_training_image(model_key)
+            state_raw = read_bytes(model_key)
             state = torch.load(
                 io.BytesIO(bytes(state_raw)), map_location="cpu", weights_only=True
             )
@@ -122,14 +123,19 @@ def _load():
             raise
 
 
-def predict_letter(img_bgr: np.ndarray) -> Tuple[Optional[str], float, Dict[str, Any]]:
+def predict_letter(
+    img_bgr: np.ndarray, *, load_bytes=None
+) -> Tuple[Optional[str], float, Dict[str, Any]]:
     """Voorspel de Nutri-Score-letter van een BGR-crop.
 
     Returns (letter|None, confidence, info): letter is None wanneer het model
     "none" voorspelt (geen Nutri-Score) — de aanroeper past de vloer toe.
     Fouten propageren (router = fail-open).
     """
-    _load()
+    if load_bytes is None:
+        _load()
+    else:
+        _load(load_bytes=load_bytes)
     # Beide zwaar, daarom pas hier geladen. De onderlinge volgorde maakt niets uit: `cv2`
     # staat al op bestandsniveau in vijf andere services (o.a. nutriscore_reader.py), dus
     # tegen de tijd dat deze functie draait staat hij allang in sys.modules en is dit enkel

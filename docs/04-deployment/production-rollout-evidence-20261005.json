@@ -1,0 +1,236 @@
+{
+  "time": "2026-10-05T23:02:22.790875+00:00",
+  "status": "in_progress",
+  "infrastructure": "healthy",
+  "database": {
+    "status": "passed",
+    "resource": "logo-production-20261005",
+    "new_empty_target_confirmed": true,
+    "source_archive_sha256": "b6632056d264be6a7a2ecce7e0d001fd2518079e5457db8460c5860eee4c72b0",
+    "all_selected_row_fingerprints_match": true,
+    "excluded_data_absent_before_target_settings": true,
+    "foreign_keys_validated": true,
+    "app_ml_roles_distinct_and_limited": true,
+    "ml_reference_table_owner": true,
+    "ml_reindex_proven": true,
+    "ml_authenticated_read_and_rollback_writes_proven": true,
+    "flywheel_persistently_paused": true
+  },
+  "storage_transfer": "passed",
+  "runtime_started": false,
+  "legacy_route_changed": false,
+  "storage": {
+    "status": "passed",
+    "resource": "logo-production-20261005",
+    "objects_verified": 1069,
+    "bytes_verified": 40487281,
+    "four_buckets_private": true,
+    "runtime_account_nonroot": true,
+    "runtime_admin_access_denied": true,
+    "all_readback_sha256_match": true,
+    "fresh_iam_verified_before_mutation": true,
+    "effective_single_policy_and_no_groups_verified": true,
+    "conditional_put_no_overwrite": true,
+    "source_rows_sha256": "7d17673341d4d078db5cd36f9874325684e244c333456155ec799552848c7ff4",
+    "source_object_manifest_sha256": "a8485579d5d173e276fbae30281a5c1588fbe3812c1c7b9ee524a4681e9e8dac"
+  },
+  "backup": {
+    "status": "passed",
+    "resource": "logo-production-20261005",
+    "scope": "read-only new production target backup; restore only into own isolated test container",
+    "local_docker_endpoint": "unix:///var/run/docker.sock",
+    "database_backup_restore_passed": true,
+    "all_35_public_table_fingerprints_match": true,
+    "table_fingerprints": {
+      "_prisma_migrations": {
+        "rows": 21,
+        "sha256": "ca779fb8c9ba2bcd9d7c44c58f34f5498e0002acb4cd02cdef7130515e365283"
+      },
+      "annotations": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "artwork_import_runs": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "artwork_imports": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "artwork_review_items": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "backup_history": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "bootstrap_queue": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "candidate_embeddings": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "declared_harvest_checks": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "feedback_queue": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "gold_set_records": {
+        "rows": 900,
+        "sha256": "c98019f9e52d7736cdde274f8ddfbe9afe8c212161bd0a110ec1b37657ad7129"
+      },
+      "hard_negatives": {
+        "rows": 72,
+        "sha256": "6d20da5b4c30ec3bdfadb160c75d4c7e7fc0743dff28f83cfa953ac662ad5b45"
+      },
+      "health_checks": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "logo_embeddings": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "logo_images": {
+        "rows": 876,
+        "sha256": "fac2ff7480325f89287a3a3c9aa9333f09c2beb31f598efea00f502fe6794433"
+      },
+      "logos": {
+        "rows": 41,
+        "sha256": "00134b9479067333eaaf8f92ea33d5e4944e6b1eb88eaf849f8081e823007164"
+      },
+      "mismatch_events": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "model_activation_logs": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "model_versions": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "organizations": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "outlier_findings": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "promotion_batches": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "query_stats": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "recognition_logs": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "recognition_results": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "reference_candidates": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "reference_embeddings": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "reference_logos": {
+        "rows": 604,
+        "sha256": "602041e26a1edada58ed9c392af14669882cc239095a6f2fbeacff9a3dcf0d44"
+      },
+      "retraining_notifications": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "search_history": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "system_settings": {
+        "rows": 3,
+        "sha256": "7d2133ba36ed5223624742b6c3625a1e6d05bb57a1e5a50f199544644b861608"
+      },
+      "threshold_changes": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "training_batches": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "training_data": {
+        "rows": 930,
+        "sha256": "5178151897795bea3fd2e0f12a71d17fc0191b003e6187f8ff3a2015a6e3623e"
+      },
+      "users": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    "database_archive_sha256": "44be161148f2784e4102bdba6fd0038ce024b22fa6797d79f2371fe7976f3872",
+    "database_archive_bytes": 403109,
+    "target_database_receipt_sha256": "7370a3f1aa5374b91af988d6c4a9b682b6ea279832f398c7066cf243d3932283",
+    "objects_backup": {
+      "status": "passed",
+      "scope": "byte-equivalent package copy, proven against complete target readback receipt; tar readback tested",
+      "objects": 1069,
+      "archive_sha256": "aacf2bcba20ecc97b2a5add5a352dd2f48151507e6746a598f65e142325a21da",
+      "archive_bytes": 42731520,
+      "target_storage_receipt_sha256": "4b36c7b922d266cc9700c5080e8a8356c3bf13108c0f28c1c42396e76d8e3b8a"
+    },
+    "isolated_container_and_volumes_removed": true
+  },
+  "model_cache": {
+    "status": "passed",
+    "volume": "logo-production-20261005-torch-cache",
+    "model_sha256": "7f5810bc96def8f7552d5b7e68d53c4786f81167d28291b21c0d90e1fca14934",
+    "runtime_uid": 999,
+    "source_weights_unchanged": true
+  },
+  "ml_runtime": {
+    "status": "ready",
+    "scope": "private ML-only startup; public app not started",
+    "active_reference_embeddings": 542,
+    "ghs_model_sha256": "68b9ce1488150d32722bb116790fcd065a89d53525fa43dfd48c3148f63d8974",
+    "source_ghs_sha256_matches": true
+  },
+  "independent_backup_copy": {
+    "status": "passed",
+    "scope": "private copy on separate computer",
+    "database_sha256": "44be161148f2784e4102bdba6fd0038ce024b22fa6797d79f2371fe7976f3872",
+    "object_archive_sha256": "aacf2bcba20ecc97b2a5add5a352dd2f48151507e6746a598f65e142325a21da"
+  },
+  "trained_model_runtime_probes": {
+    "status": "partial",
+    "actual_production_nutriscore_b_a2_score": 0.999698877,
+    "independent_color_reader_letter": "B",
+    "actual_production_green_dot_embedding_score": 0.9855517879653726,
+    "green_dot_requires_review": true,
+    "scope": "original production ROI inference; whole public endpoint still pending",
+    "all_logo_field_quality_proven": false
+  },
+  "actual_refinement_proof": {
+    "active_templates": 542,
+    "seconds": 26.68,
+    "location_distinct_regions": 3,
+    "visible_green_dot_region_included": true,
+    "whole_endpoint_proof": "pending newly built release",
+    "scores_used_for_final_confirmation": false
+  }
+}

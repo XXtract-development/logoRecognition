@@ -17,6 +17,7 @@ import path from 'path';
 import { errorHandler } from './middleware/errorHandler';
 import { tracingMiddleware, responseLogger } from './middleware/tracing';
 import { recognitionRoutes } from './api/v1/recognition';
+import { legacyDetectRoutes } from './api/legacy-detect';
 import { healthRoutes } from './api/v1/health';
 import { trainingRoutes } from './api/v1/training';
 import { authRoutes } from './api/v1/auth';
@@ -142,6 +143,7 @@ async function startServer() {
     await app.register(imageRoutes, { prefix: '/api/v1' });
     await app.register(categoryRoutes, { prefix: '/api/v1' });
     await app.register(recognitionRoutes, { prefix: '/api/v1' });
+    await app.register(legacyDetectRoutes);
     await app.register(trainingRoutes, { prefix: '/api/v1' });
     await app.register(annotationRoutes, { prefix: '/api/v1' });
     await app.register(feedbackRoutes, { prefix: '/api/v1' });
