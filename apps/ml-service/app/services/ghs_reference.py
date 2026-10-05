@@ -286,7 +286,11 @@ def references():
     return manifest["version"], result
 
 
-def detect_ghs(image, codes=None):
+def detect_ghs(image, codes=None, *, strict_runtime=False):
+    if strict_runtime:
+        from app.services.ghs_specialist import load_model
+
+        load_model()  # Required trained backend must exist even for a true negative.
     image = _bgr(image)
     original_h, original_w = image.shape[:2]
     scale = min(1.0, (MAX_WORK_PIXELS / (original_h * original_w)) ** 0.5)
@@ -330,6 +334,8 @@ def detect_ghs(image, codes=None):
 
                 chosen = classify(image[y : y + h, x : x + w])
             except Exception:
+                if strict_runtime:
+                    raise
                 logging.getLogger(__name__).warning(
                     "GHS specialist unavailable; retaining template route",
                     exc_info=False,
@@ -367,6 +373,8 @@ def detect_ghs(image, codes=None):
                 combined.append(addition)
         output = combined
     except Exception:
+        if strict_runtime:
+            raise
         logging.getLogger(__name__).warning(
             "GHS photo recovery unavailable; retaining existing results", exc_info=False
         )
@@ -385,8 +393,10 @@ def detect_ghs(image, codes=None):
     return output
 
 
-def classify_ghs(crop):
-    detections = detect_ghs(crop)
+def classify_ghs(crop, *, strict_runtime=False):
+    detections = (
+        detect_ghs(crop, strict_runtime=True) if strict_runtime else detect_ghs(crop)
+    )
     return (
         max(detections, key=lambda d: d["confidence"]) if len(detections) == 1 else None
     )

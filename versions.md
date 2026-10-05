@@ -1,5 +1,15 @@
 # Versiegeschiedenis
 
+## 6 oktober 2026
+
+**Controleerbare overgang naar productie**
+- De herkenningsaanroep gebruikt de overgezette referenties en modellen.
+- Een storing of onvolledige beoordeling wordt duidelijk gemeld en niet als een etiket zonder logo’s teruggegeven.
+- Getrainde Nutri-Score-herkenning kan een zwakkere, gelijkluidende uitlezing bevestigen; tegenstrijdige uitkomsten blijven ter beoordeling.
+- Back-ups van alle nieuwe productietabellen en trainingsbestanden zijn gecontroleerd en afzonderlijk bewaard.
+
+---
+
 ## 5 oktober 2026
 
 **Bestaande koppelingen bij overgang naar productie**

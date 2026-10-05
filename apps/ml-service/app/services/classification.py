@@ -109,7 +109,7 @@ def _softmax(x: np.ndarray) -> np.ndarray:
 
 
 async def _classify_via_embedding(
-    crop: Any, threshold: float
+    crop: Any, threshold: float, strict_runtime: bool = False
 ) -> Optional[Dict[str, Any]]:
     """Embedding-similarity route. Returns a result dict, or None if the route
     could not run (backbone/db unavailable) so the caller can fail closed.
@@ -117,8 +117,16 @@ async def _classify_via_embedding(
     from app.ml.model_manager import model_manager  # may be mocked in tests
     from app.services.database import db_service  # may be mocked in tests
 
-    image = _to_pil(crop)
-    raw_embedding = await model_manager.generate_embedding(image)
+    if strict_runtime:
+        from app.api.artwork import strict_blocking
+
+        image = await strict_blocking(_to_pil, crop)
+        raw_embedding = await strict_blocking(
+            model_manager.generate_embedding_sync, image, strict_runtime=True
+        )
+    else:
+        image = _to_pil(crop)
+        raw_embedding = await model_manager.generate_embedding(image)
 
     if not isinstance(raw_embedding, np.ndarray) or raw_embedding.size == 0:
         raise ValueError("embedding backbone returned a non-array embedding")
@@ -137,7 +145,11 @@ async def _classify_via_embedding(
     # recognition). De 0,5-gate blijft elders ongewijzigd gelden.
     from app.services.keurmerk_gate import keurmerk_probability
 
-    kp = keurmerk_probability(embedding)
+    kp = (
+        await strict_blocking(keurmerk_probability, embedding)
+        if strict_runtime
+        else keurmerk_probability(embedding)
+    )
     if kp is not None and kp < CLASSIFY_GATE_THRESHOLD:
         return {
             "t3777_code": CLASSIFY_UNKNOWN_CODE,
@@ -185,7 +197,7 @@ async def _classify_via_embedding(
 
 
 async def _classify_via_classifier(
-    crop: Any, threshold: float
+    crop: Any, threshold: float, strict_runtime: bool = False
 ) -> Optional[Dict[str, Any]]:
     """Active-crop-classifier route. Returns a result dict, or None when there
     is no active model (route silently skipped — NOT an error).
@@ -209,9 +221,21 @@ async def _classify_via_classifier(
             labels = None
 
     if not labels:
+        if strict_runtime:
+            raise RuntimeError("Active classifier label map is unavailable")
         logger.debug("Active model has no label map; skipping classifier route")
         return None
 
+    if strict_runtime:
+        from app.api.artwork import strict_blocking
+
+        return await strict_blocking(
+            _run_classifier, crop, threshold, active_model, labels, True
+        )
+    return _run_classifier(crop, threshold, active_model, labels)
+
+
+def _run_classifier(crop, threshold, active_model, labels, strict_runtime=False):
     # Load the active ONNX classifier from storage and run inference.
     import onnxruntime as ort  # lazy: keep heavy deps out of import time
     import torch
@@ -220,7 +244,16 @@ async def _classify_via_classifier(
     from app.services.trainer import build_eval_transform
 
     version = active_model.get("version")
-    model_bytes = storage_service.load_model(f"logo_detector_{version}", "onnx")
+    if strict_runtime:
+        from app.api.artwork import _training_image_bytes
+
+        model_bytes = _training_image_bytes(
+            f"logo_detector_{version}.onnx",
+            strict_runtime=True,
+            bucket=storage_service.MODELS_BUCKET,
+        )
+    else:
+        model_bytes = storage_service.load_model(f"logo_detector_{version}", "onnx")
     session = ort.InferenceSession(model_bytes)
 
     # Preprocess with the SAME canonical eval transform as training (224×224 +
@@ -262,6 +295,7 @@ async def _classify_via_classifier(
 async def classify_crop(
     crop: Any,  # numpy ndarray (H, W, 3) BGR, or PIL Image
     confidence_threshold: Optional[float] = None,
+    strict_runtime: bool = False,
 ) -> Dict[str, Any]:
     """
     Classify a crop as a T3777 certification mark.
@@ -280,7 +314,12 @@ async def classify_crop(
     try:
         from app.services.ghs_reference import classify_ghs
 
-        ghs = classify_ghs(crop)
+        if strict_runtime:
+            from app.api.artwork import strict_blocking
+
+            ghs = await strict_blocking(classify_ghs, crop, strict_runtime=True)
+        else:
+            ghs = classify_ghs(crop)
         if ghs is not None:
             if (
                 confidence_threshold is not None
@@ -289,6 +328,8 @@ async def classify_crop(
                 ghs["uncertain"] = True
             return ghs
     except Exception as exc:
+        if strict_runtime:
+            raise RuntimeError("Required classification backend unavailable") from exc
         logger.warning(
             "GHS reference route unavailable — continuing legacy classification",
             extra={"error": str(exc)},
@@ -313,7 +354,11 @@ async def classify_crop(
         ):
             from app.services.nutriscore_reader import read_nutriscore
 
-            ns_letter, ns_info = read_nutriscore(crop)
+            ns_letter, ns_info = (
+                await strict_blocking(read_nutriscore, crop)
+                if strict_runtime
+                else read_nutriscore(crop)
+            )
             if ns_letter is None:
                 # Story 12.25 — kandidaat voor het A2-vangnet (verderop, ná de
                 # embedding-route: de familie-poort heeft de embedding-buur nodig).
@@ -329,6 +374,39 @@ async def classify_crop(
                 # confidence_threshold wint ook van de head ("always wins",
                 # docstring-contract) — daaronder is het resultaat uncertain.
                 ns_uncertain = bool(explicit and ns_confidence < confidence_threshold)
+                if strict_runtime and ns_uncertain:
+                    # The deterministic head supplies family AND letter evidence.
+                    # A trained same-letter answer may corroborate its weak score;
+                    # disagreement must never silently substitute another letter.
+                    from functools import partial
+
+                    from app.api.artwork import _training_image_bytes
+                    from app.services.nutriscore_a2 import min_conf, predict_letter
+
+                    a2_letter, a2_conf, a2_info = await strict_blocking(
+                        predict_letter,
+                        crop,
+                        load_bytes=partial(_training_image_bytes, strict_runtime=True),
+                    )
+                    actual_score = float(a2_conf)
+                    if not np.isfinite(actual_score) or not 0 <= actual_score <= 1:
+                        raise RuntimeError("Invalid trained Nutri-Score model score")
+                    if (
+                        a2_letter == ns_letter
+                        and actual_score >= confidence_threshold
+                        and actual_score >= min_conf()
+                    ):
+                        return {
+                            "t3777_code": f"NUTRISCORE_{ns_letter}",
+                            "confidence": actual_score,
+                            "method": "nutriscore-a2",
+                            "uncertain": False,
+                            "evidence": {
+                                "head_letter": ns_letter,
+                                "head_score": ns_confidence,
+                                "trained_model": a2_info,
+                            },
+                        }
                 logger.info(
                     "Nutri-Score-head besliste de letter",
                     extra={
@@ -346,6 +424,8 @@ async def classify_crop(
                     "uncertain": ns_uncertain,
                 }
     except Exception as exc:
+        if strict_runtime:
+            raise RuntimeError("Required Nutri-Score reader unavailable") from exc
         logger.warning(
             "Nutri-Score-head faalde — door naar de legacy-route",
             extra={"error": str(exc)},
@@ -356,8 +436,16 @@ async def classify_crop(
         confidence_threshold if explicit else CLASSIFY_THRESHOLD_EMBEDDING
     )
     try:
-        embedding_result = await _classify_via_embedding(crop, embedding_threshold)
+        embedding_result = (
+            await _classify_via_embedding(
+                crop, embedding_threshold, strict_runtime=True
+            )
+            if strict_runtime
+            else await _classify_via_embedding(crop, embedding_threshold)
+        )
     except Exception as exc:
+        if strict_runtime:
+            raise RuntimeError("Required classification backend unavailable") from exc
         logger.warning(
             "Embedding classification route failed — falling back",
             extra={"error": str(exc)},
@@ -386,7 +474,18 @@ async def classify_crop(
         try:
             from app.services.nutriscore_a2 import min_conf, predict_letter
 
-            a2_letter, a2_conf, a2_info = predict_letter(crop)
+            if strict_runtime:
+                from functools import partial
+
+                from app.api.artwork import _training_image_bytes
+
+                a2_letter, a2_conf, a2_info = await strict_blocking(
+                    predict_letter,
+                    crop,
+                    load_bytes=partial(_training_image_bytes, strict_runtime=True),
+                )
+            else:
+                a2_letter, a2_conf, a2_info = predict_letter(crop)
             if a2_letter is not None and a2_conf >= min_conf():
                 a2_confidence = round(float(a2_conf), 3)
                 a2_uncertain = bool(explicit and a2_confidence < confidence_threshold)
@@ -414,6 +513,10 @@ async def classify_crop(
                     },
                 )
         except Exception as exc:
+            if strict_runtime:
+                raise RuntimeError(
+                    "Required classification backend unavailable"
+                ) from exc
             logger.warning(
                 "Nutri-Score-A2-vangnet faalde — legacy-resultaat blijft staan",
                 extra={"error": str(exc)},
@@ -432,8 +535,16 @@ async def classify_crop(
         confidence_threshold if explicit else CLASSIFY_THRESHOLD_CLASSIFIER
     )
     try:
-        classifier_result = await _classify_via_classifier(crop, classifier_threshold)
+        classifier_result = (
+            await _classify_via_classifier(
+                crop, classifier_threshold, strict_runtime=True
+            )
+            if strict_runtime
+            else await _classify_via_classifier(crop, classifier_threshold)
+        )
     except Exception as exc:
+        if strict_runtime:
+            raise RuntimeError("Required classification backend unavailable") from exc
         logger.warning(
             "Classifier classification route failed",
             extra={"error": str(exc)},
@@ -451,6 +562,8 @@ async def classify_crop(
     if embedding_result is not None:
         return embedding_result
 
+    if strict_runtime:
+        raise RuntimeError("Classification backend unavailable")
     return {
         "t3777_code": CLASSIFY_UNKNOWN_CODE,
         "confidence": 0.0,

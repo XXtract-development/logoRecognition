@@ -244,6 +244,7 @@ jobs:
           python -m pip install PyYAML==6.0.3
           python scripts/deployment/production/test-production-config.py
           python scripts/deployment/production/test-transfer-package.py
+          python scripts/deployment/production/test-target-backup.py
 
       - name: Run CI environment contracts
         run: python -m unittest discover -s .github/tests -v
