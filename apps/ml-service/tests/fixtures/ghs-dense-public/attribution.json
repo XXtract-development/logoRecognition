@@ -1,0 +1,137 @@
+{
+  "scope": "exposed-development-regression-fixtures",
+  "humanGold": false,
+  "trainingAllowed": false,
+  "images": [
+    {
+      "id": "public-dev-009",
+      "file": "public-dev-009.png",
+      "sha256": "a24016224ed7552f63a0d1591e0fec260f26460e0522072894cbeb53560c7b60",
+      "sourceSha256": "57caf0fb49953c7f572daabcbc0e9d2e23909384f81831f8efdb81f9af86059e",
+      "sourceFile": "202005267D83C5A7B574474CAD2DEF65E9A5543C_1_png.rf.3c57e2fe6d9594eacaa7f5876ef155b8.jpg",
+      "sourceURL": "https://universe.roboflow.com/test-thesis-se1ti/ghs-osyay-ag8xg/dataset/1",
+      "license": "CC BY 4.0",
+      "attribution": "test-thesis-se1ti / ghs-osyay-ag8xg, dataset version 1",
+      "sourcePixelBBox": {
+        "x": 96,
+        "y": 36,
+        "width": 213,
+        "height": 69
+      },
+      "transformation": "Exact decoded source pixel crop, lossless PNG; no resizing or retouching",
+      "annotations": [
+        {
+          "code": "HEALTH_HAZARD",
+          "bbox": {
+            "x": 136.5,
+            "y": 10.75,
+            "width": 66,
+            "height": 47.5
+          },
+          "qualificationId": "public-dev-009-object-01"
+        },
+        {
+          "code": "EXCLAMATION_MARK",
+          "bbox": {
+            "x": 72.5,
+            "y": 12,
+            "width": 66,
+            "height": 47
+          },
+          "qualificationId": "public-dev-009-object-02"
+        },
+        {
+          "code": "FLAME",
+          "bbox": {
+            "x": 10,
+            "y": 11.25,
+            "width": 63,
+            "height": 46.5
+          },
+          "qualificationId": "public-dev-009-object-03"
+        }
+      ],
+      "licenseURL": "https://creativecommons.org/licenses/by/4.0/"
+    },
+    {
+      "id": "public-dev-011",
+      "file": "public-dev-011.png",
+      "sha256": "80a77bfd81b20db5d9b57d5735607639add418c6f1b52c2d498ec61072c8e52f",
+      "sourceSha256": "6f5af86dd555d006fabf00b8d461dffeb5a4a9692fb41f89991b1a3da0c7e79e",
+      "sourceFile": "20200526FEC5FDBF2A214144967B9B5CD09F9DBA_0_png.rf.10474b5bffdd9d7ee2df247bd4caa9d7.jpg",
+      "sourceURL": "https://universe.roboflow.com/test-thesis-se1ti/ghs-osyay-ag8xg/dataset/1",
+      "license": "CC BY 4.0",
+      "attribution": "test-thesis-se1ti / ghs-osyay-ag8xg, dataset version 1",
+      "sourcePixelBBox": {
+        "x": 97,
+        "y": 535,
+        "width": 149,
+        "height": 70
+      },
+      "transformation": "Exact decoded source pixel crop, lossless PNG; no resizing or retouching",
+      "annotations": [
+        {
+          "code": "HEALTH_HAZARD",
+          "bbox": {
+            "x": 72,
+            "y": 10.5,
+            "width": 67,
+            "height": 49
+          },
+          "qualificationId": "public-dev-011-object-01"
+        },
+        {
+          "code": "EXCLAMATION_MARK",
+          "bbox": {
+            "x": 10,
+            "y": 10.75,
+            "width": 62,
+            "height": 47.5
+          },
+          "qualificationId": "public-dev-011-object-02"
+        }
+      ],
+      "licenseURL": "https://creativecommons.org/licenses/by/4.0/"
+    },
+    {
+      "id": "public-dev-018",
+      "file": "public-dev-018.png",
+      "sha256": "be0b6b2049f299d4823814b780fc56615556fda44bc4c25a1d79e657e6ac5400",
+      "sourceSha256": "84aa1dbf525310efc05e431ad5585d3b6aff9ababf80af55a1b145eb5b629b59",
+      "sourceFile": "2019042385C309FAC3764140932A95ADAF27AF15_1_png.rf.098d6697bb0c05245a91fc5e45275c24.jpg",
+      "sourceURL": "https://universe.roboflow.com/test-thesis-se1ti/ghs-osyay-ag8xg/dataset/1",
+      "license": "CC BY 4.0",
+      "attribution": "test-thesis-se1ti / ghs-osyay-ag8xg, dataset version 1",
+      "sourcePixelBBox": {
+        "x": 47,
+        "y": 52,
+        "width": 179,
+        "height": 85
+      },
+      "transformation": "Exact decoded source pixel crop, lossless PNG; no resizing or retouching",
+      "annotations": [
+        {
+          "code": "EXCLAMATION_MARK",
+          "bbox": {
+            "x": 10.25,
+            "y": 10.75,
+            "width": 77.5,
+            "height": 63.5
+          },
+          "qualificationId": "public-dev-018-object-01"
+        },
+        {
+          "code": "HEALTH_HAZARD",
+          "bbox": {
+            "x": 87,
+            "y": 11,
+            "width": 82,
+            "height": 64
+          },
+          "qualificationId": "public-dev-018-object-02"
+        }
+      ],
+      "licenseURL": "https://creativecommons.org/licenses/by/4.0/"
+    }
+  ]
+}

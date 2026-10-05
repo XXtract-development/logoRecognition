@@ -2,6 +2,12 @@
 
 ## 5 oktober 2026
 
+**Duidelijke gevarensymbolen op witte etiketten**
+- Brede zwarte gevarensymbolen worden beter teruggevonden, ook wanneer andere pictogrammen er vlak naast staan.
+- Tegenstrijdige en onzekere herkenningen blijven uitgesloten bij dit aanvullende herstel.
+- Nieuwe training wordt gecontroleerd op behoud van eerder goed herkende productie-etiketten en foto’s.
+
+
 **Leren van echte productievoorbeelden**
 - De herkenning van gevarenpictogrammen wordt nu ook getraind met gecontroleerde etiketten en veiligheidsbladen van echte productieproducten.
 - Ook voorbeelden van het pictogram voor gezondheidsgevaar op verpakkingen en veiligheidsbladen doen mee aan de training.
