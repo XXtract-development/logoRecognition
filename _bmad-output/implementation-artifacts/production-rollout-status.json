@@ -1,9 +1,9 @@
 {
-  "time": "2026-10-05T23:03:48.558118+00:00",
+  "time": "2026-10-05T23:12:11.827924+00:00",
   "task_id": "01a0fc7a-28d6-7333-ae26-c6dc972076d8",
   "owner": "Codex/root",
   "status": "active",
-  "phase": "review passed; publishing release for complete CI and paired image build",
+  "phase": "full ML suite recovered; CI repeat before ACC merge",
   "authorization": {
     "instruction": "Ga verder totdat alles klaarvis in productie",
     "scope": [
@@ -48,6 +48,12 @@
     "public_endpoint_cutover": false,
     "actual_green_roi_refinement": "all 542 templates; three distinct regions including visible Green Dot; 26.68 seconds",
     "ghs_source_catalog_routing": "all nine canonical classes passed with nonghs-only reference catalog; review-only",
-    "independent_canonical_ghs_review": "passed: exact nine Python canonical specialist classes, review-only, nonghs catalog regression"
+    "independent_canonical_ghs_review": "passed: exact nine Python canonical specialist classes, review-only, nonghs catalog regression",
+    "ml_full_suite": {
+      "passed": 679,
+      "skipped": 14,
+      "runtime_changed_for_ci_repair": false
+    },
+    "ci_failure_recovery": "current module fixture identity fixed; independent review passed"
   }
 }

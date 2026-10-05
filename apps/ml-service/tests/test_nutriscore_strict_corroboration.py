@@ -1,6 +1,7 @@
 """A weak deterministic letter may only be confirmed by trained agreement."""
 
 import functools
+import importlib
 from unittest.mock import AsyncMock, Mock
 
 import numpy as np
@@ -12,13 +13,14 @@ def corroboration(monkeypatch, tmp_path):
     from app.core.config import settings
 
     monkeypatch.setattr(settings, "MODEL_PATH", str(tmp_path / "models"))
-    from app.api import artwork
-    from app.services import (
-        classification,
-        ghs_reference,
-        nutriscore_reader,
-        nutriscore_a2,
-    )
+    # Suite isolation can restore sys.modules while leaving parent-package
+    # attributes stale. Patch the same current modules that lazy runtime imports
+    # resolve, and keep asserting the actual bounded callback's identity.
+    artwork = importlib.import_module("app.api.artwork")
+    classification = importlib.import_module("app.services.classification")
+    ghs_reference = importlib.import_module("app.services.ghs_reference")
+    nutriscore_reader = importlib.import_module("app.services.nutriscore_reader")
+    nutriscore_a2 = importlib.import_module("app.services.nutriscore_a2")
 
     monkeypatch.setattr(ghs_reference, "classify_ghs", lambda *args, **kwargs: None)
     monkeypatch.setattr(
