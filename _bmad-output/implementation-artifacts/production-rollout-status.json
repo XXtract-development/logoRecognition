@@ -1,9 +1,9 @@
 {
-  "time": "2026-10-06T00:59:29.202080+00:00",
+  "time": "2026-10-06T01:11:15.344464+00:00",
   "task_id": "01a0fc7a-28d6-7333-ae26-c6dc972076d8",
   "owner": "Codex/root",
-  "status": "active",
-  "phase": "test-only browser budget fix reviewed and two actual targeted browser tests passed; full fresh CI next",
+  "status": "production_active_with_scheduled_aftercare",
+  "phase": "production migration live and verified; actual1h24h aftercare scheduled",
   "authorization": {
     "instruction": "Ga verder totdat alles klaarvis in productie",
     "scope": [
@@ -80,8 +80,8 @@
       "requires_review": true,
       "mode": "controlled standalone; corrected callback; not live HTTP"
     },
-    "ci_run": 37390713133,
-    "ci_current": "PR10 complete success",
+    "ci_run": 37396873062,
+    "ci_current": "PR11 fresh full CI complete success",
     "daily_backup": {
       "actual_snapshot_passed": true,
       "objects": 1069,
@@ -118,12 +118,12 @@
       "samples": 24
     },
     "final_ci": {
-      "run": 37395367362,
-      "status": "previous failure confirmed and fixed; fresh full CI pending",
+      "run": 37396873062,
+      "status": "success",
       "ml_tests": "passed",
       "node_tests": "passed",
       "security": "passed",
-      "e2e": "failed: Start Recognition button absent in workflow navigation",
+      "e2e": "passed",
       "investigation": "confirmed shared CI synthetic traffic exceeds100/min; actual trace health429/auth429; UI correctly disables offline navigation",
       "fix": "E2Ejob only RATE_LIMIT_MAX10000; independent12 environment contracts passed; production budget unchanged",
       "targeted_actual_browser": {
@@ -131,14 +131,16 @@
         "retries": 0,
         "own_processes_cleaned_up": true,
         "production_called": false
-      }
+      },
+      "successful_run": 37396873062,
+      "previous_failed_run": 37395367362
     }
   },
   "dataset_source_release": "814f6cd396f63dada95411d51dda5dfae3205a6a",
   "paired_build_run": 37391572294,
   "paired_images_verified": true,
   "runtime_deployment_uuid": "fsc8swwkw0oksow4cgocwwwk",
-  "configuration_commit": "c28ec4830afa44b2cbb50a846d105f47a298ea1f",
+  "configuration_commit": "13cb838f4dca21aec866b56460aa6bc773725460",
   "runtime_release": "2c5bdab23c6d66f40183391a10bbb24ba1481601",
   "cleanup_status": "own restore containers/volumes, test uploads and superseded plaintext staging removed; verified backups, legacy rollback resource/cache, research checkout and aftercare worktree preserved",
   "aftercare": {
@@ -158,5 +160,8 @@
     "generic adjustable-threshold v1 route not quality-validated; source generic ONNX model absent; production /detect uses actual strict artwork classifiers",
     "all9GHS remain review-only; independent per-type field readiness not claimed"
   ],
-  "current_gate": "fresh final CI"
+  "current_gate": "scheduled1h24h checkpoints; deferred individual login and genericv1 acceptance",
+  "completion_scope": "Migration, trained production detect integration and dedicated data/storage completed; all110 checklist steps and all9GHS field readiness not claimed",
+  "final_actual_observer": "2026-10-06T01:10:19.152434+00:00",
+  "verified_code_release_acc_merge": "c58f2fd8610873d32dde70dde082fd3e1b67efd9"
 }
