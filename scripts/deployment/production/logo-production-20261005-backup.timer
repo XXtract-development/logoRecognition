@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily verified encrypted logo production backup
+
+[Timer]
+OnCalendar=*-*-* 02:15:00 UTC
+Persistent=true
+Unit=logo-production-20261005-backup.service
+
+[Install]
+WantedBy=timers.target

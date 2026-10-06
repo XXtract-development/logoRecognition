@@ -1,32 +1,12 @@
 {
-  "time": "2026-10-05T23:33:45.571437+00:00",
+  "time": "2026-10-06T00:15:40.069935+00:00",
   "scope": "read-only post-ACC automatic deployment source freeze check",
   "source_writes": false,
   "container_actions": false,
-  "expected_revision": "f247881863ac218690e1af93de1ac6141e77f8c7",
+  "expected_revision": "2c5bdab23c6d66f40183391a10bbb24ba1481601",
   "containers": [
     {
-      "name": "ml-service-qsookwow8koko0kwg00g0cwk-233155419337",
-      "running": true,
-      "health": "healthy",
-      "image": "ghcr.io/xxtract-development/logo-recognition-ml:f247881863ac218690e1af93de1ac6141e77f8c7",
-      "image_id": "sha256:f4c5f6aa5f390502d3c9df4b2aca474f4e39445cd39829b0448041b85646a113",
-      "revision": "f247881863ac218690e1af93de1ac6141e77f8c7",
-      "repository_digest": "sha256:1c7862d4833fb47701e6c0037f162819296be49f99a731c2f7f0c9d121a846dc",
-      "matches_paired_release_digest": true
-    },
-    {
-      "name": "app-qsookwow8koko0kwg00g0cwk-233155416161",
-      "running": true,
-      "health": "healthy",
-      "image": "ghcr.io/xxtract-development/logo-recognition-app:f247881863ac218690e1af93de1ac6141e77f8c7",
-      "image_id": "sha256:2ef4830c459641230727a8e2e75b16bbb8628971305d1d4316b800e1303a66ae",
-      "revision": "f247881863ac218690e1af93de1ac6141e77f8c7",
-      "repository_digest": "sha256:8d9295e9a2de75eea770f5a295954dac35538e3285966342d8429e9bade6b556",
-      "matches_paired_release_digest": true
-    },
-    {
-      "name": "minio-qsookwow8koko0kwg00g0cwk-233155405439",
+      "name": "minio-qsookwow8koko0kwg00g0cwk-000642982280",
       "running": true,
       "health": "healthy",
       "image": "minio/minio@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e",
@@ -34,12 +14,30 @@
       "revision": null
     },
     {
-      "name": "redis-qsookwow8koko0kwg00g0cwk-233155397784",
+      "name": "redis-qsookwow8koko0kwg00g0cwk-000642978490",
       "running": true,
       "health": "healthy",
       "image": "redis:7-alpine",
       "image_id": "sha256:487efc0616382465781b8fdc3d6d1db449e6fd80ae23bf48432a2da6b6929908",
       "revision": null
+    },
+    {
+      "name": "app-qsookwow8koko0kwg00g0cwk-000642988740",
+      "running": true,
+      "health": "healthy",
+      "image": "ghcr.io/xxtract-development/logo-recognition-app:2c5bdab23c6d66f40183391a10bbb24ba1481601",
+      "image_id": "sha256:da48cafaf0a7548a379953f7db6ff283a8d28e00a27f6fafc0cfd0874510b856",
+      "revision": "2c5bdab23c6d66f40183391a10bbb24ba1481601",
+      "repository_digest": "sha256:5416ce7ae7f9576bea3e67dd8041102a407d63372941bdeeefd95ba45bf54aef"
+    },
+    {
+      "name": "ml-service-qsookwow8koko0kwg00g0cwk-000642990661",
+      "running": true,
+      "health": "healthy",
+      "image": "ghcr.io/xxtract-development/logo-recognition-ml:2c5bdab23c6d66f40183391a10bbb24ba1481601",
+      "image_id": "sha256:48ec6664393827c1958e5817681537925f53fb3d25b286c36950a32b8e6ff33e",
+      "revision": "2c5bdab23c6d66f40183391a10bbb24ba1481601",
+      "repository_digest": "sha256:99c08f57e0742d51122245db93120c06f4423f089db84e619042d74c187c2fa2"
     }
   ],
   "selected_tables": {
@@ -229,12 +227,247 @@
     "mismatches": 0,
     "original_object_manifest_sha256": "a8485579d5d173e276fbae30281a5c1588fbe3812c1c7b9ee524a4681e9e8dac"
   },
-  "completed_at": "2026-10-05T23:34:36.550339+00:00",
-  "checklist_restore_review": {
-    "status": "resolved",
-    "database_restore_seconds": 0.494,
-    "complete_backup_restore_verification_seconds": 13.837,
-    "evidence": "production-rollout-evidence-20261005.json#/backup/timing",
-    "both_restore_steps_match_receipt": true
-  }
+  "completed_at": "2026-10-06T00:16:06.628148+00:00",
+  "prior_observations": [
+    {
+      "time": "2026-10-05T23:33:45.571437+00:00",
+      "scope": "read-only post-ACC automatic deployment source freeze check",
+      "source_writes": false,
+      "container_actions": false,
+      "expected_revision": "f247881863ac218690e1af93de1ac6141e77f8c7",
+      "containers": [
+        {
+          "name": "ml-service-qsookwow8koko0kwg00g0cwk-233155419337",
+          "running": true,
+          "health": "healthy",
+          "image": "ghcr.io/xxtract-development/logo-recognition-ml:f247881863ac218690e1af93de1ac6141e77f8c7",
+          "image_id": "sha256:f4c5f6aa5f390502d3c9df4b2aca474f4e39445cd39829b0448041b85646a113",
+          "revision": "f247881863ac218690e1af93de1ac6141e77f8c7",
+          "repository_digest": "sha256:1c7862d4833fb47701e6c0037f162819296be49f99a731c2f7f0c9d121a846dc",
+          "matches_paired_release_digest": true
+        },
+        {
+          "name": "app-qsookwow8koko0kwg00g0cwk-233155416161",
+          "running": true,
+          "health": "healthy",
+          "image": "ghcr.io/xxtract-development/logo-recognition-app:f247881863ac218690e1af93de1ac6141e77f8c7",
+          "image_id": "sha256:2ef4830c459641230727a8e2e75b16bbb8628971305d1d4316b800e1303a66ae",
+          "revision": "f247881863ac218690e1af93de1ac6141e77f8c7",
+          "repository_digest": "sha256:8d9295e9a2de75eea770f5a295954dac35538e3285966342d8429e9bade6b556",
+          "matches_paired_release_digest": true
+        },
+        {
+          "name": "minio-qsookwow8koko0kwg00g0cwk-233155405439",
+          "running": true,
+          "health": "healthy",
+          "image": "minio/minio@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e",
+          "image_id": "sha256:69b2ec208575b69597784255eec6fa6a2985ee9e1a47f4411a51f7f5fdd193a9",
+          "revision": null
+        },
+        {
+          "name": "redis-qsookwow8koko0kwg00g0cwk-233155397784",
+          "running": true,
+          "health": "healthy",
+          "image": "redis:7-alpine",
+          "image_id": "sha256:487efc0616382465781b8fdc3d6d1db449e6fd80ae23bf48432a2da6b6929908",
+          "revision": null
+        }
+      ],
+      "selected_tables": {
+        "_prisma_migrations": {
+          "rows": 21,
+          "sha256": "ca779fb8c9ba2bcd9d7c44c58f34f5498e0002acb4cd02cdef7130515e365283",
+          "matches_original": true
+        },
+        "logos": {
+          "rows": 41,
+          "sha256": "00134b9479067333eaaf8f92ea33d5e4944e6b1eb88eaf849f8081e823007164",
+          "matches_original": true
+        },
+        "logo_images": {
+          "rows": 876,
+          "sha256": "fac2ff7480325f89287a3a3c9aa9333f09c2beb31f598efea00f502fe6794433",
+          "matches_original": true
+        },
+        "training_data": {
+          "rows": 930,
+          "sha256": "5178151897795bea3fd2e0f12a71d17fc0191b003e6187f8ff3a2015a6e3623e",
+          "matches_original": true
+        },
+        "reference_logos": {
+          "rows": 604,
+          "sha256": "602041e26a1edada58ed9c392af14669882cc239095a6f2fbeacff9a3dcf0d44",
+          "matches_original": true
+        },
+        "gold_set_records": {
+          "rows": 900,
+          "sha256": "c98019f9e52d7736cdde274f8ddfbe9afe8c212161bd0a110ec1b37657ad7129",
+          "matches_original": true
+        },
+        "hard_negatives": {
+          "rows": 72,
+          "sha256": "6d20da5b4c30ec3bdfadb160c75d4c7e7fc0743dff28f83cfa953ac662ad5b45",
+          "matches_original": true
+        },
+        "model_versions": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "matches_original": true
+        },
+        "logo_embeddings": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "matches_original": true
+        }
+      },
+      "migration_ledger": [
+        {
+          "name": "0001_initial",
+          "match": true,
+          "finished": true,
+          "rolled_back": false
+        },
+        {
+          "name": "0002_add_holdout_to_training_data",
+          "match": true,
+          "finished": true,
+          "rolled_back": false
+        },
+        {
+          "name": "0003_add_metrics_to_model_version",
+          "match": true,
+          "finished": true,
+          "rolled_back": false
+        },
+        {
+          "name": "0004_add_reference_logos",
+          "match": true,
+          "finished": true,
+          "rolled_back": false
+        },
+        {
+          "name": "0005_add_reference_embeddings",
+          "match": true,
+          "finished": true,
+          "rolled_back": false
+        },
+        {
+          "name": "0006_add_artwork_pipeline",
+          "match": true,
+          "finished": true,
+          "rolled_back": false
+        },
+        {
+          "name": "0007_add_retraining_notifications",
+          "match": true,
+          "finished": true,
+          "rolled_back": false
+        },
+        {
+          "name": "0008_add_model_activation_log",
+          "match": true,
+          "finished": true,
+          "rolled_back": false
+        },
+        {
+          "name": "0009_add_field_type_to_reference_logos",
+          "match": true,
+          "finished": true,
+          "rolled_back": false
+        },
+        {
+          "name": "0010_field_type_gs1_codelist_names",
+          "match": true,
+          "finished": true,
+          "rolled_back": false
+        },
+        {
+          "name": "0011_nutriscore_fieldtype_nutritionalscore",
+          "match": true,
+          "finished": true,
+          "rolled_back": false
+        },
+        {
+          "name": "0012_flywheel_nomination_tables",
+          "match": true,
+          "finished": true,
+          "rolled_back": false
+        },
+        {
+          "name": "0013_add_gold_set_records",
+          "match": true,
+          "finished": true,
+          "rolled_back": false
+        },
+        {
+          "name": "0014_add_promotion_batches",
+          "match": true,
+          "finished": true,
+          "rolled_back": false
+        },
+        {
+          "name": "0015_add_system_settings",
+          "match": true,
+          "finished": true,
+          "rolled_back": false
+        },
+        {
+          "name": "0016_add_outlier_findings",
+          "match": true,
+          "finished": true,
+          "rolled_back": false
+        },
+        {
+          "name": "0017_add_threshold_changes",
+          "match": true,
+          "finished": true,
+          "rolled_back": false
+        },
+        {
+          "name": "0018_add_mismatch_events",
+          "match": true,
+          "finished": true,
+          "rolled_back": false
+        },
+        {
+          "name": "0019_add_bootstrap_queue",
+          "match": true,
+          "finished": true,
+          "rolled_back": false
+        },
+        {
+          "name": "0020_add_gln_backfill_reason",
+          "match": true,
+          "finished": true,
+          "rolled_back": false
+        },
+        {
+          "name": "0021_add_declared_harvest_checks",
+          "match": true,
+          "finished": true,
+          "rolled_back": false
+        }
+      ],
+      "current_app_ml_revision_match": true,
+      "status": "passed",
+      "objects": {
+        "requested": 1069,
+        "checked": 1069,
+        "bytes": 40487281,
+        "all_size_sha256_match_original": true,
+        "all_etag_size_stable_during_read": true,
+        "errors": 0,
+        "mismatches": 0,
+        "original_object_manifest_sha256": "a8485579d5d173e276fbae30281a5c1588fbe3812c1c7b9ee524a4681e9e8dac"
+      },
+      "completed_at": "2026-10-05T23:34:36.550339+00:00",
+      "checklist_restore_review": {
+        "status": "resolved",
+        "database_restore_seconds": 0.494,
+        "complete_backup_restore_verification_seconds": 13.837,
+        "evidence": "production-rollout-evidence-20261005.json#/backup/timing",
+        "both_restore_steps_match_receipt": true
+      }
+    }
+  ]
 }
