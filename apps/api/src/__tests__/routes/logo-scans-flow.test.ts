@@ -106,6 +106,17 @@ describe('Story 1.7 — zoekruimte in de worker', () => {
     await server.close();
     return { done, codes: vi.mocked(mlClient.localizeArtwork).mock.calls[0][0].codes as string[] };
   };
+  it('ml-service contract: remaining_budget_ms stays within 1..165000 although a scan may run 300 s (ACC returned 422 otherwise)', async () => {
+    await run();
+    const loc = vi.mocked(mlClient.localizeArtwork).mock.calls[0];
+    const cls = vi.mocked(mlClient.classifyArtwork).mock.calls[0];
+    for (const call of [loc, cls]) {
+      const budget = (call[0] as any).remaining_budget_ms as number;
+      expect(budget).toBeGreaterThanOrEqual(1);
+      expect(budget).toBeLessThanOrEqual(165000);
+      expect((call[1] as any).timeoutMs).toBeLessThanOrEqual(165000);
+    }
+  });
   it('niet-voedselcode: Nutri-Score valt af, dieet, keurmerk en gevaarsymbool blijven; zoekruimte vastgelegd', async () => {
     const { done, codes } = await run('47000000');
     expect(codes).toContain('RECYCLABLE');
