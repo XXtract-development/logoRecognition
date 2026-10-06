@@ -86,6 +86,9 @@ importers:
       '@sentry/node':
         specifier: ^7.99.0
         version: 7.120.4
+      ajv:
+        specifier: ^8.17.1
+        version: 8.17.1
       axios:
         specifier: ^1.6.7
         version: 1.13.1

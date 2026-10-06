@@ -359,11 +359,45 @@ Epic 9 voegt een crash-bestendige retraining-pipeline toe (BullMQ + Redis). De N
 - **Authenticatie:** header `x-api-key` moet exact één sleutel uit `LOGO_PIPELINE_KEYS` zijn (`naam:sleutel,naam2:sleutel2`; zie `.env.example`). Timing-safe vergelijking (SHA-256-digests, alle sleutels doorlopen), geen voorvoegsel-controle, nooit de gedeelde `API_KEY`, `PIPELINE_SERVICE_KEY` of een `lr_…`-sleutel. Ontbrekende of lege variabele = elke aanvraag `401`.
 - **Antwoorden:** `401 {error:{code:'UNAUTHORIZED',message,requestId}}`; alle foutvormen zijn `{error:{code,message,requestId}}`.
 - **Aanvragen:** `POST` multipart met één bestand in veld `file` (png of jpeg, magic bytes beslissen, niet het mimetype) en optionele velden `productId`, `pipelineId`, `gpcCategoryCode`. Antwoord `202 {scanId}`. Fouten: `400 INVALID_IMAGE` (geen/meer dan één bestand, geen png/jpeg, onleesbaar, meer dan `LOGO_SCAN_MAX_PIXELS` = 80 miljoen pixels), `413 IMAGE_TOO_LARGE` (> `LOGO_SCAN_MAX_IMAGE_BYTES` = 10 MB, gelijk aan de multipart-limiet in `main.ts`), `503 BUSY` met header `Retry-After` (queue vol of niet te plaatsen; er wordt niets stil verwerkt of verloren).
-- **Opvragen:** `GET /api/v1/pipeline/logo-scans/:scanId` (zelfde sleutel) geeft `{scanId, status: pending|running|done|failed, reason?, logoResults?, processingTimeMs?}`; onbekend of verlopen id geeft `404 NOT_FOUND`. `reason` bij `failed`: `timeout`, `invalid_image`, `recognition_unavailable`. `logoResults` = `{schemaVersion:'pending', detections:[ruwe classificatie-uitkomsten], items:[]}`; het GS1-blok volgt in Verhaal 1.5.
+- **Opvragen:** `GET /api/v1/pipeline/logo-scans/:scanId` (zelfde sleutel) geeft `{scanId, status: pending|running|done|failed, reason?, logoResults?, processingTimeMs?}`; onbekend of verlopen id geeft `404 NOT_FOUND`. `reason` bij `failed`: `timeout`, `invalid_image`, `recognition_unavailable`, `result_invalid`. `logoResults` is het GS1-antwoord, zie "logoResults v1" hieronder (Verhaal 1.5). Optioneel POST-veld `signalWord`: alleen `DANGER` of `WARNING` (uit de OCR van n8n) wordt ongewijzigd overgenomen in `logoResults.signaalwoord`; elke andere of ontbrekende waarde wordt weggelaten.
 - **Werking:** eigen BullMQ-queue `logo-scan` (jobId = scanId, 1 poging), worker hergebruikt lokaliseren + classificeren zoals `/detect` (`mlClient`). Status en beeld staan in Redis (status 24 uur, beeld 1 uur en na afloop verwijderd); geen database, geen migratie. Elke scan eindigt binnen `LOGO_SCAN_MAX_MS` = 300000 in `done` of `failed`/`timeout` (ook bij wachttijd in de queue of een gestorven worker: bij opvragen wordt dat vastgesteld). `processingTimeMs` (looptijd van de worker, zonder wachttijd) wordt bewaard en gelogd voor p50/p95.
 - **Instellingen (optioneel):** `LOGO_SCAN_CONCURRENCY` (standaard 2) en `LOGO_SCAN_MAX_QUEUED` (standaard 20 wachtend of actief; daarboven 503).
 - **Logging:** alleen de consumentnaam en `requestId`, nooit een sleutelwaarde.
 - **ml-service niet publiek (gecontroleerd 2026-10-06, vastgelegd in `logo-scans-wiring.test.ts`):** in `docker-compose.prod.yml` heeft ml-service geen `ports`, geen proxy-router en zit alleen op de netwerken `private` (intern) en `ml-egress`. In `docker-compose.acc.yml` en `.test.yml` heeft ml-service geen `ports` en geen Traefik-router (dus niet via de gateway gepubliceerd), maar draait met `network_mode: host` en luistert op `0.0.0.0:8011`; bereikbaarheid van buiten hangt daar af van de firewall van de host. Dat is NIET in de repository te bewijzen en is een open controlepunt voor de beheerder. `docker-compose.yml` en `.full.yml` zijn lokale ontwikkelstacks en publiceren poorten bewust.
+
+#### logoResults v1 (Verhaal 1.5, AD-6)
+
+Schema: `apps/api/src/schemas/logoResults.v1.json` (JSON Schema draft-07, `schemaVersion` `"1"`). Elke afnemer (n8n-controle, AI-Service, contracttest XML-dienst) bewaart een kopie met gelijke sha256 en weigert een onbekende hoofdversie. sha256: `75d9e51839a310a6ecb549375a212f00fa16200e25f13fede0610429eb18abd7` (ook in `logoResults.v1.sha256` en `LOGO_RESULTS_SCHEMA_SHA256`; een test faalt als het bestand wijzigt zonder dat `.sha256` en de constante meegaan; werk deze regel dan ook bij). De worker valideert elke uitvoer tegen het schema (ajv); een ongeldige uitvoer wordt `failed` met reden `result_invalid`.
+
+`logoResults = {schemaVersion, scanId, productId?, imageHash, status: ok|partial|failed|skipped, reason?, modelVersion, referenceVersion, policyVersion, signaalwoord?, detections[], items[]}`
+
+- `status`: `ok` = scan klaar; `partial` (dan is geen enkel item `automatisch`, reden `classificatie_onvolledig`) = een deel van de regio's kreeg geen classificatie (`reason` `classification_incomplete`, de rest staat er wel in); `failed` = fout (`reason` `timeout|invalid_image|recognition_unavailable|result_invalid`, lege `items`); `skipped` wordt in dit verhaal niet gebruikt.
+- `detections`: de ruwe classificatie-uitkomsten onveranderd (soortcode `t3777_code`, `confidence`, `method`, `bbox` in pixels, `evidence`, `reference_version`, ...).
+- `item = {soort, uitkomststand: automatisch|voorstel|afgewezen, zekerheid, bbox:[x1,y1,x2,y2] (0-1), gs1:[{module,pad,veld,waarde}], groep?, bewijs}`. Alleen soorten uit de omzettabel (`gs1-mapping.json`) met stand niet `uit` krijgen een item; waarden zijn GS1-waarden, nooit interne codes (`NUTRISCORE_C` -> `nutritionalScore` `C` + `nutritionalProgramCode` `8`, samen in `groep` `nutritionalProgram`).
+- Per soort een item (hoogste zekerheid); de andere detecties blijven alleen in `detections`. `bewijs = {methode, zekerheidssoort?, drempel, referentieversie, detectie (index in detections), redenen[], markeringen[]}`.
+- `uitkomststand` = effectieve stand uit de omzettabel, maar `voorstel` bij zekerheid onder de drempel van de methode (sjabloon 0,85; embedding 0,80; classifier 0,90; nutriscore-head 0,80; nutriscore-a2 0,50 — dezelfde constanten als de kruischeck), bij `uncertain`/`requires_review`, bij gevaarsymbolen (ook op 0,99) en bij tegenstrijdigheid (twee items met dezelfde `groep` en hetzelfde `veld` maar een andere waarde, bv. twee Nutri-Score-letters). `redenen` noemt waarom (`tabelstand_voorstel`, `onder_drempel`, `twijfelachtig`, `ghs_plafond`, `versie_wijkt_af`, `tegenstrijdig`).
+- `signaalwoord` komt alleen uit het POST-veld; een GHS-item zonder signaalwoord heeft in `bewijs.markeringen` `signaalwoord ontbreekt`.
+- `modelVersion` komt uit de omgevingsvariabele `LOGO_MODEL_VERSION` (de ml-service geeft nu geen modelversie mee); ontbreekt die dan staat er `unknown` en geldt voor elk item `voorstel`. **Beperking:** wie een soort op `automatisch` zet moet `LOGO_MODEL_VERSION` bij elke modelwissel mee verversen; een verouderde waarde laat de versiecontrole van de omzettabel (AD-5) niets vangen. Echte oplossing: de ml-service de modelversie laten meesturen. `referenceVersion` = de verschillende `reference_version`-waarden uit de detecties, gesorteerd en met komma gescheiden (`unknown` zonder).
+- De uitvoer is deterministisch: `detections` staan op zekerheid aflopend (dan bbox en code), items op soort; dezelfde detecties geven byte-gelijke uitvoer, ook bij een andere invoervolgorde. Per soort wint de hoogste ruwe zekerheid (AC), ook als een andere methode met lagere zekerheid wel boven haar eigen drempel zit.
+
+Voorbeeld (Nutri-Score C, GHS02 met signaalwoord):
+
+```json
+{
+  "schemaVersion": "1", "scanId": "6c1f…", "productId": "P1", "imageHash": "a67e…", "status": "ok",
+  "modelVersion": "unknown", "referenceVersion": "r1", "policyVersion": "7dc7…", "signaalwoord": "DANGER",
+  "detections": [ { "t3777_code": "NUTRISCORE_C", "confidence": 0.97, "method": "nutriscore-head", "bbox": {"x":100,"y":50,"width":200,"height":100}, "reference_version": "r1" } ],
+  "items": [ {
+    "soort": "NUTRISCORE_C", "uitkomststand": "voorstel", "zekerheid": 0.97, "bbox": [0.1, 0.1, 0.3, 0.3],
+    "gs1": [
+      {"module":"healthRelatedInformationModule","pad":"healthRelatedInformation/nutritionalProgram","veld":"nutritionalScore","waarde":"C"},
+      {"module":"healthRelatedInformationModule","pad":"healthRelatedInformation/nutritionalProgram","veld":"nutritionalProgramCode","waarde":"8"}
+    ],
+    "groep": "nutritionalProgram",
+    "bewijs": {"methode":"nutriscore-head","drempel":0.8,"referentieversie":"r1","detectie":0,"redenen":["tabelstand_voorstel","versie_wijkt_af"],"markeringen":[]}
+  } ]
+}
+```
 
 ### Nieuwe endpoints (API gateway, `apps/api`)
 

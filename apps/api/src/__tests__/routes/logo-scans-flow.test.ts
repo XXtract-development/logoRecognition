@@ -213,7 +213,7 @@ describe('GET logo-scans/:scanId', () => {
     expect(res.json().error.requestId).toBeTruthy();
     await server.close();
   });
-  it('walks pending -> running -> done with raw detections and a pending GS1 block', async () => {
+  it('walks pending -> running -> done with raw detections and a GS1 block', async () => {
     const server = await app();
     const { scanId } = (await post(server, await png())).json();
     expect((await get(server, scanId)).json()).toMatchObject({ scanId, status: 'pending' });
@@ -228,7 +228,7 @@ describe('GET logo-scans/:scanId', () => {
 
     const done = (await get(server, scanId)).json();
     expect(done.status).toBe('done');
-    expect(done.logoResults.schemaVersion).toBe('pending');
+    expect(done.logoResults.schemaVersion).toBe('1'); // Story 1.5: RECYCLABLE is not in the GS1 table (or is off)
     expect(done.logoResults.items).toEqual([]);
     expect(done.logoResults.detections).toHaveLength(1);
     expect(done.logoResults.detections[0]).toMatchObject({ t3777_code: 'RECYCLABLE', confidence: 0.97 });
@@ -244,7 +244,7 @@ describe('GET logo-scans/:scanId', () => {
     const res = (await get(server, scanId)).json();
     expect(res.status).toBe('failed');
     expect(res.reason).toBe('recognition_unavailable');
-    expect(res.logoResults).toBeUndefined();
+    expect(res.logoResults).toMatchObject({ schemaVersion: '1', status: 'failed', reason: 'recognition_unavailable', items: [] }); // Story 1.5
     await server.close();
   });
   it('failed/timeout when a scan was waiting longer than LOGO_SCAN_MAX_MS before it started', async () => {

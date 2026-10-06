@@ -16,12 +16,8 @@ export const GHS_REFERENCE_PAIRS: ReferencePair[] = canonicalReferenceMapping.ca
   .filter(code => isGhsCode(code) && code === normalizeReferenceCode(code) && !/^GHS\d+$/.test(code))
   .map(t3777Code => ({ t3777Code, fieldType: 'GHSSymbolDescriptionCode' }));
 type ArtworkResult = Awaited<ReturnType<typeof mlClient.classifyArtwork>>['results'][number];
-const SCORE_KINDS: Record<string, string> = {
-  embedding: 'embedding-cosine-similarity', classifier: 'classifier-softmax',
-  'nutriscore-head': 'nutriscore-color-geometry-score', 'nutriscore-a2': 'classifier-softmax',
-  'ghs-specialist': 'uncalibrated-classifier-score', 'ghs-reference': 'template-similarity-not-probability',
-  'ghs-glyph': 'uncalibrated-classifier-score', 'ghs-template': 'template-similarity-not-probability',
-};
+import { SCORE_KINDS } from '../services/score-kinds';
+export { SCORE_KINDS };
 
 export function validBox(box: unknown, width: number, height: number): box is { x: number; y: number; width: number; height: number } {
   if (!box || typeof box !== 'object') return false;

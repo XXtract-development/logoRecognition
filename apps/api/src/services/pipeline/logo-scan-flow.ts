@@ -6,7 +6,7 @@
  *   GET   → state from Redis
  *
  * State lives in Redis only (TTL 24 h): no Prisma model, no migration (the `logo_scans`
- * table, deduplication and `attempt` arrive in Story 1.3; the GS1 block in Story 1.5).
+ * table, deduplication and `attempt` arrive in Story 1.3). The GS1 block (Story 1.5) is built by gs1-block.ts.
  */
 import { Queue, Worker } from 'bullmq';
 import { createHash, randomUUID } from 'node:crypto';
@@ -17,8 +17,9 @@ import prisma from '../../core/db';
 import { createLogger } from '../../core/logger';
 import { normalizeReferenceCode } from '../field-type-mapping';
 import {
-  GHS_REFERENCE_PAIRS, MAX_DECODED_PIXELS, MAX_NORMALIZED_BYTES, assertCompleteClassification, boxKey, validBox,
+  GHS_REFERENCE_PAIRS, MAX_DECODED_PIXELS, MAX_NORMALIZED_BYTES, SCORE_KINDS, boxKey, validBox,
 } from '../../api/legacy-detect';
+import { buildLogoResults, validateLogoResults, type LogoResults, type RawDetection } from './gs1-block';
 
 const logger = createLogger('logo-scan-flow');
 
@@ -44,13 +45,13 @@ const envInt = (name: string, fallback: number) => {
 };
 
 export type LogoScanStatus = 'pending' | 'running' | 'done' | 'failed';
-export type LogoScanReason = 'timeout' | 'invalid_image' | 'recognition_unavailable';
+export type LogoScanReason = 'timeout' | 'invalid_image' | 'recognition_unavailable' | 'result_invalid';
 
 export interface LogoScanState {
   scanId: string;
   status: LogoScanStatus;
   reason?: LogoScanReason;
-  logoResults?: { schemaVersion: 'pending'; detections: unknown[]; items: unknown[] };
+  logoResults?: LogoResults;
   /** Run time of the worker for this scan (excludes queue wait); the p50/p95 metric. */
   processingTimeMs?: number;
   createdAt: number;
@@ -59,6 +60,8 @@ export interface LogoScanState {
   productId?: string;
   pipelineId?: string;
   gpcCategoryCode?: string;
+  /** OCR signal word from n8n (DANGER|WARNING only); copied into logoResults.signaalwoord. */
+  signalWord?: string;
 }
 
 export class LogoScanBusyError extends Error {}
@@ -88,7 +91,7 @@ const terminal = (s: LogoScanState) => s.status === 'done' || s.status === 'fail
 let admission: Promise<unknown> = Promise.resolve();
 
 export function submitLogoScan(input: {
-  image: Buffer; consumer: string; productId?: string; pipelineId?: string; gpcCategoryCode?: string;
+  image: Buffer; consumer: string; productId?: string; pipelineId?: string; gpcCategoryCode?: string; signalWord?: string;
 }): Promise<{ scanId: string }> {
   const body = async () => {
     const q = getQueue();
@@ -101,6 +104,7 @@ export function submitLogoScan(input: {
         scanId, status: 'pending', createdAt: Date.now(), consumer: input.consumer,
         imageHash: createHash('sha256').update(input.image).digest('hex'),
         productId: input.productId, pipelineId: input.pipelineId, gpcCategoryCode: input.gpcCategoryCode,
+        signalWord: input.signalWord === 'DANGER' || input.signalWord === 'WARNING' ? input.signalWord : undefined,
       });
       await redis.setex(imageKey(scanId), IMAGE_TTL_S, input.image);
       // attempts 1: a retry would eat into the 300 s limit; re-scanning is Story 1.3's `attempt`.
@@ -126,15 +130,27 @@ export function submitLogoScan(input: {
 export async function getLogoScan(scanId: string): Promise<LogoScanState | null> {
   const state = await readState(scanId);
   if (state && !terminal(state) && Date.now() > state.createdAt + LOGO_SCAN_MAX_MS) {
-    const failed: LogoScanState = { ...state, status: 'failed', reason: 'timeout' };
+    const failed = failedState(state, 'timeout');
     if (await writeIfOpen(failed)) return failed;
     return readState(scanId); // the worker finished first
   }
   return state;
 }
 
+/** A failed scan still carries a schema-valid logoResults (status failed + reason, no items). */
+function failedState(state: LogoScanState, reason: LogoScanReason, patch: Partial<LogoScanState> = {}): LogoScanState {
+  return {
+    ...state, ...patch, status: 'failed', reason,
+    logoResults: buildLogoResults({
+      scanId: state.scanId, productId: state.productId, imageHash: state.imageHash, status: 'failed', reason,
+      modelVersion: process.env.LOGO_MODEL_VERSION, signalWord: state.signalWord, width: 1, height: 1, detections: [],
+    }),
+  };
+}
+
 class TimeoutError extends Error {}
 class InvalidImageError extends Error {}
+class ResultInvalidError extends Error {}
 
 function withDeadline<T>(work: Promise<T>, ms: number): Promise<T> {
   let timer: NodeJS.Timeout;
@@ -142,7 +158,7 @@ function withDeadline<T>(work: Promise<T>, ms: number): Promise<T> {
   return Promise.race([work, limit]).finally(() => clearTimeout(timer));
 }
 
-/** Existing recognition (as /detect): normalize, localize, classify. Returns the raw classified results. */
+/** Existing recognition (as /detect): normalize, localize, classify. Returns the valid classified results plus the image size; `partial` when not every region was classified. */
 async function recognize(image: Buffer, deadline: number) {
   const remaining = () => { const ms = deadline - Date.now(); if (ms <= 0) throw new TimeoutError('deadline'); return ms; };
   let normalized;
@@ -163,13 +179,23 @@ async function recognize(image: Buffer, deadline: number) {
   if (crops.length !== localized.detections.length || crops.length > MAX_CROPS || new Set(crops.map(boxKey)).size !== crops.length) {
     throw new Error('Localization returned unusable regions');
   }
-  if (!crops.length) return [];
+  if (!crops.length) return { results: [] as RawDetection[], width, height, partial: false };
   const classifyBudget = remaining();
   const classified = await mlClient.classifyArtwork({
     strict_runtime: true, remaining_budget_ms: classifyBudget, image_b64, crops, confidence_threshold: 0.99, persist_crops: false,
   }, { timeoutMs: classifyBudget });
-  assertCompleteClassification(classified.results, crops, width, height);
-  return classified.results;
+  if (!Array.isArray(classified.results)) throw new Error('Classification response is malformed');
+  // Keep each result that matches a distinct requested region and is well-formed; a gap makes the scan `partial`, none at all is a failure.
+  const open = new Set(crops.map(boxKey));
+  const results = classified.results.filter(r => {
+    const ok = validBox(r?.bbox, width, height) && open.has(boxKey(r.bbox)) && Number.isFinite(r.confidence) &&
+      r.confidence >= 0 && r.confidence <= 1 && Object.prototype.hasOwnProperty.call(SCORE_KINDS, r.method) &&
+      typeof r.t3777_code === 'string' && !!r.t3777_code.trim();
+    if (ok) open.delete(boxKey(r.bbox!));
+    return ok;
+  }) as RawDetection[];
+  if (!results.length) throw new Error('Classification evidence is malformed');
+  return { results, width, height, partial: open.size > 0 };
 }
 
 export async function runLogoScanJob({ scanId }: { scanId: string }): Promise<void> {
@@ -186,15 +212,21 @@ export async function runLogoScanJob({ scanId }: { scanId: string }): Promise<vo
     if (!await writeIfOpen({ ...state, status: 'running' })) return; // already timed out on read
     const image = await redis.getBuffer(imageKey(scanId));
     if (!image) throw new Error('image no longer available');
-    const detections = await withDeadline(recognize(image, deadline), deadline - started);
-    await finish({
-      status: 'done', processingTimeMs: Date.now() - started,
-      logoResults: { schemaVersion: 'pending', detections, items: [] },
+    const { results, width, height, partial } = await withDeadline(recognize(image, deadline), deadline - started);
+    const logoResults = buildLogoResults({
+      scanId, productId: state.productId, imageHash: state.imageHash, status: partial ? 'partial' : 'ok',
+      reason: partial ? 'classification_incomplete' : undefined, modelVersion: process.env.LOGO_MODEL_VERSION,
+      signalWord: state.signalWord, width, height, detections: results,
     });
+    const problems = validateLogoResults(logoResults);
+    if (problems.length) throw new ResultInvalidError(problems.slice(0, 3).join('; '));
+    await finish({ status: 'done', processingTimeMs: Date.now() - started, logoResults });
   } catch (err) {
-    const reason: LogoScanReason = err instanceof TimeoutError ? 'timeout' : err instanceof InvalidImageError ? 'invalid_image' : 'recognition_unavailable';
+    const reason: LogoScanReason = err instanceof TimeoutError ? 'timeout' : err instanceof InvalidImageError ? 'invalid_image'
+      : err instanceof ResultInvalidError ? 'result_invalid' : 'recognition_unavailable';
     logger.error('logo-scan failed', { scanId, reason, error: err instanceof Error ? err.message : 'unknown' });
-    await finish({ status: 'failed', reason, processingTimeMs: Date.now() - started });
+    const current = await readState(scanId) ?? state;
+    await writeIfOpen(failedState(current, reason, { processingTimeMs: Date.now() - started }));
   } finally {
     await redis.del(imageKey(scanId));
   }
@@ -214,7 +246,7 @@ export function registerLogoScanWorker(): Worker {
     logger.error('logo-scan job crashed', { jobId: job?.id, error: err.message });
     if (!job?.data?.scanId) return;
     readState(job.data.scanId)
-      .then(st => st && writeIfOpen({ ...st, status: 'failed', reason: 'recognition_unavailable' }))
+      .then(st => st && writeIfOpen(failedState(st, 'recognition_unavailable')))
       .catch(() => undefined);
   });
   return logoScanWorker;

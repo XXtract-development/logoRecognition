@@ -1,0 +1,267 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://logorecognition.xxtract.com/schemas/logoResults.v1.json",
+  "title": "logoResults v1",
+  "description": "Antwoord van een logo-scan (Verhaal 1.5, AD-6). Consumenten testen tegen een kopie met gelijke sha256 en weigeren een onbekende hoofdversie.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "scanId",
+    "imageHash",
+    "status",
+    "modelVersion",
+    "referenceVersion",
+    "policyVersion",
+    "detections",
+    "items"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1"
+    },
+    "scanId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "productId": {
+      "type": "string"
+    },
+    "imageHash": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "enum": [
+        "ok",
+        "partial",
+        "failed",
+        "skipped"
+      ]
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1
+    },
+    "modelVersion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "referenceVersion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "policyVersion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "signaalwoord": {
+      "enum": [
+        "DANGER",
+        "WARNING"
+      ]
+    },
+    "detections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "t3777_code",
+          "confidence",
+          "method",
+          "bbox"
+        ],
+        "properties": {
+          "t3777_code": {
+            "type": "string",
+            "minLength": 1
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "method": {
+            "type": "string"
+          },
+          "bbox": {
+            "type": "object",
+            "required": [
+              "x",
+              "y",
+              "width",
+              "height"
+            ],
+            "properties": {
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              },
+              "width": {
+                "type": "number"
+              },
+              "height": {
+                "type": "number"
+              }
+            }
+          }
+        }
+      }
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/item"
+      }
+    }
+  },
+  "definitions": {
+    "item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "soort",
+        "uitkomststand",
+        "zekerheid",
+        "bbox",
+        "gs1",
+        "bewijs"
+      ],
+      "properties": {
+        "soort": {
+          "type": "string",
+          "minLength": 1
+        },
+        "uitkomststand": {
+          "enum": [
+            "automatisch",
+            "voorstel",
+            "afgewezen"
+          ]
+        },
+        "zekerheid": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "bbox": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "gs1": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "module",
+              "pad",
+              "veld",
+              "waarde"
+            ],
+            "properties": {
+              "module": {
+                "type": "string",
+                "minLength": 1
+              },
+              "pad": {
+                "type": "string",
+                "minLength": 1
+              },
+              "veld": {
+                "type": "string",
+                "minLength": 1
+              },
+              "waarde": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "groep": {
+          "type": "string",
+          "minLength": 1
+        },
+        "bewijs": {
+          "type": "object",
+          "required": [
+            "methode",
+            "drempel",
+            "referentieversie",
+            "detectie",
+            "redenen",
+            "markeringen"
+          ],
+          "properties": {
+            "methode": {
+              "type": "string"
+            },
+            "zekerheidssoort": {
+              "type": "string"
+            },
+            "drempel": {
+              "type": "number"
+            },
+            "referentieversie": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "detectie": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "redenen": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "markeringen": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "enum": [
+              "partial",
+              "failed",
+              "skipped"
+            ]
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "reason"
+        ],
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 /**
  * POST /api/v1/pipeline/logo-scans — request a scan (202 + scanId), Story 1.2.
  * GET  /api/v1/pipeline/logo-scans/:scanId — status (pending|running|done|failed) and result.
+ * Optional form fields: productId, pipelineId, gpcCategoryCode, signalWord (DANGER|WARNING from the OCR; anything else is ignored).
  * Both need a service key (Story 1.1). Logs only the consumer name, never a key value (NFR-4).
  */
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
@@ -12,7 +13,7 @@ import {
 import { logger } from '../../core/logger';
 
 const LOG_MODULE = 'logo-scans';
-const FIELDS = ['productId', 'pipelineId', 'gpcCategoryCode'] as const;
+const FIELDS = ['productId', 'pipelineId', 'gpcCategoryCode', 'signalWord'] as const;
 const MAX_FIELD_LENGTH = 256;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
