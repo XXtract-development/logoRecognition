@@ -3,6 +3,7 @@
 ## 6 oktober 2026
 
 **Controleerbare overgang naar productie**
+- De controle voor automatische referentie-uitbreiding toont nu de gemeten beperkingen; het vliegwiel blijft gepauzeerd totdat deze zijn opgelost.
 - De eerste automatisch geplande productiebackup is geslaagd en gecontroleerd; de checklist bevat het bewijs.
 - De eerste controle na één uur bevestigt dat productie gezond draait; de checklist toont het werkelijke resultaat.
 - De herkenningsaanroep gebruikt de overgezette referenties en modellen.

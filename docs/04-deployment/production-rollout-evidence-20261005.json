@@ -1155,5 +1155,286 @@
       }
     },
     "capsule_restore_tested": false
+  },
+  "flywheel_resume_readiness": {
+    "observed_at": "2026-10-06T07:22:44.349046+00:00",
+    "decision": "blocked_for_unattended_expansion",
+    "pause_cleared": false,
+    "production_mutated": false,
+    "config": {
+      "nomination": false,
+      "kruischeck": false,
+      "classCap": 10,
+      "regressionThreshold": 0.9,
+      "promotionCron": "0 1 * * *"
+    },
+    "thresholds": [
+      {
+        "method": "template",
+        "value": 0.9,
+        "envValue": 0.9,
+        "source": "default",
+        "min": 0.5,
+        "max": 0.99,
+        "step": 0.01
+      },
+      {
+        "method": "embedding",
+        "value": 0.9,
+        "envValue": 0.9,
+        "source": "default",
+        "min": 0.5,
+        "max": 0.99,
+        "step": 0.01
+      },
+      {
+        "method": "classifier",
+        "value": 0.9,
+        "envValue": 0.9,
+        "source": "default",
+        "min": 0.5,
+        "max": 0.99,
+        "step": 0.01
+      }
+    ],
+    "queue_counts": {
+      "active": 0,
+      "waiting": 0,
+      "failed": 0,
+      "delayed": 4,
+      "paused": 0
+    },
+    "scheduler_count": 4,
+    "candidates": 0,
+    "batches": 0,
+    "classes_at_cap": 18,
+    "quality": {
+      "status": "passed",
+      "seconds": 18.562,
+      "precision": 0.6070336391437309,
+      "total": 654,
+      "correct": 397,
+      "threshold": 0.9,
+      "perClass": {
+        "VEGAN": {
+          "total": 30,
+          "correct": 21,
+          "precision": 0.7
+        },
+        "FOREST_STEWARDSHIP_COUNCIL_MIX": {
+          "total": 42,
+          "correct": 23,
+          "precision": 0.5476190476190477
+        },
+        "WEIDEMELK": {
+          "total": 39,
+          "correct": 32,
+          "precision": 0.8205128205128205
+        },
+        "FREE_FROM_GLUTEN": {
+          "total": 8,
+          "correct": 4,
+          "precision": 0.5
+        },
+        "EU_ORGANIC_FARMING": {
+          "total": 48,
+          "correct": 27,
+          "precision": 0.5625
+        },
+        "GREEN_DOT": {
+          "total": 78,
+          "correct": 48,
+          "precision": 0.6153846153846154
+        },
+        "EUROPEAN_V_LABEL_VEGETARIAN": {
+          "total": 1,
+          "correct": 0,
+          "precision": 0
+        },
+        "EUROPEAN_V_LABEL_VEGAN": {
+          "total": 26,
+          "correct": 16,
+          "precision": 0.6153846153846154
+        },
+        "RAINFOREST_ALLIANCE_PEOPLE_NATURE": {
+          "total": 35,
+          "correct": 30,
+          "precision": 0.8571428571428571
+        },
+        "BETER_LEVEN_1_STER": {
+          "total": 21,
+          "correct": 20,
+          "precision": 0.9523809523809523
+        },
+        "BETER_LEVEN_2_STER": {
+          "total": 5,
+          "correct": 5,
+          "precision": 1
+        },
+        "RETURNABLE_CAN_NL": {
+          "total": 6,
+          "correct": 3,
+          "precision": 0.5
+        },
+        "VEGAN_SOCIETY_VEGAN_LOGO": {
+          "total": 17,
+          "correct": 6,
+          "precision": 0.35294117647058826
+        },
+        "PREGNANCY_WARNING": {
+          "total": 47,
+          "correct": 18,
+          "precision": 0.3829787234042553
+        },
+        "RECYCLABLE_GENERAL_CLAIM": {
+          "total": 61,
+          "correct": 25,
+          "precision": 0.4098360655737705
+        },
+        "TRIMAN": {
+          "total": 5,
+          "correct": 1,
+          "precision": 0.2
+        },
+        "MARINE_STEWARDSHIP_COUNCIL_LABEL": {
+          "total": 12,
+          "correct": 10,
+          "precision": 0.8333333333333334
+        },
+        "AISE_2020_COMPANY": {
+          "total": 5,
+          "correct": 5,
+          "precision": 1
+        },
+        "ON_THE_WAY_TO_PLANETPROOF": {
+          "total": 6,
+          "correct": 5,
+          "precision": 0.8333333333333334
+        },
+        "CERTIFIED_B_CORPORATION": {
+          "total": 5,
+          "correct": 0,
+          "precision": 0
+        },
+        "LACTOSE_FREE": {
+          "total": 8,
+          "correct": 0,
+          "precision": 0
+        },
+        "SOCIETY_PLASTICS_INDUSTRY": {
+          "total": 6,
+          "correct": 3,
+          "precision": 0.5
+        },
+        "AQUACULTURE_STEWARDSHIP_COUNCIL": {
+          "total": 8,
+          "correct": 1,
+          "precision": 0.125
+        },
+        "SEPARATE_COLLECTION": {
+          "total": 4,
+          "correct": 2,
+          "precision": 0.5
+        },
+        "CROSSED_GRAIN_SYMBOL": {
+          "total": 6,
+          "correct": 3,
+          "precision": 0.5
+        },
+        "HALAL": {
+          "total": 7,
+          "correct": 5,
+          "precision": 0.7142857142857143
+        },
+        "BDIH_LOGO": {
+          "total": 2,
+          "correct": 1,
+          "precision": 0.5
+        },
+        "AISE_1": {
+          "total": 6,
+          "correct": 2,
+          "precision": 0.3333333333333333
+        },
+        "AISE_2": {
+          "total": 5,
+          "correct": 3,
+          "precision": 0.6
+        },
+        "AISE_5": {
+          "total": 6,
+          "correct": 4,
+          "precision": 0.6666666666666666
+        },
+        "MINIMUM_DRINKING_AGE_18_WARNING": {
+          "total": 10,
+          "correct": 5,
+          "precision": 0.5
+        },
+        "DO_NOT_DRINK_AND_DRIVE_WARNING": {
+          "total": 10,
+          "correct": 2,
+          "precision": 0.2
+        },
+        "NUTRISCORE_A": {
+          "total": 9,
+          "correct": 8,
+          "precision": 0.8888888888888888
+        },
+        "NUTRISCORE_B": {
+          "total": 16,
+          "correct": 12,
+          "precision": 0.75
+        },
+        "AGRICULTURE_BIOLOGIQUE": {
+          "total": 3,
+          "correct": 1,
+          "precision": 0.3333333333333333
+        },
+        "NUTRISCORE_C": {
+          "total": 24,
+          "correct": 23,
+          "precision": 0.9583333333333334
+        },
+        "NUTRISCORE_D": {
+          "total": 12,
+          "correct": 8,
+          "precision": 0.6666666666666666
+        },
+        "NUTRISCORE": {
+          "total": 10,
+          "correct": 10,
+          "precision": 1
+        },
+        "NUTRISCORE_E": {
+          "total": 5,
+          "correct": 5,
+          "precision": 1
+        }
+      },
+      "mode": "nulmeting",
+      "byLabel": {
+        "ECHT": {
+          "total": 564,
+          "correct": 318,
+          "incorrect": 246
+        },
+        "VALS": {
+          "total": 90,
+          "correct": 79,
+          "incorrect": 11
+        }
+      }
+    },
+    "local_tests": {
+      "passed": 66,
+      "files": 5,
+      "mocked_dependencies": true,
+      "production_databases_used": false
+    },
+    "interpretation": "flywheel embedding crop correctness, not strict /detect endpoint quality; relative gate is not absolute readiness",
+    "investigation": "_bmad-output/implementation-artifacts/investigation-production-flywheel-resume-20261006.md",
+    "next_step": "review all11 negative false matches with pixels/provenance; then evidence-backed correction and configuration activation",
+    "cleanup": "local test processes exited; private evidence retained; no server file writes or lifecycle actions"
   }
 }
