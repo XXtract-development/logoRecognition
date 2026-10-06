@@ -1,8 +1,8 @@
 {
   "version": 1,
   "documentId": "acc-prod-20261005",
-  "sourceHash": "1a973767c59f041ec645b546ed7fe331da81327f136f355d79d9cf2644bd388b",
-  "updatedAt": "2026-10-06T02:30:17.980553+00:00",
+  "sourceHash": "b86fe029a609c946201d8c1774b1711b1d6bf04d2e70b7fa2427672e970cc3fa",
+  "updatedAt": "2026-10-06T07:22:44.349046+00:00",
   "items": {
     "p1-scope": {
       "status": "done",
@@ -1532,6 +1532,11 @@
       "at": "2026-10-06T02:30:17.980553+00:00",
       "label": "Eerste automatische dagelijkse backup",
       "change": "Werkelijke timerbackup geslaagd en huidige versleutelde capsule gecontroleerd; 24uur blijft open."
+    },
+    {
+      "at": "2026-10-06T07:22:44.349046+00:00",
+      "label": "Vliegwiel-hervatcontrole",
+      "change": "Niet hervat:654uitsneden gemeten,11/90negatievefoutmatches; kandidaatvlaguit;66tests geslaagd. Productieherkenning en nazorg blijven actief."
     }
   ]
 }
