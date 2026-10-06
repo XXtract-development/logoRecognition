@@ -348,13 +348,17 @@ describe('review hardening', () => {
     const orig = h.redis.setex; h.redis.setex = () => new Promise(() => {});
     const pending = post(server, img);
     let settled = false; pending.then(() => { settled = true; }, () => { settled = true; });
-    for (let i = 0; i < 200 && !settled; i++) { await vi.advanceTimersByTimeAsync(100); await new Promise(r => setImmediate(r)); }
+    // Pump on a real-time budget (Date is not faked), not an iteration count: the image is decoded for real before the
+    // admission starts, and on a slower runner a fixed number of iterations ended before the 3 s deadline was even armed,
+    // which hung this test and, through the stuck admission chain, the two tests after it.
+    const t0 = Date.now();
+    while (!settled && Date.now() - t0 < 20_000) { await vi.advanceTimersByTimeAsync(100); await new Promise(r => setImmediate(r)); }
     const res = await pending;
     h.redis.setex = orig;
     expect(res.statusCode).toBe(503);
     expect(res.headers['retry-after']).toBeTruthy();
     await server.close();
-  });
+  }, 30_000);
   it("another consumer's scan and a malformed id look unknown (404)", async () => {
     process.env.LOGO_PIPELINE_KEYS = 'n8n:test-key-1,beheer:test-key-2';
     const server = await app();
