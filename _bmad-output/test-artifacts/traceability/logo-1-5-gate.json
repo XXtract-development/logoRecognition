@@ -1,0 +1,1 @@
+{"story":"1.5","date":"2026-10-06","gate":"PASS","acs":{"AC1":"FULL","AC2":"FULL","AC3":"FULL","AC4":"FULL","AC5":"FULL","AC6":"FULL"},"gaps":["G1 modelVersion from env LOGO_MODEL_VERSION","G2 best-per-soort ranks raw confidence not threshold","G3 skipped unused","G4 consumer copy-hash check not yet in other repos"],"tests":{"new":33,"regression_run_total":229,"green":true}}
