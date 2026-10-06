@@ -23,7 +23,7 @@ context: []
 - GPC-code = precies 8 cijfers; segment = eerste 2, family = 4, class = 6, brick = 8. `categorieen` bevat prefixen (strings van 2/4/6/8 cijfers); een soort is zinvol als de gpc-code met één van die prefixen begint.
 - Een soort met lege `categorieen`, of zonder regel in de omzettabel, valt nooit af (Green Dot, FSC, recycling, alle keurmerken, GHS).
 - Zonder code, bij een ongeldige code (geen 8 cijfers): volledige set. Een geldige code die geen enkele soort uitsluit geeft ook de volledige set (`beperkt: false`).
-- Gevuld wordt alleen wat zeker is: Nutri-Score (5) en dieetsoorten (34) krijgen `["50"]` (segment Voeding/Drank/Tabak). GHS en alles overig blijft leeg, want een gemist gevaarsymbool is onaanvaardbaar en de GPC-dekking is niet bewezen. Dit staat in de README van de bronbestanden en in de API-specificatie.
+- Gevuld wordt alleen wat zeker is: Alleen Nutri-Score (5) krijgt `["50"]` (segment Voeding/Drank/Tabak); dieetsoorten (34) blijven leeg tot de ACC-meting (besluit Friso 2026-10-06, gewijzigd na review). GHS en alles overig blijft leeg, want een gemist gevaarsymbool is onaanvaardbaar en de GPC-dekking is niet bewezen. Dit staat in de README van de bronbestanden en in de API-specificatie.
 - De vulling loopt via `categorieen-overrides.json` en `generate-gs1-mapping.js`; het JSON wordt nooit met de hand bewerkt. `policyVersion` verandert daardoor, bewust.
 - `zoekruimte` is optioneel in `logoResults.v1.json` (`schemaVersion` blijft `'1'`: optioneel veld); `.sha256` en `LOGO_RESULTS_SCHEMA_SHA256` volgen het schema.
 - Dezelfde lokaliseer- en classificeeraanroepen; alleen de lijst codes wordt kleiner.
@@ -40,7 +40,7 @@ context: []
 | Geen code | `gpcCategoryCode` ontbreekt | volledige set; `zoekruimte {beperkt:false, aantalSoorten:n}` | N/A |
 | Ongeldige code | `abc`, `123`, 9 cijfers | volledige set, `beperkt:false` | geen fout |
 | Voedsel | `50200000` | Nutri-Score, dieet, keurmerken en GHS blijven | N/A |
-| Niet-voedsel | `47000000` | Nutri-Score en dieet vallen af; keurmerken en GHS blijven; `beperkt:true` | N/A |
+| Niet-voedsel | `47000000` | alleen Nutri-Score valt af; dieet, keurmerken en GHS blijven; `beperkt:true` | N/A |
 | Lege `categorieen` | elke code | soort blijft | N/A |
 | Prefixmatch | `50`, `5020`, `502000`, `50200000` tegen `50200000` | zinvol; `5021`, `50200001`, `51` niet | N/A |
 
@@ -53,7 +53,7 @@ context: []
 - `apps/api/src/services/pipeline/logo-scan-flow.ts` -- `recognize()` bouwt `codes` (regel ~148); filter daar via `beperkSoorten`, geef `zoekruimte` terug, via `buildLogoResults` in het resultaat. `state.gpcCategoryCode` is al aanwezig. `failedState` laat `zoekruimte` weg.
 - `apps/api/src/services/pipeline/gs1-block.ts` -- `BuildInput.zoekruimte?`, `LogoResults.zoekruimte?`, constante `LOGO_RESULTS_SCHEMA_SHA256`.
 - `apps/api/src/schemas/logoResults.v1.json` + `.sha256` -- optioneel object `zoekruimte` (`gpcCategoryCode` string pattern ^[0-9]{8}$, `beperkt` boolean, `aantalSoorten` integer >= 0; verplicht `beperkt`, `aantalSoorten`; geen extra velden).
-- `apps/api/scripts/generate-gs1-mapping.js` + `scripts/gs1-mapping-sources/categorieen-overrides.json` (NIEUW, per categorie: `{"NutritionalScore":["50"],"DietTypeCode":["50"]}`) -- toepassen op `categoryOf`; onbekende categorie of ongeldige prefix = fout. Daarna regenereren.
+- `apps/api/scripts/generate-gs1-mapping.js` + `scripts/gs1-mapping-sources/categorieen-overrides.json` (NIEUW, per categorie: `{"NutritionalScore":["50"]}`) -- toepassen op `categoryOf`; onbekende categorie of ongeldige prefix = fout. Daarna regenereren.
 - `apps/api/scripts/meet-zoekruimte.ts` (NIEUW) -- meetscript: map beelden + CSV (bestand,gpc), ACC-URL en sleutel uit omgeving (`LOGO_SCAN_URL`, `LOGO_SCAN_KEY`); per beeld twee scans (met/zonder `gpcCategoryCode`), schrijft looptijd, aantal items, verschillen naar CSV/JSON. Weigert te draaien zonder expliciete `--bevestig`.
 - `docs/02-architecture/api-specification.md` (~regel 361) en README bij `scripts/gs1-mapping-sources/` -- beschrijven filter, keuze en reden, `zoekruimte`.
 - Tests (staan al, falend): `src/__tests__/services/zoekruimte.test.ts`, blok "Story 1.7" in `src/__tests__/routes/logo-scans-flow.test.ts`. Bestaande tests (gs1-mapping, gs1-block, logo-scans-gs1) die de oude hash of lege categorieen verwachten bewust bijwerken.
@@ -61,14 +61,14 @@ context: []
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `categorieen-overrides.json` + generator -- vulling Nutri-Score/dieet `["50"]`, regenereren -- AD-2
+- [ ] `categorieen-overrides.json` + generator -- vulling Nutri-Score `["50"]`, regenereren -- AD-2
 - [ ] `zoekruimte.ts` + `gs1-mapping.ts` validatie -- filterlogica -- FR-4
 - [ ] `logo-scan-flow.ts` + `gs1-block.ts` + schema/sha -- filter in worker, `zoekruimte` vastleggen -- FR-4
 - [ ] `meet-zoekruimte.ts` -- meetscript, niet uitgevoerd -- meting op ACC later
 - [ ] docs en README -- keuze en reden vastleggen
 
 **Acceptance Criteria:**
-- Given een aanvraag met `gpcCategoryCode` 47000000, when de worker draait, then bevat de lokalisatie-aanroep geen Nutri-Score/dieetsoort maar wel keurmerken en gevaarsymbolen.
+- Given een aanvraag met `gpcCategoryCode` 47000000, when de worker draait, then bevat de lokalisatie-aanroep geen Nutri-Score maar wel dieetsoorten, keurmerken en gevaarsymbolen.
 - Given geen of onbekende code, when de worker draait, then wordt de volledige set gezocht.
 - Given een afgerond resultaat, then valideert `logoResults` met `zoekruimte` tegen het schema.
 - Given de bestaande suites (gs1-mapping, gs1-block, gs1-codelists, logo-scans-*, legacy-detect, recognition, verify-declared, ghs-review), then blijven ze groen.

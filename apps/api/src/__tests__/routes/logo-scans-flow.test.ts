@@ -106,12 +106,12 @@ describe('Story 1.7 — zoekruimte in de worker', () => {
     await server.close();
     return { done, codes: vi.mocked(mlClient.localizeArtwork).mock.calls[0][0].codes as string[] };
   };
-  it('niet-voedselcode: Nutri-Score en dieet vallen af, keurmerk en gevaarsymbool blijven; zoekruimte vastgelegd', async () => {
+  it('niet-voedselcode: Nutri-Score valt af, dieet, keurmerk en gevaarsymbool blijven; zoekruimte vastgelegd', async () => {
     const { done, codes } = await run('47000000');
     expect(codes).toContain('RECYCLABLE');
     expect(codes).toContain('FLAME');
     expect(codes).not.toContain('NUTRISCORE_A');
-    expect(codes).not.toContain('VEGAN');
+    expect(codes).toContain('VEGAN');
     expect(done.logoResults.zoekruimte).toEqual({ gpcCategoryCode: '47000000', beperkt: true, aantalSoorten: codes.length });
   });
   it('een mislukte scan heeft geen zoekruimte', async () => {

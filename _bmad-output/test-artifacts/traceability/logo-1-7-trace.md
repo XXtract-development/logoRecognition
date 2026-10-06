@@ -22,7 +22,7 @@ Testrun (VERIFIED): `pnpm --filter @logo-recognition/api exec vitest run src/__t
 ## Gaten
 
 - **G1 (open, vereist ACC):** de meting op minstens 30 echte pijplijnbeelden en de eindtest zijn niet uitgevoerd. `apps/api/scripts/meet-zoekruimte.ts` is klaar (twee scans per beeld, met en zonder code; weigert zonder `--bevestig` en zonder ACC/stage/lokale host; schrijft per beeld status, looptijd en verschillen). Het script heeft geen grondwaarheid: "valse treffers" en "gemiste logo's" zijn te beoordelen via de kolommen `alleenZonder` (kandidaat gemist) en `alleenMet`, handmatig.
-- **G2 (inhoudelijk risico):** de keuze dieetsoorten en Nutri-Score op `["50"]` is gegeven als uitgangspunt maar niet gemeten. Dieetlogo's (vegan, halal, glutenvrij, ...) kunnen ook op producten buiten segment 50 staan (supplementen, dierenvoeding, verzorging) en vallen dan af. De ACC-meting moet dit beslissen; Nutri-Score op 50 is minder omstreden.
+- **G2 (opgelost per besluit Friso 2026-10-06):** dieetsoorten blijven overal zoeken (leeg), want dieetlogo's kunnen ook op supplementen, dierenvoeding of verzorging staan. Alleen Nutri-Score (5 soorten) staat op `["50"]`. Dieet pas beperken na de ACC-meting (G1). Een niet-voedselcode sluit nu 5 soorten uit.
 - **G3:** een code die geen enkele soort uitsluit geeft `beperkt: false`; een niet-bestaande GPC-brick wordt niet herkend (geen bricklijst). Gekozen uitleg van "past op geen enkele regel".
 - **G4:** het meetscript zelf heeft geen test (alleen geschreven en op type gecontroleerd).
 - **G5:** `policyVersion` verandert door de gevulde `categorieen`; afnemers die de hash pinnen moeten hem bijwerken (staat in de README).

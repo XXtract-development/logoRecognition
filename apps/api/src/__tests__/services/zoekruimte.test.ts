@@ -22,13 +22,14 @@ const FOOD = '50200000';
 const NON_FOOD = '47000000';
 
 describe('AC1 — gevulde categorieen in de omzettabel (alleen wat zeker is)', () => {
-  it('Nutri-Score (5) en dieetsoorten (34) hebben ["50"]', () => {
+  it('alleen Nutri-Score (5) heeft ["50"]; dieetsoorten (34) blijven leeg (besluit 2026-10-06)', () => {
     expect(nutri).toHaveLength(5);
     expect(diet).toHaveLength(34);
-    for (const e of [...nutri, ...diet]) expect(e.categorieen, e.soort).toEqual(['50']);
+    for (const e of nutri) expect(e.categorieen, e.soort).toEqual(['50']);
+    for (const e of diet) expect(e.categorieen, e.soort).toEqual([]);
   });
   it('alles overig, inclusief GHS, Green Dot, FSC en recycling, blijft leeg (= overal)', () => {
-    const gevuld = new Set([...nutri, ...diet].map((e) => e.soort));
+    const gevuld = new Set(nutri.map((e) => e.soort));
     for (const e of entries) if (!gevuld.has(e.soort)) expect(e.categorieen, e.soort).toEqual([]);
     expect(ghs.length).toBeGreaterThan(0);
     for (const e of ghs) expect(e.categorieen, e.soort).toEqual([]);
@@ -63,17 +64,18 @@ describe('AC2 — beperken op gpcCategoryCode', () => {
     expect(r.codes).toEqual(ALL);
     expect(r.zoekruimte.beperkt).toBe(false);
   });
-  it('voedselcode: Nutri-Score en dieet blijven, GHS blijft', () => {
+  it('voedselcode: Nutri-Score, dieet en GHS blijven', () => {
     const r = beperkSoorten([...ALL, ...GHS_REFERENCE_PAIRS.map((p) => p.t3777Code)], FOOD);
     for (const e of [...nutri, ...diet]) expect(r.codes).toContain(e.soort);
     for (const e of ghs) expect(r.codes).toContain(e.soort);
     expect(r.zoekruimte).toEqual({ gpcCategoryCode: FOOD, beperkt: false, aantalSoorten: r.codes.length });
   });
-  it('niet-voedselcode: Nutri-Score en dieet vallen af; keurmerken en GHS blijven', () => {
+  it('niet-voedselcode: alleen Nutri-Score valt af; dieet, keurmerken en GHS blijven', () => {
     const r = beperkSoorten(ALL, NON_FOOD);
-    for (const e of [...nutri, ...diet]) expect(r.codes).not.toContain(e.soort);
+    for (const e of nutri) expect(r.codes).not.toContain(e.soort);
+    for (const e of diet) expect(r.codes).toContain(e.soort);
     for (const e of entries.filter((x) => x.categorieen.length === 0)) expect(r.codes, e.soort).toContain(e.soort);
-    expect(r.zoekruimte).toEqual({ gpcCategoryCode: NON_FOOD, beperkt: true, aantalSoorten: ALL.length - 39 });
+    expect(r.zoekruimte).toEqual({ gpcCategoryCode: NON_FOOD, beperkt: true, aantalSoorten: ALL.length - 5 });
   });
   it('een soort met lege categorieen valt nooit af, ook niet bij een willekeurige code', () => {
     for (const gpc of ['10000000', '47000000', '99999999', '50200000']) {
