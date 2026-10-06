@@ -1,9 +1,9 @@
 {
-  "time": "2026-10-05T23:49:26.952507+00:00",
+  "time": "2026-10-06T00:59:29.202080+00:00",
   "task_id": "01a0fc7a-28d6-7333-ae26-c6dc972076d8",
   "owner": "Codex/root",
   "status": "active",
-  "phase": "reviewed DNS and same-origin preview fixes ready for paired release",
+  "phase": "test-only browser budget fix reviewed and two actual targeted browser tests passed; full fresh CI next",
   "authorization": {
     "instruction": "Ga verder totdat alles klaarvis in productie",
     "scope": [
@@ -21,16 +21,16 @@
   },
   "production_changed": true,
   "open_approval": null,
-  "source_release": "f247881863ac218690e1af93de1ac6141e77f8c7",
+  "source_release": "2c5bdab23c6d66f40183391a10bbb24ba1481601",
   "transfer_rehearsal": "passed",
   "object_count": 1069,
   "production_resource_uuid": "f048gs04scoksggw0okw4oo0",
   "runtime_started": true,
-  "legacy_route_changed": false,
+  "legacy_route_changed": true,
   "infrastructure_deploy_requested": true,
   "infrastructure_healthy": true,
   "database_transferred": true,
-  "legacy_detection_acceptance": "blocked before inference by confirmed Node20 pinned lookup all:true signature mismatch",
+  "legacy_detection_acceptance": "public legacy address actual trained Nutri B confirmed and review-only FLAME passed",
   "storage_transferred": true,
   "target_backup_restore_passed": true,
   "torch_cache_verified": true,
@@ -40,12 +40,12 @@
   "release_checks": {
     "api_tests": 84,
     "ml_targeted_tests": 78,
-    "offline_preparation_tests": 72,
+    "offline_preparation_tests": 96,
     "independent_provider_review": "passed",
     "refinement_review_tiny_region": "passed; 33 refinement and strict endpoint tests independently repeated",
     "actual_a2_production_roi_score": 0.999698877,
     "public_app_started": true,
-    "public_endpoint_cutover": false,
+    "public_endpoint_cutover": true,
     "actual_green_roi_refinement": "all 542 templates; three distinct regions including visible Green Dot; 26.68 seconds",
     "ghs_source_catalog_routing": "all nine canonical classes passed with nonghs-only reference catalog; review-only",
     "independent_canonical_ghs_review": "passed: exact nine Python canonical specialist classes, review-only, nonghs catalog regression",
@@ -59,7 +59,7 @@
     "dns_download_correction": "12 regression tests, independent review passed; Node20 actual corrected callback downloads production PNG200",
     "actual_auth_runtime_readonly": "SELECT-only dedicated production identity connects to xxtractdb03",
     "actual_upload_storage": "201 own record; image/thumbnail actual200; own record and objects cleanup200",
-    "public_upload_preview": "same-origin signed route implemented; independent review passed; actual live readback awaits deployment",
+    "public_upload_preview": "actualsameorigin image200 thumbnail200 reference200 tamper403; ownrecord+objectsdeleted/count876unchanged",
     "api_full_suite": {
       "passed": 1352,
       "skipped": 2,
@@ -79,11 +79,84 @@
       "actual_score": 0.9930426917007643,
       "requires_review": true,
       "mode": "controlled standalone; corrected callback; not live HTTP"
+    },
+    "ci_run": 37390713133,
+    "ci_current": "PR10 complete success",
+    "daily_backup": {
+      "actual_snapshot_passed": true,
+      "objects": 1069,
+      "tables": 35,
+      "publication": "AES256GCM authenticated encryption and independent full inner-file verification passed",
+      "permission_evidence": "CIFS file_mode0755/dir_mode0755 nounix ignores chmod; own plaintext relocated to root0700 staging",
+      "key": "fresh dedicated32bytes private0600 host and independent copy",
+      "schedule_installed": true,
+      "timer_active": true,
+      "last_service_result": "success",
+      "private_stage_removed": true,
+      "first_encrypted_backup": "20261006T001655Z-82b81313",
+      "scheduled_service_backup": "20261006T002009Z-bc41895a"
+    },
+    "actual_nutri_b": {
+      "status": 200,
+      "seconds": 29.45,
+      "score": 0.9989997744560242,
+      "method": "nutriscore-a2"
+    },
+    "actual_ghs": {
+      "status": 200,
+      "seconds": 10.13,
+      "code": "FLAME",
+      "score": 0.990627376953735,
+      "review_only": true
+    },
+    "paired_images_verified": true,
+    "wrong_api_key_status": 401,
+    "public_route_rollback": "actually new route -> healthy legacy route -> healthy final new route",
+    "actual_15minute_observation": {
+      "passed": true,
+      "elapsed_seconds": 900,
+      "samples": 24
+    },
+    "final_ci": {
+      "run": 37395367362,
+      "status": "previous failure confirmed and fixed; fresh full CI pending",
+      "ml_tests": "passed",
+      "node_tests": "passed",
+      "security": "passed",
+      "e2e": "failed: Start Recognition button absent in workflow navigation",
+      "investigation": "confirmed shared CI synthetic traffic exceeds100/min; actual trace health429/auth429; UI correctly disables offline navigation",
+      "fix": "E2Ejob only RATE_LIMIT_MAX10000; independent12 environment contracts passed; production budget unchanged",
+      "targeted_actual_browser": {
+        "passed": 2,
+        "retries": 0,
+        "own_processes_cleaned_up": true,
+        "production_called": false
+      }
     }
   },
   "dataset_source_release": "814f6cd396f63dada95411d51dda5dfae3205a6a",
-  "paired_build_run": 37388171163,
+  "paired_build_run": 37391572294,
   "paired_images_verified": true,
-  "runtime_deployment_uuid": "ncww4wg80ss484k4g4o00ssk",
-  "configuration_commit": "d4bcfb7b1a0f336a47ac8262583f53cf2b8bc5b0"
+  "runtime_deployment_uuid": "fsc8swwkw0oksow4cgocwwwk",
+  "configuration_commit": "c28ec4830afa44b2cbb50a846d105f47a298ea1f",
+  "runtime_release": "2c5bdab23c6d66f40183391a10bbb24ba1481601",
+  "cleanup_status": "own restore containers/volumes, test uploads and superseded plaintext staging removed; verified backups, legacy rollback resource/cache, research checkout and aftercare worktree preserved",
+  "aftercare": {
+    "automation_id": "nazorg-logoherkenning-productie",
+    "active": true,
+    "scope": "read-only own containers/backups and actual1h24h checkpoints; visible main-thread notification on failure/completion",
+    "future_checks_not_marked_passed": true,
+    "observer_installed": true,
+    "initial_actual_observer": "passed",
+    "one_hour_due": "2026-10-06T01:25:18Z",
+    "twenty_four_hour_due": "2026-10-07T00:25:18Z",
+    "server_timers_active": true,
+    "15_minute_checkpoint": "passed"
+  },
+  "known_acceptance_limitations": [
+    "existing-user password login not attempted because password unavailable; signed existing session, database SELECT and real bcrypt compatibility passed",
+    "generic adjustable-threshold v1 route not quality-validated; source generic ONNX model absent; production /detect uses actual strict artwork classifiers",
+    "all9GHS remain review-only; independent per-type field readiness not claimed"
+  ],
+  "current_gate": "fresh final CI"
 }

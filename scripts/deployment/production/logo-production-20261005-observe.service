@@ -1,0 +1,14 @@
+# Installed owned read-only post-cutover service; no container lifecycle actions.
+[Unit]
+Description=Read-only logo production post-cutover observation
+After=docker.service network-online.target
+
+[Service]
+Type=oneshot
+User=root
+UMask=0077
+EnvironmentFile=/root/logo-production-20261005-release/observation.env
+ExecStart=/usr/bin/python3 /root/logo-production-20261005-release/observe-owned-production.py --env /root/logo-production-20261005-release/production.env --targets /root/logo-production-20261005-release/observation-targets.json --health-url ${OBSERVATION_HEALTH_URL} --execute
+TimeoutStartSec=150
+StandardOutput=journal
+StandardError=journal

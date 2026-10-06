@@ -1,0 +1,13 @@
+[Unit]
+Description=Verified encrypted backup of dedicated logo production resource
+After=docker.service
+RequiresMountsFor=/mnt/storagebox-home
+
+[Service]
+Type=oneshot
+User=root
+UMask=0077
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=3700
+ExecStart=/usr/bin/flock -n /run/lock/logo-production-20261005-backup.lock /usr/bin/python3 /root/logo-production-20261005-release/backup-owned-production.py --env /root/logo-production-20261005-release/production.env --postgres-container f048gs04scoksggw0okw4oo0-postgres-1 --minio-container f048gs04scoksggw0okw4oo0-minio-1 --key /root/logo-production-20261005-release/backup-encryption.key --staging /root/logo-production-20261005-release/private-backup-staging --execute

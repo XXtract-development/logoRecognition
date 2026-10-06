@@ -1,11 +1,11 @@
 {
-  "time": "2026-10-05T23:34:16.513018+00:00",
-  "release_sha": "f247881863ac218690e1af93de1ac6141e77f8c7",
+  "time": "2026-10-06T00:26:55.929583+00:00",
+  "release_sha": "2c5bdab23c6d66f40183391a10bbb24ba1481601",
   "source": "Reviewed ACC merge with successful paired build and verified AMD64 OCI revisions",
-  "destination_status": "dedicated infrastructure/data/storage/private old ML ready; new paired runtime start pending",
+  "destination_status": "healthy paired runtime active on public production route; actual recognition and rollback passed",
   "images": {
-    "app": "ghcr.io/xxtract-development/logo-recognition-app@sha256:8d9295e9a2de75eea770f5a295954dac35538e3285966342d8429e9bade6b556",
-    "ml": "ghcr.io/xxtract-development/logo-recognition-ml@sha256:1c7862d4833fb47701e6c0037f162819296be49f99a731c2f7f0c9d121a846dc"
+    "app": "ghcr.io/xxtract-development/logo-recognition-app@sha256:5416ce7ae7f9576bea3e67dd8041102a407d63372941bdeeefd95ba45bf54aef",
+    "ml": "ghcr.io/xxtract-development/logo-recognition-ml@sha256:99c08f57e0742d51122245db93120c06f4423f089db84e619042d74c187c2fa2"
   },
   "artifacts": [
     {
@@ -14,7 +14,7 @@
       "source_path": "/app/app/assets/ghs/specialist/model.json",
       "source_sha256": "68b9ce1488150d32722bb116790fcd065a89d53525fa43dfd48c3148f63d8974",
       "transfer": "bundled in frozen ML image",
-      "destination_verified": false,
+      "destination_verified": true,
       "destination_verified_previous_private_runtime": true
     },
     {
@@ -45,13 +45,13 @@
   ],
   "object_manifest_complete": true,
   "data_transfer_complete": true,
-  "destination_endpoint_parity_proven": false,
+  "destination_endpoint_parity_proven": true,
   "limitations": [
     "Generic EfficientDet ONNX was absent in source; production /detect uses strict real artwork classifiers and never generic mock route",
     "All GHS outputs remain review-only; independent field-readiness for all nine classes is not claimed",
-    "New public runtime endpoint, load and cutover verification remain pending"
+    "One-hour and 24-hour observations occur after cutover; preserved legacy rollback resource is not retired"
   ],
   "dataset_source_release_sha": "814f6cd396f63dada95411d51dda5dfae3205a6a",
-  "paired_build_run": 37388171163,
+  "paired_build_run": 37391572294,
   "object_count": 1069
 }

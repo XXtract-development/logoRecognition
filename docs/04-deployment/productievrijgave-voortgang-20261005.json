@@ -1,8 +1,8 @@
 {
   "version": 1,
   "documentId": "acc-prod-20261005",
-  "sourceHash": "61c0e15132cfd12a417c2d7a372002d7ba220d147666252199a15a7a464d627a",
-  "updatedAt": "2026-10-05T23:27:13.893828+00:00",
+  "sourceHash": "0cde2aa37168b3e851cf5fad9641df4a2b962ed8d65f1da6c87141bb4dc572c4",
+  "updatedAt": "2026-10-06T00:58:11.159525+00:00",
   "items": {
     "p1-scope": {
       "status": "done",
@@ -13,12 +13,12 @@
       "completedAt": "2026-10-05T23:20:26.590568+00:00"
     },
     "p1-images": {
-      "status": "pending",
+      "status": "done",
       "owner": "Codex/root — productiecoördinator",
-      "note": "Definitief nieuw app-/ML-imagepaar na laatste code- en CI-correcties nog niet live vastgelegd.",
-      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
-      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
-      "completedAt": ""
+      "note": "Werkelijke productiecode 2c5bdab en beide gepaarde image-digests gecontroleerd; GHS- en embeddingcachehash kloppen. Gegevensbron 814f6cd blijft afzonderlijk vastgelegd.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json; docs/04-deployment/source-freeze-recheck-20261006.json; docs/04-deployment/production-daily-backup-20261005.md; hoofdtaak Codex/root publieke eindcontrole en onafhankelijke Mac-backupverificatie",
+      "updatedAt": "2026-10-06T00:29:33.321892+00:00",
+      "completedAt": "2026-10-06T00:28:15.929753+00:00"
     },
     "p1-targets": {
       "status": "done",
@@ -253,12 +253,12 @@
       "completedAt": "2026-10-05T23:20:26.590568+00:00"
     },
     "p4-compose": {
-      "status": "pending",
+      "status": "done",
       "owner": "Codex/root — productiecoördinator",
-      "note": "Definitieve imagefreeze en werkelijk gerenderde runtimecompose wachten op laatste geslaagde bouw.",
-      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
-      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
-      "completedAt": ""
+      "note": "Nieuwe eigen Coolifyvoorziening met vijf gezonde onderdelen, intern PostgreSQL/MinIO/Redis/ML en publieke app. Gepinde images, interne verbindingen en daadwerkelijke router gecontroleerd; geen hostpoortconflict.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json; docs/04-deployment/source-freeze-recheck-20261006.json; docs/04-deployment/production-daily-backup-20261005.md; hoofdtaak Codex/root publieke eindcontrole en onafhankelijke Mac-backupverificatie",
+      "updatedAt": "2026-10-06T00:29:33.321892+00:00",
+      "completedAt": "2026-10-06T00:28:15.929753+00:00"
     },
     "p4-config": {
       "status": "done",
@@ -301,12 +301,12 @@
       "completedAt": "2026-10-05T23:20:26.590568+00:00"
     },
     "p6-jobs": {
-      "status": "pending",
+      "status": "done",
       "owner": "Codex/root — productiecoördinator",
-      "note": "Flywheel is persistent gepauzeerd en Redis is eigen; volledige app-worker-/queue-/schedulercontrole volgt bij gecontroleerde appstart.",
+      "note": "Werkelijke wachtrijcontrole om 00:29 UTC: geen actieve, wachtende of mislukte training-, artwork- of flywheeljobs; geen ACC-jobs geïmporteerd. Eigen geplande taken geïnventariseerd; flywheel blijft persistent gepauzeerd. Een eigen watchdog is veilig voltooid; geen willekeurige producttraining gestart.",
       "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
-      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
-      "completedAt": ""
+      "updatedAt": "2026-10-06T00:29:33.321892+00:00",
+      "completedAt": "2026-10-06T00:29:33.321892+00:00"
     },
     "p6-provision": {
       "status": "done",
@@ -653,12 +653,12 @@
       "completedAt": "2026-10-05T23:20:26.590568+00:00"
     },
     "p9-startup": {
-      "status": "pending",
+      "status": "done",
       "owner": "Codex/root — productiecoördinator",
-      "note": "Private ML is gestart; openbare app en het definitieve nieuwe imagepaar zijn nog niet gestart of bewezen.",
-      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
-      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
-      "completedAt": ""
+      "note": "Werkelijke nieuwe productievoorziening f048gs04scoksggw0okw4oo0 heeft vijf gezonde containers. Dataset/modelcache vooraf aanwezig; echte ML heeft 542 actieve referenties opnieuw opgebouwd. Tijdelijke sslip-app geeft 200. Volledige eindacceptatie en jobs-vrijgave blijven afzonderlijk open.",
+      "evidence": "Hoofdtaak Codex/root: werkelijk uitgevoerde productiecontroles; beschermde receipts actual-auth-readonly-runtime-probe-20261006.json en actual-upload-preview-probe-20261006.json; docs/04-deployment/source-freeze-recheck-20261006.json",
+      "updatedAt": "2026-10-05T23:55:38.284405+00:00",
+      "completedAt": "2026-10-05T23:55:38.284405+00:00"
     },
     "p9-vectors": {
       "status": "done",
@@ -669,36 +669,36 @@
       "completedAt": "2026-10-05T23:20:26.590568+00:00"
     },
     "p9-upload": {
-      "status": "pending",
+      "status": "done",
       "owner": "Codex/root — productiecoördinator",
-      "note": "Echte geauthenticeerde app-upload met teruggelezen origineel én preview nog niet uitgevoerd.",
-      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
-      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
-      "completedAt": ""
+      "note": "Werkelijke publieke geauthenticeerde upload gaf 201. Origineel: 200, 425 bytes PNG; thumbnail: 200, 538 bytes JPEG; referentiepreview: 200. URLs gebruiken dezelfde publieke apphost; gewijzigde ondertekening gaf 403. Eigen testrecord en beide objecten met 200 opgeruimd.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json; docs/04-deployment/source-freeze-recheck-20261006.json; docs/04-deployment/production-daily-backup-20261005.md; hoofdtaak Codex/root publieke eindcontrole en onafhankelijke Mac-backupverificatie",
+      "updatedAt": "2026-10-06T00:29:33.321892+00:00",
+      "completedAt": "2026-10-06T00:28:15.929753+00:00"
     },
     "p9-test-cleanup": {
-      "status": "pending",
+      "status": "done",
       "owner": "Codex/root — productiecoördinator",
-      "note": "Cleanup van toekomstige app-uploadtestkeys volgt pas na die nog niet uitgevoerde test; tijdelijke herstelproefmiddelen zijn al verwijderd.",
-      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
-      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
-      "completedAt": ""
+      "note": "Eigen unieke uploadtest gaf cleanup HTTP 200: alleen het aangemaakte record en bijbehorende origineel/thumbnail verwijderd. Geen bestaande inhoud verwijderd.",
+      "evidence": "Hoofdtaak Codex/root: werkelijk uitgevoerde productiecontroles; beschermde receipts actual-auth-readonly-runtime-probe-20261006.json en actual-upload-preview-probe-20261006.json; docs/04-deployment/source-freeze-recheck-20261006.json",
+      "updatedAt": "2026-10-05T23:55:38.284405+00:00",
+      "completedAt": "2026-10-05T23:55:38.284405+00:00"
     },
     "p9-deep": {
-      "status": "pending",
+      "status": "done",
       "owner": "Codex/root — productiecoördinator",
-      "note": "Private model/ROI-proeven bestaan; integrale publieke endpointvergelijking inclusief negatieve beelden en geheugenbelasting ontbreekt nog.",
-      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
-      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
-      "completedAt": ""
+      "note": "Publieke Nutri-Score B gaf 200 in 24,96 s met oorspronkelijke A2-score 0,9985477328300476. FLAME gaf 200 in 5,99 s, uitsluitend review. Negatieve frontfoto gaf 200 zonder resultaten. Twee grote labels tegelijk verwerkt; derde verzoek begrensd met 503. Geen geheugenuitval of herstarts; geen algemene kwaliteitsclaim.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json; docs/04-deployment/source-freeze-recheck-20261006.json; docs/04-deployment/production-daily-backup-20261005.md; hoofdtaak Codex/root publieke eindcontrole en onafhankelijke Mac-backupverificatie",
+      "updatedAt": "2026-10-06T00:29:33.321892+00:00",
+      "completedAt": "2026-10-06T00:28:15.929753+00:00"
     },
     "accept-0": {
-      "status": "pending",
+      "status": "done",
       "owner": "Codex/root — productiecoördinator",
-      "note": "Live inspectie van beide definitieve nieuwe images ontbreekt.",
-      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
-      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
-      "completedAt": ""
+      "note": "Werkelijke app/ML-revisie 2c5bdab23c6d66f40183391a10bbb24ba1481601, beide gepaarde digests en modelhashes gecontroleerd. Configuratiecommit be704 is onderscheiden van de daadwerkelijke code-images.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json; docs/04-deployment/source-freeze-recheck-20261006.json; docs/04-deployment/production-daily-backup-20261005.md; hoofdtaak Codex/root publieke eindcontrole en onafhankelijke Mac-backupverificatie",
+      "updatedAt": "2026-10-06T00:29:33.321892+00:00",
+      "completedAt": "2026-10-06T00:28:15.929753+00:00"
     },
     "accept-1": {
       "status": "done",
@@ -725,12 +725,12 @@
       "completedAt": "2026-10-05T23:20:26.590568+00:00"
     },
     "accept-4": {
-      "status": "pending",
+      "status": "done",
       "owner": "Codex/root — productiecoördinator",
-      "note": "Upload en preview via echte geauthenticeerde app zijn nog niet bewezen.",
-      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
-      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
-      "completedAt": ""
+      "note": "Publieke upload, origineel, gegenereerde thumbnail en referentiepreview bewezen. Gewijzigde ondertekening geeft 403. Alleen eigen testrecord en objecten verwijderd; aantal logo-afbeeldingen bleef 876.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json; docs/04-deployment/source-freeze-recheck-20261006.json; docs/04-deployment/production-daily-backup-20261005.md; hoofdtaak Codex/root publieke eindcontrole en onafhankelijke Mac-backupverificatie",
+      "updatedAt": "2026-10-06T00:29:33.321892+00:00",
+      "completedAt": "2026-10-06T00:28:15.929753+00:00"
     },
     "accept-5": {
       "status": "done",
@@ -741,108 +741,107 @@
       "completedAt": "2026-10-05T23:20:26.590568+00:00"
     },
     "accept-6": {
-      "status": "pending",
+      "status": "done",
       "owner": "Codex/root — productiecoördinator",
-      "note": "Infrastructuur en private ML zijn gezond; volledige openbare app en diepe eindcontrole wachten.",
-      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
-      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
-      "completedAt": ""
+      "note": "App, ML, PostgreSQL, MinIO en Redis werkelijk gezond; database-/opslagreadbacks en 542 echte referentievectoren bewezen. SPA op tijdelijke route HTTP 200. Dit sluit open contract-, preview-, auth- en kwaliteitstests niet af.",
+      "evidence": "Hoofdtaak Codex/root: werkelijk uitgevoerde productiecontroles; beschermde receipts actual-auth-readonly-runtime-probe-20261006.json en actual-upload-preview-probe-20261006.json; docs/04-deployment/source-freeze-recheck-20261006.json",
+      "updatedAt": "2026-10-05T23:55:38.284405+00:00",
+      "completedAt": "2026-10-05T23:55:38.284405+00:00"
     },
     "accept-7": {
       "status": "pending",
       "owner": "Codex/root — productiecoördinator",
-      "note": "Beperkte authenticatieverbinding is voorbereid; productie-login/API-key/ongeautoriseerde publieke gatewaychecks nog niet uitgevoerd.",
-      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
-      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
-      "completedAt": ""
+      "note": "Publieke sessie van bestaande actieve gebruiker geeft 200 en passende identiteit; ongeldige sessie 401, klantrol 403, beheerder 200, verkeerde API-sleutel 401. Laravel-bcrypt op echte runtime synthetisch correct/verkeerd getest. Authdatabase uitsluitend SELECT, 30 actieve gebruikers, geen gewijzigde rijen. Wachtwoordlogin met bestaande gebruiker niet uitgevoerd: wachtwoord onbekend.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json; docs/04-deployment/source-freeze-recheck-20261006.json; docs/04-deployment/production-daily-backup-20261005.md; hoofdtaak Codex/root publieke eindcontrole en onafhankelijke Mac-backupverificatie",
+      "updatedAt": "2026-10-06T00:29:33.321892+00:00"
     },
     "accept-8": {
-      "status": "pending",
+      "status": "done",
       "owner": "Codex/root — productiecoördinator",
-      "note": "Adaptercontract is getest; werkelijke publieke endpoint- en n8n-doorvoercontrole nog niet uitgevoerd.",
-      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
-      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
-      "completedAt": ""
+      "note": "Bestaande publieke /detect-route werkelijk met representatieve requests getest: Nutri-Score B 200, GHS-review 200, verkeerde API-sleutel 401. Begrensde deadline/toelating gecontroleerd. Werkelijke route-terugkeer naar gezonde legacy en vervolgens nieuwe dienst getest.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json; docs/04-deployment/source-freeze-recheck-20261006.json; docs/04-deployment/production-daily-backup-20261005.md; hoofdtaak Codex/root publieke eindcontrole en onafhankelijke Mac-backupverificatie",
+      "updatedAt": "2026-10-06T00:29:33.321892+00:00",
+      "completedAt": "2026-10-06T00:28:15.929753+00:00"
     },
     "accept-9": {
-      "status": "pending",
+      "status": "done",
       "owner": "Codex/root — productiecoördinator",
-      "note": "Geen integrale publieke voor/na-kwaliteitsvergelijking afgerond. Green Dot onder 0,99 blijft terecht review.",
-      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
-      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
-      "completedAt": ""
+      "note": "Gecontroleerde echte productievoorbeelden werken met overgedragen modellen; negatieve frontfoto gaf 200 zonder detecties of review. Zwakke embeddingresultaten blijven review. Dit is afgebakend integratiebewijs, geen volledige onafhankelijke kwaliteitsvalidatie.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json; docs/04-deployment/source-freeze-recheck-20261006.json; docs/04-deployment/production-daily-backup-20261005.md; hoofdtaak Codex/root publieke eindcontrole en onafhankelijke Mac-backupverificatie",
+      "updatedAt": "2026-10-06T00:29:33.321892+00:00",
+      "completedAt": "2026-10-06T00:28:15.929753+00:00"
     },
     "accept-10": {
-      "status": "pending",
+      "status": "done",
       "owner": "Codex/root — productiecoördinator",
-      "note": "GHS-gewichten en reviewbeleid aanwezig; openbare route-/reviewkanaalcontrole nog niet uitgevoerd. Geen claim dat alle negen typen onafhankelijk bewezen zijn.",
-      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
-      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
-      "completedAt": ""
+      "note": "Werkelijke vrijgegeven GHS-modelhash klopt. Publiek echt FLAME-etiket blijft uitsluitend review, ook bij score 0,990627. Geen nieuwe claim dat alle negen typen voldoende in de praktijk bewezen zijn.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json; docs/04-deployment/source-freeze-recheck-20261006.json; docs/04-deployment/production-daily-backup-20261005.md; hoofdtaak Codex/root publieke eindcontrole en onafhankelijke Mac-backupverificatie",
+      "updatedAt": "2026-10-06T00:29:33.321892+00:00",
+      "completedAt": "2026-10-06T00:28:15.929753+00:00"
     },
     "accept-11": {
       "status": "pending",
       "owner": "Codex/root — productiecoördinator",
-      "note": "Lokale drempel-/reviewtests geslaagd; echte publieke route met normale en hoge drempel nog te controleren.",
+      "note": "Vaste strenge drempel 0,99 van de publieke legacyroute bewezen: Nutri-Score B 0,998547 wordt bevestigd; GHS blijft review en lagere gewone scores blijven review. Instelbare normale/hoge drempels van de afzonderlijke v1-route zijn hiermee niet getest; volledige stap blijft open.",
       "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
-      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
+      "updatedAt": "2026-10-06T00:29:33.321892+00:00",
       "completedAt": ""
     },
     "accept-12": {
-      "status": "pending",
+      "status": "done",
       "owner": "Codex/root — productiecoördinator",
-      "note": "Volledige daadwerkelijke app-workerinventaris en eerste gecontroleerde verwerking ontbreken nog.",
+      "note": "Eigen schedules en queues daadwerkelijk geïnventariseerd: training-recheck, artwork zonder schedules en eigen flywheel-watchdog/promotie/outlier/cohorttaken. Eén eigen watchdog succesvol verwerkt; geen actieve, wachtende of mislukte jobs en geen ACC-import. Flywheel blijft gepauzeerd; willekeurige producttraining niet gestart.",
       "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
-      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
-      "completedAt": ""
+      "updatedAt": "2026-10-06T00:29:33.321892+00:00",
+      "completedAt": "2026-10-06T00:29:33.321892+00:00"
     },
     "accept-13": {
-      "status": "pending",
+      "status": "done",
       "owner": "Codex/root — productiecoördinator",
-      "note": "Backup/herstel is bewezen; daadwerkelijke publieke terugkeerroute/oefening bij cutover nog niet afgerond.",
-      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
-      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
-      "completedAt": ""
+      "note": "Werkelijke route-terugkeer naar gezonde legacy met model_loaded=true getest, daarna alleen eigen nieuwe routebestand herplaatst. Gevulde herstelproef en versleutelde backup met onafhankelijke Mac-authenticatie en alle pakketfilehashes bewezen.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json; docs/04-deployment/source-freeze-recheck-20261006.json; docs/04-deployment/production-daily-backup-20261005.md; hoofdtaak Codex/root publieke eindcontrole en onafhankelijke Mac-backupverificatie",
+      "updatedAt": "2026-10-06T00:29:33.321892+00:00",
+      "completedAt": "2026-10-06T00:28:15.929753+00:00"
     },
     "p10-decision": {
-      "status": "pending",
+      "status": "done",
       "owner": "Codex/root — productiecoördinator",
-      "note": "Go/no-go volgt na alle nog open runtime-acceptatiecontroles.",
-      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
-      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
-      "completedAt": ""
+      "note": "Coördinator Codex/root registreert een begrensd GO onder de expliciete zelfstandige productieopdracht: migratie, bestaande publieke /detect-route en overgedragen training/opslag zijn vrijgegeven na werkelijk publiek bewijs. Bestaande-gebruikerswachtwoordlogin en generieke v1-route met instelbare drempels zijn uitgesteld; onbekend wachtwoord en reeds in ACC ontbrekend ONNX zijn expliciete beperkingen. Dit is geen verklaring dat alle 110 checkliststappen of alle logo-/GHS-kwaliteitsclaims zijn bewezen.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json; docs/04-deployment/source-freeze-recheck-20261006.json; docs/04-deployment/production-daily-backup-20261005.md; hoofdtaak Codex/root publieke eindcontrole en onafhankelijke Mac-backupverificatie",
+      "updatedAt": "2026-10-06T00:32:53.408193+00:00",
+      "completedAt": "2026-10-06T00:32:53.408193+00:00"
     },
     "p11-switch": {
-      "status": "pending",
+      "status": "done",
       "owner": "Codex/root — productiecoördinator",
-      "note": "Publieksroute is aantoonbaar ongewijzigd; cutover pas na geslaagde eindcontrole.",
-      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
-      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
-      "completedAt": ""
+      "note": "Publieke logo-detection.xxtract.com-route gecontroleerd naar nieuwe app omgeschakeld; definitieve publieke gezondheid circa 00:25 UTC. Echte publieke herkenning, sessie- en previewverzoeken geslaagd. Legacydienst intact.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json; docs/04-deployment/source-freeze-recheck-20261006.json; docs/04-deployment/production-daily-backup-20261005.md; hoofdtaak Codex/root publieke eindcontrole en onafhankelijke Mac-backupverificatie",
+      "updatedAt": "2026-10-06T00:29:33.321892+00:00",
+      "completedAt": "2026-10-06T00:28:15.929753+00:00"
     },
     "p11-resume": {
-      "status": "pending",
+      "status": "done",
       "owner": "Codex/root — productiecoördinator",
-      "note": "Automatische taken pas gefaseerd vrijgeven na gecontroleerde start en beoordeling.",
+      "note": "Alleen eigen geïnventariseerde geplande taken actief, met succesvolle veilige watchdogverwerking. Geen ACC-jobs overgenomen; flywheel persistent gepauzeerd. Geen willekeurige training of promotie vrijgegeven.",
       "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
-      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
-      "completedAt": ""
+      "updatedAt": "2026-10-06T00:29:33.321892+00:00",
+      "completedAt": "2026-10-06T00:29:33.321892+00:00"
     },
     "p11-recovery": {
-      "status": "pending",
+      "status": "done",
       "owner": "Codex/root — productiecoördinator",
-      "note": "Legacy en backups blijven behouden; actuele terugkeerdrempels en omgang met nieuw publiek verkeer nog te bevestigen.",
-      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
-      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
-      "completedAt": ""
+      "note": "Werkelijke route-terugkeer naar gezonde legacy getest en daarna alleen eigen nieuwe routebestand opnieuw geplaatst. Nieuwe gegevens behouden; geen blind databaseherstel.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json; docs/04-deployment/source-freeze-recheck-20261006.json; docs/04-deployment/production-daily-backup-20261005.md; hoofdtaak Codex/root publieke eindcontrole en onafhankelijke Mac-backupverificatie",
+      "updatedAt": "2026-10-06T00:29:33.321892+00:00",
+      "completedAt": "2026-10-06T00:28:15.929753+00:00"
     },
     "p12-15min": {
-      "status": "pending",
+      "status": "done",
       "owner": "Codex/root — productiecoördinator",
-      "note": "Observatieperiode begint pas na echte publieke omschakeling; nog niet verstreken.",
-      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
-      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
-      "completedAt": ""
+      "note": "Daadwerkelijk 900 seconden gecontroleerd met 24 steekproeven: telkens nieuwe publieke gezondheid HTTP 200 en vijf gezonde onderdelen, geen geheugenuitval of herstarts. Geïnstalleerde read-only observer tevens handmatig en via systemd geslaagd: 542 actieve referenties én 542 complete vectoren; backupservice, dagelijkse timer en huidige ciphertext-SHA256 correct.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json#/aftercare/15_minute_observation",
+      "updatedAt": "2026-10-06T00:41:05.210334+00:00",
+      "completedAt": "2026-10-06T00:41:05.210334+00:00"
     },
     "p12-1hour": {
       "status": "pending",
@@ -861,12 +860,12 @@
       "completedAt": ""
     },
     "p13-retain": {
-      "status": "pending",
+      "status": "done",
       "owner": "Codex/root — productiecoördinator",
-      "note": "Herstelmateriaal en legacy worden behouden; exacte bewaartermijn/eindbesluit nog vastleggen.",
-      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
-      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
-      "completedAt": ""
+      "note": "Legacyvoorziening en modelcache minimaal tot 24-uurscheckpoint én afzonderlijk gedocumenteerd uitfaseerbesluit behouden. Backups, manifesten en sleutelkopieën blijven bewaard; geen automatische verwijdering.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json; docs/04-deployment/source-freeze-recheck-20261006.json; docs/04-deployment/production-daily-backup-20261005.md; hoofdtaak Codex/root publieke eindcontrole en onafhankelijke Mac-backupverificatie",
+      "updatedAt": "2026-10-06T00:29:33.321892+00:00",
+      "completedAt": "2026-10-06T00:28:15.929753+00:00"
     },
     "p13-approval": {
       "status": "pending",
@@ -887,36 +886,36 @@
   },
   "fields": {
     "field-0": "Codex/root — productiecoördinator; implementatie- en controlebewijs uit hoofdtaak en onafhankelijke reviews.",
-    "field-1": "Consistente geselecteerde bronexport vóór uitvoer; bewijs geregistreerd 2026-10-05T21:29:14.628458+00:00. Eigenaar: Codex/root. Bestandstabiliteit voor/na lezen gecontroleerd.",
+    "field-1": "Consistente geselecteerde bronexport vóór uitvoer; bewijs geregistreerd 2026-10-05T21:29:14.628458+00:00. Eigenaar: Codex/root. Bestandstabiliteit voor/na lezen gecontroleerd. Na ACC-autodeploy opnieuw gecontroleerd: negen geselecteerde rijhashes, 21 checksums en 1.069 objecthashes onveranderd; source-freeze-recheck-20261006.json.",
     "field-2": "`814f6cd396f63dada95411d51dda5dfae3205a6a`",
-    "field-3": "Open: definitieve release-SHA na laatste geslaagde CI en imagebouw.",
-    "field-4": "Open: definitief nieuw app-/ML-imagepaar nog te bevestigen; oude bronimage-digests zijn geen eindvrijgavebewijs.",
+    "field-3": "Werkelijk productiecodepaar: 2c5bdab23c6d66f40183391a10bbb24ba1481601. Configuratiecommit be70430b8b9b0268ef09c3f26d10c67025407257 apart vastgelegd.",
+    "field-4": "App sha256:5416ce7ae7f9576bea3e67dd8041102a407d63372941bdeeefd95ba45bf54aef / ML sha256:99c08f57e0742d51122245db93120c06f4423f089db84e619042d74c187c2fa2. Werkelijke image-identiteiten, revisies en gezondheid gecontroleerd.",
     "field-5": "MinIO lokale onveranderlijke imageconfig sha256:69b2ec208575b69597784255eec6fa6a2985ee9e1a47f4411a51f7f5fdd193a9; Redis sha256:6ab0b6e7381779332f97b8ca76193e45b0756f38d4c0dcda72dbb3c32061ab99.",
-    "field-6": "21 releasechecksums gelijk aan echte bronledger; definitieve runtimecomposehash nog te bevriezen.",
-    "field-7": "logo-production-20261005 / Banana. Afgescheiden productievoorziening; geen private adressen opgenomen.",
+    "field-6": "Alle 21 releasechecksums gelijk aan echte bronledger. Productiecompose-template docker-compose.prod.yml SHA256 e99f9ae9894c9db04a588e11087c76fb67cfe5a55da16ba070661921d2503451 (repositorybestand, geen afzonderlijke gerenderde runtimehash). Gepaar­de daadwerkelijke runtime en configuratiecommit be704 gecontroleerd.",
+    "field-7": "Nieuwe Coolifyresource f048gs04scoksggw0okw4oo0 / Banana; eigen voorziening logo-production-20261005. Tijdelijke sslip-verificatieroute gezond; legacyroute ongewijzigd.",
     "field-8": "Nieuwe eigen PostgreSQL16-database en public-schema; identiteit vóór herstel bewezen. Verbindingsgegevens blijven beveiligd buiten checklist.",
     "field-9": "App- en ML-runtime afzonderlijk en beperkt; migratiehistorie niet schrijfbaar voor app; geen superuser/runtimebeheerrechten.",
     "field-10": "Echte ML-rol eigenaar reference_embeddings; herindexering bewezen; 542 actieve vectoren opnieuw opgebouwd.",
     "field-11": "34 toepassingstabellen plus 21 echte voltooide migratieregistraties; geselecteerd nieuw doel zonder oude productiegegevens te vervangen.",
-    "field-12": "Nieuwste doelbackup SHA256 2e29893afee7265d8cff7d13d63aeff0dc299ba176a2a13138afb3de4a95c2d0; objectarchief SHA256 aacf2bcba20ecc97b2a5add5a352dd2f48151507e6746a598f65e142325a21da. Afzonderlijke Mac-kopie geverifieerd; vorige backups en bestaand byte-identiek objectarchief behouden. Private paden niet opgenomen.",
+    "field-12": "Gevulde herstelbackup SHA256 2e29893afee7265d8cff7d13d63aeff0dc299ba176a2a13138afb3de4a95c2d0; objectarchief SHA256 aacf2bcba20ecc97b2a5add5a352dd2f48151507e6746a598f65e142325a21da. Eerste AES-256-GCM-backup 20261006T001655Z-82b81313 onafhankelijk op Mac geauthenticeerd: 35 tabellen, 1.069 objecten, alle pakkethashes gelijk; eigen nieuwe plaintextstage verwijderd. Tweede systemdrun 20261006T002009Z-bc41895a succesvol om 00:20:30 UTC; dagelijkse timer actief op 02:15 UTC. Sleutel onafhankelijk privé bewaard.",
     "field-13": "Codex/root; 2026-10-05T23:25:35.266816+00:00 tot 2026-10-05T23:25:49.103330+00:00. pg_dump 0.356 s; werkelijk databaseherstel pg_restore 0.494 s; volledige proef inclusief export, herstel, alle tabelhashes, objectarchief en cleanup 13.837 s. Alle 35 openbare tabelfingerprints gelijk; eigen testcontainer/volumes verwijderd.",
     "field-14": "Rijmanifest SHA256 7d17673341d4d078db5cd36f9874325684e244c333456155ec799552848c7ff4. Selectieve tabellen/relaties gelijk, uitgesloten geschiedenis bewust leeg, nieuwe doelinstellingen apart.",
     "field-15": "1.069 objecten, 40.487.281 bytes; manifest SHA256 a8485579d5d173e276fbae30281a5c1588fbe3812c1c7b9ee524a4681e9e8dac. Alle doelreadbacks gelijk; vrije ruimte/inrichting gecontroleerd bij provisioning.",
-    "field-16": "Vier private buckets en beperkte nonroot runtimeaccount bewezen; 1.069 put/readbacks geslaagd; admin geweigerd. Echte app-upload/preview en testcleanup blijven open.",
-    "field-17": "Eigen Redis zonder ACC-jobs; flywheel persistent gepauzeerd. Volledige app-worker-/schedulercontrole en vrijgave blijven open.",
-    "field-18": "Prodverbindingen en afzonderlijke authenticatiebron beperkt voorbereid; secrets niet opgenomen. Laatste releaseconfig/finale gatewaychecks wachten.",
-    "field-19": "Private ML gestart en werkelijke modellen/referentievectoren gecontroleerd. Nieuwe openbare app/verificatieroute nog niet bewezen.",
-    "field-20": "Bestaande /detect-consument onderzocht, timeout 180 seconden; adapter totaalbudget 165 seconden. Werkelijke nieuwe publieke contractcontrole nog open.",
-    "field-21": "Publieksroute nog ongewijzigd; cutovermoment nog niet uitgevoerd.",
-    "field-22": "Legacydienst, cache en gecontroleerde backups behouden. Terugkeerroute/einddrempels vóór omschakeling te bevestigen door coördinator.",
+    "field-16": "Vier private buckets en 1.069 gecontroleerde objecten. Werkelijke publieke upload 201, origineel 200 PNG, thumbnail 200 JPEG, referentiepreview 200 op dezelfde apphost; gewijzigde ondertekening 403. Eigen cleanup 200, record/objecten afwezig, aantal afbeeldingen 876 onveranderd.",
+    "field-17": "Werkelijke queuecontrole om 00:29 UTC: geen actieve, wachtende of mislukte jobs. Eigen training-recheck en flywheel-schedules geïnventariseerd; artwork geen schedules. Eigen watchdog succesvol voltooid. Bootstrapqueue en artworkreview leeg; flywheel.paused=true. Geen ACC-jobs of willekeurige training gestart.",
+    "field-18": "Authdatabase uitsluitend SELECT, 30 actieve gebruikers, geen gewijzigde rijen. Publieke /auth/me met kortlevende intern ondertekende bestaande-gebruikerssessie 200, ongeldig 401; klantrol 403, beheerder 200, verkeerde API-sleutel 401. Native Laravel-bcrypt synthetisch correct/verkeerd bewezen. Bestaande-gebruikerswachtwoordlogin onbeproefd wegens onbekend wachtwoord; geen identiteit of geheim gepubliceerd.",
+    "field-19": "Tijdelijke sslip-route en definitieve publieksroute bewezen: SPA 200 en nieuwe gezondheid goed. Vijf onderdelen gezond zonder herstarts of geheugenuitval. Publieke Nutri-Score B, GHS FLAME en previewcontroles geslaagd.",
+    "field-20": "Publieke /detect-contractcontrole: Nutri-Score B 200 in 24,96 s, raw A2 0,9985477328300476; FLAME 200 in 5,99 s uitsluitend review; verkeerde API-sleutel 401. Twee grote labels tegelijk 200; derde verzoek gecontroleerd 503. Vaste drempel 0,99 bewezen; instelbare v1-drempels niet getest. Geen algemene alle-typenkwaliteitsclaim.",
+    "field-21": "Publieksroute omgeschakeld; definitieve publieke gezondheid 6 oktober 2026 circa 00:25 UTC. Werkelijke legacy-terugkeer met model_loaded=true getest, daarna eigen nieuwe route herplaatst.",
+    "field-22": "Legacydienst en cache behouden tot minimaal 24-uurscontrole en afzonderlijk uitfaseerbesluit. Werkelijke route-terugkeer beproefd; nieuwe data behouden zonder blind databaseherstel. Eigenaar: Codex/root.",
     "field-23": "Open: operationele terugkeerdrempels bij daadwerkelijke omschakeling en belasting vastleggen.",
-    "field-24": "Publiek nieuw verkeer nog niet gestart. Geen blinde herstelactie over nieuwe productiegegevens; bij terugkeer gegevens behouden/archiveren.",
-    "field-25": "Gebruiker gaf expliciet opdracht om de productieovergang inclusief database en gegevens uit te voeren en zelfstandig door te gaan tot gereed.",
+    "field-24": "Nieuw publiek verkeer actief. Terugkeer via netwerkroute getest; nieuwe gegevens worden behouden. Bestaande bron- en productiegegevens niet overschreven.",
+    "field-25": "Expliciete gebruikeropdracht: “Ga verder totdat alles klaarvis in productie”. Begrensde productievoorziening, migratie van geselecteerde gegevens/objecten en zelfstandige voortzetting toegestaan.",
     "field-26": "Expliciete productieopdracht omvat begrensde inrichting, start en uitrol. Uitvoering van publiekscutover blijft een afzonderlijke technische controle en staat nog open.",
-    "field-27": "Open: niet alle publieke acceptatiecontroles zijn afgerond; geen go/no-go verzonnen.",
-    "field-28": "Uitgevoerd: eigen infrastructuur, schema/rollen, geselecteerde gegevens/objecten, backup/herstel, private ML/542 vectoren/modelgewichten. Niet uitgevoerd: openbare app/cutover/eindcontroles/observatie/uitfasering.",
-    "field-29": "15 minuten / 1 uur / 24 uur: allemaal open; wachten op echte publieke omschakeling en verstreken tijd.",
-    "field-30": "Eigen lokale hersteltestcontainer/volumes verwijderd. Legacy, modelcache, backups en manifesten behouden; uitfasering vereist afzonderlijk akkoord."
+    "field-27": "Begrensd GO door Codex/root voor migratie, bestaande publieke /detect en overgedragen training/opslag, vastgelegd 2026-10-06T00:32:53.408193+00:00. Onder expliciete zelfstandige productieopdracht, na echt publiek bewijs. Uitgestelde acceptatie: bestaande-gebruikerswachtwoordlogin (wachtwoord onbekend) en generieke v1-drempels (ONNX reeds in ACC afwezig). Geen blanket-go voor alle checklist-/kwaliteitspunten. CI 37395367362: server, ML en security geslaagd; E2E 429 gediagnosticeerd als gedeeld testbudget. Uitsluitend CI-budget naar 10.000 verhoogd en onafhankelijk beoordeeld; 12 omgevingscontroles geslaagd. Volledige browserherhaling nog open; productieruntime 2c5 ongewijzigd.",
+    "field-28": "Uitgevoerd: vijf gezonde onderdelen, 34 tabellen/21 ledgerregistraties, geselecteerde gegevens/1.069 objecten, 542 referentievectoren, modelhashes, getimed herstel, versleutelde dagelijkse backup/Mac-validatie/systemdtimer, publieke SPA/sessie/rollen/API-sleutel/upload/preview/eigen cleanup, gecontroleerde herkenning/negatieve foto/belasting, cutover en geteste terugkeer. Niet uitgevoerd: bestaande-gebruikerswachtwoordlogin, instelbare v1-drempels, toekomstige één-uurs/24-uursobservatie en uitfasering. Daadwerkelijke 15-minutencontrole en geïnstalleerde read-only observer geslaagd; volgende checkpoints gepland, nog niet voltooid.",
+    "field-29": "15 minuten daadwerkelijk geslaagd: 900 seconden, 24 steekproeven, publieke gezondheid 200, vijf gezonde onderdelen zonder geheugenuitval/herstarts. Observer handmatig 00:33:10 UTC en systemd 00:33:47 UTC geslaagd. Echte read-only servertimers actief voor 6 oktober 01:25:18 UTC (één uur) en 7 oktober 00:25:18 UTC (24 uur); toekomstige checkpoints blijven open. Actieve stille nazorgbewaking in hoofdtaak; meldt alleen betekenisvolle fout of afronding.",
+    "field-30": "Eigen hersteltestcontainers/volumes en uploadtestrecords/objecten verwijderd. Alleen eigen nieuwe plaintextbackupstage na geslaagde externe versleutelde publicatie verwijderd. Legacydienst, cache, backups en sleutelkopieën behouden; uitfasering niet uitgevoerd. Eerste vervangen plaintext-backuprun uitsluitend uit eigen private staging verwijderd om circa 00:41 UTC, na onafhankelijke verificatie van versleutelde capsules. Versleutelde backups, sleutelkopieën en afzonderlijke herstelbewijzen behouden."
   },
   "history": [
     {
@@ -1488,6 +1487,36 @@
       "at": "2026-10-05T23:27:13.893828+00:00",
       "label": "p6-restore-target",
       "change": "Codex/root — productiecoördinator · Afgerond na nieuwe gemeten herstelproef · docs/04-deployment/production-rollout-evidence-20261005.json#/backup/timing; docs/04-deployment/production-rollout-evidence-20261005.json#/backup · Nieuwe getimede doelbackup en afgescheiden herstel bewezen: pg_dump 0.356 s; daadwerkelijke pg_restore 0.494 s; gehele backup-/herstel-/verificatieproef 13.837 s. Alle 35 tabelfingerprints gelijk, inclusief 542 referentievectoren en 21 ledgerregistraties; 1.069 objecten via archief teruggelezen. Eigen testcontainer en volumes verwijderd."
+    },
+    {
+      "at": "2026-10-05T23:55:38.284405+00:00",
+      "label": "Actuele productie-uitvoering",
+      "change": "Actuele productie-uitvoering en bewijs toegevoegd; historische broninventaris behouden; publieke preview/eindacceptatie niet afgevinkt."
+    },
+    {
+      "at": "2026-10-06T00:28:15.929753+00:00",
+      "label": "Publieke productie-uitvoering",
+      "change": "Werkelijke publieke eindcontroles, cutover/rollback en versleutelde dagelijkse backup geregistreerd; toekomstige observatie en beperkingen blijven open."
+    },
+    {
+      "at": "2026-10-06T00:29:33.321892+00:00",
+      "label": "Geplande taken en resterende bewijsgrenzen",
+      "change": "Werkelijke queues/schedules en succesvolle veilige watchdog vastgelegd; login-/v1-drempelbeperking en volledige go/no-go-checklist blijven open."
+    },
+    {
+      "at": "2026-10-06T00:32:53.408193+00:00",
+      "label": "Begrensd vrijgavebesluit",
+      "change": "Coördinator Codex/root registreert een begrensd GO onder de expliciete zelfstandige productieopdracht: migratie, bestaande publieke /detect-route en overgedragen training/opslag zijn vrijgegeven na werkelijk publiek bewijs. Bestaande-gebruikerswachtwoordlogin en generieke v1-route met instelbare drempels zijn uitgesteld; onbekend wachtwoord en reeds in ACC ontbrekend ONNX zijn expliciete beperkingen. Dit is geen verklaring dat alle 110 checkliststappen of alle logo-/GHS-kwaliteitsclaims zijn bewezen."
+    },
+    {
+      "at": "2026-10-06T00:41:05.210334+00:00",
+      "label": "Werkelijke 15-minutencontrole",
+      "change": "900 seconden en 24 steekproeven geslaagd; geïnstalleerde observer echt uitgevoerd. Eén-uurs/24-uurschecks alleen gepland en open gehouden."
+    },
+    {
+      "at": "2026-10-06T00:58:11.159525+00:00",
+      "label": "Bewezen cleanup en actuele CI-beperking",
+      "change": "De aanvankelijke, inmiddels vervangen plaintext-backuprun is door de coördinator op 6 oktober om circa 00:41 UTC uitsluitend uit de eigen private staging verwijderd, nadat de onafhankelijke versleutelde capsules waren geauthenticeerd en geverifieerd. De versleutelde backups, onafhankelijke sleutelkopieën en afzonderlijke databaseherstelbewijzen blijven behouden. Geen oorspronkelijke productiegegevens of eerdere beschermde herstelbewijzen zijn verwijderd. De laatste volledige CI-run `37395367362` slaagde voor server-, ML- en beveiligingscontroles, maar de browsertests faalden door HTTP 429: de gedeelde synthetische testomgeving putte haar standaard verzoekbudget uit. De oorzaak is met screenshot en trace vastgesteld; de correctie verhoogt uitsluitend het CI-browsertestbudget naar 10.000 en is onafhankelijk beoordeeld met 12 geslaagde omgevingscontroles. De volledige browserherhaling staat nog open; er wordt geen volledig geslaagde CI-run geclaimd. De daadwerkelijke productiecode en het imagepaar `2c5bdab` zijn hierdoor niet veranderd."
     }
   ]
 }

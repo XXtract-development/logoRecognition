@@ -377,7 +377,10 @@ test.describe('Recognition Integration - Full Workflow', () => {
     await waitForStability(page);
 
     // Step 2: Navigate to recognition
-    await page.getByRole('button', { name: /start recognition/i }).click();
+    const startButton = page.getByRole('button', { name: /start recognition/i });
+    await expect(startButton).toBeVisible();
+    await expect(startButton).toBeEnabled();
+    await startButton.click();
     await page.waitForURL('/recognize');
     await waitForStability(page);
 

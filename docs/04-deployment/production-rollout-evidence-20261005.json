@@ -1,6 +1,6 @@
 {
-  "time": "2026-10-05T23:02:22.790875+00:00",
-  "status": "in_progress",
+  "time": "2026-10-06T00:26:55.929583+00:00",
+  "status": "public_production_active_observation_in_progress",
   "infrastructure": "healthy",
   "database": {
     "status": "passed",
@@ -17,8 +17,8 @@
     "flywheel_persistently_paused": true
   },
   "storage_transfer": "passed",
-  "runtime_started": false,
-  "legacy_route_changed": false,
+  "runtime_started": true,
+  "legacy_route_changed": true,
   "storage": {
     "status": "passed",
     "resource": "logo-production-20261005",
@@ -248,5 +248,688 @@
     "visible_green_dot_region_included": true,
     "whole_endpoint_proof": "pending newly built release",
     "scores_used_for_final_confirmation": false
+  },
+  "runtime_images": {
+    "app": {
+      "image_id_matches": true,
+      "actual_image": "ghcr.io/xxtract-development/logo-recognition-app:2c5bdab23c6d66f40183391a10bbb24ba1481601@sha256:5416ce7ae7f9576bea3e67dd8041102a407d63372941bdeeefd95ba45bf54aef",
+      "health": "healthy",
+      "restart_count": 0,
+      "memory_limit": 2147483648,
+      "revision": "2c5bdab23c6d66f40183391a10bbb24ba1481601",
+      "oom": false
+    },
+    "ml": {
+      "image_id_matches": true,
+      "actual_image": "ghcr.io/xxtract-development/logo-recognition-ml:2c5bdab23c6d66f40183391a10bbb24ba1481601@sha256:99c08f57e0742d51122245db93120c06f4423f089db84e619042d74c187c2fa2",
+      "health": "healthy",
+      "restart_count": 0,
+      "memory_limit": 8589934592,
+      "revision": "2c5bdab23c6d66f40183391a10bbb24ba1481601",
+      "oom": false
+    }
+  },
+  "public_ui_storage": {
+    "spa_status": 200,
+    "existing_signed_session_identity_matches": true,
+    "password_login_with_real_user_performed": false,
+    "invalid_session_status": 401,
+    "synthetic_laravel_bcrypt_correct_and_wrong_password_passed": true,
+    "customer_status": 403,
+    "admin_status": 200,
+    "own_upload_status": 201,
+    "original_status": 200,
+    "thumbnail_status": 200,
+    "reference_status": 200,
+    "tampered_preview_status": 403,
+    "same_origin": true,
+    "cleanup_status": 200,
+    "own_record_and_objects_absent": true,
+    "image_count_before_and_after": 876
+  },
+  "temporary_https_controls": {
+    "nutri-small": {
+      "status": 200,
+      "seconds": 29.45,
+      "detections": [
+        {
+          "logo_code": "NUTRISCORE_B",
+          "confidence": 0.9989997744560242,
+          "method": "nutriscore-a2",
+          "bbox": [
+            0.7588282504012841,
+            0.3569723832253665,
+            0.8162118780096308,
+            0.44630071599045346
+          ],
+          "requires_review": false,
+          "uncertain": false
+        }
+      ],
+      "review_proposals": [
+        {
+          "logo_code": "MARINE_STEWARDSHIP_COUNCIL_LABEL",
+          "confidence": 0.8318043975254795,
+          "method": "embedding",
+          "bbox": [
+            0.7588282504012841,
+            0.9249914763041255,
+            0.8113964686998395,
+            0.9832935560859188
+          ],
+          "requires_review": true,
+          "uncertain": true
+        },
+        {
+          "logo_code": "CROSSED_GRAIN_SYMBOL",
+          "confidence": 0.9136258903596471,
+          "method": "embedding",
+          "bbox": [
+            0.8876404494382022,
+            0.647800886464371,
+            0.9213483146067416,
+            0.6760995567678145
+          ],
+          "requires_review": true,
+          "uncertain": true
+        },
+        {
+          "logo_code": "RECYCLABLE_GENERAL_CLAIM",
+          "confidence": 0.7348906651134172,
+          "method": "embedding",
+          "bbox": [
+            0.42897271268057785,
+            0.669962495738152,
+            0.4582664526484751,
+            0.7122400272758268
+          ],
+          "requires_review": true,
+          "uncertain": true
+        },
+        {
+          "logo_code": "VEGAN",
+          "confidence": 0.5163930340997973,
+          "method": "embedding",
+          "bbox": [
+            0.797752808988764,
+            0.3416297306512104,
+            0.8142054574638844,
+            0.3552676440504603
+          ],
+          "requires_review": true,
+          "uncertain": true
+        },
+        {
+          "logo_code": "EU_ORGANIC_FARMING",
+          "confidence": 0.6969266553967384,
+          "method": "embedding",
+          "bbox": [
+            0.7889245585874799,
+            0.9318104330037504,
+            0.8089887640449438,
+            0.9481759290828503
+          ],
+          "requires_review": true,
+          "uncertain": true
+        }
+      ],
+      "detail": null
+    },
+    "ghs-label": {
+      "status": 200,
+      "seconds": 10.13,
+      "detections": [],
+      "review_proposals": [
+        {
+          "logo_code": "FLAME",
+          "confidence": 0.990627376953735,
+          "method": "ghs-specialist",
+          "bbox": [
+            0.58,
+            0.76,
+            0.6282352941176471,
+            0.7972727272727272
+          ],
+          "requires_review": true,
+          "uncertain": false
+        }
+      ],
+      "detail": null
+    },
+    "wrong-key": {
+      "status": 401,
+      "seconds": 0.11,
+      "detections": [],
+      "review_proposals": [],
+      "detail": "Invalid API key"
+    }
+  },
+  "runtime_deployment": {
+    "uuid": "fsc8swwkw0oksow4cgocwwwk",
+    "status": "finished",
+    "configuration_commit": "be70430b8b9b0268ef09c3f26d10c67025407257",
+    "actual_runtime_code_revision": "2c5bdab23c6d66f40183391a10bbb24ba1481601"
+  },
+  "large_concurrency": {
+    "status": "passed",
+    "controls": {
+      "green-full": {
+        "status": 200,
+        "seconds": 36.02,
+        "detections": [
+          "NUTRISCORE_C"
+        ],
+        "review_proposals": [
+          "PREGNANCY_WARNING",
+          "RECYCLABLE_GENERAL_CLAIM",
+          "GREEN_DOT",
+          "LACTOSE_FREE",
+          "CROSSED_GRAIN_SYMBOL"
+        ]
+      },
+      "nutri-full": {
+        "status": 200,
+        "seconds": 32.24,
+        "detections": [],
+        "review_proposals": [
+          "RECYCLABLE_GENERAL_CLAIM",
+          "NUTRISCORE_B",
+          "LACTOSE_FREE"
+        ]
+      },
+      "third-concurrent": {
+        "status": 503,
+        "seconds": 0.13,
+        "detections": [],
+        "review_proposals": []
+      }
+    },
+    "app_memory_peak_bytes": 265175040,
+    "ml_memory_peak_bytes": 2604453888,
+    "peak_scope": "actual cgroup peak since corrected container creation, including these requests",
+    "runtime_after": {
+      "app": "healthy",
+      "ml": "healthy",
+      "restarts": 0,
+      "oom_events": 0,
+      "oom_kill_events": 0
+    },
+    "observations": 7
+  },
+  "public_cutover": {
+    "status": "passed",
+    "host": "logo-detection.xxtract.com",
+    "final_new_health": {
+      "at": 1791246318.236798,
+      "response": {
+        "status": "ok",
+        "timestamp": "2026-10-06T00:25:18.222Z"
+      },
+      "status": 200
+    },
+    "actual_rollback_legacy_health": {
+      "at": 1791246307.0894542,
+      "response": {
+        "status": "healthy",
+        "model_loaded": true,
+        "uptime_seconds": 9567161.897886515
+      },
+      "status": 200
+    },
+    "old_resource_retained": true,
+    "proxy_or_container_restart_required": false
+  },
+  "public_recognition": {
+    "nutri-small": {
+      "status": 200,
+      "seconds": 24.96,
+      "response": {
+        "product_id": "production-acceptance-nutri-small",
+        "processing_time_ms": 24848,
+        "detections": [
+          {
+            "logo_code": "NUTRISCORE_B",
+            "label": "NUTRISCORE_B",
+            "confidence": 0.9985477328300476,
+            "bbox": [
+              0.7588282504012841,
+              0.3569723832253665,
+              0.8170144462279294,
+              0.44630071599045346
+            ],
+            "method": "nutriscore-a2",
+            "confidence_kind": "classifier-softmax",
+            "evidence": {
+              "head_letter": "B",
+              "head_score": 0.875,
+              "trained_model": {
+                "pred": "B",
+                "conf": 0.999,
+                "probs": {
+                  "A": 0.001,
+                  "B": 0.999,
+                  "C": 0.001,
+                  "D": 0,
+                  "E": 0,
+                  "none": 0
+                }
+              }
+            },
+            "reference_version": null,
+            "requires_review": false,
+            "uncertain": false
+          }
+        ],
+        "review_proposals": [
+          {
+            "logo_code": "MARINE_STEWARDSHIP_COUNCIL_LABEL",
+            "label": "MARINE_STEWARDSHIP_COUNCIL_LABEL",
+            "confidence": 0.8424684645268983,
+            "bbox": [
+              0.7588282504012841,
+              0.9239686327991817,
+              0.8101926163723917,
+              0.9781793385612001
+            ],
+            "method": "embedding",
+            "confidence_kind": "embedding-cosine-similarity",
+            "evidence": null,
+            "reference_version": null,
+            "requires_review": true,
+            "uncertain": true,
+            "product_id": "production-acceptance-nutri-small"
+          },
+          {
+            "logo_code": "CROSSED_GRAIN_SYMBOL",
+            "label": "CROSSED_GRAIN_SYMBOL",
+            "confidence": 0.9062573446569635,
+            "bbox": [
+              0.8856340288924559,
+              0.6525741561541084,
+              0.9141252006420546,
+              0.676781452437777
+            ],
+            "method": "embedding",
+            "confidence_kind": "embedding-cosine-similarity",
+            "evidence": null,
+            "reference_version": null,
+            "requires_review": true,
+            "uncertain": true,
+            "product_id": "production-acceptance-nutri-small"
+          },
+          {
+            "logo_code": "RECYCLABLE_GENERAL_CLAIM",
+            "label": "RECYCLABLE_GENERAL_CLAIM",
+            "confidence": 0.85348112556159,
+            "bbox": [
+              0.43097913322632425,
+              0.6709853392430958,
+              0.4582664526484751,
+              0.6870098874872145
+            ],
+            "method": "embedding",
+            "confidence_kind": "embedding-cosine-similarity",
+            "evidence": null,
+            "reference_version": null,
+            "requires_review": true,
+            "uncertain": true,
+            "product_id": "production-acceptance-nutri-small"
+          },
+          {
+            "logo_code": "EU_ORGANIC_FARMING",
+            "label": "EU_ORGANIC_FARMING",
+            "confidence": 0.6969266553967384,
+            "bbox": [
+              0.7889245585874799,
+              0.9318104330037504,
+              0.8089887640449438,
+              0.9481759290828503
+            ],
+            "method": "embedding",
+            "confidence_kind": "embedding-cosine-similarity",
+            "evidence": null,
+            "reference_version": null,
+            "requires_review": true,
+            "uncertain": true,
+            "product_id": "production-acceptance-nutri-small"
+          }
+        ]
+      },
+      "canonical_production_join_present": true
+    },
+    "ghs-label": {
+      "status": 200,
+      "seconds": 5.99,
+      "response": {
+        "product_id": "production-acceptance-ghs-label",
+        "processing_time_ms": 5867,
+        "detections": [],
+        "review_proposals": [
+          {
+            "logo_code": "FLAME",
+            "label": "FLAME",
+            "confidence": 0.990627376953735,
+            "bbox": [
+              0.5811764705882353,
+              0.7604545454545455,
+              0.6282352941176471,
+              0.7959090909090909
+            ],
+            "method": "ghs-specialist",
+            "confidence_kind": "uncalibrated-classifier-score",
+            "evidence": null,
+            "reference_version": "ghs-glyph-v1-58a1db6819e8",
+            "requires_review": true,
+            "uncertain": false,
+            "product_id": "production-acceptance-ghs-label"
+          }
+        ]
+      },
+      "canonical_production_join_present": false
+    },
+    "wrong-key": {
+      "status": 401,
+      "seconds": 0.11,
+      "response": {
+        "detail": "Invalid API key"
+      },
+      "canonical_production_join_present": true
+    }
+  },
+  "daily_encrypted_backup": {
+    "status": "passed",
+    "first_backup": "20261006T001655Z-82b81313",
+    "service_backup": "20261006T002009Z-bc41895a",
+    "objects": 1069,
+    "tables": 35,
+    "independent_copy_verification": {
+      "status": "passed",
+      "authenticated_decryption": true,
+      "all_inner_file_hashes_match": true,
+      "objects": 1069,
+      "tables": 35,
+      "encrypted_sha256": "3ed26968b70fdf89f346b683f73570ba0af4b484190574aa9986a40a5c3eabb3",
+      "source_backup": "20261006T001655Z-82b81313",
+      "private_stage_removed_at_source": true,
+      "temporary_local_plaintext_removed": true
+    },
+    "timer_active": true,
+    "service_result": "success",
+    "service_exit_status": 0,
+    "service_completed_at": "2026-10-06T00:20:30Z",
+    "schedule": "daily 02:15 UTC",
+    "private_stage_removed": true,
+    "only_ciphertext_and_sanitized_receipt_on_shared_storage": true,
+    "separate_database_restore_test_passed": true,
+    "daily_capsule_database_restore_tested": false
+  },
+  "queue_state": {
+    "active_references": 542,
+    "reference_vectors": 542,
+    "images": 876,
+    "bootstrap_jobs": 0,
+    "artwork_review_items": 0,
+    "redis_active_lists": 0,
+    "redis_wait_lists": 0,
+    "flywheel_paused": true,
+    "acc_jobs_imported": false
+  },
+  "release_decision": {
+    "owner": "Codex/root",
+    "at": "2026-10-06T00:32:39.566268+00:00",
+    "decision": "GO for migrated production and existing strict /detect integration",
+    "scope": [
+      "selected database and training assets",
+      "actual trained existing production detect contract",
+      "private uploads and previews"
+    ],
+    "deferred_validation": [
+      "existing-user real password login: credential unavailable; actual session/user lookup, role enforcement and bcrypt compatibility passed",
+      "generic v1 adjustable thresholds: separate source ONNX absent; not claimed as trained endpoint quality"
+    ],
+    "retention": "legacy resource and modelcache preserved at least through24h checkpoint and until separate retirement decision",
+    "user_authorization": "Ga verder totdat alles klaarvis in productie",
+    "all_checklist_items_passed": false
+  },
+  "aftercare": {
+    "initial_installed_service_observation": {
+      "resource": "logo-production-20261005",
+      "observed_at": "2026-10-06T00:33:46.868251+00:00",
+      "status": "passed",
+      "read_only": true,
+      "checks": {
+        "public_health": {
+          "status": "passed",
+          "fresh_timestamp_age_seconds": 0
+        },
+        "containers": {
+          "app": {
+            "status": "healthy",
+            "oom": false,
+            "restart_count": 0,
+            "frozen_image_match": true
+          },
+          "minio": {
+            "status": "healthy",
+            "oom": false,
+            "restart_count": 0,
+            "frozen_image_match": true
+          },
+          "ml-service": {
+            "status": "healthy",
+            "oom": false,
+            "restart_count": 0,
+            "frozen_image_match": true
+          },
+          "postgres": {
+            "status": "healthy",
+            "oom": false,
+            "restart_count": 0,
+            "frozen_image_match": true
+          },
+          "redis": {
+            "status": "healthy",
+            "oom": false,
+            "restart_count": 0,
+            "frozen_image_match": true
+          }
+        },
+        "vectors": {
+          "status": "passed",
+          "active_complete_vectors": 542,
+          "active_references": 542,
+          "dimensions": 512
+        },
+        "scheduled_backup": {
+          "status": "passed",
+          "last_success_age_seconds": 796.243,
+          "timer_active": true
+        },
+        "encrypted_backup": {
+          "status": "passed",
+          "objects": 1069,
+          "tables": 35,
+          "age_seconds": 797.084,
+          "ciphertext_sha256": "b8745bc7bdbc09439384a242e689c45f1442081eca7ebcc32a401e633b26413d",
+          "private_stage_removed": true,
+          "scope": "stored authenticated-readback receipt plus current ciphertext hash; no key read or fresh decryption"
+        }
+      }
+    },
+    "service_result": "success",
+    "service_exit_status": 0,
+    "service_completed_at": "2026-10-06T00:33:47Z",
+    "timer_schedule": {
+      "cutover_at": "2026-10-06T00:25:18.236798+00:00",
+      "one_hour_due": "2026-10-06T01:25:18.236798+00:00",
+      "24_hour_due": "2026-10-07T00:25:18.236798+00:00",
+      "checkpoints_observed": false
+    },
+    "one_hour_timer_active": true,
+    "24_hour_timer_active": true,
+    "one_hour_and_24_hour_not_yet_observed": true,
+    "visible_main_thread_automation": "nazorg-logoherkenning-productie",
+    "15_minute_observation": {
+      "status": "passed",
+      "cutover_epoch": 1791246318.236798,
+      "elapsed_seconds": 900,
+      "observations": [
+        {
+          "at": "2026-10-06T00:28:58.327805+00:00",
+          "health_status": 200,
+          "new_application": true,
+          "five_containers_healthy_without_oom_or_restart": true
+        },
+        {
+          "at": "2026-10-06T00:29:29.196195+00:00",
+          "health_status": 200,
+          "new_application": true,
+          "five_containers_healthy_without_oom_or_restart": true
+        },
+        {
+          "at": "2026-10-06T00:29:59.862212+00:00",
+          "health_status": 200,
+          "new_application": true,
+          "five_containers_healthy_without_oom_or_restart": true
+        },
+        {
+          "at": "2026-10-06T00:30:30.537494+00:00",
+          "health_status": 200,
+          "new_application": true,
+          "five_containers_healthy_without_oom_or_restart": true
+        },
+        {
+          "at": "2026-10-06T00:31:01.154748+00:00",
+          "health_status": 200,
+          "new_application": true,
+          "five_containers_healthy_without_oom_or_restart": true
+        },
+        {
+          "at": "2026-10-06T00:31:31.741114+00:00",
+          "health_status": 200,
+          "new_application": true,
+          "five_containers_healthy_without_oom_or_restart": true
+        },
+        {
+          "at": "2026-10-06T00:32:02.341225+00:00",
+          "health_status": 200,
+          "new_application": true,
+          "five_containers_healthy_without_oom_or_restart": true
+        },
+        {
+          "at": "2026-10-06T00:32:33.210640+00:00",
+          "health_status": 200,
+          "new_application": true,
+          "five_containers_healthy_without_oom_or_restart": true
+        },
+        {
+          "at": "2026-10-06T00:33:03.861973+00:00",
+          "health_status": 200,
+          "new_application": true,
+          "five_containers_healthy_without_oom_or_restart": true
+        },
+        {
+          "at": "2026-10-06T00:33:34.697664+00:00",
+          "health_status": 200,
+          "new_application": true,
+          "five_containers_healthy_without_oom_or_restart": true
+        },
+        {
+          "at": "2026-10-06T00:34:05.365308+00:00",
+          "health_status": 200,
+          "new_application": true,
+          "five_containers_healthy_without_oom_or_restart": true
+        },
+        {
+          "at": "2026-10-06T00:34:36.224695+00:00",
+          "health_status": 200,
+          "new_application": true,
+          "five_containers_healthy_without_oom_or_restart": true
+        },
+        {
+          "at": "2026-10-06T00:35:06.872538+00:00",
+          "health_status": 200,
+          "new_application": true,
+          "five_containers_healthy_without_oom_or_restart": true
+        },
+        {
+          "at": "2026-10-06T00:35:37.762876+00:00",
+          "health_status": 200,
+          "new_application": true,
+          "five_containers_healthy_without_oom_or_restart": true
+        },
+        {
+          "at": "2026-10-06T00:36:08.369554+00:00",
+          "health_status": 200,
+          "new_application": true,
+          "five_containers_healthy_without_oom_or_restart": true
+        },
+        {
+          "at": "2026-10-06T00:36:39.303505+00:00",
+          "health_status": 200,
+          "new_application": true,
+          "five_containers_healthy_without_oom_or_restart": true
+        },
+        {
+          "at": "2026-10-06T00:37:09.985579+00:00",
+          "health_status": 200,
+          "new_application": true,
+          "five_containers_healthy_without_oom_or_restart": true
+        },
+        {
+          "at": "2026-10-06T00:37:40.847262+00:00",
+          "health_status": 200,
+          "new_application": true,
+          "five_containers_healthy_without_oom_or_restart": true
+        },
+        {
+          "at": "2026-10-06T00:38:11.500691+00:00",
+          "health_status": 200,
+          "new_application": true,
+          "five_containers_healthy_without_oom_or_restart": true
+        },
+        {
+          "at": "2026-10-06T00:38:42.396675+00:00",
+          "health_status": 200,
+          "new_application": true,
+          "five_containers_healthy_without_oom_or_restart": true
+        },
+        {
+          "at": "2026-10-06T00:39:13.060724+00:00",
+          "health_status": 200,
+          "new_application": true,
+          "five_containers_healthy_without_oom_or_restart": true
+        },
+        {
+          "at": "2026-10-06T00:39:43.972533+00:00",
+          "health_status": 200,
+          "new_application": true,
+          "five_containers_healthy_without_oom_or_restart": true
+        },
+        {
+          "at": "2026-10-06T00:40:14.596815+00:00",
+          "health_status": 200,
+          "new_application": true,
+          "five_containers_healthy_without_oom_or_restart": true
+        },
+        {
+          "at": "2026-10-06T00:40:19.002901+00:00",
+          "health_status": 200,
+          "new_application": true,
+          "five_containers_healthy_without_oom_or_restart": true
+        }
+      ]
+    }
+  },
+  "cleanup": {
+    "isolated_restore_test_container_and_volumes_removed": true,
+    "own_public_upload_record_and_objects_removed": true,
+    "own_successful_backup_plaintext_stages_removed": true,
+    "own_superseded_first_plaintext_run_removed_after_verified_encrypted_copies": true,
+    "independent_mac_decryption_plaintext_removed": true,
+    "encrypted_backups_and_separate_restore_evidence_retained": true,
+    "legacy_service_and_model_cache_retained": true,
+    "research_checkout_preserved": true,
+    "release_worktree_retained_for_scheduled_aftercare": true
   }
 }

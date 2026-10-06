@@ -1,0 +1,11 @@
+[Unit]
+Description=Read-only logo production 1 hour post-cutover checkpoint
+
+[Timer]
+OnCalendar=2026-10-06 01:25:18 UTC
+Persistent=true
+AccuracySec=1s
+Unit=logo-production-20261005-observe.service
+
+[Install]
+WantedBy=timers.target

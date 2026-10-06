@@ -6,6 +6,7 @@ import signal
 import subprocess
 import tempfile
 import unittest
+import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW = ROOT / '.github/workflows/ci-cd.yml'
@@ -66,6 +67,16 @@ class ReleaseEnvironmentTests(unittest.TestCase):
                         pass
             calls = (base / 'calls').read_text() if (base / 'calls').exists() else ''
             return result, calls
+
+    def test_shared_browser_budget_is_scoped_to_e2e_job(self):
+        workflow = yaml.safe_load(WORKFLOW.read_text())
+        self.assertEqual(workflow['jobs']['test-e2e']['env']['RATE_LIMIT_MAX'], '10000')
+        self.assertNotIn('RATE_LIMIT_MAX', workflow.get('env', {}))
+        for name, job in workflow['jobs'].items():
+            if name != 'test-e2e':
+                self.assertNotIn('RATE_LIMIT_MAX', job.get('env', {}), name)
+        production = (ROOT / 'docker-compose.prod.yml').read_text()
+        self.assertNotIn('RATE_LIMIT_MAX', production, 'Test-only budget cannot relax production')
 
     def test_environment_write_failure_cleans_up_own_storage(self):
         result, calls = self.storage_setup(env_failure=True)

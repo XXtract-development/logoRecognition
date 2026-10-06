@@ -241,10 +241,12 @@ jobs:
 
       - name: Run offline production preparation contracts
         run: |
-          python -m pip install PyYAML==6.0.3
+          python -m pip install PyYAML==6.0.3 'cryptography>=41.0.7'
           python scripts/deployment/production/test-production-config.py
           python scripts/deployment/production/test-transfer-package.py
           python scripts/deployment/production/test-target-backup.py
+          python scripts/deployment/production/test-owned-production-backup.py
+          python scripts/deployment/production/test-owned-production-observer.py
 
       - name: Run CI environment contracts
         run: python -m unittest discover -s .github/tests -v
@@ -314,6 +316,8 @@ jobs:
       JWT_SECRET: e2e-test-secret-key-at-least-32-characters
       COOKIE_SECRET: e2e-cookie-secret-at-least-32-characters
       CORS_ORIGIN: http://localhost:5173
+      # The shared synthetic browser suite must not exhaust the production default.
+      RATE_LIMIT_MAX: '10000'
       NODE_ENV: test
       PORT: '8000'
       HOST: 0.0.0.0
