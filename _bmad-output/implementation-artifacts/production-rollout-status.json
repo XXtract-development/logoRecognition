@@ -1,9 +1,9 @@
 {
-  "time": "2026-10-06T00:41:07.413068+00:00",
+  "time": "2026-10-06T00:59:29.202080+00:00",
   "task_id": "01a0fc7a-28d6-7333-ae26-c6dc972076d8",
   "owner": "Codex/root",
   "status": "active",
-  "phase": "public production active; actual15minutecheck passed; final tracked release verification",
+  "phase": "test-only browser budget fix reviewed and two actual targeted browser tests passed; full fresh CI next",
   "authorization": {
     "instruction": "Ga verder totdat alles klaarvis in productie",
     "scope": [
@@ -116,13 +116,29 @@
       "passed": true,
       "elapsed_seconds": 900,
       "samples": 24
+    },
+    "final_ci": {
+      "run": 37395367362,
+      "status": "previous failure confirmed and fixed; fresh full CI pending",
+      "ml_tests": "passed",
+      "node_tests": "passed",
+      "security": "passed",
+      "e2e": "failed: Start Recognition button absent in workflow navigation",
+      "investigation": "confirmed shared CI synthetic traffic exceeds100/min; actual trace health429/auth429; UI correctly disables offline navigation",
+      "fix": "E2Ejob only RATE_LIMIT_MAX10000; independent12 environment contracts passed; production budget unchanged",
+      "targeted_actual_browser": {
+        "passed": 2,
+        "retries": 0,
+        "own_processes_cleaned_up": true,
+        "production_called": false
+      }
     }
   },
   "dataset_source_release": "814f6cd396f63dada95411d51dda5dfae3205a6a",
   "paired_build_run": 37391572294,
   "paired_images_verified": true,
   "runtime_deployment_uuid": "fsc8swwkw0oksow4cgocwwwk",
-  "configuration_commit": "be70430b8b9b0268ef09c3f26d10c67025407257",
+  "configuration_commit": "c28ec4830afa44b2cbb50a846d105f47a298ea1f",
   "runtime_release": "2c5bdab23c6d66f40183391a10bbb24ba1481601",
   "cleanup_status": "own restore containers/volumes, test uploads and superseded plaintext staging removed; verified backups, legacy rollback resource/cache, research checkout and aftercare worktree preserved",
   "aftercare": {
@@ -141,5 +157,6 @@
     "existing-user password login not attempted because password unavailable; signed existing session, database SELECT and real bcrypt compatibility passed",
     "generic adjustable-threshold v1 route not quality-validated; source generic ONNX model absent; production /detect uses actual strict artwork classifiers",
     "all9GHS remain review-only; independent per-type field readiness not claimed"
-  ]
+  ],
+  "current_gate": "fresh final CI"
 }

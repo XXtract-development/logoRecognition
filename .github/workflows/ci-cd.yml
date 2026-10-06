@@ -316,6 +316,8 @@ jobs:
       JWT_SECRET: e2e-test-secret-key-at-least-32-characters
       COOKIE_SECRET: e2e-cookie-secret-at-least-32-characters
       CORS_ORIGIN: http://localhost:5173
+      # The shared synthetic browser suite must not exhaust the production default.
+      RATE_LIMIT_MAX: '10000'
       NODE_ENV: test
       PORT: '8000'
       HOST: 0.0.0.0

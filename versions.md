@@ -12,6 +12,7 @@
 - De nieuwe herkenning is actief op het bestaande productieadres; veilig terugschakelen is getest.
 - Dagelijkse back-ups worden versleuteld bewaard en automatisch gecontroleerd.
 - De migratiechecklist toont de werkelijk uitgevoerde controles en geplande nazorg.
+- De vrijgavecontrole kan de volledige gebruikersroute doorlopen zonder dat het proefverkeer de testomgeving blokkeert.
 
 ---
 

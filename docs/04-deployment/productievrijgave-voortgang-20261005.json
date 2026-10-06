@@ -1,8 +1,8 @@
 {
   "version": 1,
   "documentId": "acc-prod-20261005",
-  "sourceHash": "6d1dacf19ddfae165676915f20e06ff39b969d92ffe15499d306b1636699dbea",
-  "updatedAt": "2026-10-06T00:41:05.210334+00:00",
+  "sourceHash": "0cde2aa37168b3e851cf5fad9641df4a2b962ed8d65f1da6c87141bb4dc572c4",
+  "updatedAt": "2026-10-06T00:58:11.159525+00:00",
   "items": {
     "p1-scope": {
       "status": "done",
@@ -912,10 +912,10 @@
     "field-24": "Nieuw publiek verkeer actief. Terugkeer via netwerkroute getest; nieuwe gegevens worden behouden. Bestaande bron- en productiegegevens niet overschreven.",
     "field-25": "Expliciete gebruikeropdracht: “Ga verder totdat alles klaarvis in productie”. Begrensde productievoorziening, migratie van geselecteerde gegevens/objecten en zelfstandige voortzetting toegestaan.",
     "field-26": "Expliciete productieopdracht omvat begrensde inrichting, start en uitrol. Uitvoering van publiekscutover blijft een afzonderlijke technische controle en staat nog open.",
-    "field-27": "Begrensd GO door Codex/root voor migratie, bestaande publieke /detect en overgedragen training/opslag, vastgelegd 2026-10-06T00:32:53.408193+00:00. Onder expliciete zelfstandige productieopdracht, na echt publiek bewijs. Uitgestelde acceptatie: bestaande-gebruikerswachtwoordlogin (wachtwoord onbekend) en generieke v1-drempels (ONNX reeds in ACC afwezig). Geen blanket-go voor alle checklist-/kwaliteitspunten.",
+    "field-27": "Begrensd GO door Codex/root voor migratie, bestaande publieke /detect en overgedragen training/opslag, vastgelegd 2026-10-06T00:32:53.408193+00:00. Onder expliciete zelfstandige productieopdracht, na echt publiek bewijs. Uitgestelde acceptatie: bestaande-gebruikerswachtwoordlogin (wachtwoord onbekend) en generieke v1-drempels (ONNX reeds in ACC afwezig). Geen blanket-go voor alle checklist-/kwaliteitspunten. CI 37395367362: server, ML en security geslaagd; E2E 429 gediagnosticeerd als gedeeld testbudget. Uitsluitend CI-budget naar 10.000 verhoogd en onafhankelijk beoordeeld; 12 omgevingscontroles geslaagd. Volledige browserherhaling nog open; productieruntime 2c5 ongewijzigd.",
     "field-28": "Uitgevoerd: vijf gezonde onderdelen, 34 tabellen/21 ledgerregistraties, geselecteerde gegevens/1.069 objecten, 542 referentievectoren, modelhashes, getimed herstel, versleutelde dagelijkse backup/Mac-validatie/systemdtimer, publieke SPA/sessie/rollen/API-sleutel/upload/preview/eigen cleanup, gecontroleerde herkenning/negatieve foto/belasting, cutover en geteste terugkeer. Niet uitgevoerd: bestaande-gebruikerswachtwoordlogin, instelbare v1-drempels, toekomstige één-uurs/24-uursobservatie en uitfasering. Daadwerkelijke 15-minutencontrole en geïnstalleerde read-only observer geslaagd; volgende checkpoints gepland, nog niet voltooid.",
     "field-29": "15 minuten daadwerkelijk geslaagd: 900 seconden, 24 steekproeven, publieke gezondheid 200, vijf gezonde onderdelen zonder geheugenuitval/herstarts. Observer handmatig 00:33:10 UTC en systemd 00:33:47 UTC geslaagd. Echte read-only servertimers actief voor 6 oktober 01:25:18 UTC (één uur) en 7 oktober 00:25:18 UTC (24 uur); toekomstige checkpoints blijven open. Actieve stille nazorgbewaking in hoofdtaak; meldt alleen betekenisvolle fout of afronding.",
-    "field-30": "Eigen hersteltestcontainers/volumes en uploadtestrecords/objecten verwijderd. Alleen eigen nieuwe plaintextbackupstage na geslaagde externe versleutelde publicatie verwijderd. Legacydienst, cache, backups en sleutelkopieën behouden; uitfasering niet uitgevoerd."
+    "field-30": "Eigen hersteltestcontainers/volumes en uploadtestrecords/objecten verwijderd. Alleen eigen nieuwe plaintextbackupstage na geslaagde externe versleutelde publicatie verwijderd. Legacydienst, cache, backups en sleutelkopieën behouden; uitfasering niet uitgevoerd. Eerste vervangen plaintext-backuprun uitsluitend uit eigen private staging verwijderd om circa 00:41 UTC, na onafhankelijke verificatie van versleutelde capsules. Versleutelde backups, sleutelkopieën en afzonderlijke herstelbewijzen behouden."
   },
   "history": [
     {
@@ -1512,6 +1512,11 @@
       "at": "2026-10-06T00:41:05.210334+00:00",
       "label": "Werkelijke 15-minutencontrole",
       "change": "900 seconden en 24 steekproeven geslaagd; geïnstalleerde observer echt uitgevoerd. Eén-uurs/24-uurschecks alleen gepland en open gehouden."
+    },
+    {
+      "at": "2026-10-06T00:58:11.159525+00:00",
+      "label": "Bewezen cleanup en actuele CI-beperking",
+      "change": "De aanvankelijke, inmiddels vervangen plaintext-backuprun is door de coördinator op 6 oktober om circa 00:41 UTC uitsluitend uit de eigen private staging verwijderd, nadat de onafhankelijke versleutelde capsules waren geauthenticeerd en geverifieerd. De versleutelde backups, onafhankelijke sleutelkopieën en afzonderlijke databaseherstelbewijzen blijven behouden. Geen oorspronkelijke productiegegevens of eerdere beschermde herstelbewijzen zijn verwijderd. De laatste volledige CI-run `37395367362` slaagde voor server-, ML- en beveiligingscontroles, maar de browsertests faalden door HTTP 429: de gedeelde synthetische testomgeving putte haar standaard verzoekbudget uit. De oorzaak is met screenshot en trace vastgesteld; de correctie verhoogt uitsluitend het CI-browsertestbudget naar 10.000 en is onafhankelijk beoordeeld met 12 geslaagde omgevingscontroles. De volledige browserherhaling staat nog open; er wordt geen volledig geslaagde CI-run geclaimd. De daadwerkelijke productiecode en het imagepaar `2c5bdab` zijn hierdoor niet veranderd."
     }
   ]
 }

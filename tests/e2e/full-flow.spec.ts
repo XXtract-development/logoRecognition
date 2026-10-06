@@ -119,7 +119,10 @@ test.describe('HomePage - Landing Page', () => {
     await page.goto('/');
     await waitForPageStability(page);
 
-    await page.getByRole('button', { name: /start recognition/i }).click({ force: true });
+    const startButton = page.getByRole('button', { name: /start recognition/i });
+    await expect(startButton).toBeVisible();
+    await expect(startButton).toBeEnabled();
+    await startButton.click();
     await page.waitForURL('/recognize', { timeout: 10000 });
 
     await expect(page.url()).toContain('/recognize');
