@@ -1,6 +1,7 @@
 // Story 1.1 — service-key auth for POST /api/v1/pipeline/logo-scans (FR-20, AD-3, NFR-4)
 vi.unmock('../../middleware/auth');
 import Fastify from 'fastify';
+import multipart from '@fastify/multipart';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { logoScanRoutes } from '../../api/v1/logo-scans';
 import { parseLogoPipelineKeys, resolveLogoPipelineConsumer } from '../../services/pipeline/logo-pipeline-keys';
@@ -11,6 +12,7 @@ const URL = '/api/v1/pipeline/logo-scans';
 
 async function app() {
   const server = Fastify();
+  await server.register(multipart);
   await server.register(logoScanRoutes, { prefix: '/api/v1' });
   return server;
 }
@@ -71,11 +73,11 @@ describe('POST /api/v1/pipeline/logo-scans auth', () => {
     }
     await server.close();
   });
-  it('valid key gives 501 NOT_IMPLEMENTED stub', async () => {
+  it('valid key passes authentication (no longer the 501 stub; a non-multipart body is a 400)', async () => {
     const server = await app();
     const res = await server.inject({ method: 'POST', url: URL, headers: { 'x-api-key': 'test-key-2' }, payload: {} });
-    expect(res.statusCode).toBe(501);
-    expect(res.json().error.code).toBe('NOT_IMPLEMENTED');
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('INVALID_IMAGE');
     await server.close();
   });
   it('never logs key values; logs only consumer name on success', async () => {

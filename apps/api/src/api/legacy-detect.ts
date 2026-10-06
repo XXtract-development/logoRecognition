@@ -8,11 +8,11 @@ import { isGhsCode, normalizeReferenceCode } from '../services/field-type-mappin
 import canonicalReferenceMapping from '../services/reference-code-mapping.json';
 
 const MAX_CONCURRENT_DETECTIONS = 2;
-const MAX_NORMALIZED_BYTES = 20 * 1024 * 1024;
-const MAX_DECODED_PIXELS = 80_000_000;
+export const MAX_NORMALIZED_BYTES = 20 * 1024 * 1024;
+export const MAX_DECODED_PIXELS = 80_000_000;
 
 type ReferencePair = { t3777Code: string; fieldType: string };
-const GHS_REFERENCE_PAIRS: ReferencePair[] = canonicalReferenceMapping.categories.GHSSymbolDescriptionCode.codes
+export const GHS_REFERENCE_PAIRS: ReferencePair[] = canonicalReferenceMapping.categories.GHSSymbolDescriptionCode.codes
   .filter(code => isGhsCode(code) && code === normalizeReferenceCode(code) && !/^GHS\d+$/.test(code))
   .map(t3777Code => ({ t3777Code, fieldType: 'GHSSymbolDescriptionCode' }));
 type ArtworkResult = Awaited<ReturnType<typeof mlClient.classifyArtwork>>['results'][number];
@@ -23,17 +23,17 @@ const SCORE_KINDS: Record<string, string> = {
   'ghs-glyph': 'uncalibrated-classifier-score', 'ghs-template': 'template-similarity-not-probability',
 };
 
-function validBox(box: unknown, width: number, height: number): box is { x: number; y: number; width: number; height: number } {
+export function validBox(box: unknown, width: number, height: number): box is { x: number; y: number; width: number; height: number } {
   if (!box || typeof box !== 'object') return false;
   const b = box as { x: number; y: number; width: number; height: number };
   return [b.x, b.y, b.width, b.height].every(Number.isSafeInteger) &&
     b.x >= 0 && b.y >= 0 && b.width > 0 && b.height > 0 &&
     b.x + b.width <= width && b.y + b.height <= height;
 }
-const boxKey = (box: { x: number; y: number; width: number; height: number }) =>
+export const boxKey = (box: { x: number; y: number; width: number; height: number }) =>
   `${box.x},${box.y},${box.width},${box.height}`;
 
-function assertCompleteClassification(results: ArtworkResult[], crops: { x: number; y: number; width: number; height: number }[], width: number, height: number) {
+export function assertCompleteClassification(results: ArtworkResult[], crops: { x: number; y: number; width: number; height: number }[], width: number, height: number) {
   if (!Array.isArray(results) || results.length !== crops.length) throw new Error('Classification response is incomplete');
   const remaining = new Set(crops.map(boxKey));
   if (remaining.size !== crops.length) throw new Error('Duplicate localization regions');
