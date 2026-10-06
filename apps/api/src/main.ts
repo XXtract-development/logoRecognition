@@ -31,6 +31,7 @@ import { referenceLogosRoutes } from './api/v1/reference-logos';
 import { artworkPipelineRoutes } from './api/v1/artwork-pipeline';
 import { verifyDeclaredRoutes } from './api/v1/verify-declared';
 import { pipelineRoutes } from './api/v1/pipeline';
+import { logoScanRoutes } from './api/v1/logo-scans';
 import { flywheelRoutes } from './api/v1/flywheel';
 import { registerRetrainingCronJob } from './services/pipeline/trigger';
 import { registerTrainingFlowWorker, registerDetectionWorker, registerFlywheelWorker, closePipelineWorkers } from './services/pipeline/workers';
@@ -154,6 +155,7 @@ async function startServer() {
     await app.register(artworkPipelineRoutes, { prefix: '/api/v1' });
     await app.register(verifyDeclaredRoutes, { prefix: '/api/v1' });
     await app.register(pipelineRoutes, { prefix: '/api/v1' });
+    await app.register(logoScanRoutes, { prefix: '/api/v1' });
     await app.register(flywheelRoutes, { prefix: '/api/v1' });
     await app.register(ghsReviewRoutes, { prefix: '/api/v1' });
 

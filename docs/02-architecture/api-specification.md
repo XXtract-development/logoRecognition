@@ -352,6 +352,15 @@ Epic 9 voegt een crash-bestendige retraining-pipeline toe (BullMQ + Redis). De N
 - **ADMIN** → route heeft een expliciete `requireRole('ADMIN')`-preHandler. ADMIN is in deze codebase de data-manager-equivalent (er is geen aparte `DATA_MANAGER`-rol).
 - **— (geen guard)** → de routehandler heeft geen role-/auth-preHandler. De activatie-route vormt de uitzondering met eigen, inline 403/401-guards (zie onder).
 
+### Logo-scan aanvraag (Verhaal 1.1)
+
+`POST /api/v1/pipeline/logo-scans` — route in `apps/api/src/api/v1/logo-scans.ts`, sleutelcontrole in `apps/api/src/services/pipeline/logo-pipeline-keys.ts`.
+
+- **Authenticatie:** header `x-api-key` moet exact één sleutel uit `LOGO_PIPELINE_KEYS` zijn (`naam:sleutel,naam2:sleutel2`; zie `.env.example`). Timing-safe vergelijking (SHA-256-digests, alle sleutels doorlopen), geen voorvoegsel-controle, nooit de gedeelde `API_KEY`, `PIPELINE_SERVICE_KEY` of een `lr_…`-sleutel. Ontbrekende of lege variabele = elke aanvraag `401`.
+- **Antwoorden:** `401 {error:{code:'UNAUTHORIZED',message,requestId}}`; met geldige sleutel voorlopig `501 {error:{code:'NOT_IMPLEMENTED',message,requestId}}` (de echte scan komt in Verhaal 1.2).
+- **Logging:** alleen de consumentnaam en `requestId`, nooit een sleutelwaarde.
+- **ml-service niet publiek (gecontroleerd 2026-10-06, vastgelegd in `logo-scans-wiring.test.ts`):** in `docker-compose.prod.yml` heeft ml-service geen `ports`, geen proxy-router en zit alleen op de netwerken `private` (intern) en `ml-egress`. In `docker-compose.acc.yml` en `.test.yml` heeft ml-service geen `ports` en geen Traefik-router (dus niet via de gateway gepubliceerd), maar draait met `network_mode: host` en luistert op `0.0.0.0:8011`; bereikbaarheid van buiten hangt daar af van de firewall van de host. Dat is NIET in de repository te bewijzen en is een open controlepunt voor de beheerder. `docker-compose.yml` en `.full.yml` zijn lokale ontwikkelstacks en publiceren poorten bewust.
+
 ### Nieuwe endpoints (API gateway, `apps/api`)
 
 Routes in `apps/api/src/api/v1/pipeline.ts`.
