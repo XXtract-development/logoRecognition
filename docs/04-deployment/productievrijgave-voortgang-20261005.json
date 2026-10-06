@@ -1,8 +1,8 @@
 {
   "version": 1,
   "documentId": "acc-prod-20261005",
-  "sourceHash": "ec847392e6b8ae076d600ce78fe8fbdcc08f08c325eebb777f4047021599cbd2",
-  "updatedAt": "2026-10-06T01:11:03.665015+00:00",
+  "sourceHash": "6749f5c7e06c61183ed7706aa2d17eb72aff5d10d652dd330041ab398ab3c843",
+  "updatedAt": "2026-10-06T01:31:05.684771+00:00",
   "items": {
     "p1-scope": {
       "status": "done",
@@ -844,12 +844,12 @@
       "completedAt": "2026-10-06T00:41:05.210334+00:00"
     },
     "p12-1hour": {
-      "status": "pending",
-      "owner": "Codex/root — productiecoördinator",
-      "note": "Observatieperiode begint pas na echte publieke omschakeling; nog niet verstreken.",
-      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json",
-      "updatedAt": "2026-10-05T23:20:26.590568+00:00",
-      "completedAt": ""
+      "status": "done",
+      "owner": "Codex/root — automatische nazorg",
+      "note": "Werkelijke één-uurs timer gestart01:25:18UTC, observer geslaagd01:25:19UTC; alle5 diensten gezond,0herstarts/geenOOM,542/542 complete512vectors, backupcipherSHA gecontroleerd. Dagelijkse02:15timer nog niet gestart.",
+      "evidence": "docs/04-deployment/production-rollout-evidence-20261005.json — actual_one_hour_checkpoint",
+      "updatedAt": "2026-10-06T01:31:05.684771+00:00",
+      "completedAt": "2026-10-06T01:25:19.036563+00:00"
     },
     "p12-24hour": {
       "status": "pending",
@@ -1522,6 +1522,11 @@
       "at": "2026-10-06T01:11:03.665015+00:00",
       "label": "Volledige CI geslaagd en PR11 gemerged",
       "change": "De volledige herhaalde CI-run `37396873062` op codeversie `13cb838` is geslaagd voor Node/server, ML, browsertests en beveiliging. De eerdere run `37395367362` met HTTP 429 in de gedeelde synthetische browseromgeving blijft als onderzochte oorzaak geregistreerd; het hogere verzoekbudget geldt uitsluitend voor die CI-job. PR11 is op 6 oktober om 01:08:57 UTC daadwerkelijk naar ACC gemerged met squashcommit `c58f2fd8610873d32dde70dde082fd3e1b67efd9`. De Coolifyconfiguratie op `13cb838` is geverifieerd zonder nieuwe uitrol; het daadwerkelijke productie-imagepaar blijft `2c5bdab`. De begrensde migratie en bestaande publieke `/detect`-vrijgave zijn voltooid. Eén-uurs- en 24-uursnazorg en de expliciet uitgestelde acceptatiepunten blijven afzonderlijk open; geen nieuwe modelkwaliteitsclaim."
+    },
+    {
+      "at": "2026-10-06T01:31:05.684771+00:00",
+      "label": "Werkelijke één-uurscontrole",
+      "change": "p12-1hour afgerond op geslaagd timerbewijs; 24uur en eerste dagelijkse timerbackup blijven open."
     }
   ]
 }

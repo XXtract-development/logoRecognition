@@ -1010,5 +1010,81 @@
       }
     },
     "metadata_only_completion_recording": "No application, workflow, tests, compose or scripts changed after the successful full code CI; final state and checklist are operational evidence only"
+  },
+  "actual_one_hour_checkpoint": {
+    "status": "passed",
+    "due_at": "2026-10-06T01:25:18Z",
+    "timer_triggered_at": "2026-10-06T01:25:18Z",
+    "service_exit_status": 0,
+    "proof": {
+      "resource": "logo-production-20261005",
+      "observed_at": "2026-10-06T01:25:19.036563+00:00",
+      "status": "passed",
+      "read_only": true,
+      "checks": {
+        "public_health": {
+          "status": "passed",
+          "fresh_timestamp_age_seconds": 0
+        },
+        "containers": {
+          "app": {
+            "status": "healthy",
+            "oom": false,
+            "restart_count": 0,
+            "frozen_image_match": true
+          },
+          "minio": {
+            "status": "healthy",
+            "oom": false,
+            "restart_count": 0,
+            "frozen_image_match": true
+          },
+          "ml-service": {
+            "status": "healthy",
+            "oom": false,
+            "restart_count": 0,
+            "frozen_image_match": true
+          },
+          "postgres": {
+            "status": "healthy",
+            "oom": false,
+            "restart_count": 0,
+            "frozen_image_match": true
+          },
+          "redis": {
+            "status": "healthy",
+            "oom": false,
+            "restart_count": 0,
+            "frozen_image_match": true
+          }
+        },
+        "vectors": {
+          "status": "passed",
+          "active_complete_vectors": 542,
+          "active_references": 542,
+          "dimensions": 512
+        },
+        "scheduled_backup": {
+          "status": "passed",
+          "last_success_age_seconds": 3888.433,
+          "timer_active": true
+        },
+        "encrypted_backup": {
+          "status": "passed",
+          "objects": 1069,
+          "tables": 35,
+          "age_seconds": 3889.252,
+          "ciphertext_sha256": "b8745bc7bdbc09439384a242e689c45f1442081eca7ebcc32a401e633b26413d",
+          "private_stage_removed": true,
+          "scope": "stored authenticated-readback receipt plus current ciphertext hash; no key read or fresh decryption"
+        }
+      }
+    }
+  },
+  "first_automatic_daily_backup": {
+    "status": "pending",
+    "due_at": "2026-10-06T02:15:00Z",
+    "timer_last_trigger": null,
+    "note": "Prior successful service execution was manually invoked; first daily timer execution not yet occurred."
   }
 }
