@@ -767,7 +767,7 @@
     },
     "one_hour_timer_active": true,
     "24_hour_timer_active": true,
-    "one_hour_and_24_hour_not_yet_observed": true,
+    "one_hour_and_24_hour_not_yet_observed": false,
     "visible_main_thread_automation": "nazorg-logoherkenning-productie",
     "15_minute_observation": {
       "status": "passed",
@@ -919,7 +919,9 @@
           "five_containers_healthy_without_oom_or_restart": true
         }
       ]
-    }
+    },
+    "one_hour_checkpoint": "passed",
+    "twenty_four_hour_checkpoint": "pending"
   },
   "cleanup": {
     "isolated_restore_test_container_and_volumes_removed": true,
@@ -1082,9 +1084,76 @@
     }
   },
   "first_automatic_daily_backup": {
-    "status": "pending",
+    "status": "passed",
     "due_at": "2026-10-06T02:15:00Z",
-    "timer_last_trigger": null,
-    "note": "Prior successful service execution was manually invoked; first daily timer execution not yet occurred."
+    "timer_triggered_at": "2026-10-06T02:15:01Z",
+    "service_completed_at": "2026-10-06T02:15:21Z",
+    "service_result": "success",
+    "service_exit_status": 0,
+    "read_only_verification": {
+      "resource": "logo-production-20261005",
+      "observed_at": "2026-10-06T02:29:51.465634+00:00",
+      "status": "passed",
+      "read_only": true,
+      "checks": {
+        "public_health": {
+          "status": "passed",
+          "fresh_timestamp_age_seconds": 0
+        },
+        "containers": {
+          "app": {
+            "status": "healthy",
+            "oom": false,
+            "restart_count": 0,
+            "frozen_image_match": true
+          },
+          "minio": {
+            "status": "healthy",
+            "oom": false,
+            "restart_count": 0,
+            "frozen_image_match": true
+          },
+          "ml-service": {
+            "status": "healthy",
+            "oom": false,
+            "restart_count": 0,
+            "frozen_image_match": true
+          },
+          "postgres": {
+            "status": "healthy",
+            "oom": false,
+            "restart_count": 0,
+            "frozen_image_match": true
+          },
+          "redis": {
+            "status": "healthy",
+            "oom": false,
+            "restart_count": 0,
+            "frozen_image_match": true
+          }
+        },
+        "vectors": {
+          "status": "passed",
+          "active_complete_vectors": 542,
+          "active_references": 542,
+          "dimensions": 512
+        },
+        "scheduled_backup": {
+          "status": "passed",
+          "last_success_age_seconds": 870.427,
+          "timer_active": true
+        },
+        "encrypted_backup": {
+          "status": "passed",
+          "objects": 1069,
+          "tables": 35,
+          "age_seconds": 871.254,
+          "ciphertext_sha256": "ad85cdfda48df6b3df47070fa7d575cc03fdd29781b4f6871a6eceb26ea48527",
+          "private_stage_removed": true,
+          "scope": "stored authenticated-readback receipt plus current ciphertext hash; no key read or fresh decryption"
+        }
+      }
+    },
+    "capsule_restore_tested": false
   }
 }
