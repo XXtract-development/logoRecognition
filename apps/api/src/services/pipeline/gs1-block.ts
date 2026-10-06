@@ -7,6 +7,8 @@ import schema from '../../schemas/logoResults.v1.json';
 import { SCORE_KINDS } from '../score-kinds';
 import { getThresholdForMethod } from '../artwork-crosscheck';
 import { policyVersion, resolveSoort } from '../gs1-mapping';
+import { createLogger } from '../../core/logger';
+import { isValidGs1Value } from '../gs1-codelists';
 import { isGhsCode, normalizeReferenceCode } from '../field-type-mapping';
 
 /** sha256 van logoResults.v1.json; consumenten pinnen deze (zie logoResults.v1.sha256 en de API-specificatie). */
@@ -40,6 +42,8 @@ export interface BuildInput {
 type Resolver = typeof resolveSoort;
 
 const UNKNOWN = 'unknown';
+const logger = createLogger('gs1-block');
+const gewaarschuwd = new Set<string>(); // één waarschuwing per soort/veld/waarde, niet per scan
 const validate = new Ajv({ strict: true }).compile(schema);
 
 /** Lege lijst = geldig. */
@@ -63,6 +67,16 @@ export function buildLogoResults(input: BuildInput, resolve: Resolver = resolveS
     const code = normalizeReferenceCode(d.t3777_code);
     const r = resolve(code, { modelVersion, referenceVersion: d.reference_version ?? null });
     if (!r || r.stand === 'uit') return; // buiten de tabel of uit: alleen ruwe detectie
+    // Elke GS1-waarde moet in de officiële codelijst staan; anders het hele item (ook een groep) weglaten.
+    const ongeldig = r.gs1.find(g => !isValidGs1Value(g.veld, g.waarde));
+    if (ongeldig) {
+      const sleutel = `${r.soort}|${ongeldig.veld}|${ongeldig.waarde}`;
+      if (!gewaarschuwd.has(sleutel)) {
+        gewaarschuwd.add(sleutel);
+        logger.warn('GS1-waarde niet in codelijst, item weggelaten', { reden: 'ongeldige_gs1_waarde', soort: r.soort, veld: ongeldig.veld, waarde: ongeldig.waarde });
+      }
+      return;
+    }
     const prev = best.get(r.soort);
     if (prev && prev.item.zekerheid >= d.confidence) return;
     const drempel = getThresholdForMethod(d.method);
