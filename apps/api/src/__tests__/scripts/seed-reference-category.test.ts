@@ -1,5 +1,6 @@
-import { expect, it, vi } from 'vitest';
+import { beforeAll, expect, it, vi } from 'vitest';
 import prisma from '../../core/db';
+import sharp from 'sharp';
 import { uploadReferenceLogo } from '../../services/storage';
 vi.mock('fs', () => ({ default: { existsSync: vi.fn(() => true), readFileSync: vi.fn(() => Buffer.from('png')) } }));
 import * as seed from '../../../scripts/seed-reference-logos';
@@ -16,6 +17,9 @@ it('seed writes canonical metadata for every code', async () => {
 });
 
 import fs from 'fs';
+beforeAll(async () => {
+  vi.mocked(fs.readFileSync).mockReturnValue(await sharp(Buffer.from('<svg width="32" height="32"><path stroke="black" d="M16 8V24"/></svg>')).png().toBuffer());
+});
 it('existing seeded references repair metadata without image work or new rows', async () => {
   vi.clearAllMocks();
   vi.mocked(prisma.referenceLogo.findUnique).mockResolvedValue({ id: 'existing', t3777Code: 'original-code', active: false, source: 'original' } as any);
@@ -41,4 +45,14 @@ it('repairs missing-artwork existing rows and skips concurrent relabel without u
   expect(uploadReferenceLogo).not.toHaveBeenCalled();
   expect(prisma.referenceLogo.create).not.toHaveBeenCalled();
   expect(fs.readFileSync).not.toHaveBeenCalled();
+});
+
+it('blank seed does not upload or create a row', async () => {
+  vi.clearAllMocks();
+  vi.mocked(prisma.referenceLogo.findUnique).mockResolvedValue(null);
+  vi.mocked(fs.existsSync).mockReturnValue(true);
+  vi.mocked(fs.readFileSync).mockReturnValue(await sharp({ create: { width: 32, height: 32, channels: 3, background: 'white' } }).png().toBuffer());
+  await expect(seed.seedReferenceLogos()).rejects.toThrow(/centrale beeldinhoud/);
+  expect(uploadReferenceLogo).not.toHaveBeenCalled();
+  expect(prisma.referenceLogo.create).not.toHaveBeenCalled();
 });

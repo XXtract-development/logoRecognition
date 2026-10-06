@@ -58,7 +58,11 @@ async def _add_ref(conn, model_manager, storage_service, label: str, crop_path: 
     label, field_type, gs1_field = resolve_reference_category(label)
     try:
         data = storage_service.get_training_image(crop_path)
-        im = Image.open(io.BytesIO(data)).convert("RGB")
+        from app.services.phash import load_image_from_bytes
+        from app.services.reference_content import assert_reference_content
+        im = load_image_from_bytes(data)
+        assert_reference_content(im)
+        im = im.convert("RGB")
     except Exception as exc:
         print("  add skip (load)", crop_path, str(exc)[:50], file=sys.stderr)
         return False

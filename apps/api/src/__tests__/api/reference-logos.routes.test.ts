@@ -24,6 +24,8 @@ import { mockUser } from '../helpers/mock-data';
 // the same header-only 1x1 PNG, but the success case must read as a valid
 // large image while the resolution test must read as too small. The default
 // metadata makes uploads pass; the resolution test overrides it to 1x1.
+// This legacy metadata-focused suite has a header-only image fixture.
+vi.mock('../../services/reference-content', () => ({ assertReferenceContent: vi.fn() }));
 const sharpMetadata = vi.fn(async () => ({ width: 512, height: 512, format: 'png' }));
 vi.mock('sharp', () => ({
   default: vi.fn(() => ({ metadata: sharpMetadata })),

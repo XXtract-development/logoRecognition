@@ -1,0 +1,115 @@
+{
+  "created_at": "2026-10-06T08:25:08.267250+00:00",
+  "production_mutated": false,
+  "reference_audit": {
+    "total": 542,
+    "rejected": [
+      {
+        "id": "f1a85af9-c845-49a9-8ce3-90457da6e759",
+        "code": "RECYCLABLE_GENERAL_CLAIM",
+        "hash": "d7214796e3f896897ac9a665117531bdd7e8ed79d1dbecdd0249191e8fec6ad3"
+      }
+    ],
+    "unreadable": [],
+    "formats": {
+      "PNG": 542
+    },
+    "productionMutated": false
+  },
+  "counterfactual": {
+    "original": {
+      "correct": 397,
+      "total": 654,
+      "positives_correct": 318,
+      "positives_total": 564,
+      "negatives_correct": 79,
+      "negatives_total": 90
+    },
+    "remove_one_blank_reference": {
+      "correct": 405,
+      "total": 654,
+      "positives_correct": 317,
+      "positives_total": 564,
+      "negatives_correct": 88,
+      "negatives_total": 90
+    }
+  },
+  "threshold_preview": {
+    "0.90": [
+      317,
+      88
+    ],
+    "0.95": [
+      240,
+      89
+    ],
+    "0.97": [
+      166,
+      89
+    ],
+    "0.99": [
+      100,
+      90
+    ]
+  },
+  "threshold_changed": false,
+  "gold_labels_changed": false,
+  "pause_cleared": false,
+  "tests": {
+    "api_original_suite": 72,
+    "api_extra_path_guards": 10,
+    "python": 107,
+    "api_typecheck": "passed",
+    "independent_review": "passed_with_documented_preexisting_deferrals"
+  },
+  "private_source_hashes": {
+    "flywheel-content-audit-private.json": "04fd3fadb087637486b437ad5c7a489961c6a9bf9883273ec2691ec9020e705f",
+    "flywheel-clean-reference-preview-private.json": "e09e1f1e525dcc33b19d42a488726fbc7e7cdec0338fc15f6339e965f2f8fb48",
+    "flywheel-threshold-preview-private.json": "a8e95da62384366fa2dc3e5216e8a741eeac913d8315a3ff55b0abedf2a58e3e",
+    "flywheel-canonical-preview-private.json": "d4450d2095e84e7464874e18be83f5462b4a52d86e5d297fd5e7badf7e091166",
+    "flywheel-content-node-audit-private.json": "29013f2747ec428458249e85190fa5ba2bf6ea1c8a2b72ece8b060c67d1cbbb4"
+  },
+  "canonical_self_match_preview": {
+    "before": {
+      "correct": 373,
+      "total": 654,
+      "byLabel": {
+        "ECHT": {
+          "total": 564,
+          "correct": 294
+        },
+        "VALS": {
+          "total": 90,
+          "correct": 79
+        }
+      }
+    },
+    "after": {
+      "correct": 382,
+      "total": 654,
+      "byLabel": {
+        "ECHT": {
+          "total": 564,
+          "correct": 294
+        },
+        "VALS": {
+          "total": 90,
+          "correct": 88
+        }
+      }
+    }
+  },
+  "quality_note": "Canonical hash exclusions invalidate the previous baseline; copied pixel identities are not independent test success. Preview retains every query and label. Automatic expansion remains blocked.",
+  "node_reference_audit": {
+    "total": 542,
+    "rejected": [
+      {
+        "id": "f1a85af9-c845-49a9-8ce3-90457da6e759",
+        "message": "Referentie bevat geen zichtbare centrale beeldinhoud (uniform vlak of lege buitenrand)."
+      }
+    ],
+    "maxPixels": 921600,
+    "productionMutated": false
+  },
+  "curation_plan": "docs/04-deployment/production-flywheel-reference-curation-plan-20261006.md"
+}

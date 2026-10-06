@@ -37,7 +37,9 @@ class _FakeStorage:
         if self._raise:
             raise FileNotFoundError(f"crop weg: {path}")
         buf = io.BytesIO()
-        Image.new("RGB", (8, 8), (10, 20, 30)).save(buf, "PNG")
+        image = Image.new("RGB", (8, 8), (10, 20, 30))
+        image.putpixel((4, 4), (255, 255, 255))
+        image.save(buf, "PNG")
         return buf.getvalue()
 
 
@@ -118,3 +120,13 @@ async def test_write_ref_is_idempotent_when_embedding_exists():
     sqls = " ".join(sql.lower() for sql, _ in conn.executed)
     assert "insert into reference_embeddings" not in sqls
     assert "update reference_logos set active = true" in sqls
+
+@pytest.mark.asyncio
+async def test_blank_restore_skips_before_model_or_write():
+    from unittest.mock import Mock, AsyncMock
+    output = io.BytesIO()
+    Image.new('RGB', (32, 32), 'white').save(output, 'PNG')
+    storage = Mock(get_training_image=Mock(return_value=output.getvalue()))
+    model = Mock(generate_embedding=AsyncMock())
+    assert await _load_and_embed(model, storage, _row()) == 'skip-load'
+    model.generate_embedding.assert_not_called()

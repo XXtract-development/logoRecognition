@@ -1,8 +1,8 @@
 {
   "version": 1,
   "documentId": "acc-prod-20261005",
-  "sourceHash": "b86fe029a609c946201d8c1774b1711b1d6bf04d2e70b7fa2427672e970cc3fa",
-  "updatedAt": "2026-10-06T07:22:44.349046+00:00",
+  "sourceHash": "923659a2b6034e054bb627fda37c6d73860be1b93064bcddfdc4aa7dae8e653a",
+  "updatedAt": "2026-10-06T08:28:17.740440+00:00",
   "items": {
     "p1-scope": {
       "status": "done",
@@ -913,7 +913,7 @@
     "field-25": "Expliciete gebruikeropdracht: “Ga verder totdat alles klaarvis in productie”. Begrensde productievoorziening, migratie van geselecteerde gegevens/objecten en zelfstandige voortzetting toegestaan.",
     "field-26": "Expliciete productieopdracht omvat begrensde inrichting, start en uitrol. Uitvoering van publiekscutover blijft een afzonderlijke technische controle en staat nog open.",
     "field-27": "Begrensd GO door Codex/root voor migratie, bestaande publieke /detect en overgedragen training/opslag, vastgelegd 2026-10-06T00:32:53.408193+00:00. Onder expliciete zelfstandige productieopdracht, na echt publiek bewijs. Uitgestelde acceptatie: bestaande-gebruikerswachtwoordlogin (wachtwoord onbekend) en generieke v1-drempels (ONNX reeds in ACC afwezig). Geen blanket-go voor alle checklist-/kwaliteitspunten. Volledige herhaalde CI 37396873062 op 13cb838 groen: Node/server, ML, E2E en security. PR11 werkelijk naar ACC gemerged op 6 oktober 01:08:57 UTC, squash c58f2fd8610873d32dde70dde082fd3e1b67efd9. Coolifyconfiguratie 13cb838 geverifieerd zonder redeploy; daadwerkelijke productie-images blijven 2c5. Begrensde migratie/vrijgave voltooid; geplande nazorg en twee uitgestelde acceptatiepunten blijven open.",
-    "field-28": "Uitgevoerd: vijf gezonde onderdelen, 34 tabellen/21 ledgerregistraties, geselecteerde gegevens/1.069 objecten, 542 referentievectoren, modelhashes, getimed herstel, versleutelde dagelijkse backup/Mac-validatie/systemdtimer, publieke SPA/sessie/rollen/API-sleutel/upload/preview/eigen cleanup, gecontroleerde herkenning/negatieve foto/belasting, cutover en geteste terugkeer. Niet uitgevoerd: bestaande-gebruikerswachtwoordlogin, instelbare v1-drempels, toekomstige één-uurs/24-uursobservatie en uitfasering. Daadwerkelijke 15-minutencontrole en geïnstalleerde read-only observer geslaagd; volgende checkpoints gepland, nog niet voltooid. Volledige CI-herhaling Node/server, ML, E2E en security geslaagd; PR11 werkelijk naar ACC gemerged, zonder nieuwe productieruntimeversie.",
+    "field-28": "Uitgevoerd: vijf gezonde onderdelen, 34 tabellen/21 ledgerregistraties, geselecteerde gegevens/1.069 objecten, 542 referentievectoren, modelhashes, getimed herstel, versleutelde dagelijkse backup/Mac-validatie/systemdtimer, publieke SPA/sessie/rollen/API-sleutel/upload/preview/eigen cleanup, gecontroleerde herkenning/negatieve foto/belasting, cutover en geteste terugkeer. Niet uitgevoerd: bestaande-gebruikerswachtwoordlogin, instelbare v1-drempels, toekomstige één-uurs/24-uursobservatie en uitfasering. Daadwerkelijke 15-minutencontrole en geïnstalleerde read-only observer geslaagd; volgende checkpoints gepland, nog niet voltooid. Volledige CI-herhaling Node/server, ML, E2E en security geslaagd; PR11 werkelijk naar ACC gemerged, zonder nieuwe productieruntimeversie. Vliegwielcorrectie onderzocht: alle542referenties leesbaar; één leeg bestand veroorzaakt negen foutmatches. Hashcorrecte preview382/654 en88/90negatieven na denkbeeldige curatie; twee subtypeverwarringen blijven. Geen productiecuratie, geen hervatting, geen nieuwe24-uursclaim. Bewijs: production-flywheel-content-preview-20261006.json.",
     "field-29": "15 minuten daadwerkelijk geslaagd: 900 seconden, 24 steekproeven, publieke gezondheid 200, vijf gezonde onderdelen zonder geheugenuitval/herstarts. Observer handmatig 00:33:10 UTC en systemd 00:33:47 UTC geslaagd. Echte read-only servertimers actief voor 6 oktober 01:25:18 UTC (één uur) en 7 oktober 00:25:18 UTC (24 uur); toekomstige checkpoints blijven open. Actieve stille nazorgbewaking in hoofdtaak; meldt alleen betekenisvolle fout of afronding.",
     "field-30": "Eigen hersteltestcontainers/volumes en uploadtestrecords/objecten verwijderd. Alleen eigen nieuwe plaintextbackupstage na geslaagde externe versleutelde publicatie verwijderd. Legacydienst, cache, backups en sleutelkopieën behouden; uitfasering niet uitgevoerd. Eerste vervangen plaintext-backuprun uitsluitend uit eigen private staging verwijderd om circa 00:41 UTC, na onafhankelijke verificatie van versleutelde capsules. Versleutelde backups, sleutelkopieën en afzonderlijke herstelbewijzen behouden."
   },
@@ -1537,6 +1537,10 @@
       "at": "2026-10-06T07:22:44.349046+00:00",
       "label": "Vliegwiel-hervatcontrole",
       "change": "Niet hervat:654uitsneden gemeten,11/90negatievefoutmatches; kandidaatvlaguit;66tests geslaagd. Productieherkenning en nazorg blijven actief."
+    },
+    {
+      "at": "2026-10-06T08:28:17.740440+00:00",
+      "change": "Vliegwielcorrectie onderzocht: alle542referenties leesbaar; één leeg bestand veroorzaakt negen foutmatches. Hashcorrecte preview382/654 en88/90negatieven na denkbeeldige curatie; twee subtypeverwarringen blijven. Geen productiecuratie, geen hervatting, geen nieuwe24-uursclaim. Bewijs: production-flywheel-content-preview-20261006.json."
     }
   ]
 }

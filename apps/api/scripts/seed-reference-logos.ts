@@ -1,3 +1,4 @@
+import { assertReferenceContent } from '../src/services/reference-content';
 /**
  * Reference library seed (Epic 7, Story 7.3).
  *
@@ -82,6 +83,7 @@ export async function seedReferenceLogos(): Promise<void> {
     const buffer = fs.readFileSync(pngPath);
     const storagePath = `reference-logos/${code}/${VARIANT_LABEL}.png`;
 
+    await assertReferenceContent(buffer);
     await uploadReferenceLogo(buffer, storagePath, 'image/png');
 
     const logo = await prisma.logo.upsert({

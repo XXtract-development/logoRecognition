@@ -1,3 +1,5 @@
+import { assertReferenceContent } from '../reference-content';
+import { downloadTrainingObject } from '../storage';
 /**
  * Atomaire promotie van gepasseerde kandidaten (Story 13.5, AD-3/AD-6/AD-16).
  *
@@ -161,6 +163,10 @@ export async function promoteOne(
   variantLabel: string
 ): Promise<PromoteOneOutcome> {
   if (isGhsCode(candidate.t3777Code) || /holdout|validation|ghs-pilot/i.test(candidate.cropPath ?? '')) return { status: 'skipped' };
+  if (!candidate.cropPath) throw new Error('Referentie mist een afbeeldingspad');
+  const bytes = await downloadTrainingObject(candidate.cropPath);
+  if (!bytes) throw new Error(`Referentie kon niet worden geladen: ${candidate.cropPath}`);
+  await assertReferenceContent(bytes);
   return prisma.$transaction(async (tx) => {
     // 1. Cap ín de transactie (SELECT ... FOR UPDATE, AD-6). Vol → geen INSERT.
     const hasRoom = await assertClassCapWithinTx(tx, candidate.t3777Code);

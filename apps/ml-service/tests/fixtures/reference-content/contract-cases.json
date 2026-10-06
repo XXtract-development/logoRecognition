@@ -1,0 +1,57 @@
+[
+  {
+    "file": "range-8.png",
+    "accepted": false,
+    "sha256": "8dfcded91c222e1cddc90a4a251c71178a45ef7113f61cf2f8c98bc8af9efb35"
+  },
+  {
+    "file": "grayscale-range-8.png",
+    "accepted": false,
+    "sha256": "d0cc5f807977fde00a20830b88c563764ee6cfea16f604bff309d45817cf966a"
+  },
+  {
+    "file": "partial-alpha-range-8.png",
+    "accepted": false,
+    "sha256": "afa8bce1c0e49708c6d471d59adf9b4e3bcbaddf4a5ac7c047e3e450b52c3ea2"
+  },
+  {
+    "file": "range-9.png",
+    "accepted": true,
+    "sha256": "a45da3f6b39e72a14429fb79806e8004d62a6bbfceac992d03bd3009a5bf19be"
+  },
+  {
+    "file": "grayscale-range-9.png",
+    "accepted": true,
+    "sha256": "bf0a5b83dd3c228a144e7d1b98a6000e84e2e300c86088f1760cfbe2e2450941"
+  },
+  {
+    "file": "partial-alpha-range-9.png",
+    "accepted": true,
+    "sha256": "aaf153370305c45665f55b9112ae909c84e35576924ab4ed975bb1434e81f488"
+  },
+  {
+    "file": "palette-invisible.png",
+    "accepted": false,
+    "sha256": "70a8f3cc78287bfb3c5f0248f49766268fc2d50f76848028b641422c2a9ba3b8"
+  },
+  {
+    "file": "palette-visible.png",
+    "accepted": true,
+    "sha256": "183f18681b5561ad5ff717a331d5da4d10ddb65aaca9372a54972d36676ae89e"
+  },
+  {
+    "file": "partial-transparent-mark.png",
+    "accepted": true,
+    "sha256": "0fb9325ad80bccb10e9b76e4c9965eac9014b06cacf9533ffe2aa32ff5265fbe"
+  },
+  {
+    "file": "non-square-central.png",
+    "accepted": true,
+    "sha256": "1309153511776af0a7a598856b9f0ae190227b90ad7bd7f8c910a0b8b7162be9"
+  },
+  {
+    "file": "non-square-margin.png",
+    "accepted": false,
+    "sha256": "a8e3fde89ade9a33c46430b4bf71af949114c5afd19e886ba416d3ba51a5261f"
+  }
+]

@@ -1436,5 +1436,11 @@
     "investigation": "_bmad-output/implementation-artifacts/investigation-production-flywheel-resume-20261006.md",
     "next_step": "review all11 negative false matches with pixels/provenance; then evidence-backed correction and configuration activation",
     "cleanup": "local test processes exited; private evidence retained; no server file writes or lifecycle actions"
+  },
+  "flywheel_content_diagnostic": {
+    "evidence": "docs/04-deployment/production-flywheel-content-preview-20261006.json",
+    "production_mutated": false,
+    "pause_cleared": false,
+    "curation_plan": "docs/04-deployment/production-flywheel-reference-curation-plan-20261006.md"
   }
 }

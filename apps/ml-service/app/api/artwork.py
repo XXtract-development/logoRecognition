@@ -436,12 +436,15 @@ async def register_reference_endpoint(
     """
     from app.services.similarity import similarity_service
 
-    result = await similarity_service.register_crop_as_reference(
-        crop_path=request.crop_path,
-        t3777_code=request.t3777_code,
-        field_type=request.field_type,
-        gs1_field=request.gs1_field,
-    )
+    try:
+        result = await similarity_service.register_crop_as_reference(
+            crop_path=request.crop_path,
+            t3777_code=request.t3777_code,
+            field_type=request.field_type,
+            gs1_field=request.gs1_field,
+        )
+    except (ValueError, FileNotFoundError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     return {"status": "ok", **result}
 
 

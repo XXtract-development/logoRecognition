@@ -340,7 +340,6 @@ class SimilarityService:
 
         Returns ``{added: bool, reason: str, reference_logo_id?: str}``.
         """
-        import io
         import os
 
         from app.services.reference_category import assert_positive_reference_code
@@ -358,6 +357,19 @@ class SimilarityService:
             assert_runtime_reference_import(
                 crop_path, storage_service.get_training_image(crop_path)
             )
+        from app.services.phash import load_image_from_bytes
+        from app.services.reference_content import assert_reference_content
+
+        # Check the actual stored bytes before any reference/database mutation.
+        try:
+            data = storage_service.get_training_image(crop_path)
+            image = load_image_from_bytes(data)
+            assert_reference_content(image)
+            image = image.convert("RGB")
+        except Exception as exc:
+            raise ValueError(
+                f"Referentie-inhoud kon niet worden gecontroleerd: {crop_path}: {exc}"
+            ) from exc
         async with db_service.get_connection() as conn:
             async with conn.transaction():
                 locked = await conn.fetchval(
@@ -386,17 +398,6 @@ class SimilarityService:
                             row["id"],
                         )
                     return {"added": False, "reason": "already-a-reference"}
-
-                # embed the confirmed crop through the same backbone as serving
-                try:
-                    data = storage_service.get_training_image(crop_path)
-                    image = Image.open(io.BytesIO(data)).convert("RGB")
-                except Exception as exc:  # storage/decoding failure — fail soft
-                    logger.warning(
-                        "register_crop_as_reference: crop load failed",
-                        extra={"crop_path": crop_path, "error": str(exc)},
-                    )
-                    return {"added": False, "reason": f"crop-load-failed: {exc}"}
 
                 embedding = await model_manager.generate_embedding(image)
                 emb_list = np.asarray(embedding, dtype=np.float32).tolist()
