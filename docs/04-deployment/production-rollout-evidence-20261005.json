@@ -1,6 +1,6 @@
 {
   "time": "2026-10-06T00:26:55.929583+00:00",
-  "status": "public_production_active_observation_in_progress",
+  "status": "production_active_with_scheduled_aftercare",
   "infrastructure": "healthy",
   "database": {
     "status": "passed",
@@ -931,5 +931,84 @@
     "legacy_service_and_model_cache_retained": true,
     "research_checkout_preserved": true,
     "release_worktree_retained_for_scheduled_aftercare": true
+  },
+  "final_verified_release": {
+    "time": "2026-10-06T01:11:15.342383+00:00",
+    "code_and_host_helpers_ci": {
+      "run": 37396873062,
+      "head": "13cb838f4dca21aec866b56460aa6bc773725460",
+      "node": "success",
+      "ml": "success",
+      "e2e": "success",
+      "security": "success"
+    },
+    "acc_merge": "c58f2fd8610873d32dde70dde082fd3e1b67efd9",
+    "pr": "https://github.com/XXtract-development/logoRecognition/pull/11",
+    "runtime_release_unchanged": "2c5bdab23c6d66f40183391a10bbb24ba1481601",
+    "final_actual_observer": {
+      "resource": "logo-production-20261005",
+      "observed_at": "2026-10-06T01:10:19.152434+00:00",
+      "status": "passed",
+      "read_only": true,
+      "checks": {
+        "public_health": {
+          "status": "passed",
+          "fresh_timestamp_age_seconds": 0
+        },
+        "containers": {
+          "app": {
+            "status": "healthy",
+            "oom": false,
+            "restart_count": 0,
+            "frozen_image_match": true
+          },
+          "minio": {
+            "status": "healthy",
+            "oom": false,
+            "restart_count": 0,
+            "frozen_image_match": true
+          },
+          "ml-service": {
+            "status": "healthy",
+            "oom": false,
+            "restart_count": 0,
+            "frozen_image_match": true
+          },
+          "postgres": {
+            "status": "healthy",
+            "oom": false,
+            "restart_count": 0,
+            "frozen_image_match": true
+          },
+          "redis": {
+            "status": "healthy",
+            "oom": false,
+            "restart_count": 0,
+            "frozen_image_match": true
+          }
+        },
+        "vectors": {
+          "status": "passed",
+          "active_complete_vectors": 542,
+          "active_references": 542,
+          "dimensions": 512
+        },
+        "scheduled_backup": {
+          "status": "passed",
+          "last_success_age_seconds": 2988.523,
+          "timer_active": true
+        },
+        "encrypted_backup": {
+          "status": "passed",
+          "objects": 1069,
+          "tables": 35,
+          "age_seconds": 2989.368,
+          "ciphertext_sha256": "b8745bc7bdbc09439384a242e689c45f1442081eca7ebcc32a401e633b26413d",
+          "private_stage_removed": true,
+          "scope": "stored authenticated-readback receipt plus current ciphertext hash; no key read or fresh decryption"
+        }
+      }
+    },
+    "metadata_only_completion_recording": "No application, workflow, tests, compose or scripts changed after the successful full code CI; final state and checklist are operational evidence only"
   }
 }

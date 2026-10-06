@@ -13,6 +13,7 @@
 - Dagelijkse back-ups worden versleuteld bewaard en automatisch gecontroleerd.
 - De migratiechecklist toont de werkelijk uitgevoerde controles en geplande nazorg.
 - De vrijgavecontrole kan de volledige gebruikersroute doorlopen zonder dat het proefverkeer de testomgeving blokkeert.
+- De geslaagde vrijgavecontrole en de werkelijk uitgevoerde productiecontroles staan in het bijgewerkte draaiboek.
 
 ---
 
