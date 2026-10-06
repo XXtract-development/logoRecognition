@@ -1,3 +1,4 @@
+import { assertReferenceContent } from '../../services/reference-content';
 /**
  * Reference Keurmerk Logos API Routes (Epic 7, Story 7.3)
  *
@@ -154,6 +155,12 @@ export async function referenceLogosRoutes(fastify: FastifyInstance) {
       }
     } else if (buffer.length === 0) {
       return reply.status(400).send({ error: 'Bestand is leeg' });
+    }
+
+    try {
+      await assertReferenceContent(buffer);
+    } catch (err) {
+      return reply.status(400).send({ error: err instanceof Error ? err.message : 'Referentie-inhoud kon niet worden gecontroleerd' });
     }
 
     const storagePath = `reference-logos/${t3777Code}/${variantLabel}.${ext}`;

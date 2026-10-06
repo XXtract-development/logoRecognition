@@ -29,7 +29,9 @@ def runtime(monkeypatch):
     db = Mock(get_connection=Mock(side_effect=context))
     model = Mock(generate_embedding=AsyncMock(return_value=np.array([0.2, 0.4])))
     output = io.BytesIO()
-    Image.new("RGB", (8, 8)).save(output, format="PNG")
+    image = Image.new("RGB", (8, 8))
+    image.putpixel((4, 4), (255, 255, 255))
+    image.save(output, format="PNG")
     storage = Mock(get_training_image=Mock(return_value=output.getvalue()))
     for name, attr, value in [("app.core.logging", "logger", Mock()),
                               ("app.services.database", "db_service", db),
@@ -115,7 +117,7 @@ def test_same_path_repairs_only_metadata_without_embedding(runtime, rows):
         assert args[:2] == ["NutritionalScore", "nutritionalScore"]
     lookup = conn.fetch.call_args.args[0]
     assert "AND active" not in lookup
-    storage.get_training_image.assert_not_called()
+    storage.get_training_image.assert_called_once_with('crop.png')
     model.generate_embedding.assert_not_called()
     conn.fetchrow.assert_not_called()
 
@@ -128,7 +130,7 @@ def test_conflicting_same_path_never_writes(runtime, rows):
     assert result == {"added": False, "reason": "conflicting-reference-code"}
     conn.execute.assert_not_called()
     model.generate_embedding.assert_not_called()
-    storage.get_training_image.assert_not_called()
+    storage.get_training_image.assert_called_once_with('crop.png')
 
 def test_new_near_duplicate_guard_remains(runtime):
     service, _, conn, _, model, _ = runtime
@@ -196,11 +198,11 @@ def test_duplicate_variant_guard_remains(runtime):
     assert result == {'added': False, 'reason': 'duplicate-variant-label'}
     conn.execute.assert_not_called()
 
-def test_load_failure_keeps_soft_failure(runtime):
+def test_load_failure_is_explicit_fail_closed(runtime):
     service, _, conn, _, model, storage = runtime
     storage.get_training_image.side_effect = OSError('missing crop')
-    result = asyncio.run(service.register_crop_as_reference('crop.png', 'NUTRISCORE_A'))
-    assert result['added'] is False and result['reason'].startswith('crop-load-failed:')
+    with pytest.raises(ValueError, match='Referentie-inhoud'):
+        asyncio.run(service.register_crop_as_reference('crop.png', 'NUTRISCORE_A'))
     model.generate_embedding.assert_not_called()
     conn.fetchrow.assert_not_called()
 
@@ -226,7 +228,7 @@ def test_inflight_same_path_returns_no_work(runtime):
     conn.fetch.assert_not_called()
     conn.fetchrow.assert_not_called()
     conn.execute.assert_not_called()
-    storage.get_training_image.assert_not_called()
+    storage.get_training_image.assert_called_once_with('crop.png')
     model.generate_embedding.assert_not_called()
 
 
@@ -331,3 +333,41 @@ def test_invalid_ghs_reference_endpoint_422_no_io(runtime, code):
     assert response.status_code == 422
     db.get_connection.assert_not_called()
     storage.get_training_image.assert_not_called()
+
+
+@pytest.mark.parametrize("invalid", ["blank", "frame", "corrupt", "missing"])
+def test_content_rejected_before_database_mutation(runtime, invalid):
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    from PIL import ImageDraw
+    _, artwork, conn, db, model, storage = runtime
+    output = io.BytesIO()
+    image = Image.new('RGB', (200, 200), 'white')
+    if invalid == 'frame':
+        ImageDraw.Draw(image).rectangle((1, 1, 198, 198), outline='black')
+    image.save(output, 'PNG')
+    storage.get_training_image.return_value = b'corrupt' if invalid == 'corrupt' else output.getvalue()
+    if invalid == 'missing':
+        storage.get_training_image.side_effect = FileNotFoundError('missing')
+    app = FastAPI()
+    app.include_router(artwork.router)
+    result = TestClient(app).post('/artwork/register-reference', json={'crop_path': 'blank.png', 't3777_code': 'NUTRISCORE_A'})
+    assert result.status_code == 422
+    db.get_connection.assert_not_called()
+    conn.execute.assert_not_called()
+    conn.fetchrow.assert_not_called()
+    model.generate_embedding.assert_not_called()
+
+
+def test_live_writer_blank_has_no_database_or_model_effect(runtime):
+    _, _, conn, _, model, storage = runtime
+    output = io.BytesIO()
+    Image.new('RGB', (32, 32), 'white').save(output, 'PNG')
+    storage.get_training_image.return_value = output.getvalue()
+    spec = importlib.util.spec_from_file_location('realref_live_content_contract', ROOT / 'apps/ml-service/scripts/realref_live.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert not asyncio.run(module._add_ref(conn, model, storage, 'NUTRISCORE_A', 'blank.png', 'variant'))
+    conn.fetchrow.assert_not_called()
+    conn.execute.assert_not_called()
+    model.generate_embedding.assert_not_called()

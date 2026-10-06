@@ -81,7 +81,12 @@ async def _load_and_embed(
     crop_path = row["storage_path"]
     try:
         data = storage_service.get_training_image(crop_path)
-        im = Image.open(io.BytesIO(data)).convert("RGB")
+        from app.services.phash import load_image_from_bytes
+        from app.services.reference_content import assert_reference_content
+
+        im = load_image_from_bytes(data)
+        assert_reference_content(im)
+        im = im.convert("RGB")
     except Exception as exc:  # noqa: BLE001 — crop niet laadbaar → overslaan+tellen
         print(f"  skip (load): {crop_path} — {str(exc)[:60]}", file=sys.stderr)
         return "skip-load"

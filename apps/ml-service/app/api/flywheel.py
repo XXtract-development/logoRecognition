@@ -33,6 +33,7 @@ Endpoints:
     ml-service schrijft in beide modi niets (AD-2).
 """
 
+import asyncio
 import base64
 import logging
 from typing import Any, Dict, List, Optional
@@ -325,6 +326,14 @@ class RegressionEvalResponse(BaseModel):
     samples: List[Dict[str, Any]]
 
 
+def _reference_content_hash(path: str) -> str:
+    """Read actual bytes on each measurement; never cache hashes by mutable path."""
+    image = phash_service.load_image_from_bytes(
+        storage_service.get_training_image(path)
+    )
+    return phash_service.content_hash(image)
+
+
 @router.post("/regression-eval", response_model=RegressionEvalResponse)
 async def regression_eval(request: RegressionEvalRequest) -> RegressionEvalResponse:
     """Meet precisie@drempel over de gold-set (Story 13.5, AD-4/AD-5).
@@ -361,15 +370,26 @@ async def regression_eval(request: RegressionEvalRequest) -> RegressionEvalRespo
             detail=f"Kon actieve referentie-embeddings niet lezen: {exc}",
         )
 
-    reference_entries: List[Dict[str, Any]] = [
-        {
-            "embedding": r["embedding"],
-            "t3777Code": r["t3777_code"],
-            "contentHash": None,  # referentie-rijen dragen geen bekende inhouds-hash
-            "cropPath": r.get("storage_path"),
-        }
-        for r in active_rows
-    ]
+    reference_entries: List[Dict[str, Any]] = []
+    for row in active_rows:
+        try:
+            path = row.get("storage_path")
+            if not path:
+                raise ValueError("Referentie mist een afbeeldingspad")
+            reference_hash = await asyncio.to_thread(_reference_content_hash, path)
+        except Exception as exc:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Referentie-inhoud kon niet worden gecontroleerd: {row.get('reference_logo_id')}: {exc}",
+            ) from exc
+        reference_entries.append(
+            {
+                "embedding": row["embedding"],
+                "t3777Code": row["t3777_code"],
+                "contentHash": reference_hash,
+                "cropPath": path,
+            }
+        )
 
     # 2. Schaduwset — uitsluitend in schaduw-modus (AD-5).
     shadow_entries: List[Dict[str, Any]] = []
@@ -406,7 +426,7 @@ async def regression_eval(request: RegressionEvalRequest) -> RegressionEvalRespo
                 "embedding": embedding,
                 "label": q.label,
                 "t3777Code": q.t3777_code,
-                "contentHash": q.content_hash,
+                "contentHash": phash_service.content_hash(image),
                 "cropPath": q.crop_path,
             }
         )

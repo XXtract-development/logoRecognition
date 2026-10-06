@@ -2,6 +2,11 @@
 
 ## 6 oktober 2026
 
+**Betrouwbaardere controle van nieuwe logovoorbeelden**
+- Lege vlakken en lege buitenranden worden geweigerd bij opname als logovoorbeeld.
+- De kwaliteitscontrole telt hetzelfde beeld onder een andere naam niet meer als onafhankelijke herkenning.
+- Twijfelgevallen blijven zichtbaar; de automatische uitbreiding wordt pas hervat na voldoende bewijs.
+
 **Controleerbare overgang naar productie**
 - De controle voor automatische referentie-uitbreiding toont nu de gemeten beperkingen; het vliegwiel blijft gepauzeerd totdat deze zijn opgelost.
 - De eerste automatisch geplande productiebackup is geslaagd en gecontroleerd; de checklist bevat het bewijs.

@@ -38,8 +38,39 @@ const GS1_FIELD = {
   EU_consumerUsageLabelCodeList: 'enumerationValue',
 };
 
+async function seedGuideEntry(e, root, prisma, uploadReferenceLogo, assertReferenceContent) {
+  const variantLabel = deriveVariantLabel(e.variant);
+  const storagePath = buildStoragePath(e.code, variantLabel);
+  const buf = fs.readFileSync(path.join(root, e.file));
+  await assertReferenceContent(buf);
+  await uploadReferenceLogo(buf, storagePath, 'image/png');
+  // fieldType = GS1-codelijstnaam (1:1 met GS1); gs1Field = GS1-declaratieveld.
+  const fieldType = e.fieldType || 'PackagingMarkedLabelAccreditationCode';
+  const gs1Field = e.gs1Field || GS1_FIELD[fieldType] || 'packagingMarkedLabelAccreditationCode';
+  await prisma.referenceLogo.upsert({
+    where: { t3777Code_variantLabel: { t3777Code: e.code, variantLabel } },
+    create: {
+      t3777Code: e.code,
+      variantLabel,
+      source: e.source || 'gs1-packaging-label-guide',
+      storagePath,
+      fieldType,
+      gs1Field,
+      active: true,
+    },
+    update: {
+      source: e.source || 'gs1-packaging-label-guide',
+      storagePath,
+      fieldType,
+      gs1Field,
+      active: true,
+    },
+  });
+}
+
 async function main() {
   const root = process.argv[2] || '/tmp/refseed';
+  const { assertReferenceContent } = require('/app/dist/services/reference-content.js');
   const { uploadReferenceLogo } = require('/app/dist/services/storage.js');
   const { mlClient } = require('/app/dist/services/ml-client.js');
   const { PrismaClient } = require('@prisma/client');
@@ -52,32 +83,7 @@ async function main() {
   let fail = 0;
   for (const e of entries) {
     try {
-      const variantLabel = deriveVariantLabel(e.variant);
-      const storagePath = buildStoragePath(e.code, variantLabel);
-      const buf = fs.readFileSync(path.join(root, e.file));
-      await uploadReferenceLogo(buf, storagePath, 'image/png');
-      // fieldType = GS1-codelijstnaam (1:1 met GS1); gs1Field = GS1-declaratieveld.
-      const fieldType = e.fieldType || 'PackagingMarkedLabelAccreditationCode';
-      const gs1Field = e.gs1Field || GS1_FIELD[fieldType] || 'packagingMarkedLabelAccreditationCode';
-      await prisma.referenceLogo.upsert({
-        where: { t3777Code_variantLabel: { t3777Code: e.code, variantLabel } },
-        create: {
-          t3777Code: e.code,
-          variantLabel,
-          source: e.source || 'gs1-packaging-label-guide',
-          storagePath,
-          fieldType,
-          gs1Field,
-          active: true,
-        },
-        update: {
-          source: e.source || 'gs1-packaging-label-guide',
-          storagePath,
-          fieldType,
-          gs1Field,
-          active: true,
-        },
-      });
+      await seedGuideEntry(e, root, prisma, uploadReferenceLogo, assertReferenceContent);
       ok++;
     } catch (err) {
       fail++;
@@ -107,4 +113,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { deriveVariantLabel, buildStoragePath };
+module.exports = { deriveVariantLabel, buildStoragePath, seedGuideEntry };

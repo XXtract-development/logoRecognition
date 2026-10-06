@@ -1,5 +1,5 @@
 {
-  "time": "2026-10-06T07:22:44.349046+00:00",
+  "time": "2026-10-06T08:28:17.740440+00:00",
   "task_id": "01a0fc7a-28d6-7333-ae26-c6dc972076d8",
   "owner": "Codex/root",
   "status": "production_active_with_scheduled_aftercare",
@@ -178,6 +178,15 @@
     "evaluated_total": 654,
     "evidence": "docs/04-deployment/production-flywheel-resume-readiness-20261006.json",
     "investigation": "_bmad-output/implementation-artifacts/investigation-production-flywheel-resume-20261006.md",
-    "next_step": "review all11 negative false matches with pixels/provenance; then evidence-backed correction and configuration activation"
+    "next_step": "finish reviewed code correction onACC; production curation requires a separate controlled decision, subtype quality remains insufficient",
+    "preview_evidence": "docs/04-deployment/production-flywheel-content-preview-20261006.json",
+    "reference_audit_total": 542,
+    "blank_reference_rejected": 1,
+    "canonical_preview_correct": 382,
+    "canonical_preview_total": 654,
+    "canonical_preview_negative_false_matches": 2,
+    "canonical_preview_is_production_result": false,
+    "code_status": "local_verified_ready_for_acc",
+    "curation_plan": "docs/04-deployment/production-flywheel-reference-curation-plan-20261006.md"
   }
 }

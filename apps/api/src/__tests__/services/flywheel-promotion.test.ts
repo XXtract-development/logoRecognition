@@ -21,6 +21,8 @@ vi.mock('../../services/flywheel/guardrails', async () => {
 });
 
 import prisma from '../../core/db';
+import sharp from 'sharp';
+import { downloadTrainingObject } from '../../services/storage';
 import {
   promoteOne,
   promoteBatchCandidates,
@@ -35,8 +37,9 @@ const mockPrisma = prisma as unknown as {
   $transaction: ReturnType<typeof vi.fn>;
 };
 
-beforeEach(() => {
+beforeEach(async () => {
   vi.clearAllMocks();
+  vi.mocked(downloadTrainingObject).mockResolvedValue(await sharp(Buffer.from('<svg width="32" height="32"><path stroke="black" d="M16 8V24"/></svg>')).png().toBuffer());
   assertClassCapWithinTx.mockResolvedValue(true); // ruimte
   mockPrisma.referenceLogo.create.mockResolvedValue({ id: 'ref-1' });
   mockPrisma.$executeRaw.mockResolvedValue(1); // één embedding gekopieerd
@@ -137,4 +140,18 @@ describe('promoteBatchCandidates (AC5)', () => {
     expect(res.failed).toEqual(['c1']);
     expect(res.promoted.map((p) => p.candidateId)).toEqual(['c2']);
   });
+});
+
+it('rejects blank content before starting a transaction or writing a reference', async () => {
+  vi.mocked(downloadTrainingObject).mockResolvedValue(await sharp({ create: { width: 32, height: 32, channels: 3, background: 'white' } }).png().toBuffer());
+  await expect(promoteOne(candidate, 'auto-x-1')).rejects.toThrow(/centrale beeldinhoud/);
+  expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+  expect(mockPrisma.referenceLogo.create).not.toHaveBeenCalled();
+});
+it('rejects missing or corrupt stored content before mutation', async () => {
+  for (const bytes of [null, Buffer.from('broken')]) {
+    vi.mocked(downloadTrainingObject).mockResolvedValue(bytes);
+    await expect(promoteOne(candidate, 'auto-x-1')).rejects.toThrow();
+  }
+  expect(mockPrisma.$transaction).not.toHaveBeenCalled();
 });

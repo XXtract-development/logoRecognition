@@ -1,0 +1,8 @@
+{
+  "fixture": "blank-print-frame.png",
+  "originalFileSha256": "34895242ebcbf0031c9d4e3f0aeb77b3b41a0a9cc9d132f680ff4df4f826ab83",
+  "fixtureFileSha256": "fa22094170ea0f0e1becff96c448ad2cd260d4cd218f9e951d3d53d791e5e324",
+  "origin": "Controlled production reference crop; pixels reencoded without source metadata",
+  "permission": "User-authorized internal production use (2026-10-05); no external reuse license claimed",
+  "assessment": "Root and independent AI pixel review: blank central print area with outside frame; no recycling mark. Not human gold."
+}

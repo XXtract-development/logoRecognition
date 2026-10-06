@@ -34,3 +34,10 @@
 - source_spec: `spec-review-reference-categories.md`
   summary: Repair existing ML CI pytest failure masking in a separate investigation.
   evidence: Existing pytest command ends with || echo "No tests yet"; root explicitly deferred general CI repair, so CI-green is not acceptance evidence.
+
+- source_spec: `spec-flywheel-reference-content-integrity.md`
+  summary: Onderzoek één consistent alpha/SVG-contract voor referentieopname, hashing en modelinput vóór gecontroleerde herbouw.
+  evidence: Bestaande registratie convertRGB negeert alpha; SVGupload bestaat maar daadwerkelijke542embeddedreferenties zijnPNG. Geen aangetoonde actieveSVG; toekomstcontract verificatie nodig.
+- source_spec: `spec-flywheel-reference-content-integrity.md`
+  summary: Behoud expliciete deactivatie bij guide-reseed of vereis een gecontroleerd reactivatiebesluit.
+  evidence: Pre-existente seedGuideEntry update active=true; nonblankinhoud bewijst geen label/goedkeuring. Script is niet uitgevoerd.
