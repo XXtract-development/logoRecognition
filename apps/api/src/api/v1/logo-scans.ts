@@ -1,7 +1,8 @@
 /**
- * POST /api/v1/pipeline/logo-scans — request a scan (202 + scanId), Story 1.2.
- * GET  /api/v1/pipeline/logo-scans/:scanId — status (pending|running|done|failed) and result.
- * Optional form fields: productId, pipelineId, gpcCategoryCode, signalWord (DANGER|WARNING from the OCR; anything else is ignored).
+ * POST /api/v1/pipeline/logo-scans — request a scan (202 + scanId; `deduplicated: true` when a done scan is reused), Story 1.2/1.3.
+ * GET  /api/v1/pipeline/logo-scans/:scanId — status (pending|running|done|failed|superseded) and result.
+ * Optional form fields: productId, pipelineId, gpcCategoryCode, signalWord (DANGER|WARNING from the OCR; anything else is ignored),
+ * rescan (only "true" forces a new attempt), requestedAt (ISO-8601; decides which image of a product is newest).
  * Both need a service key (Story 1.1). Logs only the consumer name, never a key value (NFR-4).
  */
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
@@ -13,7 +14,7 @@ import {
 import { logger } from '../../core/logger';
 
 const LOG_MODULE = 'logo-scans';
-const FIELDS = ['productId', 'pipelineId', 'gpcCategoryCode', 'signalWord'] as const;
+const FIELDS = ['productId', 'pipelineId', 'gpcCategoryCode', 'signalWord', 'rescan', 'requestedAt'] as const;
 const MAX_FIELD_LENGTH = 256;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
@@ -83,8 +84,9 @@ export async function logoScanRoutes(app: FastifyInstance) {
     }
 
     try {
-      const { scanId } = await submitLogoScan({ image, consumer, ...fields });
-      return reply.status(202).send({ scanId });
+      const { rescan, ...rest } = fields;
+      const { scanId, deduplicated } = await submitLogoScan({ image, consumer, ...rest, rescan: rescan === 'true' });
+      return reply.status(202).send(deduplicated ? { scanId, deduplicated } : { scanId });
     } catch (err) {
       if (!(err instanceof LogoScanBusyError)) throw err;
       return fail(request, reply.header('Retry-After', String(LOGO_SCAN_RETRY_AFTER_S)), 503, 'BUSY', 'Scan service is busy, retry later');

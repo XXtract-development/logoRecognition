@@ -18,6 +18,11 @@ describe('wiring', () => {
     const main = fs.readFileSync(path.join(repoRoot, 'apps/api/src/main.ts'), 'utf8');
     expect(main).toMatch(/app\.register\(logoScanRoutes, \{ prefix: '\/api\/v1' \}\)/);
   });
+  it('main.ts starts the logo-scan cleanup scheduler', () => {
+    const main = fs.readFileSync(path.join(repoRoot, 'apps/api/src/main.ts'), 'utf8');
+    expect(main).toMatch(/import \{[^}]*registerLogoScanCleanup[^}]*\} from '\.\/services\/pipeline\/logo-scan-cleanup'/);
+    expect(main).toMatch(/registerLogoScanCleanup\(\)/);
+  });
   it('a logo-scans key does not open /ghs/review, and ghs-review keeps its own auth', async () => {
     const server = Fastify();
     await server.register(cookie);

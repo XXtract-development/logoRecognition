@@ -33,6 +33,7 @@ import { verifyDeclaredRoutes } from './api/v1/verify-declared';
 import { pipelineRoutes } from './api/v1/pipeline';
 import { logoScanRoutes } from './api/v1/logo-scans';
 import { registerLogoScanWorker } from './services/pipeline/logo-scan-flow';
+import { registerLogoScanCleanup } from './services/pipeline/logo-scan-cleanup';
 import { flywheelRoutes } from './api/v1/flywheel';
 import { registerRetrainingCronJob } from './services/pipeline/trigger';
 import { registerTrainingFlowWorker, registerDetectionWorker, registerFlywheelWorker, closePipelineWorkers } from './services/pipeline/workers';
@@ -360,6 +361,13 @@ async function startServer() {
           error: err instanceof Error ? err.message : 'Unknown error',
         });
       }
+
+      // Story 1.3: daily removal of logo scans older than 12 months.
+      registerLogoScanCleanup().catch((err) => {
+        logger.warn('Failed to register logo-scan cleanup (Redis may not be ready)', {
+          error: err instanceof Error ? err.message : 'Unknown error',
+        });
+      });
 
       // Story 13.4: register the flywheel worker (concurrency 1 — nightly
       // promotion loop + watchdog) and its Job Schedulers (upsertJobScheduler,
