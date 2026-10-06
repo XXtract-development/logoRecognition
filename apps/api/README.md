@@ -65,6 +65,9 @@ GET  /api/v1/recognition/:id
 
 *Implementatie volgt in `src/api/v1/recognition.ts`*
 
+### GS1-omzettabel (verhaal 1.4)
+`src/services/gs1-mapping.json` is gegenereerd door `node scripts/generate-gs1-mapping.js` uit `reference-code-mapping.json`, `apps/web/src/data/keurmerk-codes.ts` en de bronnen in `scripts/gs1-mapping-sources/` (61 actieve codes uit `logodekking-2026-10-02`, 52 codes buiten GS1 3.1.37.1 uit `q4-q5-q7-uitkomst.md`); het JSON wordt nooit met de hand bewerkt: standwijzigingen gaan via `scripts/gs1-mapping-sources/stand-overrides.json` en vragen een `rapportverwijzing` (`validateMapping`, getest in `gs1-mapping.test.ts`, samen met een controle dat het JSON gelijk is aan de scriptuitvoer). Twee van de 61 actieve codes (ECC_HALAL, HALAL_QUALITY_CONTROL) staan ook in de 52 en gaan dus op `uit`.
+
 ## 📁 Project Structure
 
 ```
