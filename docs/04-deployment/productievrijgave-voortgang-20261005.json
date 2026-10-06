@@ -1,8 +1,8 @@
 {
   "version": 1,
   "documentId": "acc-prod-20261005",
-  "sourceHash": "6749f5c7e06c61183ed7706aa2d17eb72aff5d10d652dd330041ab398ab3c843",
-  "updatedAt": "2026-10-06T01:31:05.684771+00:00",
+  "sourceHash": "1a973767c59f041ec645b546ed7fe331da81327f136f355d79d9cf2644bd388b",
+  "updatedAt": "2026-10-06T02:30:17.980553+00:00",
   "items": {
     "p1-scope": {
       "status": "done",
@@ -897,7 +897,7 @@
     "field-9": "App- en ML-runtime afzonderlijk en beperkt; migratiehistorie niet schrijfbaar voor app; geen superuser/runtimebeheerrechten.",
     "field-10": "Echte ML-rol eigenaar reference_embeddings; herindexering bewezen; 542 actieve vectoren opnieuw opgebouwd.",
     "field-11": "34 toepassingstabellen plus 21 echte voltooide migratieregistraties; geselecteerd nieuw doel zonder oude productiegegevens te vervangen.",
-    "field-12": "Gevulde herstelbackup SHA256 2e29893afee7265d8cff7d13d63aeff0dc299ba176a2a13138afb3de4a95c2d0; objectarchief SHA256 aacf2bcba20ecc97b2a5add5a352dd2f48151507e6746a598f65e142325a21da. Eerste AES-256-GCM-backup 20261006T001655Z-82b81313 onafhankelijk op Mac geauthenticeerd: 35 tabellen, 1.069 objecten, alle pakkethashes gelijk; eigen nieuwe plaintextstage verwijderd. Tweede systemdrun 20261006T002009Z-bc41895a succesvol om 00:20:30 UTC; dagelijkse timer actief op 02:15 UTC. Sleutel onafhankelijk privé bewaard.",
+    "field-12": "Gevulde herstelbackup SHA256 2e29893afee7265d8cff7d13d63aeff0dc299ba176a2a13138afb3de4a95c2d0; objectarchief SHA256 aacf2bcba20ecc97b2a5add5a352dd2f48151507e6746a598f65e142325a21da. Eerste AES-256-GCM-backup 20261006T001655Z-82b81313 onafhankelijk op Mac geauthenticeerd: 35 tabellen, 1.069 objecten, alle pakkethashes gelijk; eigen nieuwe plaintextstage verwijderd. Tweede systemdrun 20261006T002009Z-bc41895a succesvol om 00:20:30 UTC; dagelijkse timer actief op 02:15 UTC. Sleutel onafhankelijk privé bewaard. Eerste automatische dagelijkse timerbackup: gestart2026-10-06T02:15:01Z, geslaagd02:15:21Z; ciphertext+35tabellen/1069objecten gecontroleerd02:29:51Z.",
     "field-13": "Codex/root; 2026-10-05T23:25:35.266816+00:00 tot 2026-10-05T23:25:49.103330+00:00. pg_dump 0.356 s; werkelijk databaseherstel pg_restore 0.494 s; volledige proef inclusief export, herstel, alle tabelhashes, objectarchief en cleanup 13.837 s. Alle 35 openbare tabelfingerprints gelijk; eigen testcontainer/volumes verwijderd.",
     "field-14": "Rijmanifest SHA256 7d17673341d4d078db5cd36f9874325684e244c333456155ec799552848c7ff4. Selectieve tabellen/relaties gelijk, uitgesloten geschiedenis bewust leeg, nieuwe doelinstellingen apart.",
     "field-15": "1.069 objecten, 40.487.281 bytes; manifest SHA256 a8485579d5d173e276fbae30281a5c1588fbe3812c1c7b9ee524a4681e9e8dac. Alle doelreadbacks gelijk; vrije ruimte/inrichting gecontroleerd bij provisioning.",
@@ -1527,6 +1527,11 @@
       "at": "2026-10-06T01:31:05.684771+00:00",
       "label": "Werkelijke één-uurscontrole",
       "change": "p12-1hour afgerond op geslaagd timerbewijs; 24uur en eerste dagelijkse timerbackup blijven open."
+    },
+    {
+      "at": "2026-10-06T02:30:17.980553+00:00",
+      "label": "Eerste automatische dagelijkse backup",
+      "change": "Werkelijke timerbackup geslaagd en huidige versleutelde capsule gecontroleerd; 24uur blijft open."
     }
   ]
 }

@@ -3,6 +3,7 @@
 ## 6 oktober 2026
 
 **Controleerbare overgang naar productie**
+- De eerste automatisch geplande productiebackup is geslaagd en gecontroleerd; de checklist bevat het bewijs.
 - De eerste controle na één uur bevestigt dat productie gezond draait; de checklist toont het werkelijke resultaat.
 - De herkenningsaanroep gebruikt de overgezette referenties en modellen.
 - Een storing of onvolledige beoordeling wordt duidelijk gemeld en niet als een etiket zonder logo’s teruggegeven.

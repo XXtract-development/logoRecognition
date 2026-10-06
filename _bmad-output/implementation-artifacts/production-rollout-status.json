@@ -1,5 +1,5 @@
 {
-  "time": "2026-10-06T01:31:05.684771+00:00",
+  "time": "2026-10-06T02:30:17.980553+00:00",
   "task_id": "01a0fc7a-28d6-7333-ae26-c6dc972076d8",
   "owner": "Codex/root",
   "status": "production_active_with_scheduled_aftercare",
@@ -156,14 +156,14 @@
     "15_minute_checkpoint": "passed",
     "one_hour_checkpoint": "passed",
     "one_hour_observed_at": "2026-10-06T01:25:19.036563+00:00",
-    "first_automatic_daily_backup": "pending; due2026-10-06T02:15:00Z"
+    "first_automatic_daily_backup": "passed; timer02:15:01Z completed02:15:21Z; current ciphertext verified02:29:51Z"
   },
   "known_acceptance_limitations": [
     "existing-user password login not attempted because password unavailable; signed existing session, database SELECT and real bcrypt compatibility passed",
     "generic adjustable-threshold v1 route not quality-validated; source generic ONNX model absent; production /detect uses actual strict artwork classifiers",
     "all9GHS remain review-only; independent per-type field readiness not claimed"
   ],
-  "current_gate": "actual24h checkpoint and first automatically timed daily backup; deferred login and genericv1 acceptance",
+  "current_gate": "actual24h checkpoint; deferred login and genericv1 acceptance",
   "completion_scope": "Migration, trained production detect integration and dedicated data/storage completed; all110 checklist steps and all9GHS field readiness not claimed",
   "final_actual_observer": "2026-10-06T01:10:19.152434+00:00",
   "verified_code_release_acc_merge": "c58f2fd8610873d32dde70dde082fd3e1b67efd9"
