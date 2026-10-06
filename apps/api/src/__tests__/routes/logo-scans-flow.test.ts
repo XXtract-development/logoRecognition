@@ -50,6 +50,7 @@ import {
   LOGO_SCAN_MAX_MS, LOGO_SCAN_MAX_IMAGE_BYTES, LOGO_SCAN_MAX_PIXELS, runLogoScanJob,
 } from '../../services/pipeline/logo-scan-flow';
 import { mlClient } from '../../services/ml-client';
+import prisma from '../../core/db';
 
 const URL = '/api/v1/pipeline/logo-scans';
 const KEY = { 'x-api-key': 'test-key-1' };
@@ -93,6 +94,41 @@ beforeEach(() => {
   vi.mocked(mlClient.classifyArtwork).mockReset().mockResolvedValue(classified() as any);
 });
 afterEach(() => { vi.useRealTimers(); process.env = { ...originalEnv }; });
+
+describe('Story 1.7 — zoekruimte in de worker', () => {
+  const refs = [{ t3777Code: 'RECYCLABLE' }, { t3777Code: 'NUTRISCORE_A' }, { t3777Code: 'VEGAN' }];
+  const run = async (gpc?: string) => {
+    vi.mocked(prisma.referenceLogo.findMany).mockResolvedValueOnce(refs as any);
+    const server = await app();
+    const { scanId } = (await post(server, await png(), gpc === undefined ? [] : [{ name: 'gpcCategoryCode', value: gpc }])).json();
+    await runLogoScanJob({ scanId });
+    const done = (await get(server, scanId)).json();
+    await server.close();
+    return { done, codes: vi.mocked(mlClient.localizeArtwork).mock.calls[0][0].codes as string[] };
+  };
+  it('niet-voedselcode: Nutri-Score en dieet vallen af, keurmerk en gevaarsymbool blijven; zoekruimte vastgelegd', async () => {
+    const { done, codes } = await run('47000000');
+    expect(codes).toContain('RECYCLABLE');
+    expect(codes).toContain('FLAME');
+    expect(codes).not.toContain('NUTRISCORE_A');
+    expect(codes).not.toContain('VEGAN');
+    expect(done.logoResults.zoekruimte).toEqual({ gpcCategoryCode: '47000000', beperkt: true, aantalSoorten: codes.length });
+  });
+  it('een mislukte scan heeft geen zoekruimte', async () => {
+    vi.mocked(mlClient.localizeArtwork).mockRejectedValueOnce(new Error('ml down'));
+    const { done } = await run('47000000').catch(() => ({ done: null as any }));
+    expect(done?.status).toBe('failed');
+    expect(done?.logoResults?.zoekruimte).toBeUndefined();
+  });
+  it('voedselcode en geen code: volledige set', async () => {
+    for (const gpc of ['50200000', undefined, 'onzin']) {
+      vi.mocked(mlClient.localizeArtwork).mockClear();
+      const { done, codes } = await run(gpc);
+      expect(codes).toEqual(expect.arrayContaining(['RECYCLABLE', 'NUTRISCORE_A', 'VEGAN', 'FLAME']));
+      expect(done.logoResults.zoekruimte).toMatchObject({ beperkt: false, aantalSoorten: codes.length });
+    }
+  });
+});
 
 describe('constants', () => {
   it('are named and match the agreed limits', () => {

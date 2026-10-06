@@ -20,6 +20,7 @@ import {
   GHS_REFERENCE_PAIRS, MAX_DECODED_PIXELS, MAX_NORMALIZED_BYTES, SCORE_KINDS, boxKey, validBox,
 } from '../../api/legacy-detect';
 import { buildLogoResults, validateLogoResults, type LogoResults, type RawDetection } from './gs1-block';
+import { beperkSoorten } from '../zoekruimte';
 
 const logger = createLogger('logo-scan-flow');
 
@@ -159,7 +160,7 @@ function withDeadline<T>(work: Promise<T>, ms: number): Promise<T> {
 }
 
 /** Existing recognition (as /detect): normalize, localize, classify. Returns the valid classified results plus the image size; `partial` when not every region was classified. */
-async function recognize(image: Buffer, deadline: number) {
+async function recognize(image: Buffer, deadline: number, gpcCategoryCode?: string) {
   const remaining = () => { const ms = deadline - Date.now(); if (ms <= 0) throw new TimeoutError('deadline'); return ms; };
   let normalized;
   try {
@@ -167,7 +168,8 @@ async function recognize(image: Buffer, deadline: number) {
   } catch { throw new InvalidImageError('undecodable'); }
   if (normalized.data.length > MAX_NORMALIZED_BYTES) throw new InvalidImageError('normalized too large');
   const references = await prisma.referenceLogo.findMany({ where: { active: true }, select: { t3777Code: true, fieldType: true } });
-  const codes = [...new Set([...references, ...GHS_REFERENCE_PAIRS].map(r => normalizeReferenceCode(r.t3777Code)))];
+  const alle = [...new Set([...references, ...GHS_REFERENCE_PAIRS].map(r => normalizeReferenceCode(r.t3777Code)))];
+  const { codes, zoekruimte } = beperkSoorten(alle, gpcCategoryCode);
   const image_b64 = normalized.data.toString('base64');
   const { width, height } = normalized.info;
   const localizeBudget = remaining();
@@ -179,7 +181,7 @@ async function recognize(image: Buffer, deadline: number) {
   if (crops.length !== localized.detections.length || crops.length > MAX_CROPS || new Set(crops.map(boxKey)).size !== crops.length) {
     throw new Error('Localization returned unusable regions');
   }
-  if (!crops.length) return { results: [] as RawDetection[], width, height, partial: false };
+  if (!crops.length) return { results: [] as RawDetection[], width, height, partial: false, zoekruimte };
   const classifyBudget = remaining();
   const classified = await mlClient.classifyArtwork({
     strict_runtime: true, remaining_budget_ms: classifyBudget, image_b64, crops, confidence_threshold: 0.99, persist_crops: false,
@@ -195,7 +197,7 @@ async function recognize(image: Buffer, deadline: number) {
     return ok;
   }) as RawDetection[];
   if (!results.length) throw new Error('Classification evidence is malformed');
-  return { results, width, height, partial: open.size > 0 };
+  return { results, width, height, partial: open.size > 0, zoekruimte };
 }
 
 export async function runLogoScanJob({ scanId }: { scanId: string }): Promise<void> {
@@ -212,11 +214,11 @@ export async function runLogoScanJob({ scanId }: { scanId: string }): Promise<vo
     if (!await writeIfOpen({ ...state, status: 'running' })) return; // already timed out on read
     const image = await redis.getBuffer(imageKey(scanId));
     if (!image) throw new Error('image no longer available');
-    const { results, width, height, partial } = await withDeadline(recognize(image, deadline), deadline - started);
+    const { results, width, height, partial, zoekruimte } = await withDeadline(recognize(image, deadline, state.gpcCategoryCode), deadline - started);
     const logoResults = buildLogoResults({
       scanId, productId: state.productId, imageHash: state.imageHash, status: partial ? 'partial' : 'ok',
       reason: partial ? 'classification_incomplete' : undefined, modelVersion: process.env.LOGO_MODEL_VERSION,
-      signalWord: state.signalWord, width, height, detections: results,
+      signalWord: state.signalWord, width, height, detections: results, zoekruimte,
     });
     const problems = validateLogoResults(logoResults);
     if (problems.length) throw new ResultInvalidError(problems.slice(0, 3).join('; '));

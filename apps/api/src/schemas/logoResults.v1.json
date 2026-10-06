@@ -55,6 +55,27 @@
       "type": "string",
       "minLength": 1
     },
+    "zoekruimte": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "beperkt",
+        "aantalSoorten"
+      ],
+      "properties": {
+        "gpcCategoryCode": {
+          "type": "string",
+          "pattern": "^[0-9]{8}$"
+        },
+        "beperkt": {
+          "type": "boolean"
+        },
+        "aantalSoorten": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
     "signaalwoord": {
       "enum": [
         "DANGER",

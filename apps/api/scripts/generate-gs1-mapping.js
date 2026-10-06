@@ -25,6 +25,8 @@ const notInGs1 = codesOf('scripts/gs1-mapping-sources/gs1-not-in-codelist-31371.
 // Standwijzigingen (bv. naar `automatisch` na een meetrapport, verhaal 5.4) horen HIER, nooit met de hand in het JSON:
 // { "SOORT": { "opnamestand": "...", "rapportverwijzing": "...", "validForModelVersion": "...", "validForReferenceVersion": "...", "besluitdatum": "YYYY-MM-DD" } }
 const overrides = JSON.parse(read('scripts/gs1-mapping-sources/stand-overrides.json'));
+// GPC-prefixen per categorie (2/4/6/8 cijfers); alleen invullen wat zeker is (zie README). Leeg = overal.
+const catOverrides = JSON.parse(read('scripts/gs1-mapping-sources/categorieen-overrides.json'));
 const t3777 = [...read('../web/src/data/keurmerk-codes.ts').matchAll(/^"([^"]*)",?\s*$/gm)].map((m) => m[1]);
 if (t3777.length !== 889) throw new Error(`keurmerk-codes.ts levert ${t3777.length} codes, verwacht 889 (regex of bestand gewijzigd?)`);
 
@@ -95,6 +97,11 @@ for (const [soort, o] of Object.entries(overrides)) {
   const e = seen.get(soort);
   if (!e) throw new Error(`override voor onbekende soort ${soort}`);
   Object.assign(e, o);
+}
+for (const [cat, prefixes] of Object.entries(catOverrides)) {
+  if (!Object.keys(MODULE_PAD).includes(cat)) throw new Error(`categorieen-override voor onbekende categorie ${cat}`);
+  if (!Array.isArray(prefixes) || prefixes.some((p) => !/^(\d{2}|\d{4}|\d{6}|\d{8})$/.test(p))) throw new Error(`categorieen-override ${cat}: ongeldige prefix (2/4/6/8 cijfers)`);
+  for (const [code, c] of categoryOf) if (c === cat && seen.has(code)) seen.get(code).categorieen = [...prefixes];
 }
 const entries = [...seen.values()].sort((a, b) => (a.soort < b.soort ? -1 : 1));
 uitgesloten.sort((a, b) => (a.soort < b.soort ? -1 : 1));

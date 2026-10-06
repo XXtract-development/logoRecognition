@@ -21,7 +21,7 @@ export interface Gs1Item {
 export interface Gs1MappingEntry {
   soort: string;
   gs1: Gs1Item[];
-  /** GPC-families waar de soort zinvol is; leeg = overal. */
+  /** GPC-prefixen (2/4/6/8 cijfers: segment/family/class/brick) waar de soort zinvol is; leeg = overal. */
   categorieen: string[];
   opnamestand: Opnamestand;
   /** Stand waarmee de regel is gestart; afwijken vraagt een rapportverwijzing. */
@@ -63,6 +63,8 @@ export function validateMapping(f: Gs1MappingFile): string[] {
   for (const e of f.entries) {
     if (!STANDEN.includes(e.opnamestand)) fouten.push(`${e.soort}: onbekende opnamestand ${e.opnamestand}`);
     if (e.startstand !== 'voorstel' && e.startstand !== 'uit') fouten.push(`${e.soort}: startstand moet voorstel of uit zijn`);
+    if (e.categorieen.some((c) => !/^(\d{2}|\d{4}|\d{6}|\d{8})$/.test(c))) fouten.push(`${e.soort}: categorieen moet prefixen van 2, 4, 6 of 8 cijfers bevatten`);
+    if (e.categorieen.length && isGhsCode(e.soort)) fouten.push(`${e.soort}: categorieen van een gevaarsymbool moet leeg blijven`);
     if (e.opnamestand === 'uit' && !e.reden) fouten.push(`${e.soort}: uit zonder reden`);
     if (e.opnamestand === 'automatisch' && !e.rapportverwijzing) fouten.push(`${e.soort}: automatisch zonder rapportverwijzing`);
     if (e.opnamestand !== e.startstand && !e.rapportverwijzing) fouten.push(`${e.soort}: standwijziging zonder rapportverwijzing`);

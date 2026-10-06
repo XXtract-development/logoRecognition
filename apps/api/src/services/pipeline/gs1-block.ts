@@ -9,10 +9,11 @@ import { getThresholdForMethod } from '../artwork-crosscheck';
 import { policyVersion, resolveSoort } from '../gs1-mapping';
 import { createLogger } from '../../core/logger';
 import { isValidGs1Value } from '../gs1-codelists';
+import type { Zoekruimte } from '../zoekruimte';
 import { isGhsCode, normalizeReferenceCode } from '../field-type-mapping';
 
 /** sha256 van logoResults.v1.json; consumenten pinnen deze (zie logoResults.v1.sha256 en de API-specificatie). */
-export const LOGO_RESULTS_SCHEMA_SHA256 = '75d9e51839a310a6ecb549375a212f00fa16200e25f13fede0610429eb18abd7';
+export const LOGO_RESULTS_SCHEMA_SHA256 = '3a9cb34efa69d3c10e4c63ddbb99062fbacae2df5d96af2ffce760d1f156a47c';
 
 export type Stand = 'automatisch' | 'voorstel' | 'afgewezen';
 export interface RawDetection {
@@ -34,10 +35,12 @@ export interface LogoResults {
   status: 'ok' | 'partial' | 'failed' | 'skipped'; reason?: string;
   modelVersion: string; referenceVersion: string; policyVersion: string; signaalwoord?: 'DANGER' | 'WARNING';
   detections: RawDetection[]; items: LogoItem[];
+  zoekruimte?: Zoekruimte;
 }
 export interface BuildInput {
   scanId: string; productId?: string; imageHash: string; status: LogoResults['status']; reason?: string;
   modelVersion?: string | null; signalWord?: string; width: number; height: number; detections: RawDetection[];
+  zoekruimte?: Zoekruimte;
 }
 type Resolver = typeof resolveSoort;
 
@@ -127,5 +130,6 @@ export function buildLogoResults(input: BuildInput, resolve: Resolver = resolveS
   if (input.productId) out.productId = input.productId;
   if (input.reason) out.reason = input.reason;
   if (signaalwoord) out.signaalwoord = signaalwoord;
+  if (input.zoekruimte) out.zoekruimte = input.zoekruimte;
   return out;
 }
