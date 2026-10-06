@@ -27,6 +27,7 @@
  *                           fail → emitGateFailure with comparison figures (9.4 AC6).
  */
 
+import { closeLogoScanFlow } from './logo-scan-flow';
 import { Worker, Job } from 'bullmq';
 import { getRedisConnection } from './queue';
 import {
@@ -474,7 +475,7 @@ export async function closePipelineWorkers(): Promise<void> {
   const workers = [trainingWorker, detectionWorker, flywheelWorker].filter(
     (w): w is Worker => w !== null
   );
-  await Promise.allSettled(workers.map((w) => w.close()));
+  await Promise.allSettled([...workers.map((w) => w.close()), closeLogoScanFlow()]);
   trainingWorker = null;
   detectionWorker = null;
   flywheelWorker = null;

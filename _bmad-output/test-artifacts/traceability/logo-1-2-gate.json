@@ -1,0 +1,1 @@
+{"story":"1.2","date":"2026-10-06","gate":"CONCERNS","acs":{"AC1":"FULL","AC2":"FULL","AC3":"FULL_MOCKED","AC4":"FULL_MOCKED","AC5":"PARTIAL"},"gaps":["G1 p50/p95 not measured on ACC","G2 no real Redis/BullMQ test","G3 capacity per instance","G4 no app-start test for worker"],"tests":{"new":22,"file_total":1423,"green":true}}

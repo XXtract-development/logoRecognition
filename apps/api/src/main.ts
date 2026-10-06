@@ -31,6 +31,8 @@ import { referenceLogosRoutes } from './api/v1/reference-logos';
 import { artworkPipelineRoutes } from './api/v1/artwork-pipeline';
 import { verifyDeclaredRoutes } from './api/v1/verify-declared';
 import { pipelineRoutes } from './api/v1/pipeline';
+import { logoScanRoutes } from './api/v1/logo-scans';
+import { registerLogoScanWorker } from './services/pipeline/logo-scan-flow';
 import { flywheelRoutes } from './api/v1/flywheel';
 import { registerRetrainingCronJob } from './services/pipeline/trigger';
 import { registerTrainingFlowWorker, registerDetectionWorker, registerFlywheelWorker, closePipelineWorkers } from './services/pipeline/workers';
@@ -154,6 +156,7 @@ async function startServer() {
     await app.register(artworkPipelineRoutes, { prefix: '/api/v1' });
     await app.register(verifyDeclaredRoutes, { prefix: '/api/v1' });
     await app.register(pipelineRoutes, { prefix: '/api/v1' });
+    await app.register(logoScanRoutes, { prefix: '/api/v1' });
     await app.register(flywheelRoutes, { prefix: '/api/v1' });
     await app.register(ghsReviewRoutes, { prefix: '/api/v1' });
 
@@ -345,6 +348,15 @@ async function startServer() {
         registerDetectionWorker();
       } catch (err) {
         logger.warn('Failed to register detection worker (Redis may not be ready)', {
+          error: err instanceof Error ? err.message : 'Unknown error',
+        });
+      }
+
+      // Story 1.2: worker for the asynchronous logo-scan queue (state in Redis).
+      try {
+        registerLogoScanWorker();
+      } catch (err) {
+        logger.warn('Failed to register logo-scan worker (Redis may not be ready)', {
           error: err instanceof Error ? err.message : 'Unknown error',
         });
       }
