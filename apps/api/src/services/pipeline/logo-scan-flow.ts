@@ -34,6 +34,8 @@ const logger = createLogger('logo-scan-flow');
 
 /** Maximum time from accepted request to `done` or `failed`; after it a scan is `failed`/`timeout`. */
 export const LOGO_SCAN_MAX_MS = 300000;
+/** ml-service `remaining_budget_ms` is validated le=165000 (apps/ml-service/app/api/artwork.py); above that it answers 422. */
+export const ML_MAX_BUDGET_MS = 165000;
 /** Largest image accepted. Equals the multipart fileSize limit in main.ts (10 MB). */
 export const LOGO_SCAN_MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 /** Largest decoded image, in pixels (same guard as /detect). */
@@ -256,7 +258,8 @@ async function recognize(image: Buffer, deadline: number, gpcCategoryCode?: stri
   const { codes, zoekruimte } = beperkSoorten(alle, gpcCategoryCode);
   const image_b64 = normalized.data.toString('base64');
   const { width, height } = normalized.info;
-  const localizeBudget = remaining();
+  // The ML service rejects (422) a time budget above 165 s, while a scan may run up to LOGO_SCAN_MAX_MS: cap what is sent.
+  const localizeBudget = Math.min(remaining(), ML_MAX_BUDGET_MS);
   const localized = await mlClient.localizeArtwork({
     proposal_strategy: 'visual', strict_runtime: true, remaining_budget_ms: localizeBudget, image_b64, codes,
   }, { timeoutMs: localizeBudget });
@@ -266,7 +269,7 @@ async function recognize(image: Buffer, deadline: number, gpcCategoryCode?: stri
     throw new Error('Localization returned unusable regions');
   }
   if (!crops.length) return { results: [] as RawDetection[], width, height, partial: false, zoekruimte };
-  const classifyBudget = remaining();
+  const classifyBudget = Math.min(remaining(), ML_MAX_BUDGET_MS);
   const classified = await mlClient.classifyArtwork({
     strict_runtime: true, remaining_budget_ms: classifyBudget, image_b64, crops, confidence_threshold: 0.99, persist_crops: false,
   }, { timeoutMs: classifyBudget });
