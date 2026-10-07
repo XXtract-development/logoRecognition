@@ -14,7 +14,7 @@ const base = process.env.LOGO_SCAN_URL, key = process.env.LOGO_SCAN_KEY;
 if (!dir || !csvPath || !outPrefix || !base || !key) { console.error('Vereist: <beeldmap> <lijst.csv> <uitvoer-prefix> en LOGO_SCAN_URL + LOGO_SCAN_KEY.'); process.exit(1); }
 
 const q = (v: unknown) => `"${String(v).replace(/"/g, '""')}"`;
-const DEADLINE_MS = 330000; // LOGO_SCAN_MAX_MS (300 s) + marge
+const DEADLINE_MS = 270000; // LOGO_SCAN_MAX_MS (240 s) + marge
 const abort = () => AbortSignal.timeout(30000);
 const host = new URL(base).host;
 if (!/acc|stage|localhost|127\.0\.0\.1/i.test(host) && !args.includes('--ook-niet-acc')) {

@@ -106,7 +106,7 @@ describe('Story 1.7 — zoekruimte in de worker', () => {
     await server.close();
     return { done, codes: vi.mocked(mlClient.localizeArtwork).mock.calls[0][0].codes as string[] };
   };
-  it('ml-service contract: remaining_budget_ms stays within 1..165000 although a scan may run 300 s (ACC returned 422 otherwise)', async () => {
+  it('ml-service contract: remaining_budget_ms stays within 1..165000 although a scan may run 240 s', async () => {
     await run();
     const loc = vi.mocked(mlClient.localizeArtwork).mock.calls[0];
     const cls = vi.mocked(mlClient.classifyArtwork).mock.calls[0];
@@ -143,7 +143,7 @@ describe('Story 1.7 — zoekruimte in de worker', () => {
 
 describe('constants', () => {
   it('are named and match the agreed limits', () => {
-    expect(LOGO_SCAN_MAX_MS).toBe(300000);
+    expect(LOGO_SCAN_MAX_MS).toBe(240000);
     expect(LOGO_SCAN_MAX_IMAGE_BYTES).toBe(10 * 1024 * 1024);
     expect(LOGO_SCAN_MAX_PIXELS).toBeGreaterThan(0);
   });
@@ -298,7 +298,7 @@ describe('GET logo-scans/:scanId', () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     const server = await app();
     const { scanId } = (await post(server, await png())).json();
-    vi.setSystemTime(Date.now() + LOGO_SCAN_MAX_MS + 1000);
+    vi.setSystemTime(Date.now() + 240000 + 1000);
     await runLogoScanJob({ scanId });
     expect(mlClient.localizeArtwork).not.toHaveBeenCalled();
     expect((await get(server, scanId)).json()).toMatchObject({ status: 'failed', reason: 'timeout' });
@@ -310,7 +310,7 @@ describe('GET logo-scans/:scanId', () => {
     const { scanId } = (await post(server, await png())).json();
     vi.mocked(mlClient.localizeArtwork).mockImplementationOnce(() => new Promise(() => {}));
     const run = runLogoScanJob({ scanId });
-    await vi.advanceTimersByTimeAsync(LOGO_SCAN_MAX_MS + 1000);
+    await vi.advanceTimersByTimeAsync(240000 + 1000);
     await run;
     expect((await get(server, scanId)).json()).toMatchObject({ status: 'failed', reason: 'timeout' });
     await server.close();
@@ -319,7 +319,7 @@ describe('GET logo-scans/:scanId', () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     const server = await app();
     const { scanId } = (await post(server, await png())).json();
-    vi.setSystemTime(Date.now() + LOGO_SCAN_MAX_MS + 1000);
+    vi.setSystemTime(Date.now() + 240000 + 1000);
     expect((await get(server, scanId)).json()).toMatchObject({ status: 'failed', reason: 'timeout' });
     await server.close();
   });
