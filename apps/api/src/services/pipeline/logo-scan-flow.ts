@@ -33,7 +33,7 @@ import {
 const logger = createLogger('logo-scan-flow');
 
 /** Maximum time from accepted request to `done` or `failed`; after it a scan is `failed`/`timeout`. */
-export const LOGO_SCAN_MAX_MS = 300000;
+export const LOGO_SCAN_MAX_MS = 240000;
 /** ml-service `remaining_budget_ms` is validated le=165000 (apps/ml-service/app/api/artwork.py); above that it answers 422. */
 export const ML_MAX_BUDGET_MS = 165000;
 /** Largest image accepted. Equals the multipart fileSize limit in main.ts (10 MB). */
@@ -158,7 +158,7 @@ export function submitLogoScan(input: {
       if (dbOn) await insertScan({ ...tracked, scanId, productId, pipelineId: input.pipelineId, status: 'pending' });
       await writeState({ ...base, scanId });
       await redis.setex(imageKey(scanId), IMAGE_TTL_S, input.image);
-      // attempts 1: a retry would eat into the 300 s limit; a re-run is a new scan with attempt + 1.
+      // attempts 1: a retry would eat into the 240 s limit; a re-run is a new scan with attempt + 1.
       // jobId = scanId: a fixed id would silently drop a second add.
       await q.add('logo-scan', { scanId }, { jobId: scanId, attempts: 1, removeOnComplete: { age: 3600 }, removeOnFail: { age: STATE_TTL_S } });
       // Only after a successful enqueue: a failed enqueue must not leave the product pointing at a scan that never ran.
