@@ -51,7 +51,15 @@ def parse_proposals(envelope, width, height):
             result[key] = value
         return result
 
-    parsed = json.loads(content, object_pairs_hook=unique_keys)
+    # Models sometimes put a sentence before the JSON object (or wrap it in a
+    # markdown fence). Decode the first object and ignore surrounding prose; the
+    # strict checks below still apply to that object.
+    start = content.find("{")
+    if start < 0:
+        raise ValueError("Proposal content has no JSON object")
+    parsed, _ = json.JSONDecoder(object_pairs_hook=unique_keys).raw_decode(
+        content, start
+    )
     if not isinstance(parsed, dict) or set(parsed) != {"regions"}:
         raise ValueError("Invalid proposal object")
     regions = parsed["regions"]
