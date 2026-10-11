@@ -149,3 +149,49 @@ async def test_provider_failure_or_oversized_not_negative(monkeypatch, response)
     provider_transport(monkeypatch, lambda request: response)
     with pytest.raises((ValueError, httpx.HTTPError)):
         await proposals.visual_proposals(np.zeros((10, 20, 3), np.uint8), [], lambda: 1)
+
+
+def test_accepts_json_after_prose_or_in_markdown_fence():
+    body = json.dumps({"regions": [{"box_2d": [10, 20, 30, 40]}]})
+    prose = {
+        "choices": [
+            {
+                "finish_reason": "stop",
+                "message": {"content": "Only one mark is visible.\n\n" + body},
+            }
+        ]
+    }
+    fenced = {
+        "choices": [
+            {
+                "finish_reason": "stop",
+                "message": {"content": "```json\n" + body + "\n```"},
+            }
+        ]
+    }
+    expected = proposals.parse_proposals(
+        envelope([{"box_2d": [10, 20, 30, 40]}]), 100, 100
+    )
+    assert proposals.parse_proposals(prose, 100, 100) == expected
+    assert proposals.parse_proposals(fenced, 100, 100) == expected
+
+
+def test_prose_without_json_object_is_rejected():
+    no_json = {
+        "choices": [{"finish_reason": "stop", "message": {"content": "No marks here."}}]
+    }
+    with pytest.raises(ValueError):
+        proposals.parse_proposals(no_json, 100, 100)
+
+
+def test_prose_does_not_relax_duplicate_key_check():
+    dup = {
+        "choices": [
+            {
+                "finish_reason": "stop",
+                "message": {"content": 'Result: {"regions":[],"regions":[]}'},
+            }
+        ]
+    }
+    with pytest.raises(ValueError):
+        proposals.parse_proposals(dup, 100, 100)
