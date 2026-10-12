@@ -476,7 +476,10 @@ async def test_visual_preserves_full_resolution_and_ghs_union(runtime, monkeypat
         ],
     )
     provider = AsyncMock(
-        return_value=[{"bbox": {"x": 1, "y": 2, "width": 3, "height": 4}}]
+        return_value=(
+            [{"bbox": {"x": 1, "y": 2, "width": 3, "height": 4}}],
+            {"calls": 1, "tokens_in": 10, "tokens_out": 2, "skipped": 0},
+        )
     )
     monkeypatch.setattr(artwork_proposals, "visual_proposals", provider)
     monkeypatch.setattr(
@@ -535,7 +538,7 @@ async def test_visual_negative_does_not_load_all_templates(runtime, monkeypatch)
     from app.services import artwork_proposals
 
     monkeypatch.setattr(
-        artwork_proposals, "visual_proposals", AsyncMock(return_value=[])
+        artwork_proposals, "visual_proposals", AsyncMock(return_value=([], {"calls": 1, "tokens_in": 10, "tokens_out": 2, "skipped": 0}))
     )
     templates = AsyncMock(side_effect=AssertionError("Brute force path must not run"))
     monkeypatch.setattr(route, "_get_reference_templates_cached", templates)
@@ -549,13 +552,23 @@ async def test_visual_negative_does_not_load_all_templates(runtime, monkeypatch)
     assert response.json() == {
         "detections": [],
         "truncated": False,
-        "proposals": {"raw": 0, "refined": 0, "ghs": 0},
+        "proposals": {
+            "raw": 0,
+            "refined": 0,
+            "ghs": 0,
+            "calls": 1,
+            "tokens_in": 10,
+            "tokens_out": 2,
+            "skipped": 0,
+            "dropped": 0,
+            "unrefined": 0,
+        },
     }
     templates.assert_not_awaited()
 
 
 @pytest.mark.asyncio
-async def test_visual_combined_capacity_does_not_trim_originals(runtime, monkeypatch):
+async def test_visual_combined_capacity_is_capped_not_a_503(runtime, monkeypatch):
     route, _, _, _, _, app = runtime
     from app.services import (
         artwork_proposals,
@@ -568,7 +581,9 @@ async def test_visual_combined_capacity_does_not_trim_originals(runtime, monkeyp
         for i in range(64)
     ]
     monkeypatch.setattr(
-        artwork_proposals, "visual_proposals", AsyncMock(return_value=regions)
+        artwork_proposals,
+        "visual_proposals",
+        AsyncMock(return_value=(regions, {"calls": 1, "tokens_in": 10, "tokens_out": 2, "skipped": 0})),
     )
     monkeypatch.setattr(
         route,
@@ -589,7 +604,12 @@ async def test_visual_combined_capacity_does_not_trim_originals(runtime, monkeyp
         response = await client.post(
             "/ml/artwork/localize", json=payload(proposal_strategy="visual")
         )
-    assert response.status_code == 503
+    # 1 GHS + 64 proposals: the union is capped at 64, GHS first, one dropped.
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["detections"]) == 64
+    assert body["detections"][0]["bbox"] == {"x": 10, "y": 10, "width": 2, "height": 2}
+    assert body["proposals"]["dropped"] == 1
 
 
 @pytest.mark.asyncio

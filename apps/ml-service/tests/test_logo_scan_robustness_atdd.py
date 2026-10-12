@@ -273,7 +273,12 @@ async def test_ac_2_2_capacity_and_empty_library_classes(runtime, monkeypatch):
     monkeypatch.setattr(
         artwork_proposals,
         "visual_proposals",
-        AsyncMock(return_value=[{"bbox": {"x": 1, "y": 2, "width": 3, "height": 4}}]),
+        AsyncMock(
+            return_value=(
+                [{"bbox": {"x": 1, "y": 2, "width": 3, "height": 4}}],
+                {"calls": 1, "tokens_in": 10, "tokens_out": 2, "skipped": 0},
+            )
+        ),
     )
     monkeypatch.setattr(
         route, "_get_reference_templates_cached", AsyncMock(return_value=[])
@@ -284,13 +289,15 @@ async def test_ac_2_2_capacity_and_empty_library_classes(runtime, monkeypatch):
         == "Visual localization unavailable (template_library_empty)"
     )
 
-    # proposal_capacity: 64 voorstellen + 1 GHS-detectie > 64.
+    # 64 voorstellen + 1 GHS-detectie > 64: afgekapt, geen proposal_capacity meer.
     regions = [
         {"bbox": {"x": i % 20, "y": i // 20, "width": 1, "height": 1}}
         for i in range(64)
     ]
     monkeypatch.setattr(
-        artwork_proposals, "visual_proposals", AsyncMock(return_value=regions)
+        artwork_proposals,
+        "visual_proposals",
+        AsyncMock(return_value=(regions, {"calls": 1, "tokens_in": 10, "tokens_out": 2, "skipped": 0})),
     )
     monkeypatch.setattr(
         route,
@@ -306,10 +313,8 @@ async def test_ac_2_2_capacity_and_empty_library_classes(runtime, monkeypatch):
         lambda *args, **kwargs: [{"bbox": {"x": 10, "y": 10, "width": 2, "height": 2}}],
     )
     response = await localize_visual(app)
-    assert (
-        response.json()["detail"]
-        == "Visual localization unavailable (proposal_capacity)"
-    )
+    assert response.status_code == 200
+    assert response.json()["proposals"]["dropped"] == 1
 
 
 @pytest.mark.asyncio
@@ -393,7 +398,12 @@ async def test_ac_3_1_visual_response_carries_proposal_counts(runtime, monkeypat
     monkeypatch.setattr(
         artwork_proposals,
         "visual_proposals",
-        AsyncMock(return_value=[{"bbox": {"x": 1, "y": 2, "width": 3, "height": 4}}]),
+        AsyncMock(
+            return_value=(
+                [{"bbox": {"x": 1, "y": 2, "width": 3, "height": 4}}],
+                {"calls": 1, "tokens_in": 10, "tokens_out": 2, "skipped": 0},
+            )
+        ),
     )
     monkeypatch.setattr(
         ghs_reference,
@@ -404,7 +414,17 @@ async def test_ac_3_1_visual_response_carries_proposal_counts(runtime, monkeypat
     assert response.status_code == 200
     body = response.json()
     assert len(body["detections"]) == 4
-    assert body["proposals"] == {"raw": 1, "refined": 2, "ghs": 1}
+    assert body["proposals"] == {
+        "raw": 1,
+        "refined": 2,
+        "ghs": 1,
+        "calls": 1,
+        "tokens_in": 10,
+        "tokens_out": 2,
+        "skipped": 0,
+        "dropped": 0,
+        "unrefined": 0,
+    }
 
 
 @pytest.mark.asyncio
@@ -413,7 +433,7 @@ async def test_ac_3_1_visual_negative_reports_zero_counts(runtime, monkeypatch):
     from app.services import artwork_proposals
 
     monkeypatch.setattr(
-        artwork_proposals, "visual_proposals", AsyncMock(return_value=[])
+        artwork_proposals, "visual_proposals", AsyncMock(return_value=([], {"calls": 1, "tokens_in": 10, "tokens_out": 2, "skipped": 0}))
     )
     monkeypatch.setattr(
         route,
@@ -425,7 +445,17 @@ async def test_ac_3_1_visual_negative_reports_zero_counts(runtime, monkeypatch):
     assert response.json() == {
         "detections": [],
         "truncated": False,
-        "proposals": {"raw": 0, "refined": 0, "ghs": 0},
+        "proposals": {
+            "raw": 0,
+            "refined": 0,
+            "ghs": 0,
+            "calls": 1,
+            "tokens_in": 10,
+            "tokens_out": 2,
+            "skipped": 0,
+            "dropped": 0,
+            "unrefined": 0,
+        },
     }
 
 

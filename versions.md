@@ -2,6 +2,13 @@
 
 ## 12 oktober 2026
 
+**Logoherkenning: meer logo's gevonden op grote etiketten**
+- Op grote etiketten wordt naast het hele etiket ook elk deel apart bekeken, zodat kleine keurmerken vaker worden aangewezen.
+- Eén onbruikbaar vakje in het antwoord van het beeldmodel laat de scan niet meer mislukken; het vakje wordt overgeslagen en geteld.
+- Een etiket met veel gevonden plekken mislukt niet meer; GHS-symbolen gaan altijd voor.
+- Een Nutri-Score-letter wordt alleen nog gemeld als de lezing zeer zeker is; twijfelende lezingen leveren geen verkeerde letter meer op.
+- Per scan wordt bewaard hoeveel vragen aan het beeldmodel zijn gesteld en hoe groot die vragen en antwoorden waren (in tokens).
+
 **Logoherkenning: lege vakjes, zichtbare storingen en bruikbare twijfelvlag**
 - Een uitgesneden vakje zonder zichtbare inhoud wordt niet meer als logo herkend; het krijgt een expliciete uitkomst "leeg" en telt niet mee als treffer.
 - Faalt het zoeken naar logo's op een etiket, dan staat in het logboek en in de melding wélke soort fout optrad, zonder dat sleutels of beeldmateriaal meekomen.

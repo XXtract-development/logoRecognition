@@ -143,6 +143,12 @@ export interface SynthesizeResponse {
 // ML Client Class
 // ============================================
 
+export type LocalizeProposals = {
+  raw: number; refined: number; ghs: number;
+  calls?: number; tokens_in?: number | null; tokens_out?: number | null;
+  skipped?: number; dropped?: number; unrefined?: number;
+};
+
 export class MLClient {
   private client: AxiosInstance;
   private baseUrl: string;
@@ -411,14 +417,19 @@ export class MLClient {
     codes?: string[];
   }, options: { timeoutMs?: number } = {}): Promise<{
     detections: Array<Record<string, unknown>>; truncated: boolean;
-    /** Visual route only: counts before/after refinement plus GHS detections; null/absent on the template route or an older ml image. */
-    proposals?: { raw: number; refined: number; ghs: number } | null;
+    /**
+     * Visual route only: `raw` proposals after merging duplicates, `refined` boxes and `ghs` detections; null/absent on
+     * the template route or an older ml image. Newer ml images add provider `calls`, summed `tokens_in`/`tokens_out`
+     * (null when a call reported no usage), `skipped` invalid boxes, `dropped` boxes cut by the 64-box cap before and
+     * after refinement and `unrefined` proposals left unrefined to keep the time reserve.
+     */
+    proposals?: LocalizeProposals | null;
   }> {
     try {
       const response = await this.client.post<{
         detections: Array<Record<string, unknown>>;
         truncated: boolean;
-        proposals?: { raw: number; refined: number; ghs: number } | null;
+        proposals?: LocalizeProposals | null;
       }>('/ml/artwork/localize', request, { timeout: options.timeoutMs ?? 120000 });
       return response.data;
     } catch (error) {

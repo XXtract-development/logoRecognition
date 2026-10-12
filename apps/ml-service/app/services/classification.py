@@ -519,7 +519,16 @@ async def classify_crop(
                 )
             else:
                 a2_letter, a2_conf, a2_info = predict_letter(crop)
-            if a2_letter is not None and a2_conf >= min_conf():
+            # Strict route (pipeline): the vangnet claims only at the Nutri-Score
+            # bar (never below the A2 floor), the same bar as the confirmation
+            # route; below it the uncertain embedding answer stands. Non-strict
+            # callers keep the A2 floor.
+            a2_bar = (
+                max(ns_threshold, min_conf())
+                if strict_runtime and ns_threshold is not None
+                else min_conf()
+            )
+            if a2_letter is not None and a2_conf >= a2_bar:
                 a2_confidence = round(float(a2_conf), 3)
                 a2_uncertain = bool(
                     ns_threshold is not None and a2_confidence < ns_threshold

@@ -3,13 +3,13 @@ title: Meetverslag stap-1-lokalisatie
 spec: SPEC-stap1-localization-recall
 datum: 2026-10-12
 omgeving: ACC ml-service f40a2a0 (container ml-service-qsookwow8koko0kwg00g0cwk-122152972183), model anthropic/claude-sonnet-5.5 via OpenRouter
-status: gestopt bij productkeuze (kosten en valse meldingen)
+status: besluit productowner 12-10-2026 vastgelegd; bouw van heel etiket + tegels met Nutri-Score-reparatie
 ---
 
 # Meetverslag stap 1
 
 > [!warning] Geen variant haalt alle eisen
-> Tegelen (heel etiket + tegels) wijst ruim 2,5× zoveel gemiste logo's aan en vindt 2,3× zoveel top-15-keurmerken, maar geeft ook 10 extra niet-gedeclareerde meldingen per 40 etiketten en kost ±5× zoveel modeltokens. Dat botst met de eis "valse meldingen stijgen niet" en is een kostenkeuze: de bouw is gestopt vóór de tests en de code, tot de productowner kiest.
+> Tegelen (heel etiket + tegels) wijst ruim 2,5× zoveel gemiste logo's aan en vindt 2,3× zoveel top-15-keurmerken, maar geeft ook 10 extra niet-gedeclareerde meldingen per 40 etiketten en kost ±5× zoveel modeltokens. Dat botst met de eis "valse meldingen stijgen niet" en is een kostenkeuze. De productowner heeft beslist (zie onderaan): tegelen mag, maar alleen samen met een reparatie van de extra meldingen.
 
 ## Werkwijze
 
@@ -93,7 +93,20 @@ VTF kost ±5,1× zoveel invoertokens en ±2,2× zoveel uitvoertokens per scan. P
 
 Region proposer erbij valt af (niet-gedeclareerde meldingen ×11). Scherpere prompt valt af (geen winst).
 
-## Open voor de productowner
+## Besluiten productowner (12-10-2026)
 
-1. Accepteert u ±5× modelkosten per scan voor 2,3× zoveel gevonden top-15-keurmerken?
-2. Accepteert u daarbij meer niet-gedeclareerde meldingen (4 → 14 per 40 etiketten), of moet eerst stap 2 (Nutri-Score-lezing, poort) die meldingen terugdringen voordat tegelen live gaat?
+1. Kosten: akkoord met heel etiket plus tegels, hoogstens 6 aanroepen per scan (±5× modeltokens).
+2. Valse meldingen: de nieuwe stap 1 gaat alleen live samen met een reparatie die de extra niet-gedeclareerde meldingen terugdringt, vooral Nutri-Score-balken die als "A" gelezen worden. Eis: op de 40-etiketten-meting stijgen de niet-gedeclareerde meldingen niet t.o.v. de controle (4 per run); niet haalbaar → stoppen en getallen leveren.
+
+## Herkomst van de valse Nutri-Score-meldingen
+
+VERIFIED (fase-B-uitvoer, alle classify-detecties): alle 25 niet-gedeclareerde Nutri-Score-claims boven de drempel komen van het A2-vangnet (methode `nutriscore-a2`, drempel 0,5). 24 van de 25 hebben een zekerheid onder 0,99; veel zijn verticale (gedraaide) balken (hoogte/breedte 2,5–8,8). De juiste A2-claims liggen grotendeels op ≥ 0,99 (33 van 38). De balk-lezer en de embedding gaven geen enkele valse Nutri-Score-melding.
+
+Nagespeeld (vangnetclaims < 0,99 weggelaten, embedding-terugval niet meegeteld — AANNAME dat die terugval niets meldt; in fase B lag geen enkele embedding-Nutri-Score-letter ≥ 0,80, 88 van 88 eronder, maar bij een vangnetclaim is de embeddingzekerheid niet bewaard). Niet-gedeclareerde Nutri-Score-meldingen over vier runs: 18 (V0 5, VTF 13) → 1:
+
+| variant | run | top-15 /50 | niet-gedeclareerd | Nutri-Score /16 |
+|---|---|---|---|---|
+| V0 | 1 / 2 | 4 / 5 | 1 / 2 | 3 / 4 |
+| VTF | 1 / 2 | 10 / 9 | 6 / 10 | 8 / 7 |
+
+INFERENCE: met alleen deze reparatie blijft VTF waarschijnlijk boven de eis (4 per run). De overige meldingen zijn deels waarschijnlijk echte maar niet-gedeclareerde logo's (gevarensymbool via de GHS-specialist 1,0; Triman 0,955; AISE 0,92) en deels embedding-treffers net boven 0,80 (0,80–0,85). Een hogere embeddingdrempel (0,86) zou de eis nagespeeld halen, maar is niet toegepast: drempels bijstellen op 40 etiketten is tegen de meetregel. De echte meting na de bouw beslist.
