@@ -24,6 +24,7 @@ import base64
 import functools
 import hashlib
 import os
+import re
 import tempfile
 import time
 from contextvars import ContextVar
@@ -657,6 +658,60 @@ class LocalizeRequest(BaseModel):
 class LocalizeResponse(BaseModel):
     detections: List[Dict[str, Any]]
     truncated: bool = False  # True when the time budget cut matching short
+    # Visual route only: {"raw": proposals from the visual model, "refined": spatially
+    # refined boxes, "ghs": GHS detections}. The template route leaves it null.
+    proposals: Optional[Dict[str, int]] = None
+
+
+_REDACT_PATTERNS = (
+    (re.compile(r"Bearer\s+\S+"), "Bearer [redacted]"),
+    (re.compile(r"data:image/[\w+.-]+;base64,\S+"), "data:image/[redacted]"),
+    (re.compile(r"sk-or-[\w-]+"), "[redacted-key]"),  # bare OpenRouter key
+)
+
+
+def _redact(text: str) -> str:
+    """Strip bearer tokens and inline base64 images from a message, then cap it at 200 chars."""
+    for pattern, replacement in _REDACT_PATTERNS:
+        text = pattern.sub(replacement, text)
+    return text[:200]
+
+
+def _visual_error_class(exc: BaseException) -> str:
+    """Map an exception leaving the visual localization route to one stable error class."""
+    import httpx
+
+    if isinstance(exc, (asyncio.TimeoutError, httpx.TimeoutException)):
+        return "time_budget"
+    if isinstance(exc, httpx.HTTPStatusError):
+        return f"provider_status_{exc.response.status_code}"
+    if isinstance(exc, httpx.HTTPError):
+        return "provider_transport"
+    message = str(exc)
+    for needle, cls in (
+        ("reference library is empty", "template_library_empty"),
+        ("not ready", "runtime_not_ready"),
+        ("exceeds capacity", "proposal_capacity"),
+        ("exceeds size limit", "proposal_response_size"),
+        ("Proposal image exceeds bounds", "proposal_image_bounds"),
+        ("refinement", "refinement_error"),
+    ):
+        if needle in message:
+            return cls
+    if isinstance(exc, (ValueError, KeyError, TypeError)):
+        return "proposal_parse_error"
+    return f"unexpected_{type(exc).__name__}"
+
+
+def _log_visual_failure(exc: BaseException, cls: str) -> None:
+    logger.error(
+        "Visual localization failed",
+        extra={
+            "error_class": cls,
+            "error_type": type(exc).__name__,
+            "error": _redact(str(exc)),
+        },
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -811,12 +866,23 @@ async def localize_artwork(
             if len(boxes) > 64:
                 raise ValueError("Proposal union exceeds capacity")
             await _strict_checkpoint()
-            return LocalizeResponse(detections=list(boxes.values()), truncated=False)
-        except HTTPException:
+            return LocalizeResponse(
+                detections=list(boxes.values()),
+                truncated=False,
+                proposals={
+                    "raw": len(proposed),
+                    "refined": len(refined),
+                    "ghs": len(ghs_detections),
+                },
+            )
+        except HTTPException as exc:
+            _log_visual_failure(exc, f"http_{exc.status_code}")
             raise
         except Exception as exc:
+            cls = _visual_error_class(exc)
+            _log_visual_failure(exc, cls)
             raise HTTPException(
-                status_code=503, detail="Visual localization unavailable"
+                status_code=503, detail=f"Visual localization unavailable ({cls})"
             ) from exc
 
     # Templates: caller-supplied (decode b64) OR loaded ML-side from the active
@@ -1039,6 +1105,28 @@ class ClassifyResponse(BaseModel):
     results: List[ClassifyResult]
 
 
+def _is_blank_crop(crop: Any) -> bool:
+    """Reference-admission rule applied to a BGR uint8 crop; fail-open on any error."""
+    import app.services.reference_content as reference_content
+    from app.services import classification
+
+    if not (
+        isinstance(crop, np.ndarray)
+        and crop.ndim == 3
+        and crop.shape[2] == 3
+        and crop.dtype == np.uint8
+    ):
+        return False
+    try:
+        return not reference_content.has_visible_content(classification._to_pil(crop))
+    except Exception as exc:
+        logger.warning(
+            "Blank-crop check failed; classifying anyway",
+            extra={"error": str(exc)[:200]},
+        )
+        return False
+
+
 @router.post("/artwork/classify", response_model=ClassifyResponse)
 @strict_runtime_endpoint
 async def classify_artwork(
@@ -1054,7 +1142,7 @@ async def classify_artwork(
     """
     import cv2
 
-    from app.services.classification import classify_crop
+    from app.services.classification import CLASSIFY_UNKNOWN_CODE, classify_crop
 
     # Load the source image (storage_path takes precedence over inline b64).
     if request.storage_path:
@@ -1120,33 +1208,62 @@ async def classify_artwork(
                 status_code=503, detail="Classification runtime is not ready"
             ) from exc
     results: List[ClassifyResult] = []
+    blank_crops = 0
     for region in regions:
         await _strict_checkpoint()
+        # A crop without visible content (same rule as reference admission) is never
+        # embedded: an empty surface would otherwise match an empty reference at 1.0.
+        # Fail-open: a failing check logs once and the crop takes the existing chain.
+        # The PIL composite runs off-loop (a whole-image region can be 80 MP).
         try:
             if request.strict_runtime:
-                outcome = await asyncio.wait_for(
-                    classify_crop(
+                blank = await strict_blocking(_is_blank_crop, region["crop"])
+            else:
+                blank = await asyncio.to_thread(_is_blank_crop, region["crop"])
+        except HTTPException:
+            raise
+        except Exception as exc:
+            logger.warning(
+                "Blank-crop check failed; classifying anyway",
+                extra={"error": str(exc)[:200]},
+            )
+            blank = False
+        if blank:
+            blank_crops += 1
+            outcome = {
+                "t3777_code": CLASSIFY_UNKNOWN_CODE,
+                "confidence": 0.0,
+                "method": "embedding",
+                "uncertain": True,
+                "evidence": {"reason": "blank_crop"},
+            }
+        else:
+            try:
+                if request.strict_runtime:
+                    outcome = await asyncio.wait_for(
+                        classify_crop(
+                            region["crop"],
+                            confidence_threshold=request.confidence_threshold,
+                            strict_runtime=True,
+                        ),
+                        timeout=_STRICT_CONTROL.get().remaining(),
+                    )
+                else:
+                    outcome = await classify_crop(
                         region["crop"],
                         confidence_threshold=request.confidence_threshold,
-                        strict_runtime=True,
-                    ),
-                    timeout=_STRICT_CONTROL.get().remaining(),
-                )
-            else:
-                outcome = await classify_crop(
-                    region["crop"], confidence_threshold=request.confidence_threshold
-                )
-        except Exception as exc:
-            if request.strict_runtime:
-                raise HTTPException(
-                    status_code=503,
-                    detail="Required classification backend unavailable",
-                ) from exc
-            raise
+                    )
+            except Exception as exc:
+                if request.strict_runtime:
+                    raise HTTPException(
+                        status_code=503,
+                        detail="Required classification backend unavailable",
+                    ) from exc
+                raise
         await _strict_checkpoint()
 
         crop_path: Optional[str] = None
-        if persist:
+        if persist and not blank:  # an empty surface is nothing to review
             # Write the crop PNG to MinIO under an idempotent key. A persistence
             # failure must not fail the whole classify call — it is logged and
             # the result simply carries crop_path=None.
@@ -1203,7 +1320,11 @@ async def classify_artwork(
 
     logger.info(
         "Artwork classification complete",
-        extra={"regions": len(results), "persisted_crops": persist},
+        extra={
+            "regions": len(results),
+            "persisted_crops": persist,
+            "blank_crops": blank_crops,
+        },
     )
     return ClassifyResponse(results=results)
 

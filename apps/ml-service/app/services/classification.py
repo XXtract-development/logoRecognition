@@ -73,6 +73,13 @@ CLASSIFY_UNKNOWN_CODE: str = os.environ.get("CLASSIFY_UNKNOWN_CODE", "UNKNOWN")
 # Meet-gedreven tegen de gold-set kalibreerbaar via `CLASSIFY_GATE_THRESHOLD`.
 CLASSIFY_GATE_THRESHOLD: float = float(os.environ.get("CLASSIFY_GATE_THRESHOLD", "0.2"))
 
+# spec-logo-scan-robustness AC-5.3 (besluit productowner 12-10-2026: weinig valse
+# meldingen gaat vóór zoveel mogelijk vinden). De scanpijplijn stuurt geen drempel
+# meer mee; voor de Nutri-Score-familie houdt de strikte runtime dan de lat die de
+# pijplijn vóór die wijziging meestuurde: een letter is pas zeker met een
+# bevestiging van >= 0,99, anders blijft hij onzeker. Een expliciete drempel wint.
+NUTRISCORE_STRICT_THRESHOLD: float = 0.99
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -292,6 +299,20 @@ def _run_classifier(crop, threshold, active_model, labels, strict_runtime=False)
 # ---------------------------------------------------------------------------
 
 
+def _mark_nutriscore_below_bar(
+    result: Optional[Dict[str, Any]], ns_threshold: Optional[float]
+) -> None:
+    """AC-5.3: a Nutri-Score result (family code or letter) below the Nutri-Score
+    bar is uncertain, whichever route produced it."""
+    if (
+        ns_threshold is not None
+        and result is not None
+        and str(result.get("t3777_code", "")).startswith("NUTRISCORE")
+        and float(result.get("confidence", 0.0)) < ns_threshold
+    ):
+        result["uncertain"] = True
+
+
 async def classify_crop(
     crop: Any,  # numpy ndarray (H, W, 3) BGR, or PIL Image
     confidence_threshold: Optional[float] = None,
@@ -335,6 +356,12 @@ async def classify_crop(
             extra={"error": str(exc)},
         )
     explicit = confidence_threshold is not None
+    # Lat voor de Nutri-Score-familie (head, A2-vangnet, embedding-letter).
+    ns_threshold: Optional[float] = (
+        confidence_threshold
+        if explicit
+        else (NUTRISCORE_STRICT_THRESHOLD if strict_runtime else None)
+    )
     ns_head_no_read = False  # Story 12.25: lezer geconsulteerd maar geen lezing
 
     # --- Story 12.22: Nutri-Score-familie-head (vóór de embedding-route) -----
@@ -373,7 +400,9 @@ async def classify_crop(
                 # Adversarial-review M2: een expliciet meegegeven
                 # confidence_threshold wint ook van de head ("always wins",
                 # docstring-contract) — daaronder is het resultaat uncertain.
-                ns_uncertain = bool(explicit and ns_confidence < confidence_threshold)
+                ns_uncertain = bool(
+                    ns_threshold is not None and ns_confidence < ns_threshold
+                )
                 if strict_runtime and ns_uncertain:
                     # The deterministic head supplies family AND letter evidence.
                     # A trained same-letter answer may corroborate its weak score;
@@ -393,7 +422,7 @@ async def classify_crop(
                         raise RuntimeError("Invalid trained Nutri-Score model score")
                     if (
                         a2_letter == ns_letter
-                        and actual_score >= confidence_threshold
+                        and actual_score >= ns_threshold
                         and actual_score >= min_conf()
                     ):
                         return {
@@ -452,6 +481,10 @@ async def classify_crop(
         )
         embedding_result = None
 
+    # AC-5.3: een Nutri-Score-uitkomst uit de embedding onder de Nutri-Score-lat is
+    # onzeker (zoals vóór de PR), zodat het A2-vangnet erachter kan beslissen.
+    _mark_nutriscore_below_bar(embedding_result, ns_threshold)
+
     # --- Story 12.25: A2-vangnet, uitsluitend achter de familie-poort -------
     # Alleen wanneer (a) de deterministische lezer niets las (12.22), (b) de
     # embedding-buur al NUTRISCORE_* zegt (poort: blokkeert gemeten 197/199
@@ -488,7 +521,9 @@ async def classify_crop(
                 a2_letter, a2_conf, a2_info = predict_letter(crop)
             if a2_letter is not None and a2_conf >= min_conf():
                 a2_confidence = round(float(a2_conf), 3)
-                a2_uncertain = bool(explicit and a2_confidence < confidence_threshold)
+                a2_uncertain = bool(
+                    ns_threshold is not None and a2_confidence < ns_threshold
+                )
                 logger.info(
                     "Nutri-Score-A2-vangnet besliste de letter",
                     extra={
@@ -550,6 +585,8 @@ async def classify_crop(
             extra={"error": str(exc)},
         )
         classifier_result = None
+
+    _mark_nutriscore_below_bar(classifier_result, ns_threshold)  # AC-5.3
 
     if classifier_result is not None:
         # Prefer a confident classifier result over an uncertain embedding one.

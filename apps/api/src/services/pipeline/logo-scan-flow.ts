@@ -74,7 +74,21 @@ export interface LogoScanState {
   gpcCategoryCode?: string;
   /** OCR signal word from n8n (DANGER|WARNING only); copied into logoResults.signaalwoord. */
   signalWord?: string;
+  /** Reference pool version at admission (`referencePoolVersion()`); absent when the database was unavailable. */
+  referenceVersion?: string;
+  /** Step-1 measurement; stored next to logoResults in the row, never in the GET response. */
+  stap1?: Stap1;
 }
+
+/**
+ * What step 1 (localization) produced, per scan, for later measurement from `logo_scans.logo_results.stap1`.
+ * Counts: `voorstellen` raw visual proposals, `verfijnd` refined boxes, `ghs` GHS detections (null when the ml image
+ * did not report them), `vakjes` boxes sent to classify. A failed scan adds `fase` + `fout` (the ml error class when parseable).
+ */
+export type Stap1 = {
+  voorstellen?: number | null; verfijnd?: number | null; ghs?: number | null; vakjes?: number;
+  fase?: 'lokalisatie' | 'classificatie' | 'beeld' | 'wachtrij' | 'resultaat'; fout?: string;
+};
 
 export class LogoScanBusyError extends Error {}
 
@@ -130,6 +144,7 @@ export function submitLogoScan(input: {
       scanId: '', status: 'pending', createdAt: now, consumer: input.consumer, imageHash,
       productId, pipelineId: input.pipelineId, gpcCategoryCode: input.gpcCategoryCode,
       signalWord: input.signalWord === 'DANGER' || input.signalWord === 'WARNING' ? input.signalWord : undefined,
+      referenceVersion: referenceVersion || undefined,
     };
 
     if (dbOn && productId && cur && cur.imageHash !== imageHash && requestedAt <= cur.requestedAt) {
@@ -187,11 +202,15 @@ function sameRequest(hit: ScanRow, base: LogoScanState): boolean {
 }
 
 function stateFromRow(row: ScanRow): LogoScanState {
+  // `stap1` lives next to the schema fields in the row; the state keeps it apart so the response stays schema-valid.
+  const { stap1, ...logoResults } = (row.logoResults ?? {}) as LogoResults & { stap1?: Stap1 };
   return {
     scanId: row.scanId, status: row.status as LogoScanStatus, reason: (row.reason ?? undefined) as LogoScanReason | undefined,
-    logoResults: (row.logoResults ?? undefined) as LogoResults | undefined, processingTimeMs: row.processingTimeMs ?? undefined,
+    logoResults: row.logoResults ? logoResults : undefined, stap1: row.logoResults ? stap1 : undefined,
+    processingTimeMs: row.processingTimeMs ?? undefined,
     createdAt: new Date(row.createdAt).getTime(), imageHash: row.imageHash, consumer: row.consumer,
     productId: row.productId ?? undefined, pipelineId: row.pipelineId ?? undefined,
+    referenceVersion: row.referenceVersion || undefined,
   };
 }
 
@@ -211,8 +230,8 @@ export async function getLogoScan(scanId: string): Promise<LogoScanState | null>
     }
   }
   if (state && !terminal(state) && Date.now() > state.createdAt + LOGO_SCAN_MAX_MS) {
-    const failed = failedState(state, 'timeout');
-    const outcome = await saveOutcome(scanId, { status: 'failed', reason: 'timeout', logoResults: failed.logoResults });
+    const failed = failedState(state, 'timeout', { stap1: { fase: state.status === 'running' ? 'lokalisatie' : 'wachtrij', fout: 'timeout' } });
+    const outcome = await saveOutcome(scanId, { status: 'failed', reason: 'timeout', logoResults: { ...failed.logoResults, stap1: failed.stap1 } });
     if (outcome === 'skipped') {
       const row = await findScan(scanId); // the worker may have stored the result a moment ago
       if (row && row.status !== 'pending' && row.status !== 'running') return stateFromRow(row);
@@ -230,7 +249,8 @@ function failedState(state: LogoScanState, reason: LogoScanReason, patch: Partia
     ...state, ...patch, status: 'failed', reason,
     logoResults: buildLogoResults({
       scanId: state.scanId, productId: state.productId, imageHash: state.imageHash, status: 'failed', reason,
-      modelVersion: process.env.LOGO_MODEL_VERSION, signalWord: state.signalWord, width: 1, height: 1, detections: [],
+      modelVersion: process.env.LOGO_MODEL_VERSION, referenceVersion: state.referenceVersion, signalWord: state.signalWord,
+      width: 1, height: 1, detections: [],
     }),
   };
 }
@@ -238,6 +258,20 @@ function failedState(state: LogoScanState, reason: LogoScanReason, patch: Partia
 class TimeoutError extends Error {}
 class InvalidImageError extends Error {}
 class ResultInvalidError extends Error {}
+class ImageMissingError extends Error {}
+/** A recognition failure that knows in which phase it happened and what step 1 had produced so far. */
+class RecognizeError extends Error {
+  constructor(message: string, public stap1: Stap1) { super(message); }
+}
+
+/** Error class for `stap1.fout`: the ml 503 class when parseable, else `ml_status_<n>`, else the message capped at 100 chars. */
+function foutklasse(err: unknown): string {
+  const ml = (err ?? {}) as { statusCode?: unknown; detail?: unknown };
+  if (typeof ml.statusCode === 'number' && typeof ml.detail === 'string') {
+    return /\(([A-Za-z0-9_]+)\)$/.exec(ml.detail)?.[1] ?? `ml_status_${ml.statusCode}`;
+  }
+  return (err instanceof Error ? err.message : 'unknown').slice(0, 100);
+}
 
 function withDeadline<T>(work: Promise<T>, ms: number): Promise<T> {
   let timer: NodeJS.Timeout;
@@ -246,7 +280,7 @@ function withDeadline<T>(work: Promise<T>, ms: number): Promise<T> {
 }
 
 /** Existing recognition (as /detect): normalize, localize, classify. Returns the valid classified results plus the image size; `partial` when not every region was classified. */
-async function recognize(image: Buffer, deadline: number, gpcCategoryCode?: string) {
+async function recognize(image: Buffer, deadline: number, stap1: Stap1, gpcCategoryCode?: string) {
   const remaining = () => { const ms = deadline - Date.now(); if (ms <= 0) throw new TimeoutError('deadline'); return ms; };
   let normalized;
   try {
@@ -260,20 +294,29 @@ async function recognize(image: Buffer, deadline: number, gpcCategoryCode?: stri
   const { width, height } = normalized.info;
   // The ML service rejects (422) a time budget above 165 s, while a scan may run up to LOGO_SCAN_MAX_MS: cap what is sent.
   const localizeBudget = Math.min(remaining(), ML_MAX_BUDGET_MS);
+  // `stap1` is owned by the caller so a later timeout or invalid result still keeps the counts and the phase.
+  const fail = (fase: Stap1['fase'], err: unknown, fout = foutklasse(err)): never => {
+    throw new RecognizeError(err instanceof Error ? err.message : String(err), { ...stap1, fase, fout });
+  };
+  stap1.fase = 'lokalisatie';
   const localized = await mlClient.localizeArtwork({
     proposal_strategy: 'visual', strict_runtime: true, remaining_budget_ms: localizeBudget, image_b64, codes,
-  }, { timeoutMs: localizeBudget });
-  if (localized.truncated !== false || !Array.isArray(localized.detections)) throw new Error('Localization did not complete');
+  }, { timeoutMs: localizeBudget }).catch(err => fail('lokalisatie', err));
+  if (localized.truncated !== false || !Array.isArray(localized.detections)) fail('lokalisatie', new Error('Localization did not complete'), 'incomplete_localization');
+  const p = localized.proposals;
+  Object.assign(stap1, { voorstellen: p?.raw ?? null, verfijnd: p?.refined ?? null, ghs: p?.ghs ?? null, vakjes: localized.detections.length });
   const crops = localized.detections.map(d => d.bbox).filter(b => validBox(b, width, height));
   if (crops.length !== localized.detections.length || crops.length > MAX_CROPS || new Set(crops.map(boxKey)).size !== crops.length) {
-    throw new Error('Localization returned unusable regions');
+    fail('lokalisatie', new Error('Localization returned unusable regions'), 'unusable_regions');
   }
-  if (!crops.length) return { results: [] as RawDetection[], width, height, partial: false, zoekruimte };
+  if (!crops.length) { delete stap1.fase; return { results: [] as RawDetection[], width, height, partial: false, zoekruimte }; }
+  stap1.fase = 'classificatie';
   const classifyBudget = Math.min(remaining(), ML_MAX_BUDGET_MS);
+  // No confidence_threshold: the ml-service applies its per-method threshold, so `twijfelachtig` means real doubt.
   const classified = await mlClient.classifyArtwork({
-    strict_runtime: true, remaining_budget_ms: classifyBudget, image_b64, crops, confidence_threshold: 0.99, persist_crops: false,
-  }, { timeoutMs: classifyBudget });
-  if (!Array.isArray(classified.results)) throw new Error('Classification response is malformed');
+    strict_runtime: true, remaining_budget_ms: classifyBudget, image_b64, crops, persist_crops: false,
+  }, { timeoutMs: classifyBudget }).catch(err => fail('classificatie', err));
+  if (!Array.isArray(classified.results)) fail('classificatie', new Error('Classification response is malformed'), 'malformed_results');
   // Keep each result that matches a distinct requested region and is well-formed; a gap makes the scan `partial`, none at all is a failure.
   const open = new Set(crops.map(boxKey));
   const results = classified.results.filter(r => {
@@ -283,8 +326,19 @@ async function recognize(image: Buffer, deadline: number, gpcCategoryCode?: stri
     if (ok) open.delete(boxKey(r.bbox!));
     return ok;
   }) as RawDetection[];
-  if (!results.length) throw new Error('Classification evidence is malformed');
+  if (!results.length) fail('classificatie', new Error('Classification evidence is malformed'), 'malformed_results');
+  delete stap1.fase;
   return { results, width, height, partial: open.size > 0, zoekruimte };
+}
+
+/** `stap1` for a failed job: what `recognize` recorded, else the phase and error derived from the error type. */
+function stap1Bij(err: unknown, expiredInQueue: boolean, seen: Stap1): Stap1 {
+  if (err instanceof RecognizeError) return err.stap1;
+  if (err instanceof TimeoutError) return { ...seen, fase: expiredInQueue ? 'wachtrij' : seen.fase ?? 'lokalisatie', fout: 'timeout' };
+  if (err instanceof InvalidImageError) return { fase: 'beeld', fout: 'invalid_image' };
+  if (err instanceof ResultInvalidError) return { ...seen, fase: 'resultaat', fout: 'result_invalid' };
+  if (err instanceof ImageMissingError) return { fase: 'beeld', fout: 'image_missing' };
+  return { ...seen, fase: seen.fase ?? 'lokalisatie', fout: (err instanceof Error ? err.message : 'unknown').slice(0, 100) };
 }
 
 export async function runLogoScanJob({ scanId }: { scanId: string }): Promise<void> {
@@ -296,34 +350,38 @@ export async function runLogoScanJob({ scanId }: { scanId: string }): Promise<vo
   };
   const deadline = state.createdAt + LOGO_SCAN_MAX_MS;
   const started = Date.now();
+  const stap1: Stap1 = {};
   try {
     if (started >= deadline) throw new TimeoutError('expired in queue');
     if (await markRunning(scanId) === 'superseded') { await writeIfOpen(supersededState(await readState(scanId) ?? state)); return; }
     if (!await writeIfOpen({ ...state, status: 'running' })) return; // already timed out on read
     const image = await redis.getBuffer(imageKey(scanId));
-    if (!image) throw new Error('image no longer available');
-    const { results, width, height, partial, zoekruimte } = await withDeadline(recognize(image, deadline, state.gpcCategoryCode), deadline - started);
+    if (!image) throw new ImageMissingError('image no longer available');
+    const { results, width, height, partial, zoekruimte } = await withDeadline(recognize(image, deadline, stap1, state.gpcCategoryCode), deadline - started);
     const logoResults = buildLogoResults({
       scanId, productId: state.productId, imageHash: state.imageHash, status: partial ? 'partial' : 'ok',
       reason: partial ? 'classification_incomplete' : undefined, modelVersion: process.env.LOGO_MODEL_VERSION,
-      signalWord: state.signalWord, width, height, detections: results, zoekruimte,
+      referenceVersion: state.referenceVersion, signalWord: state.signalWord, width, height, detections: results, zoekruimte,
     });
     const problems = validateLogoResults(logoResults);
     if (problems.length) throw new ResultInvalidError(problems.slice(0, 3).join('; '));
     const processingTimeMs = Date.now() - started;
     // Compare-and-set in the table: a scan superseded while it ran is not stored as done.
-    if (await saveOutcome(scanId, { status: 'done', processingTimeMs, logoResults }) === 'superseded') {
+    // `stap1` goes into the row next to the schema fields; the state keeps it apart so the response stays schema-valid.
+    if (await saveOutcome(scanId, { status: 'done', processingTimeMs, logoResults: { ...logoResults, stap1 } }) === 'superseded') {
       await writeIfOpen(supersededState(await readState(scanId) ?? state));
     } else {
-      await finish({ status: 'done', processingTimeMs, logoResults });
+      await finish({ status: 'done', processingTimeMs, logoResults, stap1 });
     }
   } catch (err) {
     const reason: LogoScanReason = err instanceof TimeoutError ? 'timeout' : err instanceof InvalidImageError ? 'invalid_image'
       : err instanceof ResultInvalidError ? 'result_invalid' : 'recognition_unavailable';
     logger.error('logo-scan failed', { scanId, reason, error: err instanceof Error ? err.message : 'unknown' });
     const current = await readState(scanId) ?? state;
-    const failed = failedState(current, reason, { processingTimeMs: Date.now() - started });
-    const outcome = await saveOutcome(scanId, { status: 'failed', reason, logoResults: failed.logoResults, processingTimeMs: failed.processingTimeMs });
+    const failed = failedState(current, reason, { processingTimeMs: Date.now() - started, stap1: stap1Bij(err, started >= deadline, stap1) });
+    const outcome = await saveOutcome(scanId, {
+      status: 'failed', reason, logoResults: { ...failed.logoResults, stap1: failed.stap1 }, processingTimeMs: failed.processingTimeMs,
+    });
     await writeIfOpen(outcome === 'superseded' ? supersededState(current) : failed);
   } finally {
     await redis.del(imageKey(scanId));

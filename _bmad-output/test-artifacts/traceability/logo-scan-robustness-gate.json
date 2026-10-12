@@ -1,0 +1,1 @@
+{"spec":"spec-logo-scan-robustness","date":"2026-10-12","gate":"PASS","p0":{"total":16,"covered":16},"p1":{"total":12,"covered":12},"acs_without_test":[],"tests":{"api_full":{"passed":1607,"failed":0},"ml_targeted":{"passed":165,"failed":0},"ml_full_preexisting_failures":48},"open":["ACC re-measurement after deploy","worker failed-handler writes no logo_scans row (deferred)"]}
