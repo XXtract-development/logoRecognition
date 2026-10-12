@@ -110,3 +110,46 @@ Nagespeeld (vangnetclaims < 0,99 weggelaten, embedding-terugval niet meegeteld �
 | VTF | 1 / 2 | 10 / 9 | 6 / 10 | 8 / 7 |
 
 INFERENCE: met alleen deze reparatie blijft VTF waarschijnlijk boven de eis (4 per run). De overige meldingen zijn deels waarschijnlijk echte maar niet-gedeclareerde logo's (gevarensymbool via de GHS-specialist 1,0; Triman 0,955; AISE 0,92) en deels embedding-treffers net boven 0,80 (0,80–0,85). Een hogere embeddingdrempel (0,86) zou de eis nagespeeld halen, maar is niet toegepast: drempels bijstellen op 40 etiketten is tegen de meetregel. De echte meting na de bouw beslist.
+
+## Fase C — eindmeting met de gebouwde code (12-10-2026, commit 8750868)
+
+> [!warning] Poort niet gehaald
+> Met heel etiket + tegels én de Nutri-Score-reparatie blijven de niet-gedeclareerde meldingen boven de eis van de productowner (≤ 4 per run): 11 en 6 tegen 3 en 6 bij de controle. Volgens het besluit van de productowner is het werk vóór de PR gestopt.
+
+Werkwijze: in de ml-service-container op ACC, eigen proces, echte localize- en classify-routes in-proces (zonder opstartroutine, dus zonder herbouw van embeddings; alleen lezen, `persist_crops=false`). Drie configuraties op dezelfde 40 etiketten, elk twee runs, in dezelfde sessie: **C0** = draaiende code (controle), **N1** = nieuwe code met plafond 1 (huidige stap 1 mét reparaties), **N6** = nieuwe code met plafond 6. Telling: port van `gs1-block.ts` (zie Werkwijze). Vergelijking op de 36 etiketten die in alle zes runs geldig waren.
+
+| config | run | top-15 /44 | alle gedeclareerd /68 | niet-gedeclareerd ≥ drempel | Nutri-Score /13 | GHS /2 | mislukte scans (van 40) |
+|---|---|---|---|---|---|---|---|
+| C0 | 1 / 2 | 5 / 3 | 7 / 4 | **3 / 6** | 5 / 3 | 0 / 0 | 2 / 1 (`proposal_parse_error`) |
+| N1 | 1 / 2 | 4 / 4 | 5 / 5 | 2 / 2 | 4 / 3 | 0 / 0 | 0 / 0 |
+| N6 | 1 / 2 | 10 / 10 | 12 / 13 | **11 / 6** | 8 / 8 | 1 / 1 | 1 / 0 (geheugengrens van de proef, zie onder) |
+
+Niet-gedeclareerde meldingen (alle 40 etiketten):
+- C0: FSC MIX 3×, AISE 2×, EU-bio 1×, Nutri-Score A via vangnet 3× (0,60–0,86).
+- N1: FSC MIX 2×, AISE 1×, Nutri-Score A via embedding 1× (0,81).
+- N6 run 1 (11): FSC MIX 3× (0,82–0,87), EU-bio, Weidemelk 0,80, zwangerschapswaarschuwing 0,82, Nutri-Score C via embedding 0,81, Triman 0,95, AISE 0,92, SPI-code 0,98, gevarensymbool (GHS-specialist 1,0).
+- N6 run 2 (7): FSC MIX 2×, EU-bio, Weidemelk 0,80, recycling 0,87, AISE 0,92, gevarensymbool 1,0.
+
+| config | tijd stap 1 + classify (mediaan / p90 / max) | aanroepen per scan | tokens in / uit (gem.) | overgeslagen vakjes | weggevallen | onverfijnd |
+|---|---|---|---|---|---|---|
+| C0 | 13–15 s / 39–41 s / 58–78 s | 1 | niet gemeld (oude code) | — | — | — |
+| N1 | 15 s / 45–54 s / 65–70 s | 1 | 3.882 / 187–190 | 92–111 | 0 | 0 |
+| N6 | 33–38 s / 88–108 s / 109–145 s | med 5 (177–183 per 40 scans) | 19.562–19.661 / 386–393 | 129–145 | 0 | 0 |
+
+Bevindingen:
+- VERIFIED: de Nutri-Score-reparatie werkt: geen enkele vangnetmelding onder 0,99 meer (C0: 3 valse A's). Het "geen claim"-pad gaf wel 2 onzekere embedding-letters ≥ 0,80 (N1 run 2 Nutri-Score A 0,81; N6 run 1 Nutri-Score C 0,81).
+- VERIFIED: het overslaan van ongeldige vakjes werkt: N1 en N6 0 `proposal_parse_error`, C0 3 van 80 scans. Per scan worden tientallen lege of omgedraaide vakjes overgeslagen (vooral lege na knippen, die vroeger ook al stil wegvielen).
+- VERIFIED: geen 429 en geen tijdsoverschrijding; maximum ml-tijd N6 145 s (onder 165 s), maar met 20 s marge.
+- INFERENCE: de extra meldingen bij N6 zijn grotendeels embedding-treffers net boven 0,80 (0,80–0,87) op extra vakjes uit de tegels, plus waarschijnlijk echte maar niet-gedeclareerde logo's (gevarensymbool 1,0; Triman 0,95; AISE 0,92; SPI-code 0,98). Stap-1-maatregelen alleen brengen dit niet onder de 4; dat vraagt een keuze in stap 2 (drempel of poort), die op deze 40 etiketten niet mag worden afgesteld.
+- Mislukte scan N6 run 1: `unexpected_MemoryError` door de geheugengrens die de proef zichzelf oplegde (zie incident), geen fout van de code; niet meegeteld in de vergelijking (36 etiketten).
+
+> [!warning] Incident tijdens de metingen: geheugen op de ACC-ml-service
+> VERIFIED (`dmesg -T` op vanilla, `docker top`): in de ml-service-container zijn op 12-10 python-processen door de geheugengrens (8 GB) beëindigd: 15:53 en 18:30 lokale tijd twee uvicorn-workers (pid 1725346 en 1725348), 21:00–21:02 drie proefprocessen. De container is niet herstart (RestartCount 0, healthy), maar draait sindsdien met **2 van de 4 workers** (`spawn_main`-processen 1725347 en 1725349). INFERENCE: de twee workerkills vielen tijdens de proeven van deze story (eigen processen met grote etiketten naast de dienst); de kill van 10:51 lag vóór deze story. Daarna is de proef met één proces, kleine batches en een geheugengrens gedraaid; er volgden geen kills meer. Herstel (container herstarten) is een handmatige containeractie en vraagt akkoord; niet uitgevoerd.
+
+Opruimen: `/root/stap1-proef` op vanilla en `/tmp/stap1-proef` in de container verwijderd; `ls` op beide: "No such file or directory".
+
+## Wat de productowner nu kan kiezen
+
+1. Stap-2-maatregel tegen marginale embedding-treffers (bijv. drempel per soort of de categoriepoort uit het onderzoek, actie 7), eerst gemeten op een grotere, door een mens beoordeelde set; daarna de tegels opnieuw meten.
+2. De extra meldingen eerst laten beoordelen door een mens: zijn Triman, AISE, SPI-code en het gevarensymbool echt aanwezig (declaratie onvolledig), dan is een deel geen valse melding en verschuift de telling.
+3. Alleen de reparaties zonder tegels uitrollen (plafond 1): geen meerkosten, geen mislukte scans door ongeldige vakjes, geen valse Nutri-Score-vangnetmeldingen; niet-gedeclareerd 2 per run tegen 3–6 bij de controle, gevonden gelijk (4 tegen 3–5).
