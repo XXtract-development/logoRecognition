@@ -409,11 +409,16 @@ export class MLClient {
     image_b64?: string;
     templates?: Array<{ t3777_code: string; image_b64: string }>;
     codes?: string[];
-  }, options: { timeoutMs?: number } = {}): Promise<{ detections: Array<Record<string, unknown>>; truncated: boolean }> {
+  }, options: { timeoutMs?: number } = {}): Promise<{
+    detections: Array<Record<string, unknown>>; truncated: boolean;
+    /** Visual route only: counts before/after refinement plus GHS detections; null/absent on the template route or an older ml image. */
+    proposals?: { raw: number; refined: number; ghs: number } | null;
+  }> {
     try {
       const response = await this.client.post<{
         detections: Array<Record<string, unknown>>;
         truncated: boolean;
+        proposals?: { raw: number; refined: number; ghs: number } | null;
       }>('/ml/artwork/localize', request, { timeout: options.timeoutMs ?? 120000 });
       return response.data;
     } catch (error) {

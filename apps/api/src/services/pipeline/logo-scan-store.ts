@@ -40,6 +40,8 @@ const currents = () => (prisma as any).logoCurrentImage;
 export interface ScanRow {
   scanId: string; productId: string | null; pipelineId: string | null; imageHash: string; status: string; reason: string | null;
   consumer: string; logoResults: unknown; processingTimeMs: number | null; createdAt: Date; requestedAt: Date; policyVersion?: string | null;
+  /** Reference pool version at admission (`<count>:<max createdAt>`); empty string when the pool was unavailable. */
+  referenceVersion?: string;
 }
 export interface ScanKey { productId: string; imageHash: string; modelVersion: string; referenceVersion: string }
 export type SaveOutcome = 'saved' | 'superseded' | 'skipped';

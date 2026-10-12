@@ -41,6 +41,8 @@ export interface BuildInput {
   scanId: string; productId?: string; imageHash: string; status: LogoResults['status']; reason?: string;
   modelVersion?: string | null; signalWord?: string; width: number; height: number; detections: RawDetection[];
   zoekruimte?: Zoekruimte;
+  /** Reference pool version measured at admission; the fallback for detections without their own `reference_version`. */
+  referenceVersion?: string | null;
 }
 type Resolver = typeof resolveSoort;
 
@@ -62,13 +64,15 @@ export function buildLogoResults(input: BuildInput, resolve: Resolver = resolveS
     a.bbox.height - b.bbox.height || (a.t3777_code < b.t3777_code ? -1 : a.t3777_code > b.t3777_code ? 1 : 0));
   const modelVersion = input.modelVersion || null;
   const signaalwoord = input.signalWord === 'DANGER' || input.signalWord === 'WARNING' ? input.signalWord : undefined;
-  const refs = [...new Set(detections.map(d => d.reference_version).filter((v): v is string => !!v))].sort();
+  const poolVersion = input.referenceVersion || null;
+  const refs = [...new Set([poolVersion, ...detections.map(d => d.reference_version)].filter((v): v is string => !!v))].sort();
 
   // Per soort de beste detectie (hoogste zekerheid; bij gelijke zekerheid de eerste in invoervolgorde).
   const best = new Map<string, { item: LogoItem; groepen: Map<string, string> }>();
   detections.forEach((d, index) => {
     const code = normalizeReferenceCode(d.t3777_code);
-    const r = resolve(code, { modelVersion, referenceVersion: d.reference_version ?? null });
+    const referenceVersion = d.reference_version || poolVersion;
+    const r = resolve(code, { modelVersion, referenceVersion });
     if (!r || r.stand === 'uit') return; // buiten de tabel of uit: alleen ruwe detectie
     // Elke GS1-waarde moet in de officiële codelijst staan; anders het hele item (ook een groep) weglaten.
     const ongeldig = r.gs1.find(g => !isValidGs1Value(g.veld, g.waarde));
@@ -98,7 +102,7 @@ export function buildLogoResults(input: BuildInput, resolve: Resolver = resolveS
       zekerheid: d.confidence,
       bbox: [d.bbox.x / width, d.bbox.y / height, (d.bbox.x + d.bbox.width) / width, (d.bbox.y + d.bbox.height) / height],
       gs1: r.gs1.map(({ module, pad, veld, waarde }) => ({ module, pad, veld, waarde })),
-      bewijs: { methode: d.method, drempel, referentieversie: d.reference_version ?? null, detectie: index, redenen, markeringen },
+      bewijs: { methode: d.method, drempel, referentieversie: referenceVersion, detectie: index, redenen, markeringen },
     };
     const kind = SCORE_KINDS[d.method];
     if (kind) item.bewijs.zekerheidssoort = kind;

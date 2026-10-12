@@ -1,5 +1,14 @@
 # Versiegeschiedenis
 
+## 12 oktober 2026
+
+**Logoherkenning: lege vakjes, zichtbare storingen en bruikbare twijfelvlag**
+- Een uitgesneden vakje zonder zichtbare inhoud wordt niet meer als logo herkend; het krijgt een expliciete uitkomst "leeg" en telt niet mee als treffer.
+- Faalt het zoeken naar logo's op een etiket, dan staat in het logboek en in de melding wélke soort fout optrad, zonder dat sleutels of beeldmateriaal meekomen.
+- Per scan wordt bewaard hoeveel vakjes het visuele model voorstelde, hoeveel daarvan overbleven en — bij een mislukte scan — in welke stap en door welke fout hij strandde; zo is achteraf meetbaar waar herkenning verloren gaat.
+- Elke scan draagt nu de versie van de gebruikte referentieset, zodat een logo dat als "automatisch" is vrijgegeven die status ook daadwerkelijk kan krijgen.
+- De vlag "twijfelachtig" staat niet meer op vrijwel elk herkend logo, maar alleen wanneer de herkenning zelf twijfelt.
+
 ## 6 oktober 2026
 
 **Betrouwbaardere controle van nieuwe logovoorbeelden**

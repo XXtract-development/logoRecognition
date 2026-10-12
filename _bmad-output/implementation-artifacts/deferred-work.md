@@ -41,3 +41,7 @@
 - source_spec: `spec-flywheel-reference-content-integrity.md`
   summary: Behoud expliciete deactivatie bij guide-reseed of vereis een gecontroleerd reactivatiebesluit.
   evidence: Pre-existente seedGuideEntry update active=true; nonblankinhoud bewijst geen label/goedkeuring. Script is niet uitgevoerd.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-logo-scan-robustness.md`
+  summary: De `failed`-handler van de logo-scan-worker (gecrashte of vastgelopen job) schrijft alleen de Redis-staat en nooit de rij in `logo_scans`; zulke scans ontbreken in de tabel en krijgen dus ook geen `stap1`.
+  evidence: `apps/api/src/services/pipeline/logo-scan-flow.ts` registerLogoScanWorker → `logoScanWorker.on('failed', …)` roept `writeIfOpen(failedState(...))` aan zonder `saveOutcome`; vooraf bestaand gedrag (Story 1.3), door de review van spec-logo-scan-robustness (Edge6) gesignaleerd.

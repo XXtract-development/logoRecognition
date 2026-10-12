@@ -12,7 +12,7 @@ import httpx
 import numpy as np
 import pytest
 from fastapi import FastAPI, Request
-from PIL import Image
+from PIL import Image, ImageDraw
 
 
 @pytest.fixture
@@ -65,8 +65,12 @@ def runtime(monkeypatch, tmp_path):
 
 
 def image_b64():
+    # A mark inside the default 10x10 crop (and the image centre) keeps the crop out of
+    # the blank-crop short-circuit, so these tests keep exercising the real chain.
+    image = Image.new("RGB", (20, 20), "white")
+    ImageDraw.Draw(image).line((2, 5, 18, 5), fill="black", width=2)
     stream = io.BytesIO()
-    Image.new("RGB", (20, 20), "white").save(stream, format="PNG")
+    image.save(stream, format="PNG")
     return base64.b64encode(stream.getvalue()).decode()
 
 
@@ -542,7 +546,11 @@ async def test_visual_negative_does_not_load_all_templates(runtime, monkeypatch)
             "/ml/artwork/localize", json=payload(proposal_strategy="visual")
         )
     assert response.status_code == 200
-    assert response.json() == {"detections": [], "truncated": False}
+    assert response.json() == {
+        "detections": [],
+        "truncated": False,
+        "proposals": {"raw": 0, "refined": 0, "ghs": 0},
+    }
     templates.assert_not_awaited()
 
 
