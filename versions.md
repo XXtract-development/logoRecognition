@@ -2,6 +2,11 @@
 
 ## 12 oktober 2026
 
+**Logoherkenning: minder mislukte scans en minder valse Nutri-Score-letters**
+- Een scan mislukt niet meer doordat het beeldmodel één onbruikbaar vakje teruggeeft; dat vakje wordt overgeslagen en de rest van de scan gaat gewoon door.
+- Een etiket met heel veel gevonden plekken laat de scan niet meer mislukken.
+- Een twijfelachtige Nutri-Score-lezing van het reservemodel levert geen letter (vaak een onterechte "A") meer op; dat model meldt een letter alleen nog als het zeer zeker is.
+
 **Logoherkenning: lege vakjes, zichtbare storingen en bruikbare twijfelvlag**
 - Een uitgesneden vakje zonder zichtbare inhoud wordt niet meer als logo herkend; het krijgt een expliciete uitkomst "leeg" en telt niet mee als treffer.
 - Faalt het zoeken naar logo's op een etiket, dan staat in het logboek en in de melding wélke soort fout optrad, zonder dat sleutels of beeldmateriaal meekomen.

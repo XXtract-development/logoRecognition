@@ -105,7 +105,7 @@ describe('AC-3.2/3.4 — stap 1 van een geslaagde scan', () => {
     const server = await app();
     const id = await scan(server);
     expect(row(id).status).toBe('done');
-    expect(row(id).logoResults.stap1).toEqual({ voorstellen: 3, verfijnd: 2, ghs: 0, vakjes: 1 });
+    expect(row(id).logoResults.stap1).toEqual({ voorstellen: 3, verfijnd: 2, ghs: 0, vakjes: 1, aanroepen: null, tokensIn: null, tokensUit: null, overgeslagen: null, weggevallen: null, onverfijnd: null });
     const out = await get(server, id);
     expect(out.status).toBe('done');
     expect(out.logoResults).not.toHaveProperty('stap1');
@@ -126,7 +126,7 @@ describe('AC-3.2/3.4 — stap 1 van een geslaagde scan', () => {
     const server = await app();
     vi.mocked(mlClient.localizeArtwork).mockResolvedValueOnce(localized(undefined) as any);
     const id = await scan(server);
-    expect(row(id).logoResults.stap1).toEqual({ voorstellen: null, verfijnd: null, ghs: null, vakjes: 1 });
+    expect(row(id).logoResults.stap1).toEqual({ voorstellen: null, verfijnd: null, ghs: null, vakjes: 1, aanroepen: null, tokensIn: null, tokensUit: null, overgeslagen: null, weggevallen: null, onverfijnd: null });
     await server.close();
   });
   it('lege lokalisatie: vakjes 0, classify niet aangeroepen', async () => {
@@ -134,7 +134,7 @@ describe('AC-3.2/3.4 — stap 1 van een geslaagde scan', () => {
     vi.mocked(mlClient.localizeArtwork).mockResolvedValueOnce(localized({ raw: 0, refined: 0, ghs: 0 }, []) as any);
     const id = await scan(server);
     expect(row(id).status).toBe('done');
-    expect(row(id).logoResults.stap1).toEqual({ voorstellen: 0, verfijnd: 0, ghs: 0, vakjes: 0 });
+    expect(row(id).logoResults.stap1).toEqual({ voorstellen: 0, verfijnd: 0, ghs: 0, vakjes: 0, aanroepen: null, tokensIn: null, tokensUit: null, overgeslagen: null, weggevallen: null, onverfijnd: null });
     expect(mlClient.classifyArtwork).not.toHaveBeenCalled();
     await server.close();
   });
@@ -178,7 +178,7 @@ describe('AC-3.3 — stap 1 van een mislukte scan', () => {
     const server = await app();
     vi.mocked(mlClient.classifyArtwork).mockRejectedValueOnce(new MLServiceError('Artwork classification failed: Required classification backend unavailable', 503, 'Required classification backend unavailable'));
     const id = await scan(server);
-    expect(row(id).logoResults.stap1).toEqual({ fase: 'classificatie', fout: 'ml_status_503', voorstellen: 3, verfijnd: 2, ghs: 0, vakjes: 1 });
+    expect(row(id).logoResults.stap1).toEqual({ fase: 'classificatie', fout: 'ml_status_503', voorstellen: 3, verfijnd: 2, ghs: 0, vakjes: 1, aanroepen: null, tokensIn: null, tokensUit: null, overgeslagen: null, weggevallen: null, onverfijnd: null });
     await server.close();
   });
   it('onbruikbare regio\'s en ongeldig resultaat krijgen hun eigen fout', async () => {
@@ -274,7 +274,7 @@ describe('review ronde 1 — stap1 bij tijdslimieten, onverwachte ml-klassen en 
     expect(mlClient.classifyArtwork).toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(240000 + 1000);
     await run;
-    expect(row(id).logoResults.stap1).toEqual({ fase: 'classificatie', fout: 'timeout', voorstellen: 3, verfijnd: 2, ghs: 0, vakjes: 1 });
+    expect(row(id).logoResults.stap1).toEqual({ fase: 'classificatie', fout: 'timeout', voorstellen: 3, verfijnd: 2, ghs: 0, vakjes: 1, aanroepen: null, tokensIn: null, tokensUit: null, overgeslagen: null, weggevallen: null, onverfijnd: null });
     await server.close();
   });
   it('tijdslimiet bij lezen van een wachtende scan: fase wachtrij', async () => {
@@ -301,6 +301,50 @@ describe('review ronde 1 — stap1 bij tijdslimieten, onverwachte ml-klassen en 
     expect(out.logoResults.items).toHaveLength(1);
     expect(out.logoResults.detections).toHaveLength(2);
     expect(out.logoResults.detections.find((d: any) => d.t3777_code === 'UNKNOWN')).toMatchObject({ confidence: 0, evidence: { reason: 'blank_crop' } });
+    await server.close();
+  });
+});
+
+describe('spec-stap1-localization-recall CAP-3 — aanroepen en tokens per scan in stap1', () => {
+  const full = { raw: 4, refined: 1, ghs: 0, calls: 5, tokens_in: 19000, tokens_out: 380, skipped: 1, dropped: 2, unrefined: 0 };
+  it('geslaagde lokalisatie: stap1 draagt aanroepen, tokens, overgeslagen en weggevallen', async () => {
+    const server = await app();
+    vi.mocked(mlClient.localizeArtwork).mockResolvedValueOnce(localized(full as any) as any);
+    const id = await scan(server);
+    expect(row(id).status).toBe('done');
+    expect(row(id).logoResults.stap1).toEqual({
+      voorstellen: 4, verfijnd: 1, ghs: 0, vakjes: 1,
+      aanroepen: 5, tokensIn: 19000, tokensUit: 380, overgeslagen: 1, weggevallen: 2, onverfijnd: 0,
+    });
+    const out = await get(server, id);
+    expect(out.logoResults).not.toHaveProperty('stap1');
+    expect(validateLogoResults(out.logoResults)).toEqual([]);
+    await server.close();
+  });
+  it('onbekende tokens: null', async () => {
+    const server = await app();
+    vi.mocked(mlClient.localizeArtwork).mockResolvedValueOnce(localized({ ...full, tokens_in: null, tokens_out: null } as any) as any);
+    const a = await scan(server);
+    expect(row(a).logoResults.stap1).toMatchObject({ aanroepen: 5, tokensIn: null, tokensUit: null });
+    await server.close();
+  });
+  it('ml-image zonder de nieuwe velden: null', async () => {
+    // Own test: a second identical upload after a done scan reuses the first result.
+    const server = await app();
+    vi.mocked(mlClient.localizeArtwork).mockResolvedValueOnce(localized({ raw: 3, refined: 2, ghs: 0 }) as any);
+    const b = await scan(server);
+    expect(row(b).logoResults.stap1).toEqual({
+      voorstellen: 3, verfijnd: 2, ghs: 0, vakjes: 1,
+      aanroepen: null, tokensIn: null, tokensUit: null, overgeslagen: null, weggevallen: null, onverfijnd: null,
+    });
+    await server.close();
+  });
+  it('mislukte lokalisatie: de nieuwe velden ontbreken', async () => {
+    const server = await app();
+    vi.mocked(mlClient.localizeArtwork).mockRejectedValueOnce(
+      new MLServiceError('Artwork localization failed: Visual localization unavailable (provider_status_429)', 503, 'Visual localization unavailable (provider_status_429)'));
+    const id = await scan(server);
+    expect(row(id).logoResults.stap1).toEqual({ fase: 'lokalisatie', fout: 'provider_status_429' });
     await server.close();
   });
 });

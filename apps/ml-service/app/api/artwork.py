@@ -658,9 +658,13 @@ class LocalizeRequest(BaseModel):
 class LocalizeResponse(BaseModel):
     detections: List[Dict[str, Any]]
     truncated: bool = False  # True when the time budget cut matching short
-    # Visual route only: {"raw": proposals from the visual model, "refined": spatially
-    # refined boxes, "ghs": GHS detections}. The template route leaves it null.
-    proposals: Optional[Dict[str, int]] = None
+    # Visual route only: {"raw": proposals from the visual model after merging
+    # duplicates, "refined": spatially
+    # refined boxes, "ghs": GHS detections, "calls"/"tokens_in"/"tokens_out": provider
+    # calls and summed usage (null when a call reported none), "skipped": invalid
+    # boxes skipped, "dropped": boxes cut by the 64-box cap before and after refinement, "unrefined": proposals
+    # left unrefined to keep the time reserve}. The template route leaves it null.
+    proposals: Optional[Dict[str, Optional[int]]] = None
 
 
 _REDACT_PATTERNS = (
@@ -691,7 +695,6 @@ def _visual_error_class(exc: BaseException) -> str:
     for needle, cls in (
         ("reference library is empty", "template_library_empty"),
         ("not ready", "runtime_not_ready"),
-        ("exceeds capacity", "proposal_capacity"),
         ("exceeds size limit", "proposal_response_size"),
         ("Proposal image exceeds bounds", "proposal_image_bounds"),
         ("refinement", "refinement_error"),
@@ -840,39 +843,62 @@ async def localize_artwork(
             )
         try:
             await _classification_runtime_ready()
-            from app.services.artwork_proposals import visual_proposals
-
-            proposed = await visual_proposals(
-                img, request.codes, _STRICT_CONTROL.get().remaining
+            from app.services.artwork_proposals import (
+                MAX_REGIONS,
+                reserve_seconds,
+                visual_proposals,
             )
+
+            control = _STRICT_CONTROL.get()
+            # One reserve for the rest of the scan (classification): the visual
+            # phase stops at remaining - reserve; refinement runs while
+            # remaining >= reserve.
+            reserve = reserve_seconds(control.remaining())
+            proposed, stats = await visual_proposals(
+                img, request.codes, control.remaining, reserve
+            )
+            raw = len(proposed)
+            proposed = proposed[:MAX_REGIONS]
+            dropped = raw - len(proposed)
             refined = []
+            unrefined = 0
             if proposed:
                 from app.services.artwork_template_refinement import refine_proposals
 
                 templates = await _get_reference_templates_cached(strict_runtime=True)
                 if not templates:
                     raise RuntimeError("Active spatial reference library is empty")
-                for proposal in proposed:
+                for index, proposal in enumerate(proposed):
                     await _strict_checkpoint()
+                    # Below the reserve the rest stays unrefined.
+                    if control.remaining() < reserve:
+                        unrefined = len(proposed) - index
+                        break
                     spatial_boxes = await strict_blocking(
                         refine_proposals, img, proposal["bbox"], templates
                     )
                     refined.extend({"bbox": box} for box in spatial_boxes)
             boxes = {}
-            for detection in proposed + refined + ghs_detections:
+            for detection in ghs_detections + proposed + refined:
                 box = detection["bbox"]
                 key = tuple(box[k] for k in ("x", "y", "width", "height"))
-                boxes[key] = detection
-            if len(boxes) > 64:
-                raise ValueError("Proposal union exceeds capacity")
+                boxes.setdefault(key, detection)
+            union = list(boxes.values())
+            dropped += max(0, len(union) - MAX_REGIONS)
             await _strict_checkpoint()
             return LocalizeResponse(
-                detections=list(boxes.values()),
+                detections=union[:MAX_REGIONS],
                 truncated=False,
                 proposals={
-                    "raw": len(proposed),
+                    "raw": raw,
                     "refined": len(refined),
                     "ghs": len(ghs_detections),
+                    "calls": stats["calls"],
+                    "tokens_in": stats["tokens_in"],
+                    "tokens_out": stats["tokens_out"],
+                    "skipped": stats["skipped"],
+                    "dropped": dropped,
+                    "unrefined": unrefined,
                 },
             )
         except HTTPException as exc:

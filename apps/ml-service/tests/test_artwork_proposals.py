@@ -46,7 +46,6 @@ def test_projection_original_resolution_dedup_and_negative():
     "region",
     [
         {"box_2d": [1, 2, 3]},
-        {"box_2d": [1, 2, 0, 4]},
         {"box_2d": [False, 0, 10, 10]},
         {"box_2d": [0, 0, float("nan"), 10]},
         {"box_2d": [0, 0, 10, 10], "confidence": 1},
@@ -56,6 +55,12 @@ def test_projection_original_resolution_dedup_and_negative():
 def test_rejects_malformed_or_classifier_fields(region):
     with pytest.raises(ValueError):
         proposals.parse_proposals(envelope([region]), 100, 100)
+
+
+def test_reversed_box_is_skipped_and_counted():
+    stats = {"skipped": 0}
+    assert proposals.parse_proposals(envelope([{"box_2d": [1, 2, 0, 4]}]), 100, 100, stats) == []
+    assert stats["skipped"] == 1
 
 
 def test_rejects_partial_excess_and_duplicate_keys():
@@ -120,9 +125,11 @@ async def test_actual_transport_only_sends_inline_proposal_image(monkeypatch):
         return httpx.Response(200, json=envelope([{"box_2d": [0, 0, 1000, 1000]}]))
 
     provider_transport(monkeypatch, handle)
-    assert await proposals.visual_proposals(
+    boxes, stats = await proposals.visual_proposals(
         np.zeros((10, 20, 3), np.uint8), ["GREEN_DOT"], lambda: 1
-    ) == [{"bbox": {"x": 0, "y": 0, "width": 20, "height": 10}}]
+    )
+    assert boxes == [{"bbox": {"x": 0, "y": 0, "width": 20, "height": 10}}]
+    assert stats["calls"] == 1
 
 
 @pytest.mark.asyncio

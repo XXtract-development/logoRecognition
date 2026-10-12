@@ -82,11 +82,15 @@ export interface LogoScanState {
 
 /**
  * What step 1 (localization) produced, per scan, for later measurement from `logo_scans.logo_results.stap1`.
- * Counts: `voorstellen` raw visual proposals, `verfijnd` refined boxes, `ghs` GHS detections (null when the ml image
- * did not report them), `vakjes` boxes sent to classify. A failed scan adds `fase` + `fout` (the ml error class when parseable).
+ * Counts: `voorstellen` visual proposals after merging duplicates, `verfijnd` refined boxes, `ghs` GHS detections (null when the ml image
+ * did not report them), `vakjes` boxes sent to classify. After a successful localization also `aanroepen` provider calls,
+ * `tokensIn`/`tokensUit` summed provider tokens, `overgeslagen` invalid boxes skipped, `weggevallen` boxes cut by the
+ * 64-box cap before and after refinement and `onverfijnd` proposals left unrefined to keep the time reserve (each null
+ * when the ml image did not report it). A failed scan adds `fase` + `fout` (the ml error class when parseable).
  */
 export type Stap1 = {
   voorstellen?: number | null; verfijnd?: number | null; ghs?: number | null; vakjes?: number;
+  aanroepen?: number | null; tokensIn?: number | null; tokensUit?: number | null; overgeslagen?: number | null; weggevallen?: number | null; onverfijnd?: number | null;
   fase?: 'lokalisatie' | 'classificatie' | 'beeld' | 'wachtrij' | 'resultaat'; fout?: string;
 };
 
@@ -309,6 +313,11 @@ async function recognize(image: Buffer, deadline: number, stap1: Stap1, gpcCateg
   if (crops.length !== localized.detections.length || crops.length > MAX_CROPS || new Set(crops.map(boxKey)).size !== crops.length) {
     fail('lokalisatie', new Error('Localization returned unusable regions'), 'unusable_regions');
   }
+  // Calls and tokens only after a successful localization; a failed one leaves them absent.
+  Object.assign(stap1, {
+    aanroepen: p?.calls ?? null, tokensIn: p?.tokens_in ?? null, tokensUit: p?.tokens_out ?? null,
+    overgeslagen: p?.skipped ?? null, weggevallen: p?.dropped ?? null, onverfijnd: p?.unrefined ?? null,
+  });
   if (!crops.length) { delete stap1.fase; return { results: [] as RawDetection[], width, height, partial: false, zoekruimte }; }
   stap1.fase = 'classificatie';
   const classifyBudget = Math.min(remaining(), ML_MAX_BUDGET_MS);
