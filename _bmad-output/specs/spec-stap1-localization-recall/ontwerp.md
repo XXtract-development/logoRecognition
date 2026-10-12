@@ -13,7 +13,7 @@ basis: origin/acc f40a2a0
 - Tegelaantal = `max_calls − 1`. Is dat < 2, dan geen tegels (max_calls 1 en 2 geven alleen de hele-etiket-aanroep). Anders: zijde 1600 px (originele pixels); zolang `ceil(W/zijde) × ceil(H/zijde) > max_calls − 1`, zijde × 1,1. Tegel = cel van `W/kolommen × H/rijen`, aan elke kant 7,5% van de celmaat erbij (15% overlap), geknipt op de beeldrand. Eén cel die het hele beeld beslaat → geen tegelaanroep.
 - Tegelprompt = huidige prompt + "This image is one section of a larger label; include marks cut off at the section edge." Coördinaten teruggerekend naar het hele etiket.
 - Samenvoegen: in volgorde heel etiket, dan tegels (rij voor rij, links naar rechts); een vakje met IoU ≥ 0,7 met een eerder gehouden vakje vervalt. `raw` telt na ontdubbelen.
-- Plafond: env `VISUAL_PROPOSAL_MAX_CALLS`, geheel getal 1..6, standaard 6; ongeldig of buiten bereik → 6 met waarschuwing in het log.
+- Plafond: env `VISUAL_PROPOSAL_MAX_CALLS`, geheel getal 1..6, **standaard 1** (besluit productowner 12-10-2026: tegels standaard uit); ongeldig of buiten bereik → standaard 1 met waarschuwing in het log.
 - Fout: faalt één aanroep (HTTP inclusief 429, tijd, ongeldig antwoord), dan faalt de lokalisatie zoals nu (503 met foutklasse). Geen herhaalpoging.
 
 ## Unie, verfijning en capaciteit

@@ -42,10 +42,12 @@ Pijn, gemeten op ACC (12-10-2026, versie f40a2a0, 186 geldige etiketten): van 14
 - Valse meldingen wegen zwaarder dan meer vinden: een variant die meer vindt maar de niet-gedeclareerde meldingen laat stijgen, valt af.
 - Unie van vakjes per scan max 64 (ml-service en API `MAX_CROPS`); boven 64 faalt de scan nu met een 503. Voorstellen en unie worden per constructie op ≤ 64 gehouden; 0 scans met een capaciteitsfout. Meer voorstellen mogen het tijdsbudget niet opblazen: verfijning stopt als er minder dan een reserve (min(30 s, 25% van het lokalisatiebudget)) rest.
 - Tijd: ml-budget 165 s (validatie `le=165000`), scan 240 s; meerdere modelaanroepen lopen parallel binnen het bestaande lokalisatiebudget.
-- Kosten (besluit productowner 12-10-2026): heel etiket plus tegels, hoogstens 6 aanroepen per scan (±5× modeltokens), is akkoord. Het plafond is instelbaar; 1 geeft het oude gedrag.
+- Kosten (besluit productowner 12-10-2026): heel etiket plus tegels, hoogstens 6 aanroepen per scan (±5× modeltokens), is akkoord. Het plafond is instelbaar: 1 (standaard) = één aanroep met de reparaties; 3..6 = heel etiket plus tegels (opt-in); 2 = gelijk aan 1.
+- **Besluit productowner 12-10-2026 (na de eindmeting, `meetverslag.md` §Fase C):** alleen de reparaties (CAP-3, CAP-5, CAP-6, capaciteit) gaan live. De tegels blijven in de code maar staan standaard uit: standaard 1 aanroep per scan, in de code vastgelegd (geen omgevingsinstelling nodig); tegels alleen na expliciete keuze (`VISUAL_PROPOSAL_MAX_CALLS` 3..6; geldig 1..6, 2 = alleen heel etiket). Een uitrol zonder instelling geeft precies "nieuwe code, 1 aanroep" uit de eindmeting.
 - Live alleen samen met de reparatie van de extra niet-gedeclareerde meldingen (besluit productowner): op de 40-etiketten-meting, twee runs, blijven de niet-gedeclareerde meldingen per run ≤ 4 (de controle met de huidige code); de huidige stap 1 mét reparatie wordt in dezelfde sessie meegemeten en gerapporteerd. Blijkt dat niet haalbaar, dan stopt het werk vóór de PR en gaan de gemeten getallen terug naar de productowner. Nagespeeld wordt dat verwacht (6 en 10 per run).
 - Drempels van stap 2 worden niet bijgesteld op deze kleine steekproef (meetregel: niet bijstellen op kleine sets).
-- De aanpak is gekozen op grond van een meting (`meetverslag.md`): heel etiket plus tegels; uitwerking in `ontwerp.md`.
+- De aanpak is gekozen op grond van een meting (`meetverslag.md`): heel etiket plus tegels, gebouwd maar standaard uit (besluit hieronder); uitwerking in `ontwerp.md`.
+- **Gevolg van het besluit voor de capabilities:** CAP-1 (meer vakjes) en het "meer vinden"-deel van CAP-2 worden met de standaardinstelling niet geleverd; ze blijven beschikbaar via de tegelinstelling. Wat wél geleverd wordt: CAP-3, CAP-4, CAP-5, CAP-6 en "niet-gedeclareerde meldingen stijgen niet".
 - Foutcontract blijft: een mislukte modelaanroep geeft een zichtbare `fase`/`fout` in `stap1`, niet stil minder vakjes. Geen schema- of databasemigratie; `stap1` is vrije JSON naast `logoResults`.
 - OpenRouter-sleutel bestaat alleen in de ACC-containers: nooit printen, loggen of opslaan. Klantbeelden blijven lokaal; een proef op ACC is klein en wordt opgeruimd.
 
@@ -58,7 +60,7 @@ Pijn, gemeten op ACC (12-10-2026, versie f40a2a0, 186 geldige etiketten): van 14
 
 ## Success signal
 
-- Na uitrol vindt de hermeting op dezelfde 186 etiketten meer dan 19 van de 140 top-15-declaraties met hoogstens 34 niet-gedeclareerde meldingen en hoogstens 3 mislukte scans, binnen de tijdslimiet, en `stap1` toont per scan aanroepen en tokens.
+- Na uitrol (standaardinstelling, besluit productowner 12-10-2026) geeft de hermeting op dezelfde 186 etiketten niet meer niet-gedeclareerde meldingen dan vóór de uitrol (34), minder mislukte scans dan vóór de uitrol (3), geen Nutri-Score-letters van het vangnet onder 0,99, binnen de tijdslimiet, en `stap1` toont per scan aanroepen en tokens. Gevonden top-15 blijft naar verwachting gelijk (fase C: 4 tegen 3–5 bij de controle).
 
 ## Assumptions
 

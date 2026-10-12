@@ -14,7 +14,10 @@ from app.ghs_review import provider_config
 
 MAX_RESPONSE_BYTES = 256 * 1024
 MAX_REGIONS = 64
-DEFAULT_MAX_CALLS = 6
+# Product-owner decision 12-10-2026: tiling stays in the code but is off by
+# default (one whole-label call, as before); VISUAL_PROPOSAL_MAX_CALLS opts in.
+DEFAULT_MAX_CALLS = 1
+MAX_CALLS_LIMIT = 6
 
 logger = logging.getLogger(__name__)
 
@@ -119,7 +122,7 @@ def parse_proposals(envelope, width, height, stats=None):
 
 
 def max_calls():
-    """Ceiling on provider calls per scan: env VISUAL_PROPOSAL_MAX_CALLS, 1..6, default 6.
+    """Ceiling on provider calls per scan: env VISUAL_PROPOSAL_MAX_CALLS, 1..6, default 1.
     1 and 2 both mean the whole-label call only (tiles start at two tile calls)."""
     raw = os.environ.get("VISUAL_PROPOSAL_MAX_CALLS")
     if raw is None:
@@ -128,7 +131,7 @@ def max_calls():
         value = int(raw)
     except ValueError:
         value = 0
-    if 1 <= value <= DEFAULT_MAX_CALLS:
+    if 1 <= value <= MAX_CALLS_LIMIT:
         return value
     logger.warning(
         "Invalid VISUAL_PROPOSAL_MAX_CALLS; using %d", DEFAULT_MAX_CALLS

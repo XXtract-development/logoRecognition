@@ -20,7 +20,7 @@ inputDocuments:
 | CAP-6 | andere ongeldige antwoorden blijven fout | unit | `test_cap6_other_invalid_answers_still_fail` (3) | ja (signatuur) |
 | CAP-6 | enkele aanroep faalt niet op één omgedraaid vakje | unit/transport | `test_cap6_reversed_box_in_single_call_does_not_fail_the_scan` | ja |
 | CAP-1 | plafond 1..6, één hele-etiket-aanroep, 1–2 → geen tegels | transport | `test_cap1_call_count_respects_ceiling_and_whole_label_first` (6) | ja |
-| CAP-1 | standaard 6; ongeldige env → 6 | transport | `test_cap1_default_ceiling_is_six_and_invalid_env_falls_back` | ja |
+| CAP-1 / besluit PO | standaard 1 (tegels uit), opt-in 6, ongeldige env → 1 | transport | `test_po_default_is_one_call_tiling_opt_in_and_invalid_env_falls_back` | ja (na besluit PO aangepast) |
 | CAP-1 | klein etiket → alleen hele-etiket-aanroep | transport | `test_cap1_small_label_gets_only_the_whole_label_call` | ja |
 | CAP-1 | tegelvakjes teruggerekend, dubbelen (IoU ≥ 0,7) samengevoegd | transport | `test_cap1_tile_boxes_map_back_and_duplicates_merge` | ja |
 | CAP-1 | één falende tegel → lokalisatie faalt zichtbaar | transport | `test_cap1_one_failing_tile_fails_the_whole_localization` | ja |

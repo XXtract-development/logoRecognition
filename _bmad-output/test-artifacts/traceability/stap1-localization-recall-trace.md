@@ -3,7 +3,7 @@ stepsCompleted: ['step-01-load-context', 'step-02-discover-tests', 'step-03-map-
 lastStep: 'step-05-gate-decision'
 lastSaved: '2026-10-12'
 spec: _bmad-output/specs/spec-stap1-localization-recall/SPEC.md
-commit: 8750868
+commit: 8750868 (+ standaard-uit-wijziging)
 ---
 
 # Traceerbaarheid — spec-stap1-localization-recall
@@ -15,7 +15,7 @@ Testbestanden: `apps/ml-service/tests/test_stap1_localization_recall_atdd.py` (M
 | # | criterium | prio | test(s) | status |
 |---|---|---|---|---|
 | 1 | CAP-1: heel etiket + tegels, plafond 1..6, 1–2 = alleen heel etiket | P0 | `test_cap1_call_count_respects_ceiling_and_whole_label_first` (6×) | FULL |
-| 2 | CAP-1: standaard 6, ongeldige env → 6 | P1 | `test_cap1_default_ceiling_is_six_and_invalid_env_falls_back` | FULL |
+| 2 | Besluit PO: standaard 1 aanroep (tegels uit), opt-in 6, ongeldige env → 1 | P0 | `test_po_default_is_one_call_tiling_opt_in_and_invalid_env_falls_back` | FULL |
 | 3 | CAP-1: klein etiket → één aanroep | P1 | `test_cap1_small_label_gets_only_the_whole_label_call` | FULL |
 | 4 | CAP-1: tegelgeometrie (overlap 15%, rijvolgorde, knippen) | P0 | `test_cap1_tile_windows_tall_label_two_rows_with_overlap`, `test_cap1_tile_windows_wide_label_row_order_and_clipped` | FULL |
 | 5 | CAP-1: terugrekenen + ontdubbelen (IoU ≥ 0,7, alleen tussen aanroepen) | P0 | `test_cap1_tile_boxes_map_back_and_duplicates_merge`, `test_cap1_merge_proposals_only_across_calls` | FULL |
@@ -28,7 +28,7 @@ Testbestanden: `apps/ml-service/tests/test_stap1_localization_recall_atdd.py` (M
 | 12 | CAP-5: strikt vangnet < 0,99 claimt geen letter; ≥ 0,99 wel; niet-strikt ongewijzigd; expliciete drempel onder A2-vloer | P0 | `test_cap5_*` (6) | FULL |
 | 13 | CAP-6: omgedraaid/samenvallend/leeg vakje overgeslagen en geteld; rest blijft; andere fouten blijven fout | P0 | `test_cap6_*` (8) | FULL |
 
-Dekking: P0 11/11 (100%), P1 2/2 (100%), totaal 13/13.
+Dekking: P0 12/12 (100%), P1 1/1 (100%), totaal 13/13.
 
 ## Meetcriteria (geen unittest; getoetst met de ACC-proef, `meetverslag.md`)
 
@@ -48,4 +48,6 @@ Dekking: P0 11/11 (100%), P1 2/2 (100%), totaal 13/13.
 
 **PASS** voor testdekking — P0 100%, P1 100%, totaal 100%.
 
-**Productiepoort CAP-2: NIET GEHAALD** (meetverslag §Fase C): niet-gedeclareerde meldingen N6 11 en 6 per run tegen eis ≤ 4. Volgens het besluit van de productowner gestopt vóór de PR.
+**Productiepoort CAP-2 met tegels: NIET GEHAALD** (meetverslag §Fase C): N6 11 en 6 per run tegen eis ≤ 4.
+
+**Besluit productowner 12-10-2026:** tegels standaard uit (standaard 1 aanroep, vastgelegd door `test_po_default_is_one_call_tiling_opt_in_and_invalid_env_falls_back`). De uitrolconfiguratie is N1 uit fase C: niet-gedeclareerd 2 per run (≤ 4, controle 3–6), 0 mislukte scans. Gate voor de PR: **PASS**.

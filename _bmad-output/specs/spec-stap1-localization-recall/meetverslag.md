@@ -3,7 +3,7 @@ title: Meetverslag stap-1-lokalisatie
 spec: SPEC-stap1-localization-recall
 datum: 2026-10-12
 omgeving: ACC ml-service f40a2a0 (container ml-service-qsookwow8koko0kwg00g0cwk-122152972183), model anthropic/claude-sonnet-5.5 via OpenRouter
-status: besluit productowner 12-10-2026 vastgelegd; bouw van heel etiket + tegels met Nutri-Score-reparatie
+status: besluit productowner 12-10-2026 (na fase C): alleen reparaties live, tegels standaard uit
 ---
 
 # Meetverslag stap 1
@@ -153,3 +153,7 @@ Opruimen: `/root/stap1-proef` op vanilla en `/tmp/stap1-proef` in de container v
 1. Stap-2-maatregel tegen marginale embedding-treffers (bijv. drempel per soort of de categoriepoort uit het onderzoek, actie 7), eerst gemeten op een grotere, door een mens beoordeelde set; daarna de tegels opnieuw meten.
 2. De extra meldingen eerst laten beoordelen door een mens: zijn Triman, AISE, SPI-code en het gevarensymbool echt aanwezig (declaratie onvolledig), dan is een deel geen valse melding en verschuift de telling.
 3. Alleen de reparaties zonder tegels uitrollen (plafond 1): geen meerkosten, geen mislukte scans door ongeldige vakjes, geen valse Nutri-Score-vangnetmeldingen; niet-gedeclareerd 2 per run tegen 3–6 bij de controle, gevonden gelijk (4 tegen 3–5).
+
+## Besluit productowner na fase C (12-10-2026)
+
+Gekozen: optie 3. Alleen de reparaties gaan live; de tegels blijven in de code maar staan standaard uit (standaard 1 aanroep per scan, in de code, geen ACC-instelling). Een uitrol levert dus de configuratie **N1** uit fase C: niet-gedeclareerd 2 per run (controle 3–6), gevonden top-15 4 (controle 3–5), 0 mislukte scans (controle 1–2 van 40), geen valse Nutri-Score-vangnetmeldingen, mediaan 15 s, max 70 s, 1 aanroep en ±3.900 invoertokens per scan. De 25 extra meldingen van de tegelruns gaan naar menselijke beoordeling (lokale pagina, buiten de repository).

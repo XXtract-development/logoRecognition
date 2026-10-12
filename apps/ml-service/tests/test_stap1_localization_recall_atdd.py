@@ -159,9 +159,11 @@ async def test_cap1_call_count_respects_ceiling_and_whole_label_first(
 
 
 @pytest.mark.asyncio
-async def test_cap1_default_ceiling_is_six_and_invalid_env_falls_back(
+async def test_po_default_is_one_call_tiling_opt_in_and_invalid_env_falls_back(
     monkeypatch, proposals
 ):
+    """Besluit productowner 12-10-2026: zonder env precies één aanroep (gedrag zoals
+    vóór de tegels); tegels alleen via VISUAL_PROPOSAL_MAX_CALLS; ongeldig -> standaard."""
     seen = []
     transport(
         monkeypatch,
@@ -169,15 +171,23 @@ async def test_cap1_default_ceiling_is_six_and_invalid_env_falls_back(
         lambda r: seen.append(1) or httpx.Response(200, json=envelope([])),
     )
     image = np.zeros((9000, 2000, 3), np.uint8)
+    assert proposals.DEFAULT_MAX_CALLS == 1
     _, stats = await proposals.visual_proposals(image, [], lambda: 5)
-    assert stats["calls"] == len(seen) == 6
-    monkeypatch.setenv("VISUAL_PROPOSAL_MAX_CALLS", "99")
-    _, stats_bad = await proposals.visual_proposals(image, [], lambda: 5)
-    assert stats_bad["calls"] == stats["calls"]
+    assert stats["calls"] == len(seen) == 1
+    seen.clear()
+    monkeypatch.setenv("VISUAL_PROPOSAL_MAX_CALLS", "6")
+    _, stats_six = await proposals.visual_proposals(image, [], lambda: 5)
+    assert stats_six["calls"] == len(seen) == 6
+    for bad in ("99", "0", "abc", ""):
+        seen.clear()
+        monkeypatch.setenv("VISUAL_PROPOSAL_MAX_CALLS", bad)
+        _, stats_bad = await proposals.visual_proposals(image, [], lambda: 5)
+        assert stats_bad["calls"] == len(seen) == 1
 
 
 @pytest.mark.asyncio
 async def test_cap1_small_label_gets_only_the_whole_label_call(monkeypatch, proposals):
+    monkeypatch.setenv("VISUAL_PROPOSAL_MAX_CALLS", "6")  # tegels aan; één cel dekt het etiket
     seen = []
     transport(
         monkeypatch,
@@ -269,6 +279,7 @@ async def test_cap1_one_failing_tile_fails_the_whole_localization(
 
 @pytest.mark.asyncio
 async def test_cap1_whole_visual_phase_respects_the_deadline(monkeypatch, proposals):
+    monkeypatch.setenv("VISUAL_PROPOSAL_MAX_CALLS", "6")  # parallelle tegels tegen de deadline
     async def handle(request):
         await asyncio.sleep(1)
         return httpx.Response(200, json=envelope([]))
