@@ -133,9 +133,7 @@ def max_calls():
         value = 0
     if 1 <= value <= MAX_CALLS_LIMIT:
         return value
-    logger.warning(
-        "Invalid VISUAL_PROPOSAL_MAX_CALLS; using %d", DEFAULT_MAX_CALLS
-    )
+    logger.warning("Invalid VISUAL_PROPOSAL_MAX_CALLS; using %d", DEFAULT_MAX_CALLS)
     return DEFAULT_MAX_CALLS
 
 
@@ -260,9 +258,16 @@ async def visual_proposals(image, codes, remaining_seconds, reserve=0.0):
                         raise ValueError("Proposal response exceeds size limit")
         envelope = json.loads(data)
         usage = envelope.get("usage") if isinstance(envelope, dict) else None
-        for field, name in (("tokens_in", "prompt_tokens"), ("tokens_out", "completion_tokens")):
+        for field, name in (
+            ("tokens_in", "prompt_tokens"),
+            ("tokens_out", "completion_tokens"),
+        ):
             count = usage.get(name) if isinstance(usage, dict) else None
-            if stats[field] is not None and type(count) is int:
+            if (
+                stats[field] is not None
+                and isinstance(count, int)
+                and not isinstance(count, bool)
+            ):
                 stats[field] += count
             else:
                 stats[field] = None
