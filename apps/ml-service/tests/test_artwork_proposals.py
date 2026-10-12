@@ -47,8 +47,6 @@ def test_projection_original_resolution_dedup_and_negative():
     [
         {"box_2d": [1, 2, 3]},
         {"box_2d": [1, 2, 0, 4]},
-        {"box_2d": [0, -1, 100, 200]},
-        {"box_2d": [0, 0, 1001, 10]},
         {"box_2d": [False, 0, 10, 10]},
         {"box_2d": [0, 0, float("nan"), 10]},
         {"box_2d": [0, 0, 10, 10], "confidence": 1},
@@ -195,3 +193,26 @@ def test_prose_does_not_relax_duplicate_key_check():
     }
     with pytest.raises(ValueError):
         proposals.parse_proposals(dup, 100, 100)
+
+
+def test_overshooting_edge_is_clipped_not_rejected():
+    result = proposals.parse_proposals(
+        envelope([{"box_2d": [-5, 900, 1021, 1100]}, {"box_2d": [100, 100, 200, 200]}]),
+        1000,
+        1000,
+    )
+    assert result[0] == {"bbox": {"x": 900, "y": 0, "width": 100, "height": 1000}}
+    assert len(result) == 2
+
+
+def test_box_clipped_to_nothing_is_skipped_and_bad_types_still_rejected():
+    result = proposals.parse_proposals(
+        envelope(
+            [{"box_2d": [1000, 1000, 1200, 1300]}, {"box_2d": [100, 100, 200, 200]}]
+        ),
+        1000,
+        1000,
+    )
+    assert len(result) == 1
+    with pytest.raises(ValueError):
+        proposals.parse_proposals(envelope([{"box_2d": ["1", 0, 10, 10]}]), 100, 100)
