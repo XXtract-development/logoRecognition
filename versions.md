@@ -8,6 +8,7 @@
 - Per scan wordt bewaard hoeveel vakjes het visuele model voorstelde, hoeveel daarvan overbleven en — bij een mislukte scan — in welke stap en door welke fout hij strandde; zo is achteraf meetbaar waar herkenning verloren gaat.
 - Elke scan draagt nu de versie van de gebruikte referentieset, zodat een logo dat als "automatisch" is vrijgegeven die status ook daadwerkelijk kan krijgen.
 - De vlag "twijfelachtig" staat niet meer op vrijwel elk herkend logo, maar alleen wanneer de herkenning zelf twijfelt.
+- Een Nutri-Score-letter blijft ter beoordeling, tenzij een tweede, getrainde lezing dezelfde letter met zeer hoge zekerheid bevestigt.
 
 ## 6 oktober 2026
 

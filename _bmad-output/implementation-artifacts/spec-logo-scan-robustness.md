@@ -131,6 +131,16 @@ Ronde 1 (12-10-2026): blind-hunter 11, edge-case-hunter 10, verification-gap 2 +
 
 Ronde 1 doorgevoerd (12-10-2026): API-patches door de hoofdsessie (terugvalroute; de implementatie-subagent liep parallel en voerde de ml- en doc-patches door, dubbelingen verwijderd), extra tests voor blank-opslag en kale `sk-or-`-sleutel (mutatiecheck: 2 rood zonder reparatie). Volgorde-afhankelijke timeout-test gerepareerd (lokalisatietest wacht op zijn eigen aanroep).
 
+Ronde 2 review (edge-case-hunter op de Nutri-Score-wijziging):
+
+| Bron | Bevinding | Verdict en bewijs | Route |
+|---|---|---|---|
+| Edge-r2-1 | reserveclassifier geeft een Nutri-Score-letter 0,85–0,99 zeker terug (oude 0,99-lat maakte hem onzeker) | **medium** — `classify_crop` classifier-tak; op ACC slapend (`model_versions` leeg) maar strijdig met AC-5.3 | patch: `_mark_nutriscore_below_bar` ook op het classifier-resultaat |
+| Edge-r2-2 | kale familiecode `NUTRISCORE` glipt langs de `NUTRISCORE_`-prefix | **low** — oogst-placeholder (`queue_harvest_nutriscore.py:86`); directe correctie | patch: prefix `NUTRISCORE` |
+| Edge-r2-3 | geen test voor de classifier-tak | **medium** — zou punt 1 laten passeren | patch: test (mutatiecheck: rood zonder reparatie) |
+
+Ronde 2 (12-10-2026, besluit productowner): AC-5.3 omgekeerd — Nutri-Score houdt in strikte runtime zonder drempel de vaste lat 0,99 (head-corroboratie, A2-vangnet, embedding-letter), `NUTRISCORE_STRICT_THRESHOLD` in `classification.py`. RED vóór de fix: 5 rood / 8 groen in `test_nutriscore_strict_corroboration.py`; daarna 13 groen. Het geval `(strikt, geen drempel)` uit `test_existing_or_sufficient_head_never_invokes_a2` vervalt (pinde het afgewezen gedrag).
+
 ## Verification
 
 **Commands** (vanuit de worktree):

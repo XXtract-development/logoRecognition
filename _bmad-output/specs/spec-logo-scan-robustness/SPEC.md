@@ -60,7 +60,7 @@ De eerste meting van de echte scanpijplijn op volledige etiketten (ACC, 12-10-20
   - **success:**
     - AC-5.1 `logo-scan-flow.ts` stuurt geen `confidence_threshold` naar `/ml/artwork/classify` (test: `not.toHaveProperty('confidence_threshold')`); de ml-service past zijn drempel per methode toe (`CLASSIFY_THRESHOLD_EMBEDDING`, `CLASSIFY_THRESHOLD_CLASSIFIER`).
     - AC-5.2 Een embedding-detectie van 0,85 zonder `uncertain`/`requires_review` krijgt géén `twijfelachtig`; `onder_drempel` blijft uit `getThresholdForMethod` komen (embedding 0,80). GHS-items houden `twijfelachtig` via `requires_review`.
-    - AC-5.3 Bewust aanvaard gevolg: zonder expliciete drempel is een Nutri-Score-head-lezing (0,80–0,99, gemeten 97,8 % precisie) nooit `uncertain`, de strikte A2-corroboratie (`classification.py:376-409`) slaapt voor de pijplijn, en het A2-vangnet achter de familiepoort levert `uncertain=false`. De classifier-tweedemening wordt alleen nog bij een onzekere embedding geraadpleegd (op ACC toch nooit: `model_versions` leeg).
+    - AC-5.3 Nutri-Score houdt de lat van vóór deze wijziging (besluit productowner 12-10-2026: weinig valse meldingen gaat vóór zoveel mogelijk vinden). In strikte runtime zonder expliciete drempel geldt voor de Nutri-Score-familie een vaste lat 0,99: een head-lezing (0,80–0,99) is `uncertain=true` tenzij het getrainde A2-model dezelfde letter met score ≥ 0,99 geeft (dan `method="nutriscore-a2"`, `uncertain=false`); bij onenigheid, een zwakke of uitblijvende A2-lezing blijft de head-lezing `uncertain=true`. Een Nutri-Score-letter uit de embedding onder 0,99 is `uncertain=true` en opent het A2-vangnet; een vangnet-lezing onder 0,99 is `uncertain=true`. Andere soorten volgen de drempel per methode (AC-5.1/5.2). Een expliciet meegestuurde drempel wint, zoals voorheen.
 
 ## Constraints
 
@@ -92,5 +92,5 @@ Op een herhaling van de steekproef van 12-10: elke detectie met `evidence.reason
 ## Keuzes gemaakt
 
 - **CAP-3 opslag:** jsonb-sleutel `stap1` in `logo_results`, geen kolom (geen migratie; stripping bij lezen houdt het antwoord schema-geldig).
-- **CAP-5 vorm:** één regel weglaten in plaats van `twijfelachtig` anders afleiden; het Nutri-Score-gevolg (AC-5.3) is aanvaard en vastgelegd.
+- **CAP-5 vorm:** één regel weglaten in plaats van `twijfelachtig` anders afleiden. Nutri-Score uitgezonderd met een vaste lat 0,99 in strikte runtime (AC-5.3, besluit productowner 12-10-2026); bestaande test `test_existing_or_sufficient_head_never_invokes_a2` verliest daarom het geval (strikt, geen drempel).
 - **CAP-1 plek:** in de endpointlus, niet in `classify_crop`: de enige productie-aanroeper, en de unit-tests van `classify_crop` met uniforme stub-crops blijven zo geldig.

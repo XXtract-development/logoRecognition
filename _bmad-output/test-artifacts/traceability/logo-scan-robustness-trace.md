@@ -8,12 +8,12 @@ gate: PASS
 
 # Traceability: logo-scanpijplijn robuuster en meetbaar
 
-Gate: **PASS**. Alle 27 toetsbare acceptatiecriteria (AC-1.1 t/m AC-5.2) hebben minstens één test die draait en slaagt; AC-5.3 is aanvaard gedrag zonder contract (bewust geen test). P0: 15/15, P1: 12/12.
+Gate: **PASS**. Alle 28 acceptatiecriteria (AC-1.1 t/m AC-5.3) hebben minstens één test die draait en slaagt. P0: 16/16, P1: 12/12. AC-5.3 is op 12-10-2026 herschreven na besluit van de productowner (Nutri-Score houdt de lat 0,99).
 
 > [!note] Testruns (VERIFIED, 12-10-2026, worktree `.claude/worktrees/logo-scan-robustness`)
 > - API `npx vitest run`: 112 bestanden, **1607 passed**, 2 skipped, 67 todo, 0 failed (baseline vóór de ATDD-tests: 1587 passed).
 > - API `npx tsc --noEmit`: alleen de 2 bestaande Ajv-typefouten in `gs1-block.ts` (r. 52, 56), ook aanwezig op `31ff627`.
-> - ml gericht (9 bestanden): **145 passed**. ml volledig: 48 failed + 3 collectiefouten, identiek met de oorspronkelijke ml-code (`python-multipart` ontbreekt in de lokale venv, alleen-lezen `/app`); geen in de geraakte bestanden.
+> - ml gericht (10 bestanden): **165 passed** (na AC-5.3). ml volledig: 48 failed + 3 collectiefouten, identiek met de oorspronkelijke ml-code (`python-multipart` ontbreekt in de lokale venv, alleen-lezen `/app`); geen in de geraakte bestanden.
 > - `ruff`, `black --check`, `isort --check-only` schoon op de gewijzigde Python-bestanden.
 
 | AC | Prio | Dekking | Tests (bestand: test) |
@@ -39,7 +39,7 @@ Gate: **PASS**. Alle 27 toetsbare acceptatiecriteria (AC-1.1 t/m AC-5.2) hebben 
 | AC-4.5 versiecontrole kan slagen | P0 | FULL | api gs1-block-robustness: "validFor model + pool gelijk aan de scan" |
 | AC-5.1 geen `confidence_threshold` | P0 | FULL | api stap1: "classifyArtwork wordt zonder confidence_threshold aangeroepen" |
 | AC-5.2 `twijfelachtig` selectief | P1 | FULL | api gs1-block-robustness: embedding 0,85; GHS `requires_review` |
-| AC-5.3 Nutri-Score-gevolg | — | N.v.t. | aanvaard gedrag; geen contract om te pinnen |
+| AC-5.3 Nutri-Score houdt de lat 0,99 in de pijplijn | P0 | FULL | ml `test_nutriscore_strict_corroboration.py`: `test_ac_5_3_pipeline_head_without_corroboration_stays_uncertain` (3), `test_ac_5_3_pipeline_head_with_corroboration_is_confirmed`, `test_ac_5_3_pipeline_embedding_letter_below_bar_stays_uncertain`, `test_ac_5_3_classifier_nutriscore_below_bar_stays_uncertain`, `test_ac_5_3_non_nutriscore_embedding_keeps_per_method_threshold`; RED op `217a254`: 5 rood |
 
 ## Gaten en restpunten
 
