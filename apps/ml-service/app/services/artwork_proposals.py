@@ -71,18 +71,23 @@ def parse_proposals(envelope, width, height):
         if not isinstance(region, dict) or set(region) != {"box_2d"}:
             raise ValueError("Invalid proposal region")
         box = region["box_2d"]
-        if (
-            not isinstance(box, list)
-            or len(box) != 4
-            or not all(
-                type(v) in (int, float) and math.isfinite(v) and 0 <= v <= 1000
-                for v in box
-            )
+        if not (
+            isinstance(box, list)
+            and len(box) == 4
+            and all(type(v) in (int, float) and math.isfinite(v) for v in box)
         ):
             raise ValueError("Invalid proposal coordinates")
         ymin, xmin, ymax, xmax = box
         if ymin >= ymax or xmin >= xmax:
             raise ValueError("Invalid proposal order")
+        # Models sometimes overshoot the image edge by a few units. Clip to the
+        # image instead of rejecting the whole answer; a box that clips to
+        # nothing is skipped.
+        ymin, xmin, ymax, xmax = (
+            min(1000, max(0, v)) for v in (ymin, xmin, ymax, xmax)
+        )
+        if ymin >= ymax or xmin >= xmax:
+            continue
         x0, y0 = math.floor(xmin * width / 1000), math.floor(ymin * height / 1000)
         x1, y1 = math.ceil(xmax * width / 1000), math.ceil(ymax * height / 1000)
         x0, y0, x1, y1 = max(0, x0), max(0, y0), min(width, x1), min(height, y1)
