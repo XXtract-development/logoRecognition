@@ -138,12 +138,20 @@ export function submitLogoScan(input: {
     if (!callerTime) lastServerStamp = stamp;
     const requestedAt = new Date(callerTime ? asked : stamp);
     const modelVersion = process.env.LOGO_MODEL_VERSION?.trim() || undefined;
+    // Reuse key = model version + running code version: a deploy of new recognition code must not hand out old results.
+    const code = codeVersion();
+    const reuseKey = modelVersion && code ? `${modelVersion}@${code}` : undefined;
+    if (modelVersion && !code && !warnedNoCodeVersion) {
+      warnedNoCodeVersion = true;
+      logger.warn('logo-scan reuse off: no valid code version (LOGO_IMAGE_TAG / SOURCE_COMMIT must be a 40-hex commit)');
+    }
     // Reads run inside the serialized admission: a slow database must not stall every POST, so each read has a short deadline and counts as "unavailable".
     const guarded = <T>(work: Promise<T>) => withDeadline(work, DB_READ_DEADLINE_MS).catch(() => undefined);
     const referenceVersion = await guarded(referencePoolVersion());
     const cur = productId && referenceVersion ? await guarded(currentImage(productId)) : null;
     const dbOn = referenceVersion !== undefined && cur !== undefined; // false: table missing or database down → Story 1.2 behaviour
-    const tracked = { imageHash, modelVersion: modelVersion ?? 'unknown', referenceVersion: referenceVersion ?? '', policyVersion: policyVersion(), consumer: input.consumer, requestedAt };
+    // '@none' is never looked up ('none' is not hex), so rows without a code version are never reused.
+    const tracked = { imageHash, modelVersion: reuseKey ?? `${modelVersion ?? 'unknown'}@none`, referenceVersion: referenceVersion ?? '', policyVersion: policyVersion(), consumer: input.consumer, requestedAt };
     const base: LogoScanState = {
       scanId: '', status: 'pending', createdAt: now, consumer: input.consumer, imageHash,
       productId, pipelineId: input.pipelineId, gpcCategoryCode: input.gpcCategoryCode,
@@ -158,8 +166,8 @@ export function submitLogoScan(input: {
       await writeState({ ...base, scanId, status: 'superseded' });
       return { scanId };
     }
-    if (dbOn && productId && !input.rescan && modelVersion) {
-      const hit = await guarded(findReusableScan({ productId, imageHash, modelVersion, referenceVersion: referenceVersion! }, input.consumer, new Date(now - 86400000)));
+    if (dbOn && productId && !input.rescan && reuseKey) {
+      const hit = await guarded(findReusableScan({ productId, imageHash, modelVersion: reuseKey, referenceVersion: referenceVersion! }, input.consumer, new Date(now - 86400000)));
       // A stored result is only reusable when it was made for the same signal word, category and mapping policy as this request.
       if (hit && sameRequest(hit, base)) {
         await advanceCurrentImage(productId, imageHash, requestedAt, cur ?? null);
@@ -196,6 +204,18 @@ export function submitLogoScan(input: {
   }));
   admission = run.catch(() => undefined);
   return run;
+}
+
+/**
+ * Commit of the running code: LOGO_IMAGE_TAG (the pinned image), SOURCE_COMMIT only when that is absent or empty
+ * (SOURCE_COMMIT follows the compose checkout, not the image). Only a full 40-hex commit counts; anything else is unknown.
+ */
+const SHA = /^[0-9a-f]{40}$/;
+let warnedNoCodeVersion = false;
+function codeVersion(): string | undefined {
+  const tag = process.env.LOGO_IMAGE_TAG?.trim();
+  const v = (tag || process.env.SOURCE_COMMIT?.trim() || '').toLowerCase();
+  return SHA.test(v) ? v : undefined;
 }
 
 const GPC = /^\d{8}$/;

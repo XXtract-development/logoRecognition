@@ -915,6 +915,7 @@ model LogoScan {
   productId        String?  @map("product_id") @db.VarChar(256)
   pipelineId       String?  @map("pipeline_id") @db.VarChar(256)
   imageHash        String   @map("image_hash") @db.VarChar(64)
+  /// Hergebruiksleutel `<LOGO_MODEL_VERSION>@<commit van 40 hex>`; zonder geldige codeversie `<modelversie of unknown>@none` (nooit hergebruikt).
   modelVersion     String   @map("model_version") @db.VarChar(256)
   /// Poolhandtekening `<aantal>:<laatste createdAt>` van de actieve referenties.
   referenceVersion String   @map("reference_version") @db.VarChar(256)

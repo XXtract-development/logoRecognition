@@ -65,6 +65,8 @@ const URL = '/api/v1/pipeline/logo-scans';
 const KEY = { 'x-api-key': 'test-key-1' };
 const KEY2 = { 'x-api-key': 'test-key-2' };
 const originalEnv = { ...process.env };
+const SHA_A = 'a'.repeat(40);
+const SHA_B = 'b'.repeat(40);
 const db = () => h.fake.db;
 
 async function app() {
@@ -102,6 +104,8 @@ async function scan(server: Server, image: Buffer, extra = P(), headers = KEY) {
 beforeEach(() => {
   process.env.LOGO_PIPELINE_KEYS = 'n8n:test-key-1,other:test-key-2';
   process.env.LOGO_MODEL_VERSION = 'model-1';
+  process.env.LOGO_IMAGE_TAG = SHA_A; // spec-scan-reuse-code-version: reuse needs a known code version
+  delete process.env.SOURCE_COMMIT;
   h.redis.store.clear(); h.queue.jobs.length = 0; h.queue.waiting = 0; h.queue.active = 0; h.queue.failAdd = false;
   h.pool.count = 5; h.pool.max = new Date('2026-09-01T00:00:00Z'); h.pool.fail = false;
   db().scans.length = 0; db().current.length = 0; db().state.missingTable = false; db().state.calls.length = 0;
@@ -151,17 +155,17 @@ describe('AC1 — deduplication of a done scan', () => {
     expect((await post(server, img, P('P2'))).json().scanId).not.toBe(a);
     expect((await post(server, img, P(), KEY2)).json().scanId).not.toBe(a);
     process.env.LOGO_MODEL_VERSION = 'model-2';
-    expect((await post(server, img)).json().deduplicated).toBeUndefined();
+    expect((await post(server, img, P())).json().deduplicated).toBeUndefined();
     process.env.LOGO_MODEL_VERSION = 'model-1';
     h.pool.count = 6;
-    expect((await post(server, img)).json().deduplicated).toBeUndefined();
+    expect((await post(server, img, P())).json().deduplicated).toBeUndefined();
     await server.close();
   });
   it('no deduplication when the model version is unknown (cannot prove it is equal)', async () => {
     delete process.env.LOGO_MODEL_VERSION;
     const server = await app(); const img = await png();
     const a = await scan(server, img);
-    expect((await post(server, img)).json().scanId).not.toBe(a);
+    expect((await post(server, img, P())).json().scanId).not.toBe(a);
     await server.close();
   });
   it('a done scan older than 24 hours is not reused', async () => {
@@ -169,7 +173,7 @@ describe('AC1 — deduplication of a done scan', () => {
     const server = await app(); const img = await png();
     const a = await scan(server, img);
     vi.setSystemTime(Date.now() + 24 * 3600 * 1000 + 60000);
-    const res = (await post(server, img)).json();
+    const res = (await post(server, img, P())).json();
     expect(res.scanId).not.toBe(a); expect(res.deduplicated).toBeUndefined();
     await server.close();
   });
@@ -361,7 +365,7 @@ describe('AC4 — logo_scans keeps the outcome; GET reads Redis first, then the 
     const id = await scan(server, await png(), [...P(), field('pipelineId', 'pl-9')]);
     const row = db().scans.find(r => r.scanId === id)!;
     expect(row).toMatchObject({
-      productId: 'P1', pipelineId: 'pl-9', consumer: 'n8n', status: 'done', attempt: 1, modelVersion: 'model-1',
+      productId: 'P1', pipelineId: 'pl-9', consumer: 'n8n', status: 'done', attempt: 1, modelVersion: `model-1@${SHA_A}`,
     });
     expect(row.referenceVersion).toBeTruthy();
     expect(row.policyVersion).toBeTruthy();
@@ -420,6 +424,113 @@ describe('tolerance — table missing (Prisma P2021) falls back to story 1.2 beh
     const server = await app();
     const res = await post(server, await png(), P());
     expect(res.statusCode).toBe(202);
+    await server.close();
+  });
+});
+
+// spec-scan-reuse-code-version — reuse follows the running code version. ATDD: written before the implementation.
+describe('Code version in the reuse key (spec-scan-reuse-code-version)', () => {
+  it('CAP-1: after a deploy with other code, the same request is scanned anew; the new key starts at attempt 1 (also with rescan)', async () => {
+    const server = await app(); const img = await png();
+    const a = await scan(server, img);
+    process.env.LOGO_IMAGE_TAG = SHA_B;
+    const jobs = h.queue.jobs.length;
+    const res = (await post(server, img, P())).json();
+    expect(res.scanId).not.toBe(a); expect(res.deduplicated).toBeUndefined();
+    expect(h.queue.jobs).toHaveLength(jobs + 1);
+    expect(db().scans.find(r => r.scanId === res.scanId)!.attempt).toBe(1);
+    process.env.LOGO_IMAGE_TAG = SHA_A;
+    const re = (await post(server, img, [...P(), field('rescan', 'true')])).json();
+    expect(db().scans.find(r => r.scanId === re.scanId)!.attempt).toBe(2); // second attempt under key A
+    process.env.LOGO_IMAGE_TAG = 'c'.repeat(40);
+    const re2 = (await post(server, img, [...P(), field('rescan', 'true')])).json();
+    expect(db().scans.find(r => r.scanId === re2.scanId)!.attempt).toBe(1); // first attempt under key C
+    await server.close();
+  });
+  it('CAP-2: within the same code version a done scan is still reused', async () => {
+    const server = await app(); const img = await png();
+    const a = await scan(server, img);
+    const jobs = h.queue.jobs.length;
+    expect((await post(server, img, P())).json()).toEqual({ scanId: a, deduplicated: true });
+    expect(h.queue.jobs).toHaveLength(jobs);
+    await server.close();
+  });
+  it.each([
+    ['no LOGO_IMAGE_TAG and no SOURCE_COMMIT', {}],
+    ['LOGO_IMAGE_TAG=acc, even with a valid SOURCE_COMMIT', { LOGO_IMAGE_TAG: 'acc', SOURCE_COMMIT: SHA_B }],
+    ['a short hash', { LOGO_IMAGE_TAG: 'abc1234' }],
+    ['a date-like tag', { LOGO_IMAGE_TAG: '20261013' }],
+  ])('CAP-3: unknown or invalid code version (%s): never reused, the scan itself works', async (_l, env) => {
+    delete process.env.LOGO_IMAGE_TAG;
+    Object.assign(process.env, env);
+    const server = await app(); const img = await png();
+    const a = await scan(server, img);
+    const b = (await post(server, img, P())).json();
+    expect(b.scanId).not.toBe(a); expect(b.deduplicated).toBeUndefined();
+    await runLogoScanJob({ scanId: b.scanId });
+    expect((await get(server, a)).json().status).toBe('done');
+    expect((await get(server, b.scanId)).json().status).toBe('done');
+    await server.close();
+  });
+  it('CAP-4: LOGO_IMAGE_TAG wins; SOURCE_COMMIT only counts when LOGO_IMAGE_TAG is absent or empty', async () => {
+    const server = await app(); const img = await png();
+    process.env.SOURCE_COMMIT = SHA_B;
+    const a = await scan(server, img);
+    process.env.SOURCE_COMMIT = 'c'.repeat(40);
+    expect((await post(server, img, P())).json()).toEqual({ scanId: a, deduplicated: true }); // compose commit changed, image did not
+    process.env.LOGO_IMAGE_TAG = '';
+    process.env.SOURCE_COMMIT = SHA_B;
+    const b = await scan(server, img); // key now model-1@SHA_B: a new scan
+    expect(b).not.toBe(a);
+    delete process.env.LOGO_IMAGE_TAG;
+    expect((await post(server, img, P())).json()).toEqual({ scanId: b, deduplicated: true });
+    process.env.SOURCE_COMMIT = 'd'.repeat(40);
+    expect((await post(server, img, P())).json().deduplicated).toBeUndefined();
+    await server.close();
+  });
+  it('CAP-4: whitespace and upper case are normalised to the same code version', async () => {
+    const server = await app(); const img = await png();
+    process.env.LOGO_IMAGE_TAG = `  ${'AB'.repeat(20)}  `;
+    const a = await scan(server, img);
+    expect(db().scans.find(r => r.scanId === a)!.modelVersion).toBe(`model-1@${'ab'.repeat(20)}`);
+    process.env.LOGO_IMAGE_TAG = 'ab'.repeat(20);
+    expect((await post(server, img, P())).json()).toEqual({ scanId: a, deduplicated: true });
+    await server.close();
+  });
+  it('CAP-5: every stored row carries the computed key: done, superseded, and @none without code version', async () => {
+    const server = await app();
+    const now = Date.now();
+    const done = await scan(server, await png('#000'), [...P(), field('requestedAt', new Date(now).toISOString())]);
+    const sup = (await post(server, await png('#fff'), [...P(), field('requestedAt', new Date(now - 60000).toISOString())])).json().scanId;
+    expect(db().scans.find(r => r.scanId === done)!.modelVersion).toBe(`model-1@${SHA_A}`);
+    expect(db().scans.find(r => r.scanId === sup)!).toMatchObject({ status: 'superseded', modelVersion: `model-1@${SHA_A}` });
+    delete process.env.LOGO_IMAGE_TAG;
+    const none = await scan(server, await png('#f00'), P('P3'));
+    expect(db().scans.find(r => r.scanId === none)!.modelVersion).toBe('model-1@none');
+    delete process.env.LOGO_MODEL_VERSION;
+    const unk = await scan(server, await png('#0f0'), P('P4'));
+    expect(db().scans.find(r => r.scanId === unk)!.modelVersion).toBe('unknown@none');
+    await server.close();
+  });
+  it('CAP-5: a model version containing @<hash> cannot collide with model@hash', async () => {
+    const server = await app(); const img = await png();
+    process.env.LOGO_MODEL_VERSION = `x@${SHA_A}`;
+    delete process.env.LOGO_IMAGE_TAG;
+    await scan(server, img);
+    process.env.LOGO_MODEL_VERSION = 'x';
+    process.env.LOGO_IMAGE_TAG = SHA_A;
+    expect((await post(server, img, P())).json().deduplicated).toBeUndefined();
+    await server.close();
+  });
+  it('CAP-6: the answer modelVersion stays exactly LOGO_MODEL_VERSION, for done and failed scans', async () => {
+    const server = await app();
+    const ok = await scan(server, await png('#000'));
+    expect((await get(server, ok)).json().logoResults.modelVersion).toBe('model-1');
+    vi.mocked(mlClient.localizeArtwork).mockRejectedValueOnce(new Error('ml down'));
+    const bad = await scan(server, await png('#fff'), P('P2'));
+    const body = (await get(server, bad)).json();
+    expect(body.status).toBe('failed');
+    expect(body.logoResults.modelVersion).toBe('model-1');
     await server.close();
   });
 });

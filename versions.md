@@ -1,5 +1,12 @@
 # Versiegeschiedenis
 
+## 13 oktober 2026
+
+**Logoherkenning: na een verbetering krijgen eerder gescande etiketten een nieuwe uitkomst**
+- Na een verbetering van de herkenning krijgen eerder gescande etiketten automatisch een nieuwe uitkomst zodra ze opnieuw worden aangeboden, in plaats van het oude resultaat van vóór de verbetering. Voor een nieuwe versie van de herkenningssoftware hoeft daar niemand meer handmatig iets voor om te zetten.
+- Komt hetzelfde etiket opnieuw binnen zonder dat de herkenning is veranderd, dan wordt de eerdere uitkomst nog steeds direct hergebruikt.
+- Direct na een verbetering kan het kort drukker zijn, omdat herhaalde etiketten dan opnieuw worden bekeken.
+
 ## 12 oktober 2026
 
 **Logoherkenning: minder mislukte scans en minder valse Nutri-Score-letters**

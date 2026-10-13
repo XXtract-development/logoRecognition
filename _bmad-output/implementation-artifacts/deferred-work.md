@@ -45,3 +45,11 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-logo-scan-robustness.md`
   summary: De `failed`-handler van de logo-scan-worker (gecrashte of vastgelopen job) schrijft alleen de Redis-staat en nooit de rij in `logo_scans`; zulke scans ontbreken in de tabel en krijgen dus ook geen `stap1`.
   evidence: `apps/api/src/services/pipeline/logo-scan-flow.ts` registerLogoScanWorker → `logoScanWorker.on('failed', …)` roept `writeIfOpen(failedState(...))` aan zonder `saveOutcome`; vooraf bestaand gedrag (Story 1.3), door de review van spec-logo-scan-robustness (Edge6) gesignaleerd.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-scan-reuse-code-version.md`
+  summary: De commit van de herkenningscode in de image zelf vastleggen (build-arg naar een omgevingsvariabele), zodat de hergebruiksleutel niet van de uitrolbedrading (`LOGO_IMAGE_TAG` in `.env`, `SOURCE_COMMIT`) afhangt; ook de route om hergebruik op productie veilig aan te zetten.
+  evidence: Blind Hunter-review 13-10-2026; nu werkt het op ACC (VERIFIED: `LOGO_IMAGE_TAG` = image-revisie in app en ml-service), maar productie geeft geen commit-variabele door en een lege `LOGO_IMAGE_TAG` op ACC laat de sleutel op `SOURCE_COMMIT` (compose-checkout) leunen terwijl de `:acc`-image zweeft.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-scan-reuse-code-version.md`
+  summary: Een scan die vóór een uitrol in de wachtrij stond en daarna door de nieuwe code wordt uitgevoerd, wordt opgeslagen onder de sleutel van de oude code; bij terugrollen naar die oude code binnen 24 uur kan dat resultaat hergebruikt worden.
+  evidence: Edge Case Hunter-review 13-10-2026: sleutel wordt bij toelating vastgezet (`submitLogoScan`), `runLogoScanJob` controleert de codeversie niet. Severiteit laag-middel, alleen bij terugrollen binnen 24 uur; bewijs zou een test zijn die toelaat onder A, uitvoert onder B en daarna onder A opnieuw aanvraagt.
