@@ -1,0 +1,10 @@
+{
+ "decision": "PASS",
+ "rationale": "P0 coverage is 100%, P1 coverage is 100% (target: 90%), and overall coverage is 100% (minimum: 80%).",
+ "decision_date": "2026-10-30",
+ "spec": "_bmad-output/implementation-artifacts/spec-spike-fase-b-cap3-telscript.md",
+ "tests": {"command": "~/logo-meetset-20261018/ontwikkelmeting-20261028/fase-b/.venv/bin/python -m pytest -q -p no:cacheprovider test_tel.py", "result": "31 passed"},
+ "gate_criteria": {"p0_coverage_actual": "100% (24/24)", "p0_status": "MET", "p1_coverage_actual": "100% (2/2)", "p1_status": "MET", "overall_coverage_actual": "100% (26/26)", "overall_status": "MET"},
+ "uncovered_requirements": [],
+ "deferred_outside_scope": ["fb_k1.parse tegel->etiket zonder eigen toets", "§5.1 uitsluitregel koppelen na adjudicatie", "lekcontrole op door adjudicatie toegevoegde paren"]
+}

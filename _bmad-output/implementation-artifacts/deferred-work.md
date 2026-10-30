@@ -53,3 +53,15 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-scan-reuse-code-version.md`
   summary: Een scan die vóór een uitrol in de wachtrij stond en daarna door de nieuwe code wordt uitgevoerd, wordt opgeslagen onder de sleutel van de oude code; bij terugrollen naar die oude code binnen 24 uur kan dat resultaat hergebruikt worden.
   evidence: Edge Case Hunter-review 13-10-2026: sleutel wordt bij toelating vastgezet (`submitLogoScan`), `runLogoScanJob` controleert de codeversie niet. Severiteit laag-middel, alleen bij terugrollen binnen 24 uur; bewijs zou een test zijn die toelaat onder A, uitvoert onder B en daarna onder A opnieuw aanvraagt.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-spike-fase-b-cap3-telscript.md`
+  summary: De omrekening van tegel naar etiketpixels in `fb_k1.parse` heeft geen eigen toets; `test_tel.py` dekt alleen dat `tel.py` K1-vakken niet nog eens omrekent (meetopzet §3.10 noemt "omrekening tegel → etiket" als toetsgeval).
+  evidence: Blind Hunter-review 30-10-2026; `tel.lees_k1` neemt de vakken uit `fb_k1` over zoals ze zijn, en geen toets roept `fb_k1.parse` aan. Valt buiten deze spec (één nieuw bestand `tel.py`).
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-spike-fase-b-cap3-telscript.md`
+  summary: De uitsluitregel van meetopzet §5.1 (>1% etiketten boven 165 s, of boven 8 GB) zit niet in de rangorde van `tel.py`; die gegevens komen uit `fb_kostentijd.py` (CAP-4) en moeten na de adjudicatie in het rapport naast de rangorde worden gelegd.
+  evidence: Blind Hunter-review 30-10-2026; `tel.py` leest geen `sec_etiket`/`piek_rss_mb`. Vóór adjudicatie geldt §0 (geen §5.1); de regel telt pas bij de rangorde ná adjudicatie.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-spike-fase-b-cap3-telscript.md`
+  summary: Paren die door een "ja" in de adjudicatie nieuw in de waarheid komen, zijn niet op lekken getoetst; `tel.py` noemt ze nu in `adjudicatie.niet_lekgetoetst`, maar de echte controle (cosinus ≥ 0,98 tegen de momentopname, `fb_lek.py`) moet daarna nog draaien.
+  evidence: Blind Hunter-review 30-10-2026; `lekparen.json` komt uit de originele waarheid. Bewijs: `fb_lek.py` opnieuw draaien op de toegevoegde vakken en de tabel "zonder lekparen" herberekenen.
