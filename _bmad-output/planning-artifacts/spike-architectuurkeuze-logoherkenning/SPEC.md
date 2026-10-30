@@ -5,7 +5,7 @@ type: spike (vergelijkende meting, geen productiecode)
 datum: 2026-10-18
 bijgewerkt: 2026-10-30 (fase B op de voorlopige ontwikkelset van 173 etiketten)
 peildatum_code: origin/acc b6a0857
-status: fase B draait op 173 door AI bevestigde etiketten; uitkomst voorlopig tot adjudicatie; CAP-1 (243 door Friso bevestigd) open
+status: fase B gedraaid op 173 door AI bevestigde etiketten (30-10); uitkomst voorlopig tot adjudicatie (BESLISRAPPORT.md); CAP-1 (243 door Friso bevestigd) open
 invulpagina: https://claude.ai/artifact/KJvPSJk5WKq8Vcsj8bUS73
 companions:
   - ONDERZOEK.md
