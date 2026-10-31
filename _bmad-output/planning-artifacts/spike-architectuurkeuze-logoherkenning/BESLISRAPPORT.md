@@ -1,7 +1,7 @@
 ---
 titel: "Beslisrapport spike architectuurkeuze logoherkenning — fase B (voorlopig)"
 datum: 2026-10-30
-status: voorlopig — AI-labels, vóór adjudicatie door Friso
+status: afgerond op AI-basis (31-10-2026) — steekproef van 31 door Friso; 497 nee's niet door mens gecontroleerd
 spec: SPEC.md (CAP-5), meetopzet.md v5 (§0 gaat vóór)
 meetset: 173 etiketten, voorlopige-selectie.json (input_sha256 ba4001a3…), 186 positieve paren
 bevriezing: edbe79b (opzet, 12:30:33) en 1aec88a (telscript, 12:45:29), beide vóór de eerste aanroep resp. telling
@@ -250,3 +250,10 @@ Rangorde na adjudicatie (keurmerken die "het halen" van de 12 beoordeelde; gepoo
 | Weidemelk | 17/17 | 6/39 (19%) | 17/17 | 1/32 (4%) | haalt het, onzeker |
 
 **Bijgestelde aanbeveling:** K4-aa (Gemini 3.8 Flash vindt en benoemt, SigLIP 2 bevestigt) als route; de bevestigingsstap is niet optioneel maar nodig om onder 10% vals te komen. Open voor de bouw: EU-biologisch, Nutri-Score C en zwangerschapswaarschuwing zitten op 12–17% vals; Groene Punt en Recyclebaar halen het niet; vakprecisie (verschoven tweede vakken) is de grootste bron van onterechte meldingen. Validatie op door een mens bevestigde etiketten blijft nodig vóór "automatisch".
+
+## 10. Afronding (31-10-2026)
+
+- **Steekproef door Friso:** de 25 'ja' bevestigd (25/25). De 6 twijfelgevallen: 5 nee, 1 ja (v305). De uitslag is opgeslagen als `nakijken/uitslag-na-steekproef-20261031.json`; de AI-versie als `uitslag-ai-20261031.json`.
+- **Effect op de telling:** nul. De rangorde en de beste variant per keurmerk zijn gelijk aan de AI-versie (`resultaat-na-adjudicatie.json` vs. `resultaat-na-adjudicatie-ai-20261031.json`; enige verschil is de lijst met onbeantwoorde vragen, 2275 → 2269). Reden: v305 en v1672 zijn gemiste paren, waar 'ja' niets toevoegt.
+- **Besluit Friso:** afronden op AI-basis. De 497 nee's zijn niet door een mens gecontroleerd. De vals-meldingcijfers in §4–§8 blijven daarom een AI-gebaseerde bovengrens.
+- **Blijft open voor de bouw:** validatie op door een mens bevestigde etiketten vóór "automatisch"; EU-biologisch, Nutri-Score C en zwangerschapswaarschuwing (12–17% vals); Groene Punt en Recyclebaar haalt geen variant; de privacy-instellingen van het OpenRouter-account en de bewaarvoorwaarden van Google.
