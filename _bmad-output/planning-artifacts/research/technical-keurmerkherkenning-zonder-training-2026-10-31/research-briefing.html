@@ -1,0 +1,621 @@
+<!doctype html><html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Technisch onderzoek: herkenning van keurmerken op etiketbestanden</title><style>
+:root{--navy:#2F5A7A;--teal:#54949E;--green:#B7D945;--red:#D64545;--text:#1E293B;--bg:#ffffff;--muted:#64748b;--card:#f6f8fa;--line:#e2e8f0}
+@media (prefers-color-scheme:dark){:root{--text:#e2e8f0;--bg:#0f172a;--muted:#94a3b8;--card:#1e293b;--line:#334155;--navy:#7fb0d6}}
+*{box-sizing:border-box}body{margin:0;font:15px/1.6 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:var(--text);background:var(--bg)}
+header{padding:28px 24px 18px;border-bottom:3px solid var(--navy)}header h1{margin:0 0 8px;font-size:24px;color:var(--navy)}
+.meta{color:var(--muted);font-size:13px}.meta b{color:var(--text)}
+.wrap{display:grid;grid-template-columns:240px minmax(0,1fr);gap:28px;max-width:1180px;margin:0 auto;padding:20px 24px}
+nav{position:sticky;top:12px;align-self:start;font-size:13px}nav ol{padding-left:18px;margin:0}nav a{color:var(--navy);text-decoration:none}nav li{margin:4px 0}
+main h2{color:var(--navy);border-bottom:1px solid var(--line);padding-bottom:4px;margin-top:36px}
+main h2:first-child{margin-top:0}
+#s-samenvatting{margin-top:0}
+table{border-collapse:collapse;width:100%;margin:10px 0;font-size:13.5px;display:block;overflow-x:auto}th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}th{background:var(--card)}
+.callout{border-left:4px solid var(--teal);background:var(--card);padding:6px 14px;margin:14px 0;border-radius:4px}.callout.warning{border-color:var(--red)}.callout.important{border-color:var(--navy)}
+.badge{display:inline-block;font-size:11px;font-weight:600;padding:1px 6px;border-radius:9px;letter-spacing:.02em;font-style:normal}
+.badge.hi{background:#e7f3d1;color:#3d5a10}.badge.med{background:#e0eef0;color:#24555c}.badge.low{background:#fde8d7;color:#8a3b0b}
+.badge.inf{background:#fff3c4;color:#6b4e00;border:1px solid #d9b100}.badge.unv{background:#fde2e2;color:#9b1c1c;border:1px solid var(--red)}
+.stale{color:var(--red)}a.cite{color:var(--teal);text-decoration:none;font-size:12px}
+.sources td:first-child{white-space:nowrap}.sources tr:target{background:#fff3c4}
+details{margin-top:12px}summary{cursor:pointer;color:var(--navy);font-weight:600}
+figure{margin:12px 0}figcaption{font-size:12px;color:var(--muted)}.chart{width:100%;max-width:560px}.chart .lbl,.chart .val,.chart .tick{font-size:12px;fill:var(--text)}.chart .bar{fill:var(--teal)}.chart .best{fill:var(--navy)}.chart .axis{stroke:var(--muted)}
+@media (max-width:820px){.wrap{grid-template-columns:1fr}nav{position:static}}
+</style></head><body>
+<header><h1>Technisch onderzoek: herkenning van keurmerken op etiketbestanden</h1>
+<div class="meta"><b>Besluit:</b> Welke aanpak (vrij beschikbare code en technieken; commerciële taalmodellen toegestaan; geen betaalde logoherkenningsdiensten) testen we als eerste om de top-15 keurmerken betrouwbaar te herkennen (≥80% gevonden, &lt;10% vals per keurmerk)?<br>
+<b>Type:</b> technical (keuze tussen kandidaten) · <b>Datum:</b> 2026-10-31 · <b>Diepte:</b> deep, vier zoekrondes · <b>Controle:</b> normal · <b>Kernclaims:</b> 9 gecontroleerd, <span class="badge unv">8 niet gecontroleerd</span> · <b>Bronnen:</b> 90</div></header>
+<div class="wrap"><nav aria-label="Inhoud"><ol><li><a href="#s-samenvatting">Samenvatting</a></li><li><a href="#s-eisenkader-afgesproken-met-friso-31-10-2">Eisenkader (afgesproken met Friso, 31-10-2026)</a></li><li><a href="#s-1-taalmodellen-kunnen-ze-kleine-keurmerk">1. Taalmodellen: kunnen ze kleine keurmerken vinden en aanwijzen?</a></li><li><a href="#s-2-inzoomen-en-zoeken-in-grote-beelden-zo">2. Inzoomen en zoeken in grote beelden zonder training</a></li><li><a href="#s-3-detectoren-die-je-met-een-naam-of-voor">3. Detectoren die je met een naam of voorbeeldplaatje aanstuurt</a></li><li><a href="#s-4-vergelijken-met-referentieplaatjes-en-">4. Vergelijken met referentieplaatjes en &quot;voorstellen → beoordelen&quot;</a></li><li><a href="#s-5-werken-vanuit-het-etiketbestand-zelf-v">5. Werken vanuit het etiketbestand zelf: vectortekeningen, tekst en codes</a></li><li><a href="#s-6-praktijk-kosten-en-privacy">6. Praktijk, kosten en privacy</a></li><li><a href="#s-7-getrainde-detectoren-aanvullend-onderz">7. Getrainde detectoren (aanvullend onderzoek)</a></li><li><a href="#s-8-wat-alleen-de-combinatie-laat-zien">8. Wat alleen de combinatie laat zien</a></li><li><a href="#s-9-afweging-tussen-de-routes">9. Afweging tussen de routes</a></li><li><a href="#s-10-aanbevelingen-en-proefplan">10. Aanbevelingen en proefplan</a></li><li><a href="#s-11-open-vragen">11. Open vragen</a></li><li><a href="#s-12-houdbaarheid-van-de-beweringen">12. Houdbaarheid van de beweringen</a></li><li><a href="#s-bronnen">Bronnen</a></li></ol></nav><main><h1>Technisch onderzoek: herkenning van keurmerken op etiketbestanden</h1>
+<p><strong>Besluit dat dit onderzoek dient:</strong> welke aanpak we als eerste testen om de top-15 keurmerken op etiketbestanden betrouwbaar te herkennen, met per keurmerk minstens 80% gevonden en minder dan 10% valse meldingen. Of dat er geen geloofwaardige route is.</p>
+<h2 id="s-samenvatting">Samenvatting</h2>
+<p><strong>Antwoord.</strong> Train een eigen detector op onze keurmerken. Gebruik daarbij wat het etiketbestand zelf verraadt, en zet een taalmodel alleen in voor twijfelgevallen. Op algemene tests is een getrainde detector veel sterker dan een taalmodel dat zelf zoekt. Een volledig getrainde detector haalt 55–60 punten op een schaal van 0 tot 100. Met maar 10 voorbeelden per soort is dat nog 20–34, terwijl Gemini 2.5 Pro op 9–12 blijft steken <a class="cite" href="#src-66">[66]</a>. Onze huidige route laat juist het taalmodel zoeken en aanwijzen.</p>
+<p><strong>Aanbeveling.</strong> Een proef van twee à drie weken op een door een mens bevestigde toetsset. Het labelwerk bepaalt de duur.
+- <strong>Route D, getrainde detector.</strong> Een detector met vrije licentie (RF-DETR of D-FINE, Apache-2.0) <a class="cite" href="#src-72">[72]</a><a class="cite" href="#src-73">[73]</a>. De trainingsdata komt uit twee bronnen: officiële logobestanden die we op echte etiketachtergronden plakken, en echte productie-etiketten die een taalmodel vooraf labelt en een mens corrigeert.
+- <strong>Route A, eerst het etiketbestand.</strong> Verplichte codes uitlezen (FSC, MSC, EU-biologisch) <a class="cite" href="#src-41">[41]</a><a class="cite" href="#src-43">[43]</a><a class="cite" href="#src-44">[44]</a>, en de Nutri-Score-letter met een vaste regel lezen <a class="cite" href="#src-36">[36]</a>.
+- <strong>Taalmodel alleen als beoordelaar</strong> van twijfelgevallen, met het referentieplaatje erbij.
+- Klantartwork gaat alleen naar diensten die niets bewaren (§6).</p>
+<div class="callout warning">
+<p><strong>Grootste voorbehoud.</strong> Er is geen enkele openbare meting per keurmerk, voor geen enkele route. Hoeveel echte voorbeelden een detector per keurmerk nodig heeft, is onbekend. In benchmarks gebruikt men 40–70 per soort <a class="cite" href="#src-89">[89]</a>; leveranciers adviseren 1.500 <a class="cite" href="#src-84">[84]</a>. Alleen met nagemaakte voorbeelden trainen haalde bij logo's 48,6 punten, tegen 74,7 met ook 40 echte voorbeelden per logo <a class="cite" href="#src-81">[81]</a>. Onze eigen eerdere poging met een getrainde detector strandde op te weinig voorbeelden (22 etiketbestanden; projectgeheugen, niet opnieuw gecontroleerd).</p>
+</div>
+<p><strong>Waarom.</strong>
+1. <strong>Getraind wint van alleen een goede vraag.</strong> Dat blijkt op 100 praktijkdatasets <a class="cite" href="#src-66">[66]</a>. Ook in de praktijk heeft iedereen die het werkend kreeg getraind: Open Food Facts <a class="cite" href="#src-57">[57]</a><a class="cite" href="#src-59">[59]</a>, NutriGreen <a class="cite" href="#src-61">[61]</a> en het verpakkingsbedrijf SGS&amp;CO <a class="cite" href="#src-54">[54]</a>.
+2. <strong>Een taalmodel is een slechte zoeker maar een redelijke beoordelaar.</strong> Laat je GPT-5 per voorgesteld vakje "waar of niet waar" zeggen, dan haalt het 79 op 100. Laat je het zelf vakjes aanwijzen, dan 12 <a class="cite" href="#src-8">[8]</a>. Hoe vaak het ten onrechte "ja" zegt, is niet gemeten. In een verwante situatie (plaatsherkenning) lag dat tussen 12% en 65% <a class="cite" href="#src-35">[35]</a>. Daarom krijgt het taalmodel alleen de twijfelgevallen.
+3. <strong>Het etiketbestand helpt waar het kan.</strong> Bij een aantal keurmerken staat een verplichte code op het etiket <a class="cite" href="#src-41">[41]</a><a class="cite" href="#src-43">[43]</a><a class="cite" href="#src-44">[44]</a>. De Nutri-Score is een vectortekening met vaste kleuren per letter <a class="cite" href="#src-36">[36]</a>. Hoeveel van onze etiketbestanden die informatie echt bevatten, moeten we eerst meten.
+4. <strong>Zonder training blijft de bewijslast even groot.</strong> Om "minder dan 10% vals" aan te tonen zijn per keurmerk minstens 30 door een mens bevestigde etiketten zonder dat keurmerk nodig <a class="cite" href="#src-63">[63]</a>.</p>
+<p><strong>Afgevallen:</strong>
+- detectoren die je alleen met een naam of voorbeeldplaatje aanstuurt (op logo's scoren de gemeten detectoren 6–10 <a class="cite" href="#src-19">[19]</a>);
+- het taalmodel zelf laten inzoomen (geen bewijs op ons soort beeld <a class="cite" href="#src-14">[14]</a><a class="cite" href="#src-15">[15]</a>);
+- Ultralytics-YOLO zonder betaalde licentie, vanwege AGPL <a class="cite" href="#src-71">[71]</a>;
+- betaalde logoherkenningsdiensten.</p>
+<p><em>Gebaseerd op 90 bronnen uit vier zoekrondes. Van de 17 bijgehouden kernclaims zijn er 9 onafhankelijk gecontroleerd. Niet gecontroleerd: de controlestap per vakje <a class="cite" href="#src-8">[8]</a>, de kosten per etiket, de stand van Open Food Facts <a class="cite" href="#src-58">[58]</a>, de scores uit <a class="cite" href="#src-66">[66]</a>, <a class="cite" href="#src-81">[81]</a> en <a class="cite" href="#src-86">[86]</a> (elk één bron), en de bevinding dat geen studie meet hoe vaak een taalmodel ten onrechte "ja" zegt. Lees "punten" steeds op de schaal die de bron gebruikt; hoger is beter (zie §1).</em></p>
+<h2 id="s-eisenkader-afgesproken-met-friso-31-10-2">Eisenkader (afgesproken met Friso, 31-10-2026)</h2>
+<p><strong>Harde eisen</strong>
+- Geen betaalde, kant-en-klare diensten voor logo- of merkherkenning.
+- Commerciële taalmodellen via API (OpenAI, Anthropic, Google) zijn toegestaan, mits klantartwork niet bewaard of voor training gebruikt wordt.
+- Code en technieken zijn vrij verkrijgbaar en commercieel bruikbaar, bijvoorbeeld via GitHub of gepubliceerde methoden.
+- Een keurmerk mag alleen "automatisch" als het minstens 80% gevonden haalt en minder dan 10% valse meldingen geeft.</p>
+<p><strong>Gewogen wensen</strong>
+- Snel te realiseren: een proef binnen enkele weken.
+- Redelijke kosten en snelheid per etiket, op de bestaande server of via API.
+- Kleine keurmerken (±80–150 px) vinden op enorme drukproeven (tot ±3.000 × 21.000 px).
+- Verwarbare groepen uit elkaar houden: Nutri-Score A/B/C, V-label/Vegan Society/Vegan, Groene Punt/Recyclebaar.</p>
+<div class="callout note">
+<p><strong>Aanvulling, 31-10-2026.</strong> De oorspronkelijke eis was "zonder intensieve training". Op verzoek van Friso zijn daarna ook getrainde detectoren onderzocht (§7). De gewichten in §9 zijn een voorstel van de onderzoeker en niet met Friso afgestemd.</p>
+</div>
+<p><strong>Twee rollen, steeds met dezelfde naam:</strong>
+- een <strong>voorsteller</strong> wijst kandidaat-vakjes aan;
+- een <strong>beoordelaar</strong> zegt per vakje ja, nee of twijfel.</p>
+<p>Een <em>beeldvergelijking</em> (in vaktaal: embedding) meet hoeveel een uitsnede op een referentieplaatje lijkt.</p>
+<h2 id="s-1-taalmodellen-kunnen-ze-kleine-keurmerk">1. Taalmodellen: kunnen ze kleine keurmerken vinden en aanwijzen?</h2>
+<p><em>Over de scores in dit rapport: elke bron gebruikt een eigen maat, zoals mAP of F1. Hoger is altijd beter. Een getal als 84,7 is op een schaal van 100, een getal als 0,92 op een schaal van 1.</em></p>
+<ul>
+<li><strong>Alleen Google beschrijft officieel dat zijn model vakjes teruggeeft.</strong> Gemini geeft de positie als coördinaten van 0 tot 1000 <a class="cite" href="#src-1">[1]</a>. Een beperking voor kleine objecten wordt niet genoemd; dat bewijst niet dat die er niet is.</li>
+<li><strong>Anthropic en OpenAI noemen hun coördinaten uitdrukkelijk "benaderend".</strong> Anthropic waarschuwt voor fouten bij beelden kleiner dan 200 px <a class="cite" href="#src-3">[3]</a><a class="cite" href="#src-4">[4]</a>.</li>
+<li><strong>Een hele drukproef past bij geen enkele aanbieder in één keer op volle scherpte.</strong></li>
+<li>Claude accepteert maximaal 8.000 px en verkleint de lange zijde tot 2.576 px <a class="cite" href="#src-3">[3]</a>.</li>
+<li>OpenAI weigert een beeld dat groter is dan 30.000 beeldblokjes van 32 × 32 px; zo'n drukproef telt er ongeveer 61.758 <a class="cite" href="#src-4">[4]</a>.</li>
+<li>Gemini rekent per beeld met een maximum van ongeveer 1.120 tokens (rekeneenheden) <a class="cite" href="#src-2">[2]</a>.</li>
+<li>Tegelen is dus verplicht. Dat volgt uit rekenwerk op de officiële grenzen.</li>
+<li><strong>Algemene detectiescores</strong>, gemeten door Roboflow op een onbekende verzameling, zonder uitsplitsing naar objectgrootte <a class="cite" href="#src-5">[5]</a> (<em>medium</em>):</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th>Normale inzet</th>
+<th>Hoge inzet</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GPT-6.1 Terra</td>
+<td>84,7</td>
+<td>84,7</td>
+</tr>
+<tr>
+<td>Gemini 4 Argon</td>
+<td>82,5</td>
+<td>85,1</td>
+</tr>
+<tr>
+<td>Claude Opus 5.5</td>
+<td>74,5</td>
+<td>76,0</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>Op 100 praktijkdatasets</strong> haalt Gemini 2.5 Pro zonder voorbeelden 11,6 <a class="cite" href="#src-66">[66]</a>. Ter vergelijking: Grounding DINO 15,7, en een volledig getrainde YOLOv8n 55,4 <a class="cite" href="#src-66">[66]</a>.</li>
+<li>In een onafhankelijke test op de standaardset COCO haalt Gemini 3 Pro Preview 0,407, ongeveer het niveau van een oudere getrainde YOLO-versie <a class="cite" href="#src-67">[67]</a>. <em><span class="badge med">medium</span>.</em></li>
+<li><strong>Hoe kleiner het doel, hoe slechter.</strong></li>
+<li>De nauwkeurigheid zakt tot 46% naarmate het doel kleiner wordt; uitknippen herstelt het grootste deel <a class="cite" href="#src-6">[6]</a>. <em><span class="badge med">medium</span>; gemeten op open modellen.</em></li>
+<li>Op COCO halen GPT en Gemini ongeveer 68–71% tegen 91% voor een getrainde YOLO, met het grootste verschil bij kleine objecten <a class="cite" href="#src-12">[12]</a>. <em><span class="badge low">laag-medium</span>.</em></li>
+<li><strong>Voorbeeldplaatjes meesturen helpt nauwelijks als het model zelf de vakjes tekent.</strong> GPT-4o blijft op 0,05 en Claude 3.7 op 0,03, met 1, 3 of 6 voorbeelden. Classificeert het model vakjes die iets anders heeft aangewezen, dan haalt GPT-4o 0,30 bij 6 voorbeelden <a class="cite" href="#src-7">[7]</a>. <em>Gemeten op microscopie.</em></li>
+<li><strong>Beoordelen gaat veel beter dan zelf zoeken.</strong> Op de standaardtest RefCOCO, waarin het model het juiste object bij een omschrijving moet aanwijzen, scoort GPT-5:</li>
+<li>79,3 als het per voorgesteld vakje "waar of niet waar" zegt;</li>
+<li>70,1 als het uit alle vakjes het beste moet kiezen;</li>
+<li>11,7 als het zelf vakjes geeft <a class="cite" href="#src-8">[8]</a>.</li>
+</ul>
+<p><em>Eén bron, en elke afbeelding bevat precies één doel. Het zegt dus niets over etiketten zonder het keurmerk.</em>
+- <strong>Zonder controlestap zegt een voorsteller met referentieplaatje vrijwel altijd "aanwezig"</strong> <a class="cite" href="#src-65">[65]</a>.
+  - Op een set waarin de helft het doel bevat en de helft niet, scoren zulke voorstellers F1 0,667. Dat is precies de score van "altijd ja". Grounding DINO komt zelfs maar op 0,42.
+  - Met alleen een goede controlevraag aan een groot open model (Qwen3-VL-235B of -32B) stijgt dat naar 0,84–0,94.
+  - Na lichte bijtraining (LoRA, ongeveer 700 voorbeelden) wordt het 0,92–0,99.
+  - <em>Alleen open modellen getest, niet GPT, Claude of Gemini.</em></p>
+<div class="callout note">
+<p><strong>Betekenis (<span class="badge inf">INFERENCE</span>).</strong> Een taalmodel dat zelf over het hele etiket zoekt, zit in de rol waarin deze modellen het zwakst zijn. Als beoordelaar van een vakje dat iets anders heeft voorgesteld, zijn ze duidelijk sterker.</p>
+</div>
+<p><em>De cijfers van Roboflow en de beeldgrenzen zijn in ronde 2 gecontroleerd.</em></p>
+<h2 id="s-2-inzoomen-en-zoeken-in-grote-beelden-zo">2. Inzoomen en zoeken in grote beelden zonder training</h2>
+<ul>
+<li><strong>De bekende zoommethoden werken niet met de betaalde modellen.</strong> ZoomEye, ViCrop en RAP zijn alleen getest op open modellen. Ze hebben interne waarden van het model nodig die de API's van GPT, Claude en Gemini niet geven <a class="cite" href="#src-13">[13]</a><a class="cite" href="#src-6">[6]</a><a class="cite" href="#src-17">[17]</a>.</li>
+<li><strong>Zoom-Refine werkt wel één-op-één via een API</strong> <a class="cite" href="#src-14">[14]</a>.</li>
+<li>Werkwijze: eerst geeft het model een antwoord en een vakje, daarna wordt dat vakje scherp uitgeknipt en volgt een tweede vraag.</li>
+<li>Winst: +4 tot +5 punten, bij ongeveer 3,5 keer de rekentijd.</li>
+<li>Zwakte: een verkeerd vakje in de eerste stap bederft de tweede.</li>
+<li><strong>Gemini 3 Flash "Agentic Vision"</strong> (januari 2026) knipt en zoomt zelf <a class="cite" href="#src-15">[15]</a>.</li>
+<li>Google claimt 5–10% winst, zonder absolute cijfers.</li>
+<li>De vakjes worden op het beeld getekend, niet als coördinaten teruggegeven.</li>
+<li><strong>Op een moeilijke test met kleine doelen</strong> (gemiddeld 3% van het beeld) scoren o3 54,8 en Gemini 2.5 Pro 54,1 <a class="cite" href="#src-16">[16]</a>. Onze keurmerken beslaan ongeveer 0,016% van het beeld, zo'n 190 keer kleiner (berekening).</li>
+<li><strong>Er is geen enkele test op verpakkingen of drukwerk gevonden.</strong></li>
+<li><strong>Taalmodellen zijn zwak in het herkennen van eenvoudige symbolen</strong> <a class="cite" href="#src-18">[18]</a>. <em><span class="badge med">medium</span>; gemeten op handschrift en formules.</em></li>
+</ul>
+<div class="callout note">
+<p><strong>Betekenis (<span class="badge inf">INFERENCE</span>).</strong> Vast tegelen lost het resolutieprobleem goedkoper en voorspelbaarder op dan laten inzoomen. Inzoomen voegt een foutbron toe: een verkeerd gekozen vakje.</p>
+</div>
+<h2 id="s-3-detectoren-die-je-met-een-naam-of-voor">3. Detectoren die je met een naam of voorbeeldplaatje aanstuurt</h2>
+<ul>
+<li><strong>Op de enige logo-test scoren deze detectoren slecht</strong> <a class="cite" href="#src-19">[19]</a><a class="cite" href="#src-20">[20]</a>. <em>Gecontroleerd met een tweede bron.</em></li>
+<li>Grounding DINO 10,3 en OmDet 6,1.</li>
+<li>Open taalmodellen doen het beter: Qwen2.5-VL-7B 35,8 en VLM-R1 (3B) 34,6.</li>
+<li>Bij de kleurtaak, die volgens de auteurs vooral uit kleine objecten bestaat, draait het om: OmDet 22,9 tegen VLM-R1 4,5. De auteurs adviseren een combinatie: een detector voor ruime vangst, een taalmodel voor de kennis <a class="cite" href="#src-19">[19]</a>.</li>
+<li><strong>OWLv2</strong> valt onder Apache-2.0 en kan zoeken met een referentieplaatje <a class="cite" href="#src-21">[21]</a><a class="cite" href="#src-22">[22]</a>.</li>
+<li>De invoer is 960 × 960 px, dus tegelen is nodig.</li>
+<li>De snelheid op een gewone processor is alleen anekdotisch bekend; dat moeten we zelf meten.</li>
+<li><strong>YOLOE</strong> (2025) werkt met een voorbeeld uit een ander beeld, met 27–73 beelden per seconde op een T4-GPU <a class="cite" href="#src-23">[23]</a>.</li>
+<li>De licentie is AGPL-3.0 <a class="cite" href="#src-23">[23]</a>. Bied je het als dienst aan, dan moet je eigen code openbaar. Ultralytics verkoopt daarnaast een commerciële licentie <a class="cite" href="#src-70">[70]</a>.</li>
+<li><strong>SAM 3</strong> werkt met voorbeeldvakjes, vraagt een GPU en heeft een eigen licentie <a class="cite" href="#src-24">[24]</a>.</li>
+<li><strong>T-Rex2</strong> is alleen bereikbaar via een gehoste API, en valt dus af <a class="cite" href="#src-25">[25]</a>.</li>
+<li><strong>Elders presteren deze detectoren ook zwak.</strong></li>
+<li>Op luchtfoto's haalt de beste (OWLv2) 27,6% <a class="cite" href="#src-26">[26]</a>.</li>
+<li>Vast tegelen kan de resultaten op kleine objecten soms verslechteren <a class="cite" href="#src-27">[27]</a>. <em><span class="badge low">laag</span>; anekdote.</em></li>
+<li><strong>OWLv2 en YOLOE zijn op logo's niet gemeten.</strong></li>
+</ul>
+<div class="callout note">
+<p><strong>Betekenis (<span class="badge inf">INFERENCE</span>).</strong> Deze detectoren herkennen niet zelf; ze kunnen hooguit voorstellen, met veel valse vakjes.</p>
+</div>
+<h2 id="s-4-vergelijken-met-referentieplaatjes-en-">4. Vergelijken met referentieplaatjes en "voorstellen → beoordelen"</h2>
+<ul>
+<li><strong>Beeldvergelijking zonder training</strong> (ILIAS, algemene objecten, bij 5 miljoen afleidende beelden) <a class="cite" href="#src-28">[28]</a>: DINOv3-L 31,1, SigLIP2-L 25,3, DINOv2-L 18,5, CLIP-L 12,1.</li>
+<li>Met een klein aangeleerd laagje stijgt SigLIP2 naar 37,3.</li>
+<li>Een tweede stap die details vergelijkt levert nog 7 punten op (gemeten bij 100 miljoen afleidende beelden).</li>
+<li><strong>De enige logo-meting komt van Open Food Facts</strong>, op foto's <a class="cite" href="#src-29">[29]</a>. <em><span class="badge med">medium</span>.</em></li>
+<li>CLIP ViT-L/14 vindt 0,94 van de al uitgeknipte logo's, tegen 0,78 voor EfficientNet-b0.</li>
+<li>Over valse meldingen staan er geen cijfers bij.</li>
+<li><strong>Detailvergelijking.</strong> LightGlue met ALIKED of DISK (Apache/BSD) haalt ongeveer 20 beelden per seconde op een desktopprocessor <a class="cite" href="#src-30">[30]</a>.</li>
+<li><strong>Het dichtstbijzijnde voorbeeld</strong> is een pijplijn voor symbolen in technische tekeningen <a class="cite" href="#src-31">[31]</a>. <em><span class="badge low">laag-medium</span>.</em></li>
+<li>De stappen: sjabloon op meerdere schalen, dan beeldvergelijking, dan vormfilters, en tot slot een klein taalmodel voor twijfelgevallen.</li>
+<li>Er staan geen cijfers bij.</li>
+<li><strong>Taalmodellen die bijna-identieke beeldparen vergelijken</strong> <a class="cite" href="#src-32">[32]</a>. <em>Eén bron.</em></li>
+<li>Totaal: mens 95,5%, GPT-5-thinking 77,8%, Gemini 2.5 Pro 68,2%, Claude Sonnet 4 62,6%.</li>
+<li>Twee losse beelden sturen werkt beter dan ze samen te voegen.</li>
+<li>Letterverschillen zitten niet in de test.</li>
+<li><strong>Red Sift</strong> gebruikt in de praktijk een detector plus een taalmodel dat met het referentielogo vergelijkt. GPT-4o deed het best; de grootte van de testset en het aantal valse meldingen staan er niet bij <a class="cite" href="#src-33">[33]</a>.</li>
+<li><strong>Ten onrechte "ja" zeggen.</strong></li>
+<li>Bij plaatsherkenning zeiden GPT-4.1 en Gemini op de ene dataset in ongeveer 28% van de gevallen ten onrechte "ja", en over alle datasets in 12% tot 65% <a class="cite" href="#src-35">[35]</a>.</li>
+<li>Een andere benchmark vond juist dat deze modelfamilies vaker ten onrechte "nee" zeggen <a class="cite" href="#src-69">[69]</a>.</li>
+<li>Op logo's meet geen enkele bron dit (ronde 3).</li>
+<li><strong>Licenties.</strong> DINOv3 heeft een eigen Meta-licentie; DINOv2 valt onder Apache-2.0 <a class="cite" href="#src-34">[34]</a>.</li>
+</ul>
+<div class="callout warning">
+<p><strong>Betekenis (<span class="badge inf">INFERENCE</span>).</strong> "Voorstellen → beoordelen" komt in meerdere bronnen terug. De onzekerste schakel is het beoordelen bij kleine verschillen. Daarom adviseert dit rapport het taalmodel alleen voor twijfelgevallen.</p>
+</div>
+<h2 id="s-5-werken-vanuit-het-etiketbestand-zelf-v">5. Werken vanuit het etiketbestand zelf: vectortekeningen, tekst en codes</h2>
+<ul>
+<li><strong>De Nutri-Score is officieel een vectortekening</strong>, opgebouwd uit lijnen en vlakken in plaats van pixels. Het charter (maart 2024) schrijft voor die tekening uit de officiële bestanden te kopiëren en te plakken <a class="cite" href="#src-36">[36]</a>.</li>
+<li>Er zijn zes vaste kleuren <a class="cite" href="#src-36">[36]</a>. Welke kleur bij welke letter hoort, is afgeleid uit de tabelindeling (<em>medium</em>).</li>
+<li>Er bestaan ook een zwart-wit- en een lijnversie, dus de letter is niet alleen op kleur te lezen <a class="cite" href="#src-36">[36]</a>.</li>
+<li>Tot maart 2027 kunnen oude en nieuwe logo's naast elkaar voorkomen <a class="cite" href="#src-37">[37]</a>. <em><span class="badge med">medium</span>.</em></li>
+<li><strong>Alleen ingesloten afbeeldingen ophalen mist vectortekeningen</strong> <a class="cite" href="#src-38">[38]</a>. Het object moet worden omgezet naar een plaatje en dan vergeleken.</li>
+<li><strong>Een keurmerk kan op drie manieren in een etiketbestand staan:</strong> als losse lijnen, als ingesloten PDF-object, of als afbeelding (<span class="badge inf">INFERENCE</span>; uit een forum) <a class="cite" href="#src-39">[39]</a>.</li>
+<li><strong>Illustrator-bestanden</strong> (<code>.ai</code>) zijn buiten Illustrator alleen leesbaar als ze "PDF-compatibel" zijn opgeslagen <a class="cite" href="#src-40">[40]</a>.</li>
+<li><strong>Verplichte codes op het etiket.</strong></li>
+<li>FSC: een licentiecode is verplicht bij elk gebruik van het FSC-merk; één keer per product is genoeg <a class="cite" href="#src-41">[41]</a>. Welke versie van de standaard nu geldt, is onduidelijk <a class="cite" href="#src-42">[42]</a>.</li>
+<li>MSC: elk product met het MSC-label draagt een code <code>MSC-C-xxxxx</code>. Die mag overal staan, maar moet leesbaar zijn <a class="cite" href="#src-43">[43]</a>.</li>
+<li>EU-biologisch: de code van het controleorgaan is verplicht, bijvoorbeeld <code>NL-BIO-01</code>. De plaats van landbouw moet bij het logo staan <a class="cite" href="#src-44">[44]</a><a class="cite" href="#src-45">[45]</a>.</li>
+<li>Een code bewijst dat het keurmerk geclaimd wordt, niet wáár het logo staat.</li>
+<li><strong>Groene Punt is geen recyclesymbool.</strong> Hij betekent dat de producent deelneemt aan een inzamelsysteem; de Möbius-lus betekent recyclebaar <a class="cite" href="#src-64">[64]</a>.</li>
+<li><strong>Licenties.</strong> PyMuPDF valt onder AGPL of een commerciële licentie <a class="cite" href="#src-38">[38]</a>; pikepdf valt onder MPL-2.0 <a class="cite" href="#src-46">[46]</a>.</li>
+<li><strong>Een bestaand voorbeeld</strong> haalt logo's uit PDF's en vergelijkt ze met CLIP <a class="cite" href="#src-47">[47]</a>. Er staan geen cijfers specifiek voor logo's bij.</li>
+<li><strong>Tekstherkenning op verpakkingsfoto's</strong> is zwak bij kleine of gebogen tekst <a class="cite" href="#src-48">[48]</a><a class="cite" href="#src-49">[49]</a>.</li>
+<li><span class="badge inf">INFERENCE</span>: staan de codes als echte tekst in het etiketbestand, dan is tekstherkenning niet nodig.</li>
+<li><strong>Niet gevonden:</strong></li>
+<li>hoe vaak keurmerken in verpakkingsartwork als vectortekening staan;</li>
+<li>de regels voor Rainforest Alliance, V-label, Vegan Society, Beter Leven, Weidemelk en het zwangerschapspictogram.</li>
+</ul>
+<div class="callout note">
+<p><strong>Betekenis (<span class="badge inf">INFERENCE</span>).</strong> Werken vanuit het etiketbestand kan voor een deel van de keurmerken het pixelprobleem omzeilen. Of dat werkt, hangt af van één vraag die geen bron beantwoordt: hoeveel van onze etiketbestanden zijn een PDF- of Illustrator-bestand met echte tekst en vectortekeningen?</p>
+</div>
+<h2 id="s-6-praktijk-kosten-en-privacy">6. Praktijk, kosten en privacy</h2>
+<ul>
+<li><strong>Kosten per etiket</strong> bij 20 uitsneden van ongeveer 1000 px, alleen de beeldinvoer <a class="cite" href="#src-50">[50]</a><a class="cite" href="#src-51">[51]</a><a class="cite" href="#src-52">[52]</a> (<em><span class="badge med">medium</span>; berekend</em>):</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th>Per etiket</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Claude Opus 5.5</td>
+<td>±$0,10</td>
+</tr>
+<tr>
+<td>Claude Sonnet 5.5</td>
+<td>±$0,05</td>
+</tr>
+<tr>
+<td>Claude Haiku 5.5</td>
+<td>±$0,003</td>
+</tr>
+<tr>
+<td>gpt-5.5</td>
+<td>±$0,12</td>
+</tr>
+<tr>
+<td>Gemini 4 Argon</td>
+<td>±$0,045 (verdubbelt vanaf 1 december 2026)</td>
+</tr>
+<tr>
+<td>Gemini 3 Flash</td>
+<td>±$0,011</td>
+</tr>
+</tbody>
+</table>
+<p>De uitvoer kan bij de topmodellen evenveel kosten als de invoer. Batchverwerking halveert alles <a class="cite" href="#src-53">[53]</a>.
+- <strong>Privacy en bewaring.</strong>
+  - Geen van de drie aanbieders traint standaard op betaalde API-data <a class="cite" href="#src-9">[9]</a><a class="cite" href="#src-10">[10]</a><a class="cite" href="#src-11">[11]</a>.
+  - OpenAI en Anthropic bieden nul-bewaring alleen na een afspraak met hun sales. Batch- en bestandsaanroepen vallen daarbuiten; batchgegevens blijven 29 dagen staan <a class="cite" href="#src-9">[9]</a><a class="cite" href="#src-10">[10]</a><a class="cite" href="#src-53">[53]</a>.
+  - Bij Google blijft alleen betaald gebruik buiten de training <a class="cite" href="#src-11">[11]</a>.
+  - Via Vertex AI kan Google nul-bewaring geven, als je zelf instellingen aanpast (geen tijdelijke opslag, geen logging, en geen koppeling met Google Search of Maps). Logging voor misbruikcontrole is geen instelling die je zelf uitzet <a class="cite" href="#src-68">[68]</a>.
+- <strong>Praktijk in de verpakkingswereld.</strong>
+  - SGS&amp;CO trainde een detector op 432 artworkbeelden, met 0,578 over acht brede categorieën. Benoemen zonder training door GPT-4o was zwak, maar gemeten als tekstoverlap, wat zwak bewijs is <a class="cite" href="#src-54">[54]</a>.
+  - Open Food Facts gebruikt een getrainde detector (merk of keurmerk) en beeldvergelijking. In 2023 deelden mensen de keurmerken nog in <a class="cite" href="#src-57">[57]</a><a class="cite" href="#src-58">[58]</a>. Hun Nutri-Score-detector valt onder AGPL en heeft geen gepubliceerde cijfers <a class="cite" href="#src-59">[59]</a>.
+  - NutriGreen is een gratis set van 10.472 foto's met Nutri-Score A–E, V-label en EU-biologisch (CC BY-SA 4.0) <a class="cite" href="#src-60">[60]</a>. Getrainde detectoren halen er 94%; de verwarring tussen A, B en C wordt niet gerapporteerd <a class="cite" href="#src-61">[61]</a>.
+- <strong>Elders.</strong>
+  - Of een groot merklogo op een advertentie staat, halen taalmodellen zonder training voor 96–99,6%. De positie van het logo is veel zwakker <a class="cite" href="#src-55">[55]</a>.
+  - Stemmen over meerdere runs is alleen op open modellen onderzocht <a class="cite" href="#src-56">[56]</a>.
+  - Esko, een betaald pakket, beweert dat algemene AI faalt op verpakkingen, zonder cijfers <a class="cite" href="#src-62">[62]</a>.
+- <strong>Bewijslast.</strong>
+  - Zonder één fout in n gevallen ligt de bovengrens van het foutpercentage rond 3/n <a class="cite" href="#src-63">[63]</a>.
+  - Voor "minder dan 10% vals" heb je per keurmerk dus minstens 30 negatieve voorbeelden zonder één fout nodig: etiketten waarvan een mens heeft bevestigd dat het keurmerk er níet op staat. Met een enkele fout worden het er 50 tot 100 (<span class="badge inf">INFERENCE</span>).
+  - Met minder dan 16 positieve voorbeelden per keurmerk is "80% gevonden" niet te bewijzen; met 16 alleen als ze allemaal gevonden worden (berekening).</p>
+<div class="callout note">
+<p><strong>Betekenis (<span class="badge inf">INFERENCE</span>).</strong> Een taalmodel per uitsnede is betaalbaar. Het echte werk zit in de toetsset die de betrouwbaarheid moet bewijzen, niet in de rekenkosten.</p>
+</div>
+<h2 id="s-7-getrainde-detectoren-aanvullend-onderz">7. Getrainde detectoren (aanvullend onderzoek)</h2>
+<p><strong>Licenties.</strong> Gecontroleerd in de licentiebestanden van de officiële projecten:</p>
+<table>
+<thead>
+<tr>
+<th>Detector</th>
+<th>Licentie</th>
+<th>Commercieel vrij?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>RF-DETR Nano, Small, Medium, Large</td>
+<td>Apache-2.0, inclusief modellen <a class="cite" href="#src-72">[72]</a></td>
+<td>ja</td>
+</tr>
+<tr>
+<td>D-FINE</td>
+<td>Apache-2.0 <a class="cite" href="#src-73">[73]</a></td>
+<td>ja</td>
+</tr>
+<tr>
+<td>RT-DETR</td>
+<td>Apache-2.0 <a class="cite" href="#src-74">[74]</a></td>
+<td>ja</td>
+</tr>
+<tr>
+<td>SAHI (tegelen)</td>
+<td>MIT <a class="cite" href="#src-76">[76]</a></td>
+<td>ja</td>
+</tr>
+<tr>
+<td>Ultralytics YOLOv8, YOLO11, YOLO26</td>
+<td>AGPL-3.0, inclusief modellen <a class="cite" href="#src-71">[71]</a></td>
+<td>nee; alleen met een betaalde Enterprise-licentie <a class="cite" href="#src-70">[70]</a></td>
+</tr>
+<tr>
+<td>DEIMv2</td>
+<td>sinds 24-08-2026 alleen niet-commercieel <a class="cite" href="#src-75">[75]</a></td>
+<td>nee</td>
+</tr>
+<tr>
+<td>Kleinste en grootste RF-DETR-maten</td>
+<td>platformlicentie van Roboflow <a class="cite" href="#src-72">[72]</a></td>
+<td>nee</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Getraind tegenover taalmodel</strong> (100 praktijkdatasets, op een schaal van 0–100) <a class="cite" href="#src-66">[66]</a>. <em>Eén bron; Roboflow is ook maker van RF-DETR.</em></p>
+<table>
+<thead>
+<tr>
+<th>Aanpak</th>
+<th>Score</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Volledig getrainde detector (YOLOv8n/YOLO11)</td>
+<td>55–57</td>
+</tr>
+<tr>
+<td>RF-DETR-S / D-FINE-S, volledig getraind</td>
+<td>60,2 / 60,3 <a class="cite" href="#src-72">[72]</a></td>
+</tr>
+<tr>
+<td>10 voorbeelden per soort: Grounding DINO bijgetraind</td>
+<td>33,6</td>
+</tr>
+<tr>
+<td>10 voorbeelden per soort: YOLOv8</td>
+<td>20–24</td>
+</tr>
+<tr>
+<td>Gemini 2.5 Pro, alleen vraag of met voorbeelden</td>
+<td>8,8–11,6</td>
+</tr>
+<tr>
+<td>Qwen2.5-VL-72B</td>
+<td>5,6–7,6</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>De onderzoekers concluderen dat bijtrainen het wint van alleen een goede vraag stellen, zeker voor zeldzame soorten <a class="cite" href="#src-66">[66]</a>.</li>
+<li><strong>Logo's vinden lukt goed na training.</strong> YOLOv8s getraind op 1.500 voedsellogo's haalde 90% precisie en 88% vangst <a class="cite" href="#src-86">[86]</a>. Alle logo's waren daar één soort ("logo"), dus het zegt niets over welk keurmerk het is. Dat komt neer op ongeveer 66 beelden per logo (berekening).</li>
+<li><strong>Kleine objecten met tegels.</strong> Tegelen tijdens het herkennen levert 5–7 punten op. Ook trainen op tegels levert 13–15 punten op <a class="cite" href="#src-76">[76]</a>. <em>Gemeten op luchtfoto's.</em></li>
+<li>Er zit een prijs aan: in een voorbeeld steeg de vangst van 0,20 naar 0,45, maar daalde de precisie van 0,89 naar 0,80 en duurde het 30 keer langer <a class="cite" href="#src-77">[77]</a>. <em>Niet bijgetraind model.</em></li>
+<li><strong>Snelheid zonder GPU.</strong> YOLO26n doet ongeveer 39 ms en YOLO26s ongeveer 87 ms per beeld van 640 px, op een niet nader genoemde processor <a class="cite" href="#src-78">[78]</a>. RF-DETR Small doet ongeveer 360 ms op een gedeelde virtuele processor <a class="cite" href="#src-79">[79]</a>. <em><span class="badge med">medium</span>; zelf meten.</em></li>
+<li><strong>Trainingskosten.</strong> Ongeveer 1.500 beelden trainen kost 10 tot 25 minuten op één gehuurde GPU (schatting van de maker) <a class="cite" href="#src-80">[80]</a>.</li>
+</ul>
+<p><strong>Trainingsdata maken uit de officiële logobestanden</strong>
+- <strong>Logo's uit een merkendatabase</strong>, nagemaakt op willekeurige achtergronden, zonder één echt beeld: 48,6 punten. Met 40 echte beelden per logo: 60,3. Met beide: 74,7 <a class="cite" href="#src-81">[81]</a>. <em>Gemeten op foto's.</em>
+  - De verschillen per logo waren groot: 90,1 (Starbucks) tegen 19,2 (Pepsi). Kleine logo's waren zwak.
+- <strong>Officiële verkeersbordsjablonen op gewone foto's:</strong> 95,66 punten, ongeveer 3,4 onder training met echte beelden <a class="cite" href="#src-82">[82]</a>.
+  - Dat geldt wel voor alle borden als één soort.
+  - De helft van de valse meldingen kwam van objecten die erop lijken, zoals spiegels en andere borden. Die kwamen in de achtergronden niet voor.
+- <strong>Eerst met nagemaakte beelden trainen, daarna bijtrainen met 2,5–10% echte</strong>, werkte beter dan alles door elkaar <a class="cite" href="#src-83">[83]</a>. <em>3D-objecten, niet vlak drukwerk.</em>
+- <strong>Knippen en plakken op willekeurige achtergronden is genoeg realisme.</strong> De detector leert de plakranden te negeren. Nagemaakt plus 10% echt deed het in één test beter dan alleen echte beelden <a class="cite" href="#src-90">[90]</a>. <em><span class="badge med">medium</span>; verouderd.</em>
+- <strong>De maker van YOLO adviseert</strong> om elk exemplaar in elk beeld te labelen ("half labelen werkt niet"), om 0–10% beelden zonder object mee te nemen tegen valse meldingen, en om een hogere resolutie te gebruiken voor kleine objecten <a class="cite" href="#src-84">[84]</a>.
+  - Hun vuistregel van 1.500 beelden per soort is een richtlijn, geen meting.
+- <strong>Licentie van de hulpbibliotheek.</strong> Albumentations valt tot versie 2.0.8 onder MIT. De opvolger valt onder AGPL of een commerciële licentie <a class="cite" href="#src-85">[85]</a>.
+- <strong>Grootste risico (<span class="badge inf">INFERENCE</span>):</strong> echte etiketten die als achtergrond dienen, bevatten zelf al keurmerken die niet gelabeld zijn. De detector leert dan dat een echt keurmerk achtergrond is. Die achtergronden moeten eerst worden gescreend.</p>
+<p><strong>Labelwerk verminderen</strong>
+- <strong>Automatisch labelen</strong> met een detector die je met een naam aanstuurt, kost bijna niets. Het levert wel 3,5 tot 16 punten minder op dan labels van mensen, en zeldzame soorten vallen bijna weg <a class="cite" href="#src-87">[87]</a>.
+- <strong>Slim kiezen welke voorbeelden een mens labelt</strong> (actief leren) haalt hetzelfde resultaat met tot 82% minder labelwerk <a class="cite" href="#src-88">[88]</a>. <em><span class="badge med">medium</span>.</em>
+- <strong>Een getrainde detector die voorstelt, met een taalmodel dat beoordeelt.</strong> Bij poliepen steeg de vangst daarmee 13–24 punten, terwijl de precisie tussen −3,6 en +1,7 bewoog <a class="cite" href="#src-89">[89]</a>. Dat was gericht op meer vangst, niet op minder valse meldingen.
+- <strong>Benchmarks gebruiken meestal 40–70 trainingsbeelden per logo-soort.</strong> Dat is een keuze bij het ontwerp, geen getest minimum <a class="cite" href="#src-89">[89]</a>.</p>
+<div class="callout note">
+<p><strong>Betekenis (<span class="badge inf">INFERENCE</span>).</strong> Getrainde detectoren met een vrije licentie bestaan en zijn snel te trainen. Het knelpunt is niet de techniek maar de gelabelde voorbeelden per keurmerk. Nagemaakte beelden uit de officiële logobestanden, plus een kleine set echte voorbeelden die een mens corrigeert, is de route die in de bronnen het meest belooft. Per keurmerk is dat nergens gemeten.</p>
+</div>
+<h2 id="s-8-wat-alleen-de-combinatie-laat-zien">8. Wat alleen de combinatie laat zien</h2>
+<ol>
+<li><strong>Wie het werkend kreeg, heeft getraind</strong> <a class="cite" href="#src-54">[54]</a><a class="cite" href="#src-57">[57]</a><a class="cite" href="#src-61">[61]</a><a class="cite" href="#src-66">[66]</a>. Een taalmodel is als beoordelaar bruikbaar, niet als zoeker <a class="cite" href="#src-8">[8]</a><a class="cite" href="#src-65">[65]</a>.</li>
+<li><strong>Het etiketbestand en vaste regels verslaan kijken bij verwarbare keurmerken.</strong> Dat geldt voor de verplichte codes <a class="cite" href="#src-41">[41]</a><a class="cite" href="#src-43">[43]</a><a class="cite" href="#src-44">[44]</a> en de Nutri-Score-letter <a class="cite" href="#src-36">[36]</a>. Taalmodellen zijn zwak in kleine beeldverschillen <a class="cite" href="#src-32">[32]</a>.</li>
+<li><strong>Zonder training blijft de bewijslast even groot.</strong> Elke route heeft een door een mens bevestigde toetsset nodig <a class="cite" href="#src-63">[63]</a>. Training voegt daar een trainingsset aan toe; nagemaakte beelden en actief leren maken die kleiner <a class="cite" href="#src-81">[81]</a><a class="cite" href="#src-88">[88]</a>.</li>
+<li><strong>Licenties vallen opvallend vaak op AGPL</strong> <a class="cite" href="#src-23">[23]</a><a class="cite" href="#src-38">[38]</a><a class="cite" href="#src-59">[59]</a><a class="cite" href="#src-71">[71]</a><a class="cite" href="#src-85">[85]</a>. Er zijn voor elk onderdeel vrije alternatieven: RF-DETR en D-FINE <a class="cite" href="#src-72">[72]</a><a class="cite" href="#src-73">[73]</a>, SAHI <a class="cite" href="#src-76">[76]</a>, OWLv2 <a class="cite" href="#src-22">[22]</a>, LightGlue <a class="cite" href="#src-30">[30]</a>, DINOv2 <a class="cite" href="#src-34">[34]</a> en pikepdf <a class="cite" href="#src-46">[46]</a>.</li>
+</ol>
+<h2 id="s-9-afweging-tussen-de-routes">9. Afweging tussen de routes</h2>
+<figure><svg class="chart" viewBox="0 0 520 150" role="img" aria-label="Gewogen totaal per route, schaal 0 tot 5"><title>Gewogen totaal per route (0–5)</title><text x="0" y="32" class="lbl">B — zonder training</text><rect x="200" y="15" width="204" height="26" rx="3" class="bar"/><text x="409" y="33" class="val">3,4</text><text x="0" y="74" class="lbl">C — model zoekt zelf (huidig)</text><rect x="200" y="57" width="180" height="26" rx="3" class="bar"/><text x="385" y="75" class="val">3,0</text><text x="0" y="116" class="lbl">D — getrainde detector</text><rect x="200" y="99" width="228" height="26" rx="3" class="best"/><text x="433" y="117" class="val">3,8</text><line x1="200" y1="10" x2="200" y2="140" class="axis"/><text x="200" y="148" class="tick">0</text><text x="492" y="148" class="tick">5</text></svg><figcaption>Gewogen totaal per route uit de afwegingstabel hieronder (schaal 0–5). Een afweging, geen meting.</figcaption></figure><p><strong>Route A (eerst het etiketbestand) is geen alternatief maar een aanvulling.</strong> Hij werkt alleen waar het etiketbestand vectortekeningen of tekst bevat, en hoort in elke combinatie. Hieronder worden de routes vergeleken die met het beeld werken:</p>
+<ul>
+<li><strong>B: voorsteller zonder training, plus een taalmodel als beoordelaar.</strong> De voorsteller is een sjabloon, een beeldvergelijking of OWLv2.</li>
+<li><strong>C: het taalmodel zoekt zelf op tegels.</strong> Dit is de vorm van de huidige route.</li>
+<li><strong>D: getrainde detector</strong>, met een taalmodel als beoordelaar van twijfelgevallen.</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Criterium (gewicht)</th>
+<th>B — zonder training</th>
+<th>C — model zoekt zelf</th>
+<th>D — getrainde detector</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Weinig valse meldingen (35%)</td>
+<td>3 — beoordelen helpt <a class="cite" href="#src-8">[8]</a><a class="cite" href="#src-65">[65]</a>, maar ten onrechte "ja" in 12–65% bij een verwante taak <a class="cite" href="#src-35">[35]</a></td>
+<td>2 — zelf aanwijzen is de zwakste rol <a class="cite" href="#src-8">[8]</a><a class="cite" href="#src-12">[12]</a></td>
+<td>4 — getraind wint overal ruim <a class="cite" href="#src-66">[66]</a>; meldingen door objecten die erop lijken, zijn met negatieve voorbeelden te beperken <a class="cite" href="#src-82">[82]</a><a class="cite" href="#src-84">[84]</a></td>
+</tr>
+<tr>
+<td>Kleine keurmerken vinden (25%)</td>
+<td>4 — voorsteller ruim af te stellen <a class="cite" href="#src-31">[31]</a> (<span class="badge inf">INFERENCE</span>)</td>
+<td>3 — kleiner doel, slechter resultaat <a class="cite" href="#src-6">[6]</a><a class="cite" href="#src-66">[66]</a></td>
+<td>4 — tegels plus trainen op tegels <a class="cite" href="#src-76">[76]</a></td>
+</tr>
+<tr>
+<td>Snel tot een proef (20%)</td>
+<td>3,5 — meer onderdelen</td>
+<td>5 — bestaat al</td>
+<td>3 — labelwerk en nagemaakte beelden nodig; trainen zelf duurt minuten <a class="cite" href="#src-80">[80]</a></td>
+</tr>
+<tr>
+<td>Kosten en snelheid (10%)</td>
+<td>3 — één taalmodelvraag per kandidaat <a class="cite" href="#src-50">[50]</a><a class="cite" href="#src-51">[51]</a><a class="cite" href="#src-52">[52]</a></td>
+<td>3,5</td>
+<td>4,5 — draait op de eigen processor <a class="cite" href="#src-78">[78]</a>; een taalmodel alleen bij twijfel</td>
+</tr>
+<tr>
+<td>Verwarbare keurmerken (10%)</td>
+<td>3 — taalmodel zwak op kleine verschillen <a class="cite" href="#src-32">[32]</a></td>
+<td>2</td>
+<td>3,5 — leert de verschillen uit voorbeelden <a class="cite" href="#src-61">[61]</a></td>
+</tr>
+<tr>
+<td><strong>Gewogen totaal</strong></td>
+<td><strong>3,4</strong></td>
+<td><strong>3,0</strong></td>
+<td><strong>3,8</strong></td>
+</tr>
+</tbody>
+</table>
+<div class="callout warning">
+<p>De scores zijn een afweging, geen meting. De gewichten zijn een voorstel van de onderzoeker. Elke cel heeft zijn onderbouwing erbij, zodat je ze kunt herwegen.</p>
+</div>
+<ul>
+<li><strong>Keuze:</strong> D, met A erbij, en een taalmodel alleen voor twijfelgevallen.</li>
+<li><strong>Tweede keus:</strong> B met A. Die wint als er niet genoeg gelabelde voorbeelden per keurmerk te maken zijn.</li>
+<li><strong>Sterkste argumenten tegen de keuze:</strong></li>
+<li>Er is geen enkele meting per keurmerk.</li>
+<li>Onze eigen eerdere getrainde detector haalde maar 0,27 vangst met 22 etiketbestanden (projectgeheugen; niet opnieuw gecontroleerd).</li>
+<li>Alleen nagemaakte beelden bleef bij logo's ruim onder de combinatie met echte <a class="cite" href="#src-81">[81]</a>.</li>
+<li>De maker van YOLO adviseert 1.500 beelden per soort <a class="cite" href="#src-84">[84]</a>, ver boven wat we nu hebben.</li>
+<li><strong>Omkeerbaarheid:</strong> de proef heeft een harde stopregel per keurmerk. Alle onderdelen vallen onder een vrije licentie en zijn los te vervangen.</li>
+</ul>
+<p><strong>Is dit significant beter dan onze huidige route?</strong>
+- <em>Op algemene tests: ja, met ruime marge.</em> Een getrainde detector haalt 55–60 punten tegenover 9–12 voor een taalmodel dat zelf zoekt <a class="cite" href="#src-66">[66]</a>.
+- <em>Op onze keurmerken: onbekend.</em> Geen bron meet het, en onze huidige route vindt al veel (onze eerdere eigen vergelijking: 144 van 158).
+- De proef in §10 beantwoordt dit op dezelfde toetsset.</p>
+<h2 id="s-10-aanbevelingen-en-proefplan">10. Aanbevelingen en proefplan</h2>
+<div class="callout important">
+<p><strong>Vooraf vastleggen:</strong> wat betekent "minder dan 10% vals"? Het kan gaan om meldingen op etiketten zonder het keurmerk, of om het aandeel foute meldingen onder alle meldingen. Elke definitie vraagt een andere telling (<span class="badge inf">INFERENCE</span>). Leg dit vast vóór de proef begint.</p>
+</div>
+<ol>
+<li><strong>Kies route D met A als nieuwe opzet.</strong> Een getrainde detector met vrije licentie zoekt. Codes en vaste regels uit het etiketbestand helpen mee. Een taalmodel beoordeelt alleen de twijfelgevallen.
+   - <em>Zekerheid:</em> medium. Getraind tegenover taalmodel rust op één grote benchmark <a class="cite" href="#src-66">[66]</a> en op praktijkvoorbeelden <a class="cite" href="#src-54">[54]</a><a class="cite" href="#src-57">[57]</a><a class="cite" href="#src-61">[61]</a>. Per keurmerk is niets gemeten.
+   - <em>Bestemming:</em> architectuurbesluit en een nieuwe spec via BMAD.</li>
+<li><strong>Bouw eerst de toetsset, los van de trainingsset.</strong> Per keurmerk minstens 16 door een mens bevestigde etiketten mét het keurmerk, en 30–50 zonder, inclusief de verwarbare keurmerken <a class="cite" href="#src-63">[63]</a>.
+   - Producten en bronfamilies moeten gescheiden blijven tussen training en toets.
+   - <em>Zekerheid:</em> hoog; dit is statistiek.
+   - <em>Bestemming:</em> de meetset van de proef.</li>
+<li><strong>Maak de trainingsset half automatisch.</strong>
+   - Officiële logobestanden, in alle varianten (kleur, zwart-wit, lijn), op gescreende echte etiketachtergronden <a class="cite" href="#src-81">[81]</a><a class="cite" href="#src-82">[82]</a>.
+   - Daarnaast echte productie-etiketten, voorgelabeld door de huidige route of een taalmodel en gecorrigeerd door een mens. Kies slim welke het eerst gelabeld worden <a class="cite" href="#src-87">[87]</a><a class="cite" href="#src-88">[88]</a>.
+   - Neem etiketten zonder keurmerk en keurmerken die erop lijken mee als negatieve voorbeelden <a class="cite" href="#src-84">[84]</a>.
+   - <em>Zekerheid:</em> medium; gemeten op foto's, niet op drukwerk.
+   - <em>Bestemming:</em> spec van de proef.</li>
+<li><strong>Lees de Nutri-Score-letter met een vaste regel</strong> volgens het charter <a class="cite" href="#src-36">[36]</a>. Gebruik de verplichte codes als tweede signaal voor FSC, MSC en EU-biologisch <a class="cite" href="#src-41">[41]</a><a class="cite" href="#src-43">[43]</a><a class="cite" href="#src-44">[44]</a>.
+   - <em>Zekerheid:</em> medium; hangt af van de meting aan de etiketbestanden.
+   - <em>Bestemming:</em> spec, route A.</li>
+<li><strong>Gebruik alleen onderdelen met een vrije licentie:</strong> RF-DETR of D-FINE <a class="cite" href="#src-72">[72]</a><a class="cite" href="#src-73">[73]</a>, SAHI <a class="cite" href="#src-76">[76]</a>, DINOv2 <a class="cite" href="#src-34">[34]</a> en pikepdf <a class="cite" href="#src-46">[46]</a>.
+   - Ultralytics-YOLO, YOLOE, PyMuPDF, DINOv3 en de nieuwe Albumentations alleen na een bewuste licentiekeuze <a class="cite" href="#src-23">[23]</a><a class="cite" href="#src-34">[34]</a><a class="cite" href="#src-38">[38]</a><a class="cite" href="#src-71">[71]</a><a class="cite" href="#src-85">[85]</a>.
+   - <em>Zekerheid:</em> hoog; licentiebestanden zijn op 31-10-2026 gelezen.
+   - <em>Bestemming:</em> architectuur.</li>
+<li><strong>Stuur klantartwork alleen naar diensten die niets bewaren:</strong> Vertex AI met de juiste instellingen <a class="cite" href="#src-68">[68]</a>, of een nul-bewaringsafspraak met OpenAI of Anthropic <a class="cite" href="#src-9">[9]</a><a class="cite" href="#src-10">[10]</a>. Gebruik daarvoor geen batchverwerking <a class="cite" href="#src-9">[9]</a><a class="cite" href="#src-10">[10]</a>.
+   - <em>Zekerheid:</em> hoog.
+   - <em>Bestemming:</em> architectuur en privacy.</li>
+</ol>
+<p><strong>Proef van twee à drie weken</strong> (het labelwerk bepaalt de duur)</p>
+<table>
+<thead>
+<tr>
+<th>Dagen</th>
+<th>Stap</th>
+<th>Uitkomst</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1–2</td>
+<td>Etiketbestanden meten: welk formaat, is er een tekstlaag, staan de codes erin als tekst, hoe staan de keurmerken erin?</td>
+<td>Besluit of route A doorgaat, per keurmerk</td>
+</tr>
+<tr>
+<td>1–5</td>
+<td>Toetsset aanvullen met productievoorbeelden; een mens bevestigt</td>
+<td>Een set die de eisen echt kan bewijzen</td>
+</tr>
+<tr>
+<td>2–7</td>
+<td>Trainingsset maken: nagemaakte beelden uit de officiële logobestanden, plus voorgelabelde en gecorrigeerde echte etiketten</td>
+<td>Trainingsset per keurmerk</td>
+</tr>
+<tr>
+<td>6–9</td>
+<td>RF-DETR of D-FINE trainen op tegels (gehuurde GPU), eerst op de nagemaakte beelden, daarna bijtrainen op echte</td>
+<td>Model</td>
+</tr>
+<tr>
+<td>8–11</td>
+<td>Herkenning op de eigen server met tegels; twijfelgevallen naar een taalmodel als beoordelaar, met het referentieplaatje erbij</td>
+<td>Uitkomst per keurmerk, kosten en tijd</td>
+</tr>
+<tr>
+<td>10–12</td>
+<td>Meten op dezelfde toetsset, naast de huidige route en naast onze eerdere eigen vergelijking van oktober</td>
+<td>Per keurmerk: automatisch, door een mens bevestigen, of afvallen</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Stopregel.</strong> Een keurmerk gaat alleen naar "automatisch" als het ook in het ongunstigste geval in minstens 80% van de gevallen gevonden wordt (de statistische ondergrens), én het aandeel valse meldingen ook in het ongunstigste geval (de bovengrens) onder 10% blijft. Haalt een keurmerk dat niet, dan wordt het een voorstel dat een mens bevestigt.</p>
+<h2 id="s-11-open-vragen">11. Open vragen</h2>
+<ol>
+<li><strong>Hoeveel echte gelabelde voorbeelden per keurmerk</strong> zijn nodig naast de nagemaakte beelden? Dat is nergens gemeten <a class="cite" href="#src-81">[81]</a><a class="cite" href="#src-83">[83]</a><a class="cite" href="#src-84">[84]</a>, en blijkt uit de proef.</li>
+<li><strong>Welk deel van onze etiketbestanden bevat vectortekeningen, ingesloten logo's of een tekstlaag met codes?</strong> Zie de proef, dagen 1–2.
+   - <em>Deels beantwoord op 31-10-2026 door een eigen meting op de 173 etiketten van de meetset (geen bron uit dit onderzoek): <a href="meting-etiketbestanden-2026-10-31.md">meting-etiketbestanden-2026-10-31.md</a>.</em> De helft heeft een PDF als origineel. Verplichte codes geven nul valse treffers, maar dekken maar 17–33% van de etiketten met FSC, MSC of EU-biologisch. Route A blijft daarmee een aanvulling.</li>
+<li><strong>Hoe vaak zegt een taalmodel als beoordelaar ten onrechte "ja" op twijfelgevallen?</strong> Alleen op onze eigen negatieve voorbeelden te meten.</li>
+<li><strong>Hoe snel draaien RF-DETR en D-FINE op onze eigen server</strong>, bij 640 en 1280 px? De bronnen geven alleen schattingen <a class="cite" href="#src-78">[78]</a><a class="cite" href="#src-79">[79]</a>.</li>
+<li><strong>De overige keurmerken:</strong> welke code- of tekstregels gelden voor Rainforest Alliance, V-label, Vegan Society, Beter Leven, Weidemelk en het zwangerschapspictogram? Niet onderzocht.</li>
+</ol>
+<h2 id="s-12-houdbaarheid-van-de-beweringen">12. Houdbaarheid van de beweringen</h2>
+<table>
+<thead>
+<tr>
+<th>Bewering</th>
+<th>Soort (termijn)</th>
+<th>Houdbaar tot</th>
+<th>Nu al verouderd?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Beeldgrenzen Claude, OpenAI, Gemini <a class="cite" href="#src-2">[2]</a><a class="cite" href="#src-3">[3]</a><a class="cite" href="#src-4">[4]</a></td>
+<td>versie (1 mnd)</td>
+<td>2026-11-01</td>
+<td>nee</td>
+</tr>
+<tr>
+<td>Prijzen en batchkorting <a class="cite" href="#src-50">[50]</a><a class="cite" href="#src-51">[51]</a><a class="cite" href="#src-52">[52]</a></td>
+<td>prijs (3 mnd)</td>
+<td>2027-01-01</td>
+<td>nee</td>
+</tr>
+<tr>
+<td>Roboflow-detectiescores <a class="cite" href="#src-5">[5]</a></td>
+<td>AI-benchmark (3 mnd)</td>
+<td>2027-01-01</td>
+<td>nee</td>
+</tr>
+<tr>
+<td>Nul-bewaring OpenAI, Anthropic, Vertex <a class="cite" href="#src-9">[9]</a><a class="cite" href="#src-10">[10]</a><a class="cite" href="#src-68">[68]</a></td>
+<td>leveranciersdocument (3 mnd)</td>
+<td>2027-01-01</td>
+<td>nee</td>
+</tr>
+<tr>
+<td>Licenties van detectoren en hulpmiddelen <a class="cite" href="#src-22">[22]</a><a class="cite" href="#src-23">[23]</a><a class="cite" href="#src-34">[34]</a><a class="cite" href="#src-38">[38]</a><a class="cite" href="#src-71">[71]</a>–<a class="cite" href="#src-75">[75]</a><a class="cite" href="#src-85">[85]</a></td>
+<td>licentie (6 mnd)</td>
+<td>2027-04-01</td>
+<td>nee</td>
+</tr>
+<tr>
+<td>Benchmarks over werkwijzen <a class="cite" href="#src-8">[8]</a><a class="cite" href="#src-19">[19]</a><a class="cite" href="#src-28">[28]</a><a class="cite" href="#src-32">[32]</a><a class="cite" href="#src-65">[65]</a><a class="cite" href="#src-66">[66]</a></td>
+<td>AI-benchmark (3 mnd)</td>
+<td>2025-07 tot 2026-10</td>
+<td><strong class="stale">ja</strong></td>
+</tr>
+<tr>
+<td>Synthetische trainingsdata <a class="cite" href="#src-81">[81]</a><a class="cite" href="#src-82">[82]</a></td>
+<td>werkwijze (24 mnd)</td>
+<td>2021</td>
+<td><strong class="stale">ja</strong></td>
+</tr>
+<tr>
+<td>Open Food Facts deelt nog met de hand in <a class="cite" href="#src-58">[58]</a></td>
+<td>praktijk (24 mnd)</td>
+<td>2025-02-01</td>
+<td><strong class="stale">ja</strong></td>
+</tr>
+<tr>
+<td>Nutri-Score charter <a class="cite" href="#src-36">[36]</a> en FSC-standaard <a class="cite" href="#src-42">[42]</a></td>
+<td>standaard (12 mnd)</td>
+<td>2025-03-01 / 2022-01-01</td>
+<td><strong class="stale">ja</strong></td>
+</tr>
+</tbody>
+</table>
+<div class="callout warning">
+<p><strong>Vroegste controlemoment: 1 november 2026</strong>, voor de beeldgrenzen per model. De verouderd gemarkeerde benchmarks dienen als bewijs voor een <em>werkwijze</em>, niet als actuele modelscore.</p>
+</div>
+<h2 id="s-bronnen">Bronnen</h2><details><summary>Toon alle 90 bronnen</summary><table class="sources"><tbody><tr id="src-1"><td>[1]</td><td>Gemini objectdetectie, `box_2d` 0–1000</td><td><a href="https://ai.google.dev/gemini-api/docs/image-understanding" target="_blank" rel="noopener">Google AI for Developers</a></td><td>2026-09-23</td><td>2026-10-31</td><td>hoog</td></tr><tr id="src-2"><td>[2]</td><td>Gemini tokens per beeld (max ±1.120 bij &quot;high&quot;)</td><td><a href="https://ai.google.dev/gemini-api/docs/media-resolution" target="_blank" rel="noopener">Google AI for Developers</a></td><td>2026-10-13</td><td>2026-10-31</td><td>hoog (betwist: &quot;max&quot;, niet &quot;ongeacht grootte&quot;)</td></tr><tr id="src-3"><td>[3]</td><td>Claude beeldgrenzen, waarschuwing &lt;200 px, coördinaten benaderend</td><td><a href="https://platform.claude.com/docs/en/build-with-claude/vision" target="_blank" rel="noopener">Anthropic</a></td><td>2026-10</td><td>2026-10-31</td><td>hoog</td></tr><tr id="src-4"><td>[4]</td><td>OpenAI beeldgrenzen (30.000 patches), lokalisatie benaderend</td><td><a href="https://developers.openai.com/api/docs/guides/images-vision" target="_blank" rel="noopener">OpenAI</a></td><td>2026-10</td><td>2026-10-31</td><td>hoog</td></tr><tr id="src-5"><td>[5]</td><td>Roboflow Vision Evals detectiescores</td><td><a href="https://playground.roboflow.com/evals/object-detection" target="_blank" rel="noopener">Roboflow (taakpagina objectdetectie)</a></td><td>2026-10-26</td><td>2026-10-31</td><td>medium</td></tr><tr id="src-6"><td>[6]</td><td>Kleiner doel → slechter; ViCrop</td><td><a href="https://arxiv.org/abs/2502.17422" target="_blank" rel="noopener">Zhang et al., ICLR 2025</a></td><td>2025-02</td><td>2026-10-31</td><td>medium</td></tr><tr id="src-7"><td>[7]</td><td>Voorbeeldplaatjes in de vraag (microscopie)</td><td><a href="https://arxiv.org/html/2511.05565" target="_blank" rel="noopener">Ganguly et al., arXiv 2511.05565</a></td><td>2025-11-04</td><td>2026-10-31</td><td>hoog</td></tr><tr id="src-8"><td>[8]</td><td>GPT-5 waar/niet-waar per vakje 79,3 vs zelf aanwijzen 11,7</td><td><a href="https://arxiv.org/html/2509.09958" target="_blank" rel="noopener">Liu &amp; Hu, arXiv 2509.09958</a></td><td>2025-11-13</td><td>2026-10-31</td><td>hoog (enkele bron)</td></tr><tr id="src-9"><td>[9]</td><td>OpenAI databewaring en nul-bewaring</td><td><a href="https://developers.openai.com/api/docs/guides/your-data" target="_blank" rel="noopener">OpenAI</a></td><td>2026-10</td><td>2026-10-31</td><td>hoog</td></tr><tr id="src-10"><td>[10]</td><td>Anthropic databewaring en nul-bewaring</td><td><a href="https://platform.claude.com/docs/en/manage-claude/api-and-data-retention" target="_blank" rel="noopener">Anthropic</a></td><td>2026-10</td><td>2026-10-31</td><td>hoog</td></tr><tr id="src-11"><td>[11]</td><td>Gemini API-voorwaarden betaald vs gratis</td><td><a href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noopener">Google</a></td><td>2026-04-28</td><td>2026-10-31</td><td>hoog</td></tr><tr id="src-12"><td>[12]</td><td>LLM-detectie vs getrainde YOLO (COCO)</td><td><a href="https://arxiv.org/html/2510.11302v2" target="_blank" rel="noopener">arXiv 2510.11302</a></td><td>2025-10</td><td>2026-10-31</td><td>laag-medium</td></tr><tr id="src-13"><td>[13]</td><td>ZoomEye: open modellen, ja/nee-kansen nodig</td><td><a href="https://arxiv.org/html/2411.16044v4" target="_blank" rel="noopener">Shen et al., arXiv 2411.16044</a></td><td>2025-09-01</td><td>2026-10-31</td><td>hoog (methode), medium (cijfers)</td></tr><tr id="src-14"><td>[14]</td><td>Zoom-Refine: twee aanroepen, +4–5 punten</td><td><a href="https://arxiv.org/html/2506.01663v2" target="_blank" rel="noopener">arXiv 2506.01663</a></td><td>2025-08-11</td><td>2026-10-31</td><td>hoog (methode), medium (cijfers)</td></tr><tr id="src-15"><td>[15]</td><td>Gemini 3 Flash Agentic Vision, 5–10% claim</td><td><a href="https://blog.google/innovation-and-ai/technology/developers-tools/agentic-vision-gemini-3-flash/" target="_blank" rel="noopener">Google blog</a></td><td>2026-01-27</td><td>2026-10-31</td><td>medium (leveranciersclaim)</td></tr><tr id="src-16"><td>[16]</td><td>TreeBench: o3 54,8, Gemini 2.5 Pro 54,1</td><td><a href="https://arxiv.org/html/2507.07999v2" target="_blank" rel="noopener">arXiv 2507.07999</a></td><td>2026-03-05</td><td>2026-10-31</td><td>hoog (geverifieerd)</td></tr><tr id="src-17"><td>[17]</td><td>RAP: alleen open modellen</td><td><a href="https://arxiv.org/html/2503.01222v1" target="_blank" rel="noopener">ICML 2025, arXiv 2503.01222</a></td><td>2025-03</td><td>2026-10-31</td><td>medium</td></tr><tr id="src-18"><td>[18]</td><td>Zwak op elementaire symboolherkenning</td><td><a href="https://arxiv.org/abs/2603.18472" target="_blank" rel="noopener">arXiv 2603.18472</a></td><td>2026-03-19</td><td>2026-10-31</td><td>medium</td></tr><tr id="src-19"><td>[19]</td><td>OVDEval logo-scores en advies voor hybride</td><td><a href="https://arxiv.org/abs/2504.07615" target="_blank" rel="noopener">VLM-R1, arXiv 2504.07615</a></td><td>2025-04-14</td><td>2026-10-31</td><td>hoog (geverifieerd)</td></tr><tr id="src-20"><td>[20]</td><td>OVDEval-benchmark (tweede bron logo-scores)</td><td><a href="https://arxiv.org/abs/2308.13177" target="_blank" rel="noopener">Yao et al., AAAI 2024</a></td><td>2023-12-18</td><td>2026-10-31</td><td>hoog</td></tr><tr id="src-21"><td>[21]</td><td>OWLv2 zoeken met referentieplaatje, 960 px</td><td><a href="https://huggingface.co/docs/transformers/model_doc/owlv2" target="_blank" rel="noopener">Hugging Face docs</a></td><td>actueel</td><td>2026-10-31</td><td>hoog</td></tr><tr id="src-22"><td>[22]</td><td>OWLv2-licentie Apache-2.0</td><td><a href="https://huggingface.co/google/owlv2-base-patch16-ensemble" target="_blank" rel="noopener">Hugging Face model card</a></td><td>actueel</td><td>2026-10-31</td><td>hoog</td></tr><tr id="src-23"><td>[23]</td><td>YOLOE: voorbeeldplaatje, snelheid, AGPL-3.0</td><td><a href="https://github.com/THU-MIG/yoloe" target="_blank" rel="noopener">THU-MIG GitHub</a></td><td>actueel</td><td>2026-10-31</td><td>hoog</td></tr><tr id="src-24"><td>[24]</td><td>SAM 3: GPU, eigen licentie</td><td><a href="https://github.com/facebookresearch/sam3" target="_blank" rel="noopener">Meta GitHub</a></td><td>2026-03-27</td><td>2026-10-31</td><td>hoog</td></tr><tr id="src-25"><td>[25]</td><td>T-Rex2 alleen via API</td><td><a href="https://github.com/idea-research/t-rex" target="_blank" rel="noopener">IDEA Research GitHub</a></td><td>onbekend</td><td>2026-10-31</td><td>medium</td></tr><tr id="src-26"><td>[26]</td><td>Zero-shot detectie op luchtfoto&#x27;s: OWLv2 27,6% F1</td><td><a href="https://arxiv.org/pdf/2601.22164" target="_blank" rel="noopener">arXiv 2601.22164</a></td><td>2026-01</td><td>2026-10-31</td><td>medium</td></tr><tr id="src-27"><td>[27]</td><td>SAHI verslechterde kleine objecten (anekdote)</td><td><a href="https://community.ultralytics.com/t/why-is-it-that-when-i-use-sahi-with-yolov11-for-tiny-object-detection-the-results-are-actually-worse-than-just-using-yolov11-alone/1488" target="_blank" rel="noopener">Ultralytics forum</a></td><td>onbekend</td><td>2026-10-31</td><td>laag</td></tr><tr id="src-28"><td>[28]</td><td>ILIAS: DINOv3/SigLIP2/DINOv2/CLIP, herrangschikken</td><td><a href="https://vrg.fel.cvut.cz/ilias/" target="_blank" rel="noopener">CTU Visual Recognition Group</a></td><td>2025</td><td>2026-10-31</td><td>hoog (geverifieerd)</td></tr><tr id="src-29"><td>[29]</td><td>Open Food Facts logo-embeddingtest</td><td><a href="https://openfoodfacts.github.io/robotoff/research/logo-detection/embedding-benchmark" target="_blank" rel="noopener">Open Food Facts Robotoff</a></td><td>ongedateerd (dataset 2022)</td><td>2026-10-31</td><td>medium</td></tr><tr id="src-30"><td>[30]</td><td>LightGlue: Apache-2.0, ALIKED/DISK, snelheid</td><td><a href="https://github.com/cvg/LightGlue" target="_blank" rel="noopener">ETH Zürich CVG GitHub</a></td><td>actueel</td><td>2026-10-31</td><td>hoog</td></tr><tr id="src-31"><td>[31]</td><td>Symboolpijplijn technische tekeningen</td><td><a href="https://zestdapoet-pattern-detection-in-technical-drawings.hf.space/" target="_blank" rel="noopener">Hugging Face Space</a></td><td>2026</td><td>2026-10-31</td><td>laag-medium</td></tr><tr id="src-32"><td>[32]</td><td>VLM-SubtleBench: bijna-identieke paren</td><td><a href="https://arxiv.org/html/2603.07888" target="_blank" rel="noopener">Kim, Lee, Park, arXiv 2603.07888</a></td><td>2026-03-09</td><td>2026-10-31</td><td>hoog (enkele bron)</td></tr><tr id="src-33"><td>[33]</td><td>Red Sift: detector + taalmodel vergelijkt met referentie</td><td><a href="https://redsift.com/blog/enhanced-logo-detection-with-ai-a-hybrid-approach" target="_blank" rel="noopener">Red Sift blog</a></td><td>2025-02-27 (bijgewerkt 2025-04-25)</td><td>2026-10-31</td><td>laag-medium</td></tr><tr id="src-34"><td>[34]</td><td>DINOv3-licentie</td><td><a href="https://ai.meta.com/resources/models-and-libraries/dinov3-license" target="_blank" rel="noopener">Meta</a></td><td>2025-08-14</td><td>2026-10-31</td><td>medium</td></tr><tr id="src-35"><td>[35]</td><td>Vals accepteren door GPT-4.1/Gemini bij plaatsherkenning</td><td><a href="https://arxiv.org/html/2607.12818" target="_blank" rel="noopener">Waheed et al., arXiv 2607.12818</a></td><td>2026-07-15</td><td>2026-10-31</td><td>medium</td></tr><tr id="src-36"><td>[36]</td><td>Nutri-Score grafisch charter: vector, kleuren, varianten</td><td><a href="https://www.blv.admin.ch/dam/fr/sd-web/5cQiw1IRZVDb/logo-cd-nutri-score-en.pdf" target="_blank" rel="noopener">Santé publique France / BLV</a></td><td>2024-03</td><td>2026-10-31</td><td>hoog</td></tr><tr id="src-37"><td>[37]</td><td>Nutri-Score overgang tot maart 2027</td><td><a href="https://www.economie.gouv.fr/node/36736" target="_blank" rel="noopener">Ministère de l&#x27;Économie (FR)</a></td><td>2025-07-09</td><td>2026-10-31</td><td>medium</td></tr><tr id="src-38"><td>[38]</td><td>PyMuPDF: AGPL/commercieel, `get_images` alleen raster</td><td><a href="https://github.com/pymupdf/PyMuPDF" target="_blank" rel="noopener">Artifex GitHub</a></td><td>actueel</td><td>2026-10-31</td><td>hoog</td></tr><tr id="src-39"><td>[39]</td><td>Ontwerpers plakken vector, CC-library als PDF-object</td><td><a href="https://community.adobe.com/t5/illustrator-discussions/why-does-illustrator-outline-text-when-i-use-saved-artwork-from-my-library/m-p/14842042/highlight/true" target="_blank" rel="noopener">Adobe Community</a></td><td>2024</td><td>2026-10-31</td><td>laag</td></tr><tr id="src-40"><td>[40]</td><td>`.ai` alleen leesbaar als PDF-compatibel</td><td><a href="https://www.datalogics.com/adobe-illustrator-and-pdf-compatibility" target="_blank" rel="noopener">Datalogics</a></td><td>ongedateerd</td><td>2026-10-31</td><td>medium</td></tr><tr id="src-41"><td>[41]</td><td>FSC-licentiecode verplicht, één keer per product</td><td><a href="https://fsc.org/sites/default/files/2019-08/FSC%20trademark%20requirements%20revision%20crosswalk_EN.pdf" target="_blank" rel="noopener">FSC</a></td><td>2017 (vergelijking concept V2-0)</td><td>2026-10-31</td><td>medium</td></tr><tr id="src-42"><td>[42]</td><td>FSC-STD-50-001 versiestatus</td><td><a href="https://open.fsc.org/items/a4aa4bdb-a681-46ad-8651-0f155d261557" target="_blank" rel="noopener">FSC open.fsc.org</a></td><td>2021 (V2-1)</td><td>2026-10-31</td><td>hoog (metadata)</td></tr><tr id="src-43"><td>[43]</td><td>MSC-code MSC-C-xxxxx verplicht en leesbaar</td><td><a href="https://msc.org/get-certified/use-the-msc-ecolabel/rules" target="_blank" rel="noopener">Marine Stewardship Council</a></td><td>ongedateerd</td><td>2026-10-31</td><td>medium</td></tr><tr id="src-44"><td>[44]</td><td>EU 2018/848 art. 32: code controleorgaan, plaats van landbouw</td><td><a href="https://www.legislation.gov.uk/eur/2018/848/chapter/IV/data.html" target="_blank" rel="noopener">UK National Archives (EU-tekst)</a></td><td>2018-05-30</td><td>2026-10-31</td><td>hoog</td></tr><tr id="src-45"><td>[45]</td><td>Codeformaat AB-CDE-999 naast EU-logo</td><td><a href="https://gs1.eu/wp-content/uploads/2023/09/GS1-in-EU-Organic-Products-Guideline-v1.1.pdf" target="_blank" rel="noopener">GS1 in Europe</a></td><td>2023-09</td><td>2026-10-31</td><td>medium</td></tr><tr id="src-46"><td>[46]</td><td>pikepdf MPL-2.0</td><td><a href="https://pypi.org/project/pikepdf/6.2.4" target="_blank" rel="noopener">PyPI pikepdf</a></td><td>2022–2023</td><td>2026-10-31</td><td>medium</td></tr><tr id="src-47"><td>[47]</td><td>Logo&#x27;s in PDF via CLIP (Oracle)</td><td><a href="https://arxiv.org/html/2604.23276" target="_blank" rel="noopener">Liu et al., arXiv 2604.23276</a></td><td>2026-04-25</td><td>2026-10-31</td><td>hoog</td></tr><tr id="src-48"><td>[48]</td><td>OCR op verpakkingsfoto&#x27;s</td><td><a href="https://arxiv.org/abs/2510.03570v1" target="_blank" rel="noopener">arXiv 2510.03570</a></td><td>2025-10</td><td>2026-10-31</td><td>medium</td></tr><tr id="src-49"><td>[49]</td><td>OCR op koffieverpakking</td><td><a href="https://www.mdpi.com/1424-8220/25/20/6484" target="_blank" rel="noopener">MDPI Sensors</a></td><td>2025</td><td>2026-10-31</td><td>medium</td></tr><tr id="src-50"><td>[50]</td><td>Anthropic prijzen en batchkorting</td><td><a href="https://platform.claude.com/docs/en/about-claude/pricing" target="_blank" rel="noopener">Anthropic</a></td><td>2026-10</td><td>2026-10-31</td><td>hoog</td></tr><tr id="src-51"><td>[51]</td><td>OpenAI prijzen en batchkorting</td><td><a href="https://developers.openai.com/api/docs/pricing" target="_blank" rel="noopener">OpenAI</a></td><td>2026-10</td><td>2026-10-31</td><td>hoog</td></tr><tr id="src-52"><td>[52]</td><td>Gemini prijzen (Argon verdubbelt 1-12-2026)</td><td><a href="https://ai.google.dev/gemini-api/docs/pricing" target="_blank" rel="noopener">Google AI for Developers</a></td><td>2026-10-30</td><td>2026-10-31</td><td>hoog</td></tr><tr id="src-53"><td>[53]</td><td>Anthropic batch: &lt;1 uur meestal, max 24 uur</td><td><a href="https://platform.claude.com/docs/en/build-with-claude/batch-processing" target="_blank" rel="noopener">Anthropic</a></td><td>2026-10</td><td>2026-10-31</td><td>hoog</td></tr><tr id="src-54"><td>[54]</td><td>SGS&amp;CO: logo&#x27;s in verpakkingsartwork</td><td><a href="https://aircconline.com/csit/papers/vol15/csit151808.pdf" target="_blank" rel="noopener">SGS&amp;CO, CS &amp; IT 2025</a></td><td>2025</td><td>2026-10-31</td><td>hoog (wat er staat)</td></tr><tr id="src-55"><td>[55]</td><td>Sprinklr M-PACE: logo aanwezig, positie zwak, rechter-model</td><td><a href="https://arxiv.org/html/2509.15241v1" target="_blank" rel="noopener">Sprinklr, arXiv 2509.15241</a></td><td>2025-09-17</td><td>2026-10-31</td><td>medium</td></tr><tr id="src-56"><td>[56]</td><td>TACO: zelfconsistentie vs zelfvertrouwen</td><td><a href="https://aclanthology.org/2026.eacl-long.252" target="_blank" rel="noopener">EACL 2026</a></td><td>2026</td><td>2026-10-31</td><td>laag-medium</td></tr><tr id="src-57"><td>[57]</td><td>Open Food Facts logo-pijplijn</td><td><a href="https://openfoodfacts.github.io/robotoff/references/logos-ANN" target="_blank" rel="noopener">Open Food Facts Robotoff</a></td><td>ongedateerd</td><td>2026-10-31</td><td>hoog</td></tr><tr id="src-58"><td>[58]</td><td>Open Food Facts: geen automatische indeling (2023)</td><td><a href="https://blog.openfoodfacts.org/en/news/how-open-food-facts-uses-logos-to-get-information-on-food-products" target="_blank" rel="noopener">Open Food Facts blog</a></td><td>2023-02-14</td><td>2026-10-31</td><td>hoog (stand 2023)</td></tr><tr id="src-59"><td>[59]</td><td>Nutri-Score-detector AGPL, geen cijfers</td><td><a href="https://huggingface.co/openfoodfacts/nutriscore-yolo" target="_blank" rel="noopener">Open Food Facts op Hugging Face</a></td><td>2024-07</td><td>2026-10-31</td><td>hoog</td></tr><tr id="src-60"><td>[60]</td><td>NutriGreen dataset, CC BY-SA 4.0</td><td><a href="https://zenodo.org/records/10020545" target="_blank" rel="noopener">Zenodo</a></td><td>2023-10-19</td><td>2026-10-31</td><td>hoog</td></tr><tr id="src-61"><td>[61]</td><td>NutriGreen resultaten</td><td><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC11002244/" target="_blank" rel="noopener">Frontiers in Nutrition</a></td><td>2024</td><td>2026-10-31</td><td>medium</td></tr><tr id="src-62"><td>[62]</td><td>Esko-claim zonder cijfers</td><td><a href="https://www.esko.com/ai-blog/why-general-ai-fails-packaging-and-how-esko-solves-it" target="_blank" rel="noopener">Esko</a></td><td>2026-02-26</td><td>2026-10-31</td><td>laag (waarheid claim)</td></tr><tr id="src-63"><td>[63]</td><td>Regel van drie</td><td><a href="https://rti.org/publication/look-rule-three" target="_blank" rel="noopener">RTI (Jovanovic &amp; Levy 1997)</a></td><td>1997</td><td>2026-10-31</td><td>medium</td></tr><tr id="src-64"><td>[64]</td><td>Groene Punt ≠ recyclebaar</td><td><a href="https://suez.co.uk/en/news/blog-190912-the-mythical-green-dot-of-recycling" target="_blank" rel="noopener">SUEZ UK</a></td><td>2019</td><td>2026-10-31</td><td>medium</td></tr><tr id="src-65"><td>[65]</td><td>Zonder controlestap altijd &quot;aanwezig&quot;; met controle F1 0,84–0,94 (alleen vraag) en 0,92–0,99 (LoRA)</td><td><a href="https://arxiv.org/html/2607.00357v1" target="_blank" rel="noopener">Nakamura &amp; Hong, arXiv 2607.00357</a></td><td>2026-07-01</td><td>2026-10-31</td><td>hoog (open modellen)</td></tr><tr id="src-66"><td>[66]</td><td>RF100-VL: Gemini 2.5 Pro 11,6 mAP, Grounding DINO 15,7, YOLOv8n 55,4</td><td><a href="https://arxiv.org/html/2505.20612v3" target="_blank" rel="noopener">Roboflow + CMU, arXiv 2505.20612</a></td><td>2025-10-08</td><td>2026-10-31</td><td>hoog</td></tr><tr id="src-67"><td>[67]</td><td>COCO-test Gemini 3 Pro Preview 0,407 mAP</td><td><a href="https://simedw.com/2025/07/10/gemini-bounding-boxes/" target="_blank" rel="noopener">Simon Edwardsson (blog)</a></td><td>2025-07-10 (bijgewerkt 2025-11-19)</td><td>2026-10-31</td><td>medium</td></tr><tr id="src-68"><td>[68]</td><td>Vertex AI nul-bewaring via instellingen</td><td><a href="https://docs.cloud.google.com/vertex-ai/generative-ai/docs/vertex-ai-zero-data-retention" target="_blank" rel="noopener">Google Cloud</a></td><td>2026-10-30</td><td>2026-10-31</td><td>hoog</td></tr><tr id="src-69"><td>[69]</td><td>Modellen neigen tot afwijzen (MMPB)</td><td><a href="https://arxiv.org/html/2509.22820" target="_blank" rel="noopener">arXiv 2509.22820, NeurIPS 2025</a></td><td>2025-09</td><td>2026-10-31</td><td>medium</td></tr><tr id="src-70"><td>[70]</td><td>Ultralytics commerciële licentie naast AGPL</td><td><a href="https://www.ultralytics.com/license" target="_blank" rel="noopener">Ultralytics</a></td><td>actueel</td><td>2026-10-31</td><td>medium</td></tr><tr id="src-71"><td>[71]</td><td>Ultralytics YOLO (v8/11/26) AGPL-3.0 inclusief modellen</td><td><a href="https://github.com/ultralytics/ultralytics/blob/main/LICENSE" target="_blank" rel="noopener">Ultralytics GitHub</a></td><td>2026-10-31</td><td>2026-10-31</td><td>hoog</td></tr><tr id="src-72"><td>[72]</td><td>RF-DETR Apache-2.0 (N/S/M/L), RF100-VL-scores</td><td><a href="https://github.com/roboflow/rf-detr" target="_blank" rel="noopener">Roboflow GitHub</a></td><td>2026-10</td><td>2026-10-31</td><td>hoog (licentie), medium (scores van de maker)</td></tr><tr id="src-73"><td>[73]</td><td>D-FINE Apache-2.0</td><td><a href="https://github.com/Peterande/D-FINE/blob/master/LICENSE" target="_blank" rel="noopener">Peterande GitHub</a></td><td>2026-10-05</td><td>2026-10-31</td><td>hoog</td></tr><tr id="src-74"><td>[74]</td><td>RT-DETR Apache-2.0</td><td><a href="https://github.com/lyuwenyu/RT-DETR/blob/main/LICENSE" target="_blank" rel="noopener">lyuwenyu GitHub</a></td><td>2026-10-09</td><td>2026-10-31</td><td>hoog</td></tr><tr id="src-75"><td>[75]</td><td>DEIMv2 alleen niet-commercieel sinds 24-08-2026</td><td><a href="https://github.com/Intellindust-AI-Lab/DEIMv2/blob/main/LICENSE.md" target="_blank" rel="noopener">Intellindust GitHub</a></td><td>2026-08-24</td><td>2026-10-31</td><td>hoog</td></tr><tr id="src-76"><td>[76]</td><td>SAHI: tegelen +5–7 AP, met trainen op tegels +13–15 AP</td><td><a href="https://arxiv.org/abs/2202.06934" target="_blank" rel="noopener">Akyon et al., arXiv 2202.06934</a></td><td>2022-10</td><td>2026-10-31</td><td>hoog (bron), verouderd</td></tr><tr id="src-77"><td>[77]</td><td>Tegelen: meer vangst, minder precisie, 30× trager</td><td><a href="https://docs.voxel51.com/tutorials/small_object_detection.html" target="_blank" rel="noopener">Voxel51</a></td><td>ongedateerd</td><td>2026-10-31</td><td>medium</td></tr><tr id="src-78"><td>[78]</td><td>YOLO26 snelheid op processor</td><td><a href="https://docs.ultralytics.com/models/yolo26/" target="_blank" rel="noopener">Ultralytics docs</a></td><td>2026</td><td>2026-10-31</td><td>medium</td></tr><tr id="src-79"><td>[79]</td><td>RF-DETR Small op gedeelde processor ±360 ms</td><td><a href="https://rfdetr.roboflow.com/latest/cookbooks/export-cpu/" target="_blank" rel="noopener">Roboflow</a></td><td>2026-10-03</td><td>2026-10-31</td><td>medium</td></tr><tr id="src-80"><td>[80]</td><td>Trainen ±1.500 beelden in 10–25 min (schatting)</td><td><a href="https://rfdetr.roboflow.com/latest/cookbooks/fine-tune_detection/" target="_blank" rel="noopener">Roboflow</a></td><td>2026-10-02</td><td>2026-10-31</td><td>medium</td></tr><tr id="src-81"><td>[81]</td><td>Logo&#x27;s uit merkendatabase nagemaakt: 48,6 / 60,3 / 74,7</td><td><a href="https://rdllab.github.io/assets/pdf/papers/icra19_rdsl.pdf" target="_blank" rel="noopener">RDSL, ICRA 2019</a></td><td>2019</td><td>2026-10-31</td><td>hoog (bron), verouderd</td></tr><tr id="src-82"><td>[82]</td><td>Verkeersbordsjablonen op foto&#x27;s: 95,66; valse meldingen door gelijkende objecten</td><td><a href="https://ar5iv.labs.arxiv.org/html/1907.09679" target="_blank" rel="noopener">Tabelini Torres et al.</a></td><td>2019</td><td>2026-10-31</td><td>hoog (bron), verouderd</td></tr><tr id="src-83"><td>[83]</td><td>Eerst nagemaakt, dan bijtrainen op 2,5–10% echt</td><td><a href="https://arxiv.org/html/2511.23450" target="_blank" rel="noopener">Agarwal et al., arXiv 2511.23450</a></td><td>2025-11-28</td><td>2026-10-31</td><td>medium</td></tr><tr id="src-84"><td>[84]</td><td>Trainingsadvies: alles labelen, 0–10% achtergrond, 1.500 per soort</td><td><a href="https://docs.ultralytics.com/yolov5/tutorials/tips_for_best_training_results/" target="_blank" rel="noopener">Ultralytics docs</a></td><td>actueel</td><td>2026-10-31</td><td>hoog (advies)</td></tr><tr id="src-85"><td>[85]</td><td>Albumentations MIT tot 2.0.8, opvolger AGPL/commercieel</td><td><a href="https://albumentations.ai/docs/license/" target="_blank" rel="noopener">Albumentations</a></td><td>2025</td><td>2026-10-31</td><td>hoog</td></tr><tr id="src-86"><td>[86]</td><td>YOLOv8s op 1.500 voedsellogo&#x27;s: precisie 0,904, vangst 0,879</td><td><a href="https://arxiv.org/html/2403.02336" target="_blank" rel="noopener">Hosseini et al., arXiv 2403.02336</a></td><td>2024-03-04</td><td>2026-10-31</td><td>hoog</td></tr><tr id="src-87"><td>[87]</td><td>Automatisch labelen: −3,5 tot −16 punten, zeldzame soorten vallen weg</td><td><a href="https://arxiv.org/html/2506.02359v1" target="_blank" rel="noopener">arXiv 2506.02359</a></td><td>2025-06-03</td><td>2026-10-31</td><td>hoog</td></tr><tr id="src-88"><td>[88]</td><td>Actief leren: tot 82% minder labelwerk</td><td><a href="https://arxiv.org/abs/2106.11921" target="_blank" rel="noopener">Elezi et al., CVPR 2022</a></td><td>2021-06</td><td>2026-10-31</td><td>medium</td></tr><tr id="src-89"><td>[89]</td><td>Detector + beoordelend taalmodel (poliepen); logo-benchmarks 40–70 per soort</td><td><a href="https://arxiv.org/html/2512.12492v1" target="_blank" rel="noopener">AdaptiveDetector, arXiv 2512.12492</a>; [OpenLogo, arXiv 1807.01964](https://arxiv.org/pdf/1807.01964)</td><td>2025-12 / 2018</td><td>2026-10-31</td><td>medium / laag</td></tr><tr id="src-90"><td>[90]</td><td>Knippen en plakken op willekeurige achtergronden werkt</td><td><a href="https://arxiv.org/abs/1708.01642" target="_blank" rel="noopener">Dwibedi et al., ICCV 2017</a></td><td>2017</td><td>2026-10-31</td><td>medium (verouderd)</td></tr></tbody></table></details>
+<p class="meta">Gegenereerd uit research.md; dit is een weergave, niet de bron van waarheid.</p></main></div>
+<script>document.querySelectorAll('a.cite').forEach(a=>a.addEventListener('click',()=>{document.querySelector('details').open=true;}));if(location.hash.startsWith('#src-'))document.querySelector('details').open=true;</script>
+</body></html>
