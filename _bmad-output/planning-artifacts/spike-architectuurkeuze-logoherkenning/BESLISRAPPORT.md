@@ -219,3 +219,34 @@ Lijst A volstaat om de rangorde van K1a, K1b, K2, K3b en K4 na de adjudicatie te
 - **Herberekenen:** `tel.py --waarheid …/voorlopige-selectie.json --ruw …/fase-b/ruw --b0 …/nulmeting/ruw --lekparen …/fase-b/lekparen.json --kosten …/fase-b/kosten.json --uit …/fase-b/telling`.
 - **Tweede methode voor de 100%-uitkomsten van K1a:** een eigen, eenvoudiger telregel (middelpunt in het waarheidsvak of IoU ≥ 0,3) geeft 167/186 (run 1) en 165/186 (run 2). tel.py geeft 168/186; dat is 1–3 paren verschil. Per keurmerk gelijk bij onder meer Beter Leven 14/14, MSC 13/13 en Weidemelk 17/17.
 - **Herhaalbaarheid K3c:** run 1 en run 2 gelijk op 131 van 131 vergeleken etiketten, en 0 wisselende paren in de telling.
+
+## 8. Na adjudicatie van lijst A door AI (31-10-2026)
+
+> [!warning]
+> Op verzoek van Friso is lijst A (528 vragen) **door AI beoordeeld, niet door een mens**: vier Claude-subagents (Opus 5.5), blind voor de variant, elk een groep verwarbare keurmerken, strikte definities uit de K1-instructie. Herkomst: `nakijken/HERKOMST-uitslag.json`. Dit is dus géén menselijke adjudicatie in de zin van meetopzet §6.
+
+- **Uitslag:** 522 beantwoord (25 ja, 497 nee), 6 twijfel (onbeantwoord gelaten). Van 510 niet-gelabelde meldingen waren er 12 een echt logo (7 toegevoegd aan de waarheid); van 18 gemiste paren bleken er 4 geen logo.
+- **Kader naast het logo:** 133 van de 497 "nee" gaan over een kader dat naast of half over het echte logo ligt; bij 81 daarvan staat hetzelfde keurmerk al in de waarheid op dat etiket. De varianten (vooral K1a/K1b/K2a) trekken dus vaak een tweede, verschoven vak. Dat telt terecht als onterecht.
+- **Telling:** `tel.py` (sha256 bde85ddd…) met `--adjudicatie nakijken/uitslag.json` → `telling/resultaat-na-adjudicatie.json`; `resultaat.json` ongewijzigd.
+
+Rangorde na adjudicatie (keurmerken die "het halen" van de 12 beoordeelde; gepoold gevonden): **K4-aa 7** (144/158), K4-ab 5, K4-bb 5, K4-ba 4, alle overige 1 — K1a zakt van 10 naar 1 omdat zijn extra meldingen nu bevestigd onterecht zijn. Winnaar volgens §5: geen (geen variant haalt alle keurmerken).
+
+| keurmerk | K1a gevonden | K1a vals (slechtste run) | K4-aa gevonden | K4-aa vals (slechtste run) | oordeel K4-aa |
+|---|---|---|---|---|---|
+| Beter Leven 1 ster | 14/14 | 4/25 (18%) | 14/14 | 1/22 (5%) | haalt het, onzeker |
+| V-label vegan | 9/11 | 3/14 (25%) | 9/11 | 0/12 (0%) | haalt het, onzeker |
+| EU-biologisch | 12/12 | 3/23 (16%) | 12/12 | 2/22 (12%) | haalt het niet |
+| FSC Mix | 15/15 | 4/26 (18%) | 15/15 | 1/23 (5%) | haalt het, onzeker |
+| Groene Punt | 11/18 | 14/28 (52%) | 11/18 | 6/20 (32%) | haalt het niet |
+| MSC | 13/13 | 1/24 (5%) | 13/13 | 0/21 (0%) | haalt het, onzeker |
+| Nutri-Score A | 8/8 | 5/24 (28%) | 7/8 | 3/21 (20%) | te weinig voorbeelden |
+| Nutri-Score B | 7/8 | 13/25 (57%) | 3/8 | 2/5 (40%) | te weinig voorbeelden |
+| Nutri-Score C | 14/15 | 4/22 (20%) | 13/15 | 2/19 (12%) | haalt het niet |
+| Zwangerschapswaarschuwing | 10/10 | 5/15 (33%) | 10/10 | 2/12 (17%) | haalt het niet |
+| Rainforest Alliance | 14/14 | 2/18 (11%) | 14/14 | 0/18 (0%) | haalt het, onzeker |
+| Recyclebaar | 4/8 | 6/11 (60%) | 4/8 | 1/6 (20%) | haalt het niet |
+| Vegan algemeen | 7/10 | 6/19 (40%) | 6/10 | 5/17 (33%) | te weinig voorbeelden |
+| Vegan Society | 11/11 | 3/19 (20%) | 11/11 | 1/15 (8%) | haalt het, onzeker |
+| Weidemelk | 17/17 | 6/39 (19%) | 17/17 | 1/32 (4%) | haalt het, onzeker |
+
+**Bijgestelde aanbeveling:** K4-aa (Gemini 3.8 Flash vindt en benoemt, SigLIP 2 bevestigt) als route; de bevestigingsstap is niet optioneel maar nodig om onder 10% vals te komen. Open voor de bouw: EU-biologisch, Nutri-Score C en zwangerschapswaarschuwing zitten op 12–17% vals; Groene Punt en Recyclebaar halen het niet; vakprecisie (verschoven tweede vakken) is de grootste bron van onterechte meldingen. Validatie op door een mens bevestigde etiketten blijft nodig vóór "automatisch".
