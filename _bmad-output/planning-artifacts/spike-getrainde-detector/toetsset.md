@@ -43,13 +43,13 @@ Elke leverancier (GLN) zit óf aan de trainingskant óf aan de toetskant, voor a
 
 | rij | train (GTIN's / leveranciers) | toets (GTIN's / leveranciers) |
 |---|---|---|
-| EU-biologisch | 49 / 3 | 128 / 14 |
-| Groene Punt | 112 / 5 | 273 / 46 |
-| Recyclebaar | 229 / 5 | 657 / 54 |
-| Nutri-Score A | 121 / 1 | 173 / 15 |
-| Nutri-Score B | 79 / 1 | 108 / 14 |
-| Nutri-Score C | 184 / 1 | 203 / 12 |
-| Zwangerschap (alcoholproducten als benadering) | 525 / 5 | 906 / 52 |
+| EU-biologisch | 49 / 3 | 127 / 14 |
+| Groene Punt | 112 / 5 | 272 / 46 |
+| Recyclebaar | 229 / 5 | 648 / 54 |
+| Nutri-Score A | 121 / 1 | 171 / 15 |
+| Nutri-Score B | 79 / 1 | 106 / 13 |
+| Nutri-Score C | 184 / 1 | 199 / 12 |
+| Zwangerschap (alcoholproducten als benadering) | 525 / 5 | 878 / 52 |
 | MSC | 19 / 1 | 33 / 7 |
 | Weidemelk | 71 / 1 | 98 / 3 |
 | Vegan Society | 24 / 1 | 35 / 3 |
@@ -75,7 +75,7 @@ Eigen gereedschap in de proefmap (niet de ongetrackte scripts in de hoofdmap), m
 ## 4. Kandidaten voor de toets (CAP-2)
 
 Uit toetsleveranciers, ontdubbeld op GTIN en daarna op beeld (zelfde sha256 of dHash ≤ 6):
-1. Per keurmerk de gedeclareerde GTIN's, verspreid over leveranciers (om de beurt per leverancier, binnen een leverancier op `sha256("20261031" + doc_id)`), tot **40 kandidaten per keurmerk**, of alle beschikbare. Voor Nutri-Score: 40 voor de groep, gelijk verdeeld over A, B en C.
+1. Per keurmerk de gedeclareerde GTIN's, verspreid over leveranciers (om de beurt per leverancier, binnen een leverancier op `sha256("20261031" + GTIN)`), tot **40 kandidaten per keurmerk**, of alle beschikbare. Voor Nutri-Score: 40 voor de groep, gelijk verdeeld over A, B en C.
 2. Zwangerschap: alcoholproducten, tot 40.
 3. Gelijkende keurmerken ([meetregels.md §2](meetregels.md#2-de-8-keurmerken-en-hun-gelijkende-keurmerken)), gekozen op declaratie, tot **10 per keurmerk**.
 4. Nooit: docs uit de fase-B-meetset (de huidige route is daarop gekozen), GTIN's uit referenties of `training_data`.

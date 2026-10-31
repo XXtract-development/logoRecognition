@@ -1,0 +1,21 @@
+[project]
+name = "proef-getrainde-detector"
+version = "0.1.0"
+description = "Spike: getrainde detector voor keurmerken (gereedschap, tests, draaiplan)"
+requires-python = ">=3.12,<3.13"
+dependencies = ["pillow>=11", "numpy>=2"]
+
+[dependency-groups]
+dev = ["pytest>=8", "playwright>=1.49"]
+detector = ["rfdetr[train]==1.11.2"]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+  "zwaar: heeft de detector-omgeving nodig (uv sync --group detector)",
+  "lokaal: leest echte invoer uit PROEF_MAP; overgeslagen als die ontbreekt",
+  "browser: Playwright-browsertest",
+]
