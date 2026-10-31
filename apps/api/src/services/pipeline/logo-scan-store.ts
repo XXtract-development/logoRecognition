@@ -42,6 +42,8 @@ export interface ScanRow {
   consumer: string; logoResults: unknown; processingTimeMs: number | null; createdAt: Date; requestedAt: Date; policyVersion?: string | null;
   /** Reference pool version at admission (`<count>:<max createdAt>`); empty string when the pool was unavailable. */
   referenceVersion?: string;
+  /** Reuse key `<model version>@<commit>`; a K4-aa scan carries `/k4aa@`. */
+  modelVersion?: string;
 }
 export interface ScanKey { productId: string; imageHash: string; modelVersion: string; referenceVersion: string }
 export type SaveOutcome = 'saved' | 'superseded' | 'skipped';

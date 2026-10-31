@@ -65,3 +65,10 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-spike-fase-b-cap3-telscript.md`
   summary: Paren die door een "ja" in de adjudicatie nieuw in de waarheid komen, zijn niet op lekken getoetst; `tel.py` noemt ze nu in `adjudicatie.niet_lekgetoetst`, maar de echte controle (cosinus ≥ 0,98 tegen de momentopname, `fb_lek.py`) moet daarna nog draaien.
   evidence: Blind Hunter-review 30-10-2026; `lekparen.json` komt uit de originele waarheid. Bewijs: `fb_lek.py` opnieuw draaien op de toegevoegde vakken en de tabel "zonder lekparen" herberekenen.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-logo-scan-k4aa.md`
+  summary: De hergebruiksleutel (`referencePoolVersion` = aantal + jongste createdAt) ziet een vervangen referentiebestand of een wissel deactiveren/heractiveren niet; legacy en K4-aa kunnen dan een oud resultaat hergebruiken.
+  evidence: `logo-scan-store.ts:50`; bestond al vóór K4-aa (review B5, 31-10-2026); oplossing = id/pad-hash van de actieve set in de sleutel.
+- source_spec: `_bmad-output/implementation-artifacts/spec-logo-scan-k4aa.md`
+  summary: Integratietest voor `get_siglip_references`/`upsert_siglip_embedding` tegen een echte database (TEST_DATABASE_URL), zoals `tests/unit/test_ivfflat_probes_19_14.py`, vóór migratie 0023 naar ACC gaat.
+  evidence: review VG8: de SQL (LEFT JOIN op model, embedded_path) is alleen via mocks getoetst.

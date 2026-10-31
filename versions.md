@@ -1,5 +1,13 @@
 # Versiegeschiedenis
 
+## 31 oktober 2026
+
+**Logoherkenning: nieuwe herkenningsroute die per omgeving aan te zetten is**
+- Er is een tweede manier van herkennen bijgekomen. In de proef vond deze route veel meer keurmerken dan de huidige; na nakijken door AI bleken voorlopig zeven keurmerken bruikbaar. Dat is nog niet door een mens bevestigd. De route staat standaard uit; per omgeving kan de beheerder hem aanzetten, zodat hij eerst op de testomgeving beproefd kan worden.
+- Met de nieuwe route komen alleen zeven keurmerken als bruikbaar voorstel terug (Weidemelk, MSC, Rainforest Alliance, FSC Mix, Beter Leven 1 ster, Vegan Society en het V-Label); andere herkende keurmerken staan erbij als twijfelachtig. Niets wordt automatisch overgenomen, en GHS-symbolen en minder voorkomende keurmerken levert deze route nog niet.
+- Etiketten gaan in deze route alleen naar aanbieders die niets bewaren; is er zo'n aanbieder niet, dan mislukt de scan in plaats van uit te wijken.
+- Zonder de instelling verandert er voor afnemers niets.
+
 ## 13 oktober 2026
 
 **Logoherkenning: na een verbetering krijgen eerder gescande etiketten een nieuwe uitkomst**

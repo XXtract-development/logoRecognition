@@ -58,6 +58,8 @@ const envInt = (name: string, fallback: number) => {
 
 export type LogoScanStatus = 'pending' | 'running' | 'done' | 'failed' | 'superseded';
 export type LogoScanReason = 'timeout' | 'invalid_image' | 'recognition_unavailable' | 'result_invalid';
+/** Recognition route, chosen per environment with LOGO_SCAN_ROUTE and fixed at admission. */
+export type ScanRoute = 'legacy' | 'k4aa';
 
 export interface LogoScanState {
   scanId: string;
@@ -78,6 +80,8 @@ export interface LogoScanState {
   referenceVersion?: string;
   /** Step-1 measurement; stored next to logoResults in the row, never in the GET response. */
   stap1?: Stap1;
+  /** Route fixed at admission; absent = legacy (also for states written before the route switch existed). */
+  route?: 'k4aa';
 }
 
 /**
@@ -87,12 +91,38 @@ export interface LogoScanState {
  * `tokensIn`/`tokensUit` summed provider tokens, `overgeslagen` invalid boxes skipped, `weggevallen` boxes cut by the
  * 64-box cap before and after refinement and `onverfijnd` proposals left unrefined to keep the time reserve (each null
  * when the ml image did not report it). A failed scan adds `fase` + `fout` (the ml error class when parseable).
+ * The K4-aa route adds `route: 'k4aa'` and reuses the counts: `voorstellen` model reports after parsing, `vakjes` detections
+ * after gate and merge, `weggevallen` reports cut by the 64 cap, plus `pogingen` HTTP requests incl. retries, `kostenUsd` (summed over all attempts, null when unknown),
+ * `aanbieders` provider per call and `referenties` active references that voted.
  */
 export type Stap1 = {
-  voorstellen?: number | null; verfijnd?: number | null; ghs?: number | null; vakjes?: number;
+  voorstellen?: number | null; verfijnd?: number | null; ghs?: number | null; vakjes?: number | null;
   aanroepen?: number | null; tokensIn?: number | null; tokensUit?: number | null; overgeslagen?: number | null; weggevallen?: number | null; onverfijnd?: number | null;
   fase?: 'lokalisatie' | 'classificatie' | 'beeld' | 'wachtrij' | 'resultaat'; fout?: string;
+  route?: 'k4aa'; pogingen?: number | null; kostenUsd?: number | null; aanbieders?: Array<string | null> | null; referenties?: number | null;
 };
+
+const warnedRoutes = new Set<string>();
+/** LOGO_SCAN_ROUTE: `k4aa` selects the K4-aa route, anything else is legacy (one warning per unknown value). */
+function scanRoute(): ScanRoute {
+  const v = process.env.LOGO_SCAN_ROUTE?.trim() ?? '';
+  if (v === 'k4aa') return 'k4aa';
+  if (v && v !== 'legacy' && !warnedRoutes.has(v)) {
+    warnedRoutes.add(v);
+    logger.warn('unknown LOGO_SCAN_ROUTE; using the legacy route', { value: v.slice(0, 40) });
+  }
+  return 'legacy';
+}
+/** Model version in the reuse key: trimmed LOGO_MODEL_VERSION, with `/k4aa` for K4-aa; absent (no reuse) without it. */
+function reuseModelVersion(route: ScanRoute = 'legacy'): string | undefined {
+  const base = process.env.LOGO_MODEL_VERSION?.trim() || undefined;
+  return base && route === 'k4aa' ? `${base}/k4aa` : base;
+}
+/** `logoResults.modelVersion`: legacy the raw env value exactly as before; K4-aa always marked `/k4aa`. */
+function resultModelVersion(route: ScanRoute = 'legacy'): string | undefined {
+  if (route !== 'k4aa') return process.env.LOGO_MODEL_VERSION;
+  return `${process.env.LOGO_MODEL_VERSION?.trim() || 'unknown'}/k4aa`;
+}
 
 export class LogoScanBusyError extends Error {}
 
@@ -137,7 +167,8 @@ export function submitLogoScan(input: {
     const callerTime = Number.isFinite(asked) && asked <= now + 60000;
     if (!callerTime) lastServerStamp = stamp;
     const requestedAt = new Date(callerTime ? asked : stamp);
-    const modelVersion = process.env.LOGO_MODEL_VERSION?.trim() || undefined;
+    const route = scanRoute();
+    const modelVersion = reuseModelVersion(route);
     // Reuse key = model version + running code version: a deploy of new recognition code must not hand out old results.
     const code = codeVersion();
     const reuseKey = modelVersion && code ? `${modelVersion}@${code}` : undefined;
@@ -157,6 +188,7 @@ export function submitLogoScan(input: {
       productId, pipelineId: input.pipelineId, gpcCategoryCode: input.gpcCategoryCode,
       signalWord: input.signalWord === 'DANGER' || input.signalWord === 'WARNING' ? input.signalWord : undefined,
       referenceVersion: referenceVersion || undefined,
+      ...(route === 'k4aa' ? { route } : {}),
     };
 
     if (dbOn && productId && cur && cur.imageHash !== imageHash && requestedAt <= cur.requestedAt) {
@@ -235,6 +267,7 @@ function stateFromRow(row: ScanRow): LogoScanState {
     createdAt: new Date(row.createdAt).getTime(), imageHash: row.imageHash, consumer: row.consumer,
     productId: row.productId ?? undefined, pipelineId: row.pipelineId ?? undefined,
     referenceVersion: row.referenceVersion || undefined,
+    ...(row.modelVersion?.includes('/k4aa@') ? { route: 'k4aa' as const } : {}),
   };
 }
 
@@ -254,7 +287,7 @@ export async function getLogoScan(scanId: string): Promise<LogoScanState | null>
     }
   }
   if (state && !terminal(state) && Date.now() > state.createdAt + LOGO_SCAN_MAX_MS) {
-    const failed = failedState(state, 'timeout', { stap1: { fase: state.status === 'running' ? 'lokalisatie' : 'wachtrij', fout: 'timeout' } });
+    const failed = failedState(state, 'timeout', { stap1: { ...routeOf(state), fase: state.status === 'running' ? 'lokalisatie' : 'wachtrij', fout: 'timeout' } });
     const outcome = await saveOutcome(scanId, { status: 'failed', reason: 'timeout', logoResults: { ...failed.logoResults, stap1: failed.stap1 } });
     if (outcome === 'skipped') {
       const row = await findScan(scanId); // the worker may have stored the result a moment ago
@@ -273,11 +306,14 @@ function failedState(state: LogoScanState, reason: LogoScanReason, patch: Partia
     ...state, ...patch, status: 'failed', reason,
     logoResults: buildLogoResults({
       scanId: state.scanId, productId: state.productId, imageHash: state.imageHash, status: 'failed', reason,
-      modelVersion: process.env.LOGO_MODEL_VERSION, referenceVersion: state.referenceVersion, signalWord: state.signalWord,
+      modelVersion: resultModelVersion(state.route), referenceVersion: state.referenceVersion, signalWord: state.signalWord,
       width: 1, height: 1, detections: [],
     }),
   };
 }
+
+/** `{ route: 'k4aa' }` for a K4-aa scan, else nothing: legacy `stap1` stays as it was. */
+const routeOf = (state: LogoScanState): Pick<Stap1, 'route'> => (state.route === 'k4aa' ? { route: 'k4aa' } : {});
 
 class TimeoutError extends Error {}
 class InvalidImageError extends Error {}
@@ -303,9 +339,8 @@ function withDeadline<T>(work: Promise<T>, ms: number): Promise<T> {
   return Promise.race([work, limit]).finally(() => clearTimeout(timer));
 }
 
-/** Existing recognition (as /detect): normalize, localize, classify. Returns the valid classified results plus the image size; `partial` when not every region was classified. */
-async function recognize(image: Buffer, deadline: number, stap1: Stap1, gpcCategoryCode?: string) {
-  const remaining = () => { const ms = deadline - Date.now(); if (ms <= 0) throw new TimeoutError('deadline'); return ms; };
+/** Both routes: normalize the image (sharp → PNG) and scope the codes on the active references and the product category. */
+async function prepareImage(image: Buffer, gpcCategoryCode?: string) {
   let normalized;
   try {
     normalized = await sharp(image, { limitInputPixels: LOGO_SCAN_MAX_PIXELS, animated: false }).rotate().png().toBuffer({ resolveWithObject: true });
@@ -314,8 +349,13 @@ async function recognize(image: Buffer, deadline: number, stap1: Stap1, gpcCateg
   const references = await prisma.referenceLogo.findMany({ where: { active: true }, select: { t3777Code: true, fieldType: true } });
   const alle = [...new Set([...references, ...GHS_REFERENCE_PAIRS].map(r => normalizeReferenceCode(r.t3777Code)))];
   const { codes, zoekruimte } = beperkSoorten(alle, gpcCategoryCode);
-  const image_b64 = normalized.data.toString('base64');
-  const { width, height } = normalized.info;
+  return { image_b64: normalized.data.toString('base64'), width: normalized.info.width, height: normalized.info.height, codes, zoekruimte };
+}
+
+/** Existing recognition (as /detect): normalize, localize, classify. Returns the valid classified results plus the image size; `partial` when not every region was classified. */
+async function recognize(image: Buffer, deadline: number, stap1: Stap1, gpcCategoryCode?: string) {
+  const remaining = () => { const ms = deadline - Date.now(); if (ms <= 0) throw new TimeoutError('deadline'); return ms; };
+  const { image_b64, width, height, codes, zoekruimte } = await prepareImage(image, gpcCategoryCode);
   // The ML service rejects (422) a time budget above 165 s, while a scan may run up to LOGO_SCAN_MAX_MS: cap what is sent.
   const localizeBudget = Math.min(remaining(), ML_MAX_BUDGET_MS);
   // `stap1` is owned by the caller so a later timeout or invalid result still keeps the counts and the phase.
@@ -360,6 +400,39 @@ async function recognize(image: Buffer, deadline: number, stap1: Stap1, gpcCateg
   return { results, width, height, partial: open.size > 0, zoekruimte };
 }
 
+/**
+ * K4-aa route: one strict ml call finds, names and gates the marks. Detections whose code the product category excludes
+ * drop out as in legacy; any other unusable detection makes the result invalid. An ml failure has no fallback to legacy.
+ */
+async function recognizeK4aa(image: Buffer, deadline: number, stap1: Stap1, gpcCategoryCode?: string) {
+  const { image_b64, width, height, codes, zoekruimte } = await prepareImage(image, gpcCategoryCode);
+  const ms = deadline - Date.now();
+  if (ms <= 0) throw new TimeoutError('deadline');
+  const budget = Math.min(ms, ML_MAX_BUDGET_MS);
+  stap1.fase = 'lokalisatie';
+  const res = await mlClient.scanK4aa({ image_b64, strict_runtime: true, remaining_budget_ms: budget }, { timeoutMs: budget })
+    .catch(err => { throw new RecognizeError(err instanceof Error ? err.message : String(err), { ...stap1, fout: foutklasse(err) }); });
+  const s = res?.stats ?? {};
+  Object.assign(stap1, {
+    voorstellen: s.k1_meldingen ?? null, vakjes: s.na_poort ?? null, aanroepen: s.calls ?? null, pogingen: s.attempts ?? null, tokensIn: s.tokens_in ?? null,
+    tokensUit: s.tokens_out ?? null, kostenUsd: s.cost_usd ?? null, aanbieders: s.providers ?? null, referenties: s.referenties ?? null,
+    weggevallen: s.dropped ?? null,
+  });
+  delete stap1.fase;
+  if (!Array.isArray(res?.detections)) throw new ResultInvalidError('K4-aa response is malformed');
+  const allowed = new Set(codes);
+  const results = res.detections.filter(d => {
+    if (typeof d?.t3777_code !== 'string' || !d.t3777_code.trim()) throw new ResultInvalidError('K4-aa detection without code');
+    return allowed.has(normalizeReferenceCode(d.t3777_code));
+  });
+  for (const d of results) {
+    if (!validBox(d.bbox, width, height) || d.method !== 'k4aa' || !Number.isFinite(d.confidence) || d.confidence < 0 || d.confidence > 1) {
+      throw new ResultInvalidError('K4-aa detection is unusable');
+    }
+  }
+  return { results: results as RawDetection[], width, height, partial: false, zoekruimte };
+}
+
 /** `stap1` for a failed job: what `recognize` recorded, else the phase and error derived from the error type. */
 function stap1Bij(err: unknown, expiredInQueue: boolean, seen: Stap1): Stap1 {
   if (err instanceof RecognizeError) return err.stap1;
@@ -379,17 +452,18 @@ export async function runLogoScanJob({ scanId }: { scanId: string }): Promise<vo
   };
   const deadline = state.createdAt + LOGO_SCAN_MAX_MS;
   const started = Date.now();
-  const stap1: Stap1 = {};
+  const stap1: Stap1 = { ...routeOf(state) };
   try {
     if (started >= deadline) throw new TimeoutError('expired in queue');
     if (await markRunning(scanId) === 'superseded') { await writeIfOpen(supersededState(await readState(scanId) ?? state)); return; }
     if (!await writeIfOpen({ ...state, status: 'running' })) return; // already timed out on read
     const image = await redis.getBuffer(imageKey(scanId));
     if (!image) throw new ImageMissingError('image no longer available');
-    const { results, width, height, partial, zoekruimte } = await withDeadline(recognize(image, deadline, stap1, state.gpcCategoryCode), deadline - started);
+    const run = state.route === 'k4aa' ? recognizeK4aa : recognize;
+    const { results, width, height, partial, zoekruimte } = await withDeadline(run(image, deadline, stap1, state.gpcCategoryCode), deadline - started);
     const logoResults = buildLogoResults({
       scanId, productId: state.productId, imageHash: state.imageHash, status: partial ? 'partial' : 'ok',
-      reason: partial ? 'classification_incomplete' : undefined, modelVersion: process.env.LOGO_MODEL_VERSION,
+      reason: partial ? 'classification_incomplete' : undefined, modelVersion: resultModelVersion(state.route),
       referenceVersion: state.referenceVersion, signalWord: state.signalWord, width, height, detections: results, zoekruimte,
     });
     const problems = validateLogoResults(logoResults);
@@ -407,7 +481,7 @@ export async function runLogoScanJob({ scanId }: { scanId: string }): Promise<vo
       : err instanceof ResultInvalidError ? 'result_invalid' : 'recognition_unavailable';
     logger.error('logo-scan failed', { scanId, reason, error: err instanceof Error ? err.message : 'unknown' });
     const current = await readState(scanId) ?? state;
-    const failed = failedState(current, reason, { processingTimeMs: Date.now() - started, stap1: stap1Bij(err, started >= deadline, stap1) });
+    const failed = failedState(current, reason, { processingTimeMs: Date.now() - started, stap1: { ...routeOf(state), ...stap1Bij(err, started >= deadline, stap1) } });
     const outcome = await saveOutcome(scanId, {
       status: 'failed', reason, logoResults: { ...failed.logoResults, stap1: failed.stap1 }, processingTimeMs: failed.processingTimeMs,
     });

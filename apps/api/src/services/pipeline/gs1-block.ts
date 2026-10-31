@@ -86,8 +86,10 @@ export function buildLogoResults(input: BuildInput, resolve: Resolver = resolveS
     }
     const prev = best.get(r.soort);
     if (prev && prev.item.zekerheid >= d.confidence) return;
-    const drempel = getThresholdForMethod(d.method);
-    const redenen: string[] = [];
+    // K4-aa is not validated: never automatic, so its threshold stays local here (0); the shared method threshold does not know it.
+    const k4aa = d.method === 'k4aa';
+    const drempel = k4aa ? 0 : getThresholdForMethod(d.method);
+    const redenen: string[] = k4aa ? ['route_k4aa_niet_gevalideerd'] : [];
     if (r.ingesteld === 'voorstel') redenen.push('tabelstand_voorstel');
     if (r.beperktDoor === 'ghs') redenen.push('ghs_plafond');
     if (r.beperktDoor === 'versie') redenen.push('versie_wijkt_af');

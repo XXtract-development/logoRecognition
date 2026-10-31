@@ -1449,3 +1449,81 @@ async def synthesize_artwork(request: SynthesizeRequest) -> SynthesizeResponse:
             for s in samples
         ],
     )
+
+
+# ---------------------------------------------------------------------------
+# K4-aa scan route (spec-logo-scan-k4aa): one call finds, names and gates marks.
+# ---------------------------------------------------------------------------
+
+
+class K4aaScanRequest(BaseModel):
+    image_b64: str
+    strict_runtime: Literal[True]
+    remaining_budget_ms: Optional[int] = Field(None, ge=1, le=165000)
+
+
+@router.post("/artwork/scan-k4aa")
+@strict_runtime_endpoint
+async def scan_k4aa(
+    request: K4aaScanRequest, http_request: Request = None
+) -> Dict[str, Any]:
+    """Gemini 3.8 Flash (zero-retention providers only) + SigLIP 2 top-3 gate.
+
+    Auth: NONE — internal-service endpoint like localize/classify. A provider or
+    reference failure answers 503 ``K4-aa recognition unavailable (<class>)``.
+    """
+    from app.services import k4aa
+
+    try:
+        data = base64.b64decode(request.image_b64, validate=True)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="Invalid image") from None
+
+    def unavailable(klasse):
+        return HTTPException(
+            status_code=503, detail=f"K4-aa recognition unavailable ({klasse})"
+        )
+
+    try:
+        return await k4aa.scan(data, _STRICT_CONTROL.get().remaining)
+    except k4aa.K4aaError as exc:
+        if exc.klasse == "image_invalid":
+            raise HTTPException(status_code=422, detail="Invalid image") from None
+        raise unavailable(exc.klasse) from None
+    except HTTPException as exc:
+        if exc.status_code == 504:
+            raise unavailable("budget_exhausted") from None
+        raise  # 499: the caller disconnected
+    except asyncio.TimeoutError:
+        raise unavailable("budget_exhausted") from None
+    except Exception as exc:
+        # Class name only: an exception text could carry provider content.
+        logger.error(f"K4-aa scan failed unexpectedly ({type(exc).__name__})")
+        raise unavailable("internal_error") from None
+
+
+class K4aaSyncRequest(BaseModel):
+    limit: int = Field(1000, ge=1, le=1000)
+
+
+@router.post("/artwork/k4aa/reference-embeddings/sync")
+async def sync_k4aa_reference_embeddings(
+    request: K4aaSyncRequest = None,
+) -> Dict[str, Any]:
+    """Add missing or moved SigLIP 2 reference embeddings; never deletes.
+
+    Auth: NONE — internal-service endpoint (same posture as
+    rebuild-reference-embeddings). 409 while another sync holds the lock.
+    """
+    from app.services import k4aa
+
+    try:
+        return await k4aa.sync_reference_embeddings(
+            limit=(request or K4aaSyncRequest()).limit
+        )
+    except k4aa.K4aaError as exc:
+        status = 409 if exc.klasse == "sync_busy" else 503
+        raise HTTPException(
+            status_code=status,
+            detail=f"K4-aa reference sync unavailable ({exc.klasse})",
+        ) from None
