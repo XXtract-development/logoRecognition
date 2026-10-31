@@ -8,14 +8,20 @@ Not production code. Runs on the developer machine against the spike measurement
   K4AA_SIGLIP_PATH=<dir> python scripts/k4aa_vergelijk.py poort     # (a) gate on spike K1a boxes
   K4AA_SIGLIP_PATH=<dir> python scripts/k4aa_vergelijk.py route     # (b) full route (paid calls)
   K4AA_SIGLIP_PATH=<dir> python scripts/k4aa_vergelijk.py geheugen  # RSS: B0 + SigLIP + 64 crops
+  python scripts/k4aa_vergelijk.py norm  # re-judge (b) from the existing route.json, no calls
 
 (a) passes when every keep/drop decision equals ruw/k2a-op-k1a/run1, except at a cosine
-tie (<= 1e-5) on the top-3 border. (b) passes when >= 90% of the reports match in both
-directions (same code, IoU >= 0.5) against spike K4-aa run 1. Memory passes when
-4 x RSS <= 7 GB.
+tie (<= 1e-5) on the top-3 border. (b) passes when the route deviates from spike K4-aa
+run 1 no more than spike run 2 does from run 1, in both directions (same code,
+IoU >= 0.5, same labels; CAP-8b, norm agreed by Friso 31-10-2026). A label where the
+route or spike run 2 failed counts as "reported nothing"; a label without spike run 1
+is skipped on both sides. Memory passes when 4 x RSS <= 7 GB.
+
+CAP-8b not met on 31-10 (spike_in_bouw 21/27 < run1_in_run2 23/27); waived by Friso 31-10-2026, see SPEC.md CAP-8b.
 """
 
 import asyncio
+import datetime
 import hashlib
 import json
 import os
@@ -28,11 +34,6 @@ from PIL import Image
 
 ML = Path(__file__).resolve().parents[1]
 REPO = ML.parents[1]
-sys.path.insert(0, str(ML))
-os.environ.setdefault("MODEL_PATH", "/tmp/k4aa-models")
-Image.MAX_IMAGE_PIXELS = (
-    None  # local measurement set only (spike fb_embed did the same)
-)
 
 BASE = Path.home() / "logo-meetset-20261018/ontwikkelmeting-20261028"
 FASEB = BASE / "fase-b"
@@ -44,6 +45,7 @@ SPIKE = (
 )
 N = 20
 TIE = 1e-5
+WAIVER = "CAP-8b not met on 31-10 (spike_in_bouw 21/27 < run1_in_run2 23/27); waived by Friso 31-10-2026, see SPEC.md CAP-8b."
 
 
 def labels():
@@ -57,8 +59,8 @@ def read_label(e):
     return data
 
 
-def spike(kind, kaart):
-    p = FASEB / "ruw" / kind / "run1" / f"{kaart}.json"
+def spike(kind, kaart, run="run1"):
+    p = FASEB / "ruw" / kind / run / f"{kaart}.json"
     return json.loads(p.read_text()) if p.exists() else None
 
 
@@ -137,10 +139,104 @@ def _matched(a, b, iou):
     return hit, len(a)
 
 
-def route():
-    sys.path.insert(0, str(SPIKE))
+def _tel():
+    if str(SPIKE) not in sys.path:
+        sys.path.insert(0, str(SPIKE))
     import tel
 
+    return tel
+
+
+def spike_k4(kaart, run="run1"):
+    """Spike K4-aa reports with a box after merging, as tel.py counts them; None if not ok."""
+    tel = _tel()
+    k4 = tel.lees_k4(spike("k1a", kaart, run), spike("k2a-op-k1a", kaart, run))
+    return (
+        [m for m in tel.samenvoegen(k4["meldingen"]) if m["vak"]] if k4["ok"] else None
+    )
+
+
+def norm_geslaagd(route_in_spike, spike_in_route, run2_in_run1, run1_in_run2):
+    """CAP-8b: each pair is [hits, total]; the route's share must be at least the spike's
+    own run 2 vs run 1 share, in both directions. Equal passes; a total of 0 fails."""
+    pairs = (route_in_spike, spike_in_route, run2_in_run1, run1_in_run2)
+    if any(n == 0 for _, n in pairs):
+        return False
+    # cross-multiplied so equal fractions compare exactly
+    return (
+        route_in_spike[0] * run2_in_run1[1] >= run2_in_run1[0] * route_in_spike[1]
+        and spike_in_route[0] * run1_in_run2[1] >= run1_in_run2[0] * spike_in_route[1]
+    )
+
+
+def _add(total, pair):
+    total[0] += pair[0]
+    total[1] += pair[1]
+
+
+def spreiding(kaarten):
+    """Spike run 2 vs run 1 on the given labels, same matching rule as the route.
+    A failed run 2 counts as reporting nothing; a label without run 1 is skipped."""
+    tel = _tel()
+    out = {"run2_in_run1": [0, 0], "run1_in_run2": [0, 0], "run1_mislukt": [],
+           "run2_mislukt": []}  # fmt: skip
+    for kaart in kaarten:
+        r1, r2 = spike_k4(kaart), spike_k4(kaart, "run2")
+        if r1 is None:
+            out["run1_mislukt"].append(kaart)
+            continue
+        if r2 is None:
+            out["run2_mislukt"].append(kaart)
+            r2 = []
+        _add(out["run2_in_run1"], _matched(r2, r1, tel.iou))
+        _add(out["run1_in_run2"], _matched(r1, r2, tel.iou))
+    return out
+
+
+def _beoordeel(summary, rows):
+    """Counts route vs spike run 1 and the spike spread on the same labels, and adds the
+    CAP-8b verdict to ``summary`` (in place). A route failure counts as reporting
+    nothing, like a failed spike run 2; a label without run 1 is skipped on both sides.
+    """
+    tel = _tel()
+    summary["bouw_in_spike"], summary["spike_in_bouw"] = [0, 0], [0, 0]
+    summary["mislukt"] = [r["kaart"] for r in rows if "fout" in r]
+    for r in rows:
+        r1 = spike_k4(r["kaart"])
+        if r1 is None:
+            continue
+        ours = r.get("bouw") or []
+        _add(summary["bouw_in_spike"], _matched(ours, r1, tel.iou))
+        _add(summary["spike_in_bouw"], _matched(r1, ours, tel.iou))
+    sp = summary["spike_spreiding"] = spreiding([r["kaart"] for r in rows])
+    summary["geslaagd"] = norm_geslaagd(
+        summary["bouw_in_spike"],
+        summary["spike_in_bouw"],
+        sp["run2_in_run1"],
+        sp["run1_in_run2"],
+    )
+    summary["norm"] = "CAP-8b: route vs run 1 >= run 2 vs run 1, both directions"
+    return summary
+
+
+def norm():
+    """Re-judges (b) from the existing route.json plus the spike output; no provider calls.
+    The previous verdict is kept under ``samenvatting_vorige``."""
+    try:
+        data = json.loads((OUT / "route.json").read_text())
+        rows, previous = data["etiketten"], data["samenvatting"]
+    except (OSError, ValueError, KeyError, TypeError):
+        raise SystemExit(f"no usable {OUT / 'route.json'}; run the 'route' step first")
+    data["samenvatting_vorige"] = previous
+    data["herbeoordeeld_op"] = datetime.datetime.now().isoformat(timespec="seconds")
+    data["samenvatting"] = _beoordeel(dict(previous), rows)
+    write("route.json", data)
+    print(data["samenvatting"])
+    print(WAIVER)
+    return data["samenvatting"]["geslaagd"]
+
+
+def route():
     from app.core.config import settings
     from app.services import k4aa
 
@@ -159,16 +255,9 @@ def route():
     k4aa._reference_matrix = (
         snapshot_matrix  # the spike snapshot votes, not the database
     )
-    rows, ours_all, theirs_all = [], 0, 0
-    hit_ours = hit_theirs = 0
-    costs = []
+    rows, costs = [], []
     for e in labels():
-        theirs = tel.lees_k4(spike("k1a", e["kaart"]), spike("k2a-op-k1a", e["kaart"]))
-        theirs = (
-            [m for m in tel.samenvoegen(theirs["meldingen"]) if m["vak"]]
-            if theirs["ok"]
-            else None
-        )
+        theirs = spike_k4(e["kaart"])
         t0 = time.monotonic()
         deadline = t0 + 165
         try:
@@ -181,27 +270,14 @@ def route():
         ours = [{"code": d["t3777_code"], "vak": _box(d)} for d in out["detections"]]
         row = {"kaart": e["kaart"], "sec": round(time.monotonic() - t0, 2), "stats": out["stats"],
                "bouw": ours, "spike": theirs}  # fmt: skip
-        if theirs is not None:
-            a, n = _matched(ours, theirs, tel.iou)
-            b, m = _matched(theirs, ours, tel.iou)
-            hit_ours, ours_all, hit_theirs, theirs_all = (
-                hit_ours + a,
-                ours_all + n,
-                hit_theirs + b,
-                theirs_all + m,
-            )
         costs.append(out["stats"]["cost_usd"])
         rows.append(row)
     known = [c for c in costs if c is not None]
     summary = {
-        "bouw_in_spike": [hit_ours, ours_all],
-        "spike_in_bouw": [hit_theirs, theirs_all],
         "kosten_usd_totaal": round(sum(known), 6) if known else None,
         "kosten_onbekend": len(costs) - len(known),
-        "geslaagd": ours_all > 0 and theirs_all > 0
-        and hit_ours / ours_all >= 0.9 and hit_theirs / theirs_all >= 0.9,
-        "mislukt": [r["kaart"] for r in rows if "fout" in r],
     }  # fmt: skip
+    _beoordeel(summary, rows)
     write("route.json", {"samenvatting": summary, "etiketten": rows})
     print(summary)
     return summary["geslaagd"]
@@ -245,7 +321,12 @@ def geheugen():
 
 
 if __name__ == "__main__":
-    steps = {"poort": poort, "route": route, "geheugen": geheugen}
+    sys.path.insert(0, str(ML))
+    os.environ.setdefault("MODEL_PATH", "/tmp/k4aa-models")
+    Image.MAX_IMAGE_PIXELS = (
+        None  # local measurement set only (spike fb_embed did the same)
+    )
+    steps = {"poort": poort, "route": route, "geheugen": geheugen, "norm": norm}
     wanted = sys.argv[1:] or ["poort", "geheugen"]
     results = {name: steps[name]() for name in wanted}
     sys.exit(0 if all(results.values()) else 1)

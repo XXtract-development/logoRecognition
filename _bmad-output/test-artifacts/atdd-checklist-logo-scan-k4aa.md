@@ -26,3 +26,14 @@ spec: _bmad-output/specs/spec-logo-scan-k4aa/SPEC.md
 
 - `cd apps/ml-service && <venv py3.11, requirements.txt>/bin/python -m pytest tests/test_k4aa_atdd.py -q` → **29 errors / 29** (`ImportError: cannot import name 'k4aa' from 'app.services'`).
 - `cd apps/api && npx vitest run src/__tests__/routes/logo-scans-k4aa.atdd.test.ts` → **12 failed | 3 passed (15)**. De 3 groene zijn bewuste regressiebewakers (zonder variabele draait legacy; legacy-`stap1` ongewijzigd; gedeelde methodedrempel kent `k4aa` niet).
+
+## Aanvulling 31-10-2026 (besluiten Friso): CAP-8b-norm en CAP-9
+
+| CAP | test(s) | prioriteit |
+|---|---|---|
+| CAP-8b nieuwe norm | pytest `tests/test_k4aa_vergelijk_norm.py` (4) | P1 |
+| CAP-9 ACC-limiet 12G, productie ongewijzigd | vitest `logo-scans-k4aa-deploy.atdd.test.ts` (2) | P1 |
+
+Rode run (vóór de wijziging):
+- `pytest tests/test_k4aa_vergelijk_norm.py -q` → **4 failed / 4** (`norm_geslaagd` bestaat niet; 0.9-norm nog aanwezig).
+- `npx vitest run src/__tests__/routes/logo-scans-k4aa-deploy.atdd.test.ts` → **1 failed | 1 passed (2)**; de groene is de bewaker dat productie op 8G blijft.

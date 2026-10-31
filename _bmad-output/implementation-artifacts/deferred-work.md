@@ -72,3 +72,6 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-logo-scan-k4aa.md`
   summary: Integratietest voor `get_siglip_references`/`upsert_siglip_embedding` tegen een echte database (TEST_DATABASE_URL), zoals `tests/unit/test_ivfflat_probes_19_14.py`, vóór migratie 0023 naar ACC gaat.
   evidence: review VG8: de SQL (LEFT JOIN op model, embedded_path) is alleen via mocks getoetst.
+- source_spec: `_bmad-output/implementation-artifacts/spec-logo-scan-k4aa-2.md`
+  summary: De ml-service-limiet op ACC staat op 12G voor de K4-aa-proeven; herzien of terugzetten naar 8G zodra de proeven klaar zijn of de route weer uit blijft.
+  evidence: review F11 (31-10-2026); besluit Friso noemt geen einddatum; ACC-host 30 GB, 11 GB vrij.
