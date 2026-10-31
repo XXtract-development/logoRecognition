@@ -157,7 +157,7 @@ services:
       resources:
         limits:
           cpus: '4.0'
-          memory: 8G
+          memory: 12G  # CAP-9 spec-logo-scan-k4aa: room for SigLIP 2 per worker during K4-aa trials
         reservations:
           cpus: '1.0'
           memory: 2G

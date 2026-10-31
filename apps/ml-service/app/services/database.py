@@ -913,6 +913,65 @@ class DatabaseService:
             )
             return [dict(row) for row in rows]
 
+    async def get_siglip_references(self, model: str) -> List[Dict[str, Any]]:
+        """Active references with their SigLIP 2 embedding for ``model`` (K4-aa).
+
+        ``embedding``/``embedded_path`` are None when no row exists for the model.
+        Raises asyncpg UndefinedTableError while migration 0023 is not applied.
+        """
+        async with self.get_connection() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT rl.id, rl.t3777_code, rl.storage_path,
+                       se.storage_path AS embedded_path,
+                       se.embedding::text AS embedding_text
+                FROM reference_logos rl
+                LEFT JOIN reference_embeddings_siglip2 se
+                  ON se.reference_logo_id = rl.id AND se.model = $1
+                WHERE rl.active = true
+                ORDER BY rl.id
+                """,
+                model,
+            )
+        results = []
+        for row in rows:
+            vec = _parse_pgvector(row["embedding_text"])
+            results.append(
+                {
+                    "id": str(row["id"]),
+                    "t3777_code": row["t3777_code"],
+                    "storage_path": row["storage_path"],
+                    "embedded_path": row["embedded_path"],
+                    "embedding": vec if vec.size else None,
+                }
+            )
+        return results
+
+    async def upsert_siglip_embedding(
+        self,
+        reference_logo_id: str,
+        model: str,
+        storage_path: str,
+        embedding: np.ndarray,
+    ) -> None:
+        """Insert or refresh one SigLIP 2 reference embedding; never deletes."""
+        async with self.get_connection() as conn:
+            await conn.execute(
+                """
+                INSERT INTO reference_embeddings_siglip2
+                    (reference_logo_id, model, storage_path, embedding, created_at)
+                VALUES ($1, $2, $3, $4, NOW())
+                ON CONFLICT (reference_logo_id, model) DO UPDATE
+                   SET storage_path = EXCLUDED.storage_path,
+                       embedding = EXCLUDED.embedding,
+                       created_at = NOW()
+                """,
+                reference_logo_id,
+                model,
+                storage_path,
+                str(np.asarray(embedding, dtype=np.float32).tolist()),
+            )
+
     # ============================================
     # Training Data Operations
     # ============================================

@@ -438,6 +438,29 @@ export class MLClient {
   }
 
   /**
+   * K4-aa scan route (spec-logo-scan-k4aa): the ml-service finds, names and gates top-15 marks in one strict-runtime
+   * call. A failure answers 503 `K4-aa recognition unavailable (<class>)`; the class lands in `stap1.fout`.
+   */
+  async scanK4aa(request: {
+    image_b64: string;
+    strict_runtime: true;
+    remaining_budget_ms: number;
+  }, options: { timeoutMs?: number } = {}): Promise<{
+    detections: Array<{
+      bbox: { x: number; y: number; width: number; height: number };
+      t3777_code: string; confidence: number; method: string; uncertain?: boolean; requires_review?: boolean;
+    }>;
+    stats?: K4aaStats | null;
+  }> {
+    try {
+      const response = await this.client.post('/ml/artwork/scan-k4aa', request, { timeout: options.timeoutMs ?? 120000 });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error, 'K4-aa scan failed');
+    }
+  }
+
+  /**
    * Classify localised regions to T3777 keurmerk codes (Story 8.4, called
    * server-side by the detection worker — Story 8-3O).
    *
@@ -874,6 +897,12 @@ export class MLClient {
 
     return error instanceof Error ? error : new Error(String(error));
   }
+}
+
+/** Per-scan cost of the K4-aa route; token/cost totals are null when a provider answer carried no usage. */
+export interface K4aaStats {
+  calls?: number; attempts?: number; tokens_in?: number | null; tokens_out?: number | null; cost_usd?: number | null; providers?: Array<string | null>;
+  k1_meldingen?: number; na_poort?: number; dropped?: number; referenties?: number; inline_embedded?: number;
 }
 
 // ============================================

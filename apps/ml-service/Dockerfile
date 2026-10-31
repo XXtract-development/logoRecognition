@@ -25,6 +25,18 @@ ENV PATH="/opt/venv/bin:$PATH"
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
+# K4-aa scan route: SigLIP 2 image tower + preprocessing, pinned revision, baked into
+# the image outside /app/models so a scan never downloads (HF_HUB_OFFLINE=1 below).
+RUN python -c "from transformers import SiglipImageProcessor, SiglipVisionModel; \
+r = 'f775b65a79762255128c981547af89addcfe0f88'; n = 'google/siglip2-base-patch16-384'; \
+SiglipVisionModel.from_pretrained(n, revision=r).save_pretrained('/opt/siglip2-vision'); \
+SiglipImageProcessor.from_pretrained(n, revision=r).save_pretrained('/opt/siglip2-vision')" && \
+    HF_HUB_OFFLINE=1 python -c "import torch; from PIL import Image; \
+from transformers import SiglipImageProcessor, SiglipVisionModel; p = '/opt/siglip2-vision'; \
+m = SiglipVisionModel.from_pretrained(p).eval(); x = SiglipImageProcessor.from_pretrained(p)(images=[Image.new('RGB', (64, 64))], return_tensors='pt'); \
+s = tuple(m(**x).pooler_output.shape); assert s == (1, 768), s" && \
+    chmod -R a+rX /opt/siglip2-vision && rm -rf /root/.cache/huggingface
+
 # ============================================
 # Stage 2: Runtime
 # ============================================
@@ -44,6 +56,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Copy virtual environment from builder
 COPY --from=builder /opt/venv /opt/venv
+COPY --from=builder /opt/siglip2-vision /opt/siglip2-vision
 ENV PATH="/opt/venv/bin:$PATH"
 
 # Create non-root user for security
@@ -67,7 +80,9 @@ ENV PYTHONUNBUFFERED=1 \
     PORT=8001 \
     HOST=0.0.0.0 \
     MODEL_PATH=/app/models \
-    TORCH_HOME=/app/models/torch
+    TORCH_HOME=/app/models/torch \
+    HF_HUB_OFFLINE=1 \
+    K4AA_SIGLIP_PATH=/opt/siglip2-vision
 
 # Expose port
 EXPOSE 8001
