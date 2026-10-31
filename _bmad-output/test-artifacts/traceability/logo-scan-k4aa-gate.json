@@ -1,0 +1,1 @@
+{"decision": "FAIL", "rule": "P1 coverage 50% < 80%", "p0": {"covered": 6, "total": 6}, "p1": {"covered": 1, "total": 2}, "overall": {"covered": 7, "total": 8}, "gap": "CAP-8b local route agreement 21/27 (78%) < 90%; spike run1 vs run2 itself 21/27 (78%) / 21/25 (84%)", "waiver": null, "date": "2026-10-31", "commit": "628a36b4be296796680bd28a561098e64e1082d8"}
