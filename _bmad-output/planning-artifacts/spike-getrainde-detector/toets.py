@@ -4,7 +4,11 @@ Kandidaten komen alleen van toetsleveranciers, zonder GTIN's uit referenties/tra
 filtering doet `main kandidaten` vóór `kandidaten`). De voorinvulling gebruikt een ander model dan K4-aa, via de
 gedeelde zdr-client.
 
-  python toets.py kandidaten --proef-map <PM> [--max-per 40] [--alleen CODE --bestaand <kandidaten.json>] [--kant train]
+  python toets.py kandidaten --proef-map <PM> [--max-per 40] [--kant train]
+  python toets.py kandidaten --proef-map <PM> --bestaand <kandidaten.json> [--bestaand <eerdere aanvulling.json> ...]
+                  [--alleen CODE ...] [--alle CODE ...] [--max-per 40] [--naam <lijst>] [--print-laag-eerst]
+                  (aanvulling: alleen nieuwe GTIN's, eigen lijst <toets>/<naam>.json die nooit overschreven wordt;
+                   stdout: JSON met per keurmerk "toegevoegd" en "over")
   python toets.py ontdubbel --proef-map <PM> --manifest <gecombineerd/manifest.json> [--kandidaten <kandidaten-aanvulling.json>]
                   (ontdubbelt ook tegen een bestaande toets-docs.json en voegt de nieuwe docs daaraan toe)
   python toets.py voorinvulling --proef-map <PM> --manifest <gecombineerd/manifest.json> --zdr-logo <png>
@@ -13,8 +17,10 @@ gedeelde zdr-client.
   python toets.py lijst --proef-map <PM> --manifest <gecombineerd/manifest.json>   (bevestigde toetsetiketten voor de runs)
 """
 import argparse
+import collections
 import hashlib
 import io
+import itertools
 import json
 import math
 import shutil
@@ -29,6 +35,8 @@ import scheiding
 K7 = ("EU_ORGANIC_FARMING", "GREEN_DOT", "RECYCLABLE_GENERAL_CLAIM", "PREGNANCY_WARNING",
       "MARINE_STEWARDSHIP_COUNCIL_LABEL", "WEIDEMELK", "VEGAN_SOCIETY_VEGAN_LOGO")
 NS = ("NUTRISCORE_A", "NUTRISCORE_B", "NUTRISCORE_C")
+CODES = K7 + ("NUTRISCORE",)  # sleutels per keurmerk (aanvulling, melding)
+POOL = "pool-met-converted-laag-20261008.txt"  # docs met print-laag, in <PM>/invoer/
 GELIJKEND = {  # meetregels §2 (codes; "nationale bio-logo's" en "andere gekleurde schalen" hebben geen code)
     "EU_ORGANIC_FARMING": ("AGRICULTURE_BIOLOGIQUE", "BDIH_LOGO"),
     "GREEN_DOT": ("RECYCLABLE_GENERAL_CLAIM", "TRIMAN", "SEPARATE_COLLECTION", "SOCIETY_PLASTICS_INDUSTRY", "RETURNABLE_CAN_NL"),
@@ -87,12 +95,22 @@ def _om_de_beurt(per_gln, seed):
                 yield g, r[i]
 
 
-def kandidaten(rijen_toets, gelijkend, max_per=40, max_gelijkend=10, seed="20261031"):
-    gekozen, uit = set(), []
+def kandidaten(rijen_toets, gelijkend, max_per=40, max_gelijkend=10, seed="20261031", bestaand=(), maxima=None,
+               voorkeur=None):
+    """Aanvulling (toetsset §4): `bestaand` = GTIN's die al kandidaat zijn (nooit gekozen, tellen voor geen maximum);
+    `maxima` = {code of "NUTRISCORE": aantal of None (alles)}, ontbrekende sleutel = max_per; `voorkeur` = paren
+    (gln, gtin) die per keurmerk eerst komen, daarna de rest, elk deel in de vaste volgorde."""
+    gekozen, uit, maxima = set(bestaand), [], maxima or {}
+
+    def volgorde(per):
+        if not voorkeur:
+            return _om_de_beurt(per, seed)
+        deel = lambda wel: {g: {t for t in v if ((g, t) in voorkeur) == wel} for g, v in per.items()}  # noqa: E731
+        return itertools.chain(_om_de_beurt(deel(True), seed), _om_de_beurt(deel(False), seed))
 
     def neem(bronnen, maximum, reden):
-        n = 0
-        iters = [(rd, _om_de_beurt(per, seed)) for rd, per in bronnen]
+        n, maximum = 0, math.inf if maximum is None else maximum
+        iters = [(rd, volgorde(per)) for rd, per in bronnen]
         while n < maximum and iters:  # bij Nutri-Score om de beurt per letter
             for item in list(iters):
                 rd, it = item
@@ -107,10 +125,10 @@ def kandidaten(rijen_toets, gelijkend, max_per=40, max_gelijkend=10, seed="20261
                     break
 
     for code in K7[:3]:
-        neem([(code, rijen_toets.get(code, {}))], max_per, code)
-    neem([(c, rijen_toets.get(c, {})) for c in NS], max_per, "NUTRISCORE")
+        neem([(code, rijen_toets.get(code, {}))], maxima.get(code, max_per), code)
+    neem([(c, rijen_toets.get(c, {})) for c in NS], maxima.get("NUTRISCORE", max_per), "NUTRISCORE")
     for code in K7[3:]:
-        neem([(code, rijen_toets.get(code, {}))], max_per, code)
+        neem([(code, rijen_toets.get(code, {}))], maxima.get(code, max_per), code)
     for keurmerk in sorted(gelijkend):
         neem([(f"gelijkend:{keurmerk}", gelijkend[keurmerk])], max_gelijkend, f"gelijkend:{keurmerk}")
     return uit
@@ -246,8 +264,16 @@ def main(argv=None):
     k = sub.add_parser("kandidaten")
     k.add_argument("--proef-map", required=True, type=Path)
     k.add_argument("--max-per", type=int, default=40)
-    k.add_argument("--alleen", help="aanvullen: alleen dit keurmerk (code of NUTRISCORE)")
-    k.add_argument("--bestaand", type=Path, help="aanvullen: eerdere kandidatenlijst; alleen nieuwe GTIN's komen erbij")
+    k.add_argument("--alleen", action="append", choices=CODES, metavar="CODE",
+                   help="aanvullen: hoogstens --max-per nieuwe voor dit keurmerk (code of NUTRISCORE; herhaalbaar)")
+    k.add_argument("--alle", action="append", choices=CODES, metavar="CODE",
+                   help="aanvullen: alles wat voor dit keurmerk overblijft, ook boven 40 (herhaalbaar)")
+    k.add_argument("--bestaand", action="append", type=Path,
+                   help="aanvullen: eerdere kandidatenlijst (herhaalbaar); alleen nieuwe GTIN's komen erbij")
+    k.add_argument("--naam", help="naam van de lijst (standaard kandidaten-aanvulling bij --bestaand, anders kandidaten); "
+                                  "een aanvulling overschrijft nooit een bestaande lijst")
+    k.add_argument("--print-laag-eerst", action="store_true",
+                   help="per keurmerk eerst de GTIN's met print-laag (invoer/" + POOL + "), dan de rest")
     k.add_argument("--kant", choices=("toets", "train"), default="toets")
     o = sub.add_parser("ontdubbel")
     o.add_argument("--proef-map", required=True, type=Path)
@@ -267,8 +293,15 @@ def main(argv=None):
     r = sub.add_parser("rapport")
     r.add_argument("--proef-map", required=True, type=Path)
     a = ap.parse_args(argv)
-    if a.stap == "kandidaten" and a.alleen and not a.bestaand:
-        ap.error("--alleen vraagt --bestaand (anders zou kandidaten.json overschreven worden)")
+    if a.stap == "kandidaten":
+        if (a.alleen or a.alle) and not a.bestaand:
+            ap.error("--alleen/--alle vraagt --bestaand (anders zou kandidaten.json overschreven worden)")
+        if a.bestaand and not (a.alleen or a.alle):
+            ap.error("een aanvulling (--bestaand) vraagt --alleen of --alle (geen gelijkende kandidaten, toetsset §4)")
+        if set(a.alleen or []) & set(a.alle or []):
+            ap.error("dezelfde code bij --alleen en --alle: kies één van de twee")
+        if a.naam is not None and (Path(a.naam).name != a.naam or a.naam in ("", ".", "..")):
+            ap.error("--naam is een bestandsnaam zonder map (geen /, . of ..)")
     if a.stap == "voorinvulling":
         grens, besluit = grens_uit(ap, a, GRENS_VOORINVULLING)
     toets_map = beelden.veilig_doel(a.proef_map / "toets")
@@ -279,18 +312,32 @@ def main(argv=None):
         if a.kant == "train":
             gelijkend, toets_map = {}, beelden.veilig_doel(a.proef_map / "train")
             toets_map.mkdir(parents=True, exist_ok=True)
-        if a.alleen:
-            houd = NS if a.alleen == "NUTRISCORE" else (a.alleen,)
+        doel = toets_map / f"{a.naam or ('kandidaten-aanvulling' if a.bestaand else 'kandidaten')}.json"
+        paren = doel.with_name(f"{doel.stem}-paren.tsv")
+        if (a.bestaand or a.naam) and (doel.exists() or paren.exists()):  # eigen lijst, nooit overschrijven (toetsset §4)
+            raise SystemExit(f"{doel} of {paren.name} bestaat al: niets overschreven; kies een andere --naam")
+        alle = set(a.alle or [])
+        keuze = [c for c in CODES if c in alle | set(a.alleen or [])]
+        if keuze:  # aanvulling: alleen de gekozen rijen, geen gelijkende
+            houd = {r for c in keuze for r in (NS if c == "NUTRISCORE" else (c,))}
             rijen_toets = {r: (v if r in houd else {}) for r, v in rijen_toets.items()}
             gelijkend = {}
-        lijst = kandidaten(rijen_toets, gelijkend, max_per=a.max_per)
-        if a.bestaand:
-            oud = {i["gtin"] for i in json.loads(a.bestaand.read_text())}
-            lijst = [i for i in lijst if i["gtin"] not in oud]
-        naam = "kandidaten-aanvulling" if a.bestaand else "kandidaten"
-        (toets_map / f"{naam}.json").write_text(json.dumps(lijst, indent=1) + "\n")
-        (toets_map / f"{naam}-paren.tsv").write_text("gln\tgtin\n" + "".join(f"{i['gln']}\t{i['gtin']}\n" for i in lijst))
-        print(len(lijst), "kandidaten →", toets_map / f"{naam}.json")
+        bestaand = {i["gtin"] for p in a.bestaand or [] for i in json.loads(p.read_text())}
+        voorkeur = None
+        if a.print_laag_eerst:  # één doc_id GLN-GTIN-doelmarkt per regel
+            pool = (a.proef_map / "invoer" / POOL).read_text().split()
+            voorkeur = {tuple(d.split("-")[:2]) for d in pool if d.count("-") == 2}
+        lijst = kandidaten(rijen_toets, gelijkend, max_per=a.max_per, bestaand=bestaand, maxima=dict.fromkeys(alle),
+                           voorkeur=voorkeur)
+        doel.write_text(json.dumps(lijst, indent=1) + "\n")
+        paren.write_text("gln\tgtin\n" + "".join(f"{i['gln']}\t{i['gtin']}\n" for i in lijst))
+        nieuw = {i["gtin"] for i in lijst}
+        tel = collections.Counter("NUTRISCORE" if i["reden"].startswith("NUTRISCORE_") else i["reden"] for i in lijst)
+        per_keurmerk = {}
+        for c in keuze or CODES:
+            alle_gtins = set().union(*(v for r in (NS if c == "NUTRISCORE" else (c,)) for v in rijen_toets.get(r, {}).values()))
+            per_keurmerk[c] = {"toegevoegd": tel[c], "over": len(alle_gtins - bestaand - nieuw)}
+        print(json.dumps({"kandidaten": len(lijst), "bestand": str(doel), "per_keurmerk": per_keurmerk}, indent=1))
     elif a.stap == "voorinvulling":
         from PIL import Image
 

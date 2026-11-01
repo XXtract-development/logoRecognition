@@ -20,9 +20,9 @@ uv sync --group dev                                    # stap 9 en verder: uv sy
 
 > [!note] Kosten en uitgavengrens
 > Elke betaalde stap rekent vóór de start de verwachte uitgave uit (al uitgegeven plus, per open etiket, 1 aanroep per 16
-> tegels, minstens 1) en start niet boven de grens per post (stoppunt 5): voorinvulling $65 hard (besluit Friso
-> 01-11-2026), de andere posten 1,5× de raming tot Friso anders beslist. Een andere grens geeft het gereedschap alleen met
-> `--grens` én een niet-lege `--besluit` (randvoorwaarden §3). Tijdens de stap wordt de aanroep die de grens zou passeren
+> tegels, minstens 1) en start niet boven de grens per post (stoppunt 5): voorinvulling $65 hard en voorlabels $50 hard
+> (beide besluit Friso 01-11-2026), de andere posten 1,5× de raming tot Friso anders beslist. Het gereedschap past die
+> grenzen standaard toe; een andere grens alleen met `--grens` én een niet-lege `--besluit` (randvoorwaarden §3). Tijdens de stap wordt de aanroep die de grens zou passeren
 > niet verstuurd. Tijden met "INFERENCE" zijn geschat, niet gemeten.
 
 ### Stap 1 — scheiding
@@ -74,6 +74,8 @@ Tijd: < 1 minuut
 Stoppunt: 2 als een keurmerk minder dan 16 waarschijnlijke etiketten heeft (scheiding versoepelen of het keurmerk zonder besluit laten: keuze van Friso).
 ongetest: `rapport` en `stoppunt2` zijn getest; de opdrachtregel niet.
 
+In deze ronde is de volgende handeling bij stoppunt 2 al besloten: de eenmalige aanvulling vóór de bevestiging (besluit Friso 01-11-2026, toetsset §4). Na de eerste voorinvulling stond zwangerschap op 14, MSC op 18, Vegan Society op 17 en Weidemelk op 23. Draai daarom eerst de eenmalige aanvulling uit stap 6 (zwangerschap hoogstens 60 nieuwe kandidaten, print-laag eerst; MSC, Vegan Society en Weidemelk alles wat over is), daarna deze stap opnieuw, en pas dan stap 5. Staat een keurmerk daarna nog onder 16, dan is dat opnieuw stoppunt 2; meer aanvullen vraagt een nieuw besluit van Friso.
+
 ### Stap 5 — bevestiging
 
 Commando: `uv run python invul/server.py --map $PM/toets --poort 8765` en open `http://127.0.0.1:8765/`
@@ -84,12 +86,51 @@ Stoppunt: geen
 
 ### Stap 6 — aanvullen
 
-Commando: `uv run python toets.py kandidaten --proef-map $PM --alleen <CODE> --max-per 60 --bestaand $PM/toets/kandidaten.json` (CODE = het keurmerk onder het doel, of `NUTRISCORE`; `--alleen` zonder `--bestaand` weigert), daarna voor `kandidaten-aanvulling-paren.tsv` de ophaal- en bouwregels van stap 2, dan `uv run python toets.py ontdubbel --proef-map $PM --manifest $PM/toets/gecombineerd/manifest.json --kandidaten $PM/toets/kandidaten-aanvulling.json` (ontdubbelt tegen de bestaande `toets-docs.json` en voegt de nieuwe docs eraan toe), stap 3 opnieuw (klare etiketten worden overgeslagen) en de server herstarten (hij leest `items.json` bij de start).
-Uitvoer: `$PM/toets/kandidaten-aanvulling.json` met alleen nieuwe GTIN's, in dezelfde vaste volgorde (om de beurt per leverancier, binnen een leverancier op sha256("20261031" + GTIN)); `toets-docs.json` aangevuld.
-Kosten: $0,12 per extra etiket (gemiddelde; valt onder de post voorinvulling, grens $65)
+Commando: elke aanvulling krijgt een eigen lijst (`--naam`) en een eigen tussenmap `$T/$N` (ophaallijst, originelen, paden), zodat die van eerdere rondes blijven; gebouwde beelden gaan naar `$T/gecombineerd` en de PDF-tekst naar `$T/certificaten.json`, die beide worden aangevuld en niet overschreven. Geef elke eerdere lijst mee met `--bestaand` (herhaalbaar): geen GTIN komt terug. `--max-per` telt alleen nieuwe kandidaten; `--alle CODE` neemt alles wat voor dat keurmerk aan de toetskant overblijft, ook boven 40; `--alleen` en `--alle` zijn herhaalbaar (CODE = een keurmerk of `NUTRISCORE`, niet dezelfde code bij beide). Een aanvulling vraagt `--bestaand` én `--alleen` of `--alle`, neemt geen gelijkende kandidaten en weigert (exitcode ≠ 0) als `<naam>.json` of `<naam>-paren.tsv` al bestaat.
+
+**Eenmalige aanvulling vóór de bevestiging (besluit Friso 01-11-2026, toetsset §4).** In deze ronde direct na stap 4, vóór stap 5: zwangerschap hoogstens 60 nieuwe kandidaten, eerst alle ongekozen met print-laag (`$PM/invoer/pool-met-converted-laag-20261008.txt`) en daarna de rest in de vaste volgorde; MSC, Vegan Society en Weidemelk alles wat over is. Het hele blok:
+```sh
+T=$PM/toets
+N=kandidaten-aanvulling-1
+uv run python toets.py kandidaten --proef-map $PM --alleen PREGNANCY_WARNING --max-per 60 --alle MARINE_STEWARDSHIP_COUNCIL_LABEL --alle VEGAN_SOCIETY_VEGAN_LOGO --alle WEIDEMELK --bestaand $T/kandidaten.json --naam $N --print-laag-eerst
+uv run python beelden.py ophaallijst --paren $T/$N-paren.tsv --uit $T/$N                 # ssh replica-db, alleen SELECT
+uv run python beelden.py ophalen --lijst $T/$N/ophaal-paden.txt --doel $T/bron-raw        # rsync banana, nice -n 19, alleen lezen
+uv run python beelden.py bouwen --ophaallijst $T/$N/ophaallijst.tsv --bron $T/bron-raw --uit $T/gecombineerd
+uv run python beelden.py origineel-paden --paren $T/$N-paren.tsv --manifest $T/gecombineerd/manifest.json --uit $T/$N
+uv run python beelden.py ophalen --lijst $T/$N/originelen-paden.txt --doel $T/bron-raw
+uv run python beelden.py bouwen-origineel --originelen $T/$N/originelen.tsv --bron $T/bron-raw --uit $T/gecombineerd
+uv run python beelden.py origineel-paden --paren $T/$N-paren.tsv --alleen-pdf --uit $T/$N      # route A: elk PDF-origineel
+uv run python beelden.py ophalen --lijst $T/$N/pdf-originelen-paden.txt --doel $T/bron-raw
+uv run python beelden.py pdftekst --originelen $T/$N/pdf-originelen.tsv --bron $T/bron-raw --uit $T/certificaten.json
+uv run python toets.py ontdubbel --proef-map $PM --manifest $T/gecombineerd/manifest.json --kandidaten $T/$N.json
+uv run python toets.py voorinvulling --proef-map $PM --manifest $T/gecombineerd/manifest.json --docs $T/toets-docs.json --zdr-logo $PM/logos/zdr-proef.png
+uv run python toets.py rapport --proef-map $PM                                             # = stap 4 opnieuw
+```
+Daarna stap 5. Staat een keurmerk in het rapport nog onder 16, dan is dat stoppunt 2.
+
+**Latere aanvullingen** (na de bevestiging, voor een keurmerk dat onder het doel blijft): hetzelfde, met een nieuwe naam en elke eerdere lijst als `--bestaand`:
+```sh
+T=$PM/toets
+N=kandidaten-aanvulling-2        # nieuwe naam per aanvulling
+uv run python toets.py kandidaten --proef-map $PM --alleen <CODE> --max-per 60 --bestaand $T/kandidaten.json --bestaand $T/kandidaten-aanvulling-1.json --naam $N
+uv run python beelden.py ophaallijst --paren $T/$N-paren.tsv --uit $T/$N
+uv run python beelden.py ophalen --lijst $T/$N/ophaal-paden.txt --doel $T/bron-raw
+uv run python beelden.py bouwen --ophaallijst $T/$N/ophaallijst.tsv --bron $T/bron-raw --uit $T/gecombineerd
+uv run python beelden.py origineel-paden --paren $T/$N-paren.tsv --manifest $T/gecombineerd/manifest.json --uit $T/$N
+uv run python beelden.py ophalen --lijst $T/$N/originelen-paden.txt --doel $T/bron-raw
+uv run python beelden.py bouwen-origineel --originelen $T/$N/originelen.tsv --bron $T/bron-raw --uit $T/gecombineerd
+uv run python beelden.py origineel-paden --paren $T/$N-paren.tsv --alleen-pdf --uit $T/$N
+uv run python beelden.py ophalen --lijst $T/$N/pdf-originelen-paden.txt --doel $T/bron-raw
+uv run python beelden.py pdftekst --originelen $T/$N/pdf-originelen.tsv --bron $T/bron-raw --uit $T/certificaten.json
+uv run python toets.py ontdubbel --proef-map $PM --manifest $T/gecombineerd/manifest.json --kandidaten $T/$N.json
+uv run python toets.py voorinvulling --proef-map $PM --manifest $T/gecombineerd/manifest.json --docs $T/toets-docs.json --zdr-logo $PM/logos/zdr-proef.png
+```
+De voorinvulling draait over alle toets-docs (standaardgrens $65), zodat de invulpagina alle etiketten toont; klare etiketten worden overgeslagen, dus alleen de nieuwe worden betaald. Herstart daarna de server (stap 5; hij leest `items.json` bij de start).
+Uitvoer: `$T/<naam>.json` en `$T/<naam>-paren.tsv` met alleen nieuwe GTIN's, per keurmerk in de vaste volgorde (om de beurt per leverancier, binnen een leverancier op sha256("20261031" + GTIN); met `--print-laag-eerst` eerst het print-laagdeel); op het scherm per gekozen keurmerk `toegevoegd` (nieuwe kandidaten) en `over` (ongekozen toets-GTIN's die overblijven). Verder `$T/<naam>/` met de tussenbestanden, `gecombineerd/manifest.json` en `certificaten.json` aangevuld, `toets-docs.json` aangevuld met de nieuwe docs na ontdubbelen, en `voorinvulling.json` en `items.json` over alle toets-docs. Het aantal gebouwde etiketten wordt gemeld, niet afgedwongen: zwangerschap zonder print-laag bouwt vrijwel nooit.
+Kosten: $0,12 per extra etiket (gemiddelde; valt onder de post voorinvulling, grens $65); de eenmalige aanvulling hoogstens 60 + 58 = 118 kandidaten: verwacht ±$14 bij het gemiddelde van $0,12 per etiket, tot ±$35 bij de p90 van $0,30 (INFERENCE). De startcontrole en de bewaking per aanroep stoppen vóór $65; lees na de aanvulling in `$PM/uitgaven.json` hoeveel er over is.
 Tijd: per ronde ±30 minuten plus Friso's bevestiging (INFERENCE)
-Stoppunt: 2 als een keurmerk na aanvullen nog onder 16 bevestigde etiketten mét blijft.
-ongetest: de volgorde komt uit de geteste functie `kandidaten`; de weigering van `--alleen` zonder `--bestaand` en het samenvoegen in `ontdubbel` zijn getest, het ophalen van de aanvulling niet (netwerk).
+Stoppunt: 2 als een keurmerk na aanvullen nog onder 16 bevestigde etiketten mét blijft; na de eenmalige aanvulling vóór de bevestiging: 2 als een keurmerk in het rapport nog onder 16 waarschijnlijke etiketten staat (meer aanvullen vraagt een nieuw besluit van Friso).
+ongetest: `kandidaten` (bestaande lijsten, maximum per keurmerk, `--alle`, print-laag eerst, de melding, nooit overschrijven), het aanvullen van `certificaten.json` en `manifest.json`, `ontdubbel` en de voorinvulling na een aanvulling zijn getest; het ophalen en bouwen van de aanvulling draaide niet tegen productie (netwerk).
 
 ### Stap 7 — dHash-controle
 
@@ -122,10 +163,10 @@ uv sync --group dev --group detector && uv run --group dev --group detector pyth
 ```
 Eindigt dit blok met een exitcode ≠ 0 (een overtreding in `"overtredingen"`), dan hier stoppen (stoppunt 4) en het volgende blok niet draaien: dat start de betaalde voorlabels.
 
-De voorlabels starten pas nadat Friso hun grens besliste (stoppunt 5): bij ±800 etiketten verwacht de startcontrole ±$25–30, boven de standaardgrens van $15 (1,5× de raming). Zet daarna `GRENS_VOORLABELS` (dollar) en `BESLUIT_VOORLABELS` (verwijzing naar dat besluit); is een van de twee leeg, dan weigert het commando en start er niets. Houdt Friso de standaardgrens aan, zet dan `GRENS_VOORLABELS=15` met de verwijzing naar dat besluit. Daarna een kleine nagemaakte set maken en maat N meten:
+De voorlabels hebben een vaste grens van $50 (besluit Friso 01-11-2026, randvoorwaarden §3); het commando past die standaard toe en start zonder nieuwe vraag als hij aan de beurt is. Bij ±800 etiketten rekent de startcontrole met ±$25 (800 × 2,6 aanroepen × $0,012); komt al uitgegeven plus verwacht boven $50, dan start hij niet (stoppunt 5), en tijdens de run wordt een aanroep die de grens zou passeren niet verstuurd. Een andere grens alleen na een nieuw besluit van Friso, met `--grens` én `--besluit`. Daarna een kleine nagemaakte set maken en maat N meten:
 ```sh
 uv run python generator.py logos --proef-map $PM
-uv run python echt.py voorlabels --lijst $PM/train/lijst.json --proef-map $PM --uit $PM/train/voorlabels.json --zdr-logo $PM/logos/zdr-proef.png --grens "$GRENS_VOORLABELS" --besluit "$BESLUIT_VOORLABELS"
+uv run python echt.py voorlabels --lijst $PM/train/lijst.json --proef-map $PM --uit $PM/train/voorlabels.json --zdr-logo $PM/logos/zdr-proef.png
 uv run python echt.py dataset --lijst $PM/train/lijst.json --voorlabels $PM/train/voorlabels.json --proef-map $PM --uit $PM/train/echt
 uv run python generator.py tegels --proef-map $PM --achtergronden $PM/train/echt/achtergronden.json --uit $PM/train/snelheid --n 200
 uv run python generator.py tegels --proef-map $PM --achtergronden $PM/train/echt/achtergronden.json --uit $PM/train/snelheid --n 8 --split valid --seed 7
@@ -134,7 +175,7 @@ uv run python train.py snelheid --maat $MAAT --dataset $PM/train/snelheid --uit 
 ```
 `$PM/train/lijst.json` = `[{doc_id, gln, pad}]` van de gebouwde trainingsetiketten uit stap 7 (nog geen gereedschap: maak hem uit `$PM/train/gecombineerd/manifest.json`). De voorlabels (ook de achtergrondscreening) horen bij de post "voorlabels + achtergrondscreening" en zijn ook nodig voor stap 10; een mislukt etiket wordt bij een herstart opnieuw geprobeerd, vijf weigeringen op rij stoppen de run. `echt.py dataset` maakt `train/`, `valid/` en `test/` (kopie van `valid`, omdat `rfdetr` een testmap wil) en `achtergronden.json` alleen uit de trainingskant, zodat validatie-etiketten nooit via de generator in de training komen. De meting gebruikt 50 iteraties × batch 4 = 200 trainingstegels (vandaar `--n 200`) en 4 validatietegels.
 Uitvoer: het licentierapport (aantal pakketten, overtredingen, lijst "even ruim"); voor maat N seconden per iteratie, apparaat (MPS) en de verwachte duur van een trainingsfase in `snelheid.json`. Rooktest 01-11-2026: N ±7,2 uur per fase; S liep vast en kwam op ±11 uur, waarna Friso besliste: alleen N. Een meting van een andere maat hoort alleen bij een nieuw besluit (`--besluit "<verwijzing>"`, komt in `snelheid.json`); zie "Snelheid" hieronder.
-Kosten: voorlabels ±$25–30 (±800 etiketten × gemiddeld 2,6 aanroepen × $0,012; INFERENCE), grens zoals Friso besliste (standaard $15 = 1,5× de raming $10), bijgehouden in `$PM/uitgaven.json`; snelheidsmeting $0
+Kosten: voorlabels ±$25–35 (randvoorwaarden §3; ±800 etiketten × gemiddeld 2,6 aanroepen × $0,012 = ±$25, per aanroep mogelijk duurder; INFERENCE), grens $50 hard (besluit Friso 01-11-2026), bijgehouden in `$PM/uitgaven.json`; snelheidsmeting $0
 Tijd: voorlabels ±5 uur (±2.080 aanroepen: ±800 etiketten × gemiddeld 2,6; INFERENCE); meting ±15 minuten
 Stoppunt: 1 als een trainingsfase met N volgens de meting langer dan 8 uur duurt of MPS niet werkt; 4 als de licentiecontrole een overtreding meldt; 8 als RF-DETR niet installeert of niet traint; 3 en 5 voor de voorlabels.
 ongetest: `generator.genereer`, `echt.naar_tegels`/`valsplit`/`voorlabels`/`rapport` en `train.snelheid` (rooktest `zwaar` op MPS) zijn getest; de opdrachtregels van `generator logos/tegels` en `echt dataset` draaiden alleen in een rooktest op verzonnen beelden in een tijdelijke map, `echt voorlabels` niet (geen klantartwork naar OpenRouter in de build).

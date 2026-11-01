@@ -1,35 +1,32 @@
 {
  "decision": "PASS",
- "rationale": "P0 coverage 100% (34/34), P1 100% (10/10), overall 96% (45/47); all tests pass (543/543 dev in three full runs, 4/4 zwaar-or-lokaal) and the real-environment licence check is clean (93 packages, 0 violations). Run 4 adds round 3 (request size: JPEG q90, <=16 tiles and 20,000,000 image bytes per request; prefill limit $65 per Friso's decision with a decision reference required for any other limit; fill-in page readiness sign) with 10 criteria from spec-spike-getrainde-detector-ronde3.md, all FULL. The flaky browser test was shown to be a test fault and is fixed (20/20 isolated). Only P2 items CAP-6a and AC-2 remain partial (no assertion that training ran on mps).",
+ "rationale": "P0 coverage 100% (41/41), P1 100% (11/11), overall 96% (53/55); all tests pass (569/569 dev in two full runs after the review patches, 4/4 zwaar-or-lokaal) and the real-environment licence check is clean (93 packages, 0 violations). Run 5 adds round 4 (owner decisions Friso 01-11-2026: top-up before confirmation with existing candidates excluded, per-mark maxima, print-layer preference, own never-overwritten list and per-mark report; certificate text merged atomically; voorlabels limit $50 by default) with 8 criteria from spec-spike-getrainde-detector-ronde4.md, all FULL. Only P2 partial (CAP-6a, AC-2: MPS not asserted).",
  "decision_date": "2026-11-01",
- "run": 4,
+ "run": 5,
  "subject": "spike-getrainde-detector",
- "head": "89887f2 + uncommitted round 3 (spec update, ATDD tests, build, trace)",
+ "head": "039b14f + uncommitted round 4 (spec update, ATDD tests, build, trace)",
  "branch": "spike/proef-getrainde-detector",
  "specs": [
   "_bmad-output/implementation-artifacts/spec-spike-getrainde-detector-besluiten.md",
   "_bmad-output/implementation-artifacts/spec-spike-getrainde-detector-ronde3.md",
+  "_bmad-output/implementation-artifacts/spec-spike-getrainde-detector-ronde4.md",
   "_bmad-output/implementation-artifacts/spec-spike-getrainde-detector.md"
  ],
  "contract": "_bmad-output/planning-artifacts/spike-getrainde-detector/SPEC.md",
  "atdd_checklist": "_bmad-output/test-artifacts/atdd-checklist-spike-getrainde-detector.md",
- "phase1_matrix": "/tmp/tea-trace-coverage-matrix-2026-11-01T17-07-48.json",
+ "phase1_matrix": "/tmp/tea-trace-coverage-matrix-2026-11-01T18-40-00.json",
  "tests": [
   {
    "command": "cd _bmad-output/planning-artifacts/spike-getrainde-detector && uv run --group dev pytest -q -p no:cacheprovider",
-   "result": "543 passed, 0 failed, 0 skipped"
+   "result": "569 passed, 0 failed, 0 skipped"
   },
   {
    "command": "cd _bmad-output/planning-artifacts/spike-getrainde-detector && uv run --group dev --group detector pytest -q -p no:cacheprovider -m \"zwaar or lokaal\"",
-   "result": "4 passed, 0 failed, 539 deselected"
+   "result": "4 passed, 0 failed, 565 deselected"
   },
   {
    "command": "cd _bmad-output/planning-artifacts/spike-getrainde-detector && uv run --group dev --group detector python licenties.py",
-   "result": "exit 0, 93 packages, 0 violations, 8 'ruim'"
-  },
-  {
-   "command": "20x tests/test_review_20261101.py::test_pagina_b_zonder_alle_keuzes_slaat_niets_op_en_blijft_staan",
-   "result": "20/20 passed"
+   "result": "exit 0, 93 packages, 0 violations, 8 under ruim"
   }
  ],
  "failed_tests": [],
@@ -41,15 +38,15 @@
   "ledger": "_bmad-output/implementation-artifacts/deferred-work.md (resolution line)"
  },
  "gate_criteria": {
-  "p0_coverage_actual": "100% (34/34)",
+  "p0_coverage_actual": "100% (41/41)",
   "p0_status": "MET",
-  "p0_test_pass_rate_actual": "100% (283/283)",
+  "p0_test_pass_rate_actual": "100% (305/305)",
   "p0_test_pass_status": "MET",
-  "p1_coverage_actual": "100% (10/10)",
+  "p1_coverage_actual": "100% (11/11)",
   "p1_status": "MET",
-  "overall_coverage_actual": "96% (45/47)",
+  "overall_coverage_actual": "96% (53/55)",
   "overall_status": "MET",
-  "overall_test_pass_rate": "100% (543/543)"
+  "overall_test_pass_rate": "100% (569/569)"
  },
  "coverage": {
   "FULL": [
@@ -97,7 +94,15 @@
    "R3-IO-4",
    "R3-IO-5",
    "R3-IO-6",
-   "R3-IO-7"
+   "R3-IO-7",
+   "R4-AC-1",
+   "R4-AC-2",
+   "R4-IO-1",
+   "R4-IO-2",
+   "R4-IO-3",
+   "R4-IO-4",
+   "R4-IO-5",
+   "R4-IO-6"
   ],
   "PARTIAL": [
    "CAP-6a",
@@ -113,7 +118,8 @@
   "CAP-6 split into CAP-6a (training/MPS/smoke test, P2) and CAP-6b (size N, other size only with a recorded decision, P1 per ATDD round 2)",
   "build-spec-2 rows take the priority of the CAP they rest on; B-AC-2 is P0 because it includes the lokaal tests of CAP-1 and CAP-13",
   "outputs updated in place instead of the default traceability-report.md",
-  "run 4: build-spec-3 rows R3-IO-1..7 and R3-AC-1/2 are P0 (money path, what is sent, typed input never lost); R3-AC-3 (only allowed paths changed) P1, verified by command"
+  "run 4: build-spec-3 rows R3-IO-1..7 and R3-AC-1/2 are P0 (money path, what is sent, typed input never lost); R3-AC-3 (only allowed paths changed) P1, verified by command",
+  "run 5: build-spec-4 rows R4-IO-1..6 and R4-AC-1 are P0 (which labels Friso confirms, data loss, money path), R4-AC-2 P1; the voorlabels half of R3-IO-4 is superseded by R4-IO-6 per Friso's decision; two round-3 tests superseded and replaced by round-4 tests"
  ],
  "uncovered_requirements": [],
  "risk": {
@@ -133,9 +139,11 @@
   "DRAAIPLAN 'ongetest:' steps 1-4, 6-13, 15: CLI and network steps not automated by design",
   "manual removal of near-duplicate training images from manifest.json after step 7",
   "build spec 1 still 'in-review' (rejected finding 9 in build-spec-2 triage)",
-  "test extension for B-IO-1 and this trace are not committed yet"
+  "manifest.json not written atomically (pre-existing; deferred-work.md, build review round 4 B5b)",
+  "network steps of the top-up (ssh, rsync against production, read-only) not automated; building blocks tested (CAP-15)",
+  "round 4 and this trace are not committed yet"
  ],
- "next": "Commit round 3 (spec update, ATDD tests, build, build spec, deferred-work line) together with this trace. Optional (P2): assert apparaat == 'mps' in the two zwaar tests of CAP-6.",
+ "next": "Commit round 4 (spec update, ATDD tests, build, build spec, deferred-work line) together with this trace. Optional (P2): assert apparaat == 'mps' in the two zwaar tests of CAP-6.",
  "history": [
   {
    "run": 1,
@@ -177,10 +185,21 @@
     "dev: 494 passed",
     "zwaar or lokaal: 4 passed"
    ]
+  },
+  {
+   "run": 4,
+   "decision_date": "2026-11-01",
+   "head": "89887f2 + uncommitted round 3 (spec update, ATDD tests, build, trace)",
+   "decision": "PASS",
+   "rationale": "P0 coverage 100% (34/34), P1 100% (10/10), overall 96% (45/47); all tests pass (543/543 dev in three full runs, 4/4 zwaar-or-lokaal) and the real-environment licence check is clean (93 packages, 0 violations). Run 4 adds round 3 (request size: JPEG q90, <=16 tiles and 20,000,000 image bytes per request; prefill limit $65 per Friso's decision with a decision reference required for any other limit; fill-in page readiness sign) with 10 criteria from spec-spike-getrainde-detector-ronde3.md, all FULL. The flaky browser test was shown to be a test fault and is fixed (20/20 isolated). Only P2 items CAP-6a and AC-2 remain partial (no assertion that training ran on mps)."
   }
  ],
  "atdd_red_run_round3": {
   "command": "cd _bmad-output/planning-artifacts/spike-getrainde-detector && uv run --group dev pytest -q -p no:cacheprovider",
   "result": "44 failed, 494 passed"
+ },
+ "atdd_red_run_round4": {
+  "command": "cd _bmad-output/planning-artifacts/spike-getrainde-detector && uv run --group dev pytest -q -p no:cacheprovider",
+  "result": "17 failed, 543 passed"
  }
 }

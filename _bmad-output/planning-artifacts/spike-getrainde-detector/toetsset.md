@@ -2,7 +2,7 @@
 titel: Toetsset, scheiding training/toets en beelden
 hoort-bij: SPEC.md (CAP-1, CAP-2, CAP-3, CAP-15)
 datum: 2026-10-31
-bijgewerkt: 2026-11-01 (ronde 3: verzoekgrootte voorinvulling, klaar-teken invulpagina)
+bijgewerkt: 2026-11-01 (ronde 3: verzoekgrootte voorinvulling, klaar-teken invulpagina; ronde 4: aanvulling vóór bevestiging, besluiten Friso)
 gemeten-op: declaraties-prod-basiseenheden-20261008.tsv, alcohol-kandidaten.tsv, referentiemomentopname 2026-10-30, voorlopige-selectie.json
 ---
 
@@ -71,6 +71,7 @@ Eigen gereedschap in de proefmap (niet de ongetrackte scripts in de hoofdmap), m
 - **Docs met print-laag:** lagen samenvoegen volgens de regels van `~/logo-meetset-20261018/bouw.py` (lagen boven 4096 px of 20 MB verkleinen, onder elkaar op wit, boven 250 MP weigeren, PNG boven 10 MB verkleinen). Zelfde bytes als de pijplijn.
 - **Docs zonder print-laag:** het origineel ophalen; PNG/JPG/TIFF als beeld, PDF via `pdftoppm` (poppler) op 150 dpi, pagina's onder elkaar zoals hierboven. Gemarkeerd `bron: origineel`.
 - Elk beeld naar RGB (alfa plat op wit, CMYK omgezet) en met sha256 in het manifest. Dat gebouwde beeld is de **werkschaal**: herkenning en training schalen niet verder.
+- **Aanvulling:** ophalen en bouwen van extra kandidaten overschrijft geen eerdere uitkomst. Manifest en certificaattekst (route A) worden aangevuld: vermeldingen van andere docs blijven staan, een opnieuw gebouwd of gelezen doc krijgt de nieuwe uitkomst. De tussenbestanden van elke aanvulling (ophaallijst, originelen, paden) staan in een eigen map, zodat die van eerdere rondes blijven.
 
 ## 4. Kandidaten voor de toets (CAP-2)
 
@@ -82,7 +83,21 @@ Uit toetsleveranciers, ontdubbeld op GTIN en daarna op beeld (zelfde sha256 of d
 
 Verwachte omvang: ±350 etiketten. Bij ±20 seconden per etiket kost bevestigen Friso ±2 uur (INFERENCE).
 
+**Aanvullen.** Zelfde regels als hierboven, met:
+- alleen GTIN's die nog geen kandidaat waren (niet in `kandidaten.json` en niet in een eerdere aanvullingslijst); ze komen in de vaste volgorde en alleen de nieuwe tellen voor het maximum;
+- één of meer keurmerken per aanvulling, per keurmerk een eigen maximum of alles wat aan de toetskant overblijft (ook boven 40); een GTIN die bij twee keurmerken hoort, wordt één keer gekozen;
+- geen gelijkende kandidaten;
+- desgewenst eerst de GTIN's met print-laag (`invoer/pool-met-converted-laag-20261008.txt`), daarna de rest, elk deel in de vaste volgorde;
+- elke aanvulling schrijft een eigen lijst en overschrijft nooit een bestaande; per gekozen keurmerk meldt ze het aantal toegevoegde kandidaten en het aantal ongekozen toets-GTIN's dat overblijft;
+- ontdubbelen tegen de bestaande toets-docs (GTIN, sha256, dHash ≤ 6); de voorinvulling draait daarna over alle toets-docs, zodat de invulpagina alle etiketten toont, en betaalt alleen de nieuwe.
+
 **Volgorde (vast, ook in het draaiplan):** scheiding → kandidaten → voorinvulling → stoppunt 2 → bevestiging door Friso → aanvullen waar een keurmerk na bevestiging onder het doel blijft (zelfde regels, volgende kandidaten in de vaste volgorde) → dHash-controle op de definitieve toetsset → scheiding bevriezen → snelheidsmeting → training.
+
+**Aanvulling vóór de bevestiging (besluiten Friso 01-11-2026).** Eenmalig en in afwijking van de volgorde hierboven: na de voorinvulling stond zwangerschap op 14 waarschijnlijke etiketten (stoppunt 2), MSC op 18, Vegan Society op 17 en Weidemelk op 23. Friso besliste om vóór zijn bevestiging aan te vullen:
+1. **Zwangerschap:** meer alcoholproducten van toetsleveranciers: eerst alle ongekozen met print-laag, daarna de rest in de vaste volgorde, samen hoogstens 60 kandidaten. Doel ±40–60 extra gebouwde etiketten na ontdubbelen, zodat het keurmerk na de voorinvulling ruim ≥ 16 waarschijnlijk haalt; het aantal wordt gemeld, niet afgedwongen (zonder print-laag bouwt vrijwel geen alcoholproduct). De scheiding op leverancier blijft streng.
+2. **MSC, Vegan Society, Weidemelk:** elk toetsproduct dat nog geen kandidaat was, ook boven 40, voor marge boven 16 na bevestiging; per keurmerk wordt gemeld hoeveel erbij kwamen en hoeveel er overbleven. Bij het besluit had Weidemelk nog 58 ongekozen toets-GTIN's (57 met print-laag); bij MSC en Vegan Society was elke toets-GTIN al kandidaat (onder welk keurmerk ook).
+
+Alle extra voorinvullingen vallen onder de post voorinvulling toets en haar grens van $65 ([randvoorwaarden.md §3](randvoorwaarden.md#3-kosten-cap-14)). Staat een keurmerk na deze aanvulling onder 16 waarschijnlijke etiketten, dan is dat opnieuw stoppunt 2; meer aanvullen dan dit besluit toestaat, vraagt een nieuw besluit van Friso. De aanvulling na de bevestiging blijft daarnaast bestaan.
 
 ## 5. AI-voorinvulling (CAP-2)
 

@@ -393,16 +393,6 @@ def test_r3_echt_main_stuurt_overzicht_en_tegels_als_jpeg(tmp_path, monkeypatch)
     assert all(json.loads(uit.read_text())[e["doc_id"]] == {"vakjes": []} for e in items)
 
 
-def test_r3_echt_projectie_per_aanroep_tegen_standaardgrens_15(tmp_path, monkeypatch):
-    for boek, verwacht in ((14.92, "gestart"), (14.93, "geweigerd")):  # 3 etiketten × 2 aanroepen × 0,012 = 0,072
-        argv, uit, _ = echt_r3(tmp_path / str(boek), 3, groot=True, boek=boek)
-        client = vervang(monkeypatch, Opname({"vakjes": []}, model=FLASH, stop=Gestart()))
-        assert start(lambda: mod("echt").main(argv)) == verwacht, boek  # per etiket (0,036) zou 14,93 laten starten
-        if verwacht == "gestart":
-            assert client.kw["bewaker"].grens == pytest.approx(15.0)  # 1,5 × --raming 10
-    assert not client.zdr and not client.calls and not uit.exists()
-
-
 @pytest.mark.parametrize("extra", [["--grens", "30"], ["--grens", "30", "--besluit", " "]], ids=["zonder", "leeg"])
 def test_r3_echt_grens_zonder_besluit_weigert_voor_elke_aanroep(tmp_path, monkeypatch, capsys, extra):
     argv, uit, _ = echt_r3(tmp_path, 2)
@@ -469,15 +459,6 @@ def test_r3_draaiplan_stap_3_grens_65_met_besluit_en_kosten_0_12():
 def test_r3_draaiplan_stap_6_kosten_0_12_per_extra_etiket():
     kosten = regel(stap(6), "Kosten:")
     assert "$0,12 per extra etiket" in kosten and "$0,06" not in kosten
-
-
-def test_r3_draaiplan_stap_9_voorlabels_pas_na_besluit_over_hun_grens():
-    s9 = stap(9)
-    cmds = [r for r in s9.splitlines() if "echt.py voorlabels" in r]
-    assert cmds and all("--grens" in r and BESLUIT.search(r) for r in cmds)
-    assert re.search(r"stoppunt\s*5", s9, re.I)
-    tekst = [r for r in s9.splitlines() if "echt.py" not in r]
-    assert any(all(w in r for w in ("voorlabels", "Friso", "grens")) and "besl" in r for r in tekst)
 
 
 def test_r3_draaiplan_kostennotitie_noemt_de_grens_per_post():

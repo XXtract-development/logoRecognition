@@ -17,6 +17,7 @@ inputDocuments:
   - git show c86a067 (ronde 2: besluiten Friso 01-11-2026)
   - git diff 89887f2 -- _bmad-output/planning-artifacts/spike-getrainde-detector/ (ronde 3: spec-update na bmad-review, 24 bevindingen)
   - _bmad/tea/testarch/knowledge/{timing-debugging,selector-resilience}.md (ronde 3, browser)
+  - git diff 039b14f -- _bmad-output/planning-artifacts/spike-getrainde-detector/ (ronde 4: spec-update na bmad-review, 15 bevindingen)
 ---
 
 # ATDD-checklist: proef getrainde detector
@@ -383,3 +384,95 @@ cd _bmad-output/planning-artifacts/spike-getrainde-detector && uv run --group de
 ### Na de bouw (bmad-build, reviewpatches)
 
 Op verzoek van de codereview (geen testfout) kwamen er 5 tests bij, alle groen: `test_r3_toets_grens_niet_eindig_of_negatief_weigert_voor_elke_aanroep` (inf, nan, −1), `test_r3_toets_main_laat_beeldtype_weg_bij_overgenomen_etiket`, en `test_p0_laadfout_blijft_inert_en_meldt_het[stand-null]`; de twee `--besluit`-tests toetsen nu ook de vastgelegde grens en het besluit. Suite: 543 passed, 0 failed (2× na elkaar). Buildspec: `_bmad-output/implementation-artifacts/spec-spike-getrainde-detector-ronde3.md`.
+
+
+## Ronde 4 (aanvulling vóór bevestiging, grens voorlabels $50; besluiten Friso 01-11-2026)
+
+Bron: de niet-gecommitte spec-update op HEAD `039b14f` (`bmad-spec`, daarna `bmad-review` met 15 bevindingen, alle doorgevoerd): SPEC CAP-2, CAP-14, CAP-15, stoppunt 2 en 5; randvoorwaarden §3; toetsset §3–§4; de memlog-regels van ronde 4. De rest van deze checklist blijft bindend.
+
+### Stap 1 — preflight en context
+
+- **Werkwijze:** `bmad-testarch-atdd`, Create-modus, headless (geen mens; keuzes hieronder vastgelegd).
+- **Stack:** `backend` (Python 3.12, pytest via `uv`); deze ronde raakt de invulpagina niet (geen browsertests). Uitgangstoestand: 543 passed, 0 failed (`uv run --group dev pytest -q -p no:cacheprovider`, HEAD `039b14f`).
+- **Gelezen:** SPEC.md, randvoorwaarden §3, toetsset §3–§4, trainingsset §4, de memlog (ronde 4), `toets.py` (`kandidaten`, `_om_de_beurt`, `_toets_rijen`, `main`), `beelden.py` (`main`: ophaallijst, origineel-paden, bouwen, bouwen-origineel, pdftekst), `echt.py` (`main voorlabels`), `kosten.py`, DRAAIPLAN stap 2, 4, 6, 9; tests `test_cap02_kandidaten.py`, `test_review_20261101.py` (`toets_pm`, `echt_pm`, `NepClient`, `mod`, `schrijf`, `png`), `test_ronde3_20261101.py` (`Opname`, `vervang`, `start`, `Gestart`, `echt_r3`, `uitkomst`), `test_cap10_draaiplan.py`, `test_besluiten_20261101.py` (`stap`, `draaiplan`). Kennis: kern (`test-quality`, `data-factories`, `test-healing-patterns`, `component-tdd`) en backend (`test-levels-framework`, `test-priorities-matrix`, `ci-burn-in`).
+- **Gemeten als invoer (alleen aantallen):** ongekozen toets-GTIN's zwangerschap 833 (45 met print-laag), Weidemelk 58 (57), MSC 0, Vegan Society 0; eerste ronde: print-laagkandidaten bouwden allemaal, zwangerschap zonder print-laag 1 van 39.
+
+### Stap 2 — generatiemodus
+
+AI-generatie (backend; geen opname).
+
+### Stap 3 — teststrategie
+
+| criterium | niveau | prio |
+|---|---|---|
+| CAP-2 aanvulling: bestaande kandidaten tellen niet mee en komen niet terug, print-laag eerst, eigen maximum per keurmerk, "alles", GTIN bij twee keurmerken één keer | unit (`kandidaten`) | P0 (bepaalt welke etiketten Friso bevestigt; besluiten 1 en 2) |
+| CAP-2 aanvulling op de opdrachtregel: meerdere keurmerken, geen gelijkende, eigen lijst die niets overschrijft, meerdere bestaande lijsten, melding per keurmerk, onbekende code | opdrachtregel (`toets.main`, `_toets_rijen` nagebootst) | P0 (gegevensverlies, besluit 2 vraagt de melding) |
+| CAP-15 certificaattekst aanvullen | opdrachtregel (`beelden.main` met nagebootste uitvoerder) | P0 (gegevensverlies route A) |
+| CAP-14 voorlabels standaard $50 | opdrachtregel (`echt.main`, grootboek) | P0 (geldpad, besluit 3) |
+| CAP-2 voorinvulling na aanvulling: alle toets-docs op de pagina, alleen nieuwe betaald | opdrachtregel (`toets.main`) | P1 (regressiebewaking; bestaand gedrag) |
+| CAP-10 draaiplan stap 4/6/9 en kostennotitie | documenttest | P2 |
+
+Uitvoeringsmodus: `tea_execution_mode = auto`, subagents beschikbaar → **subagent**: alleen worker A (unit/opdrachtregel/document). Worker B (browser) wordt niet gestart: geen criterium raakt de invulpagina. Afwijking van de stapbestanden zoals in rondes 2–3: geen `test.skip()` (Playwright/JS-patroon); de tests draaien echt rood, want de keten vraagt een rode run met aantallen.
+
+### Interfacecontract ronde 4 (bindend voor tests én bouw)
+
+**`toets.kandidaten(rijen_toets, gelijkend, max_per=40, max_gelijkend=10, seed="20261031", bestaand=(), maxima=None, voorkeur=None)`**
+- `bestaand`: GTIN's die al kandidaat zijn. Ze worden nooit gekozen en tellen voor geen maximum; de uitkomst is de volledige vaste volgorde met die GTIN's eruit (dus de "volgende" kandidaten).
+- `maxima`: `{sleutel: aantal of None}` met sleutel een code uit K7 of `"NUTRISCORE"`; `None` = alles wat overblijft; ontbrekende sleutel = `max_per`.
+- `voorkeur`: verzameling paren `(gln, gtin)`. Per keurmerk eerst de paren uit `voorkeur` (om de beurt per leverancier, binnen een leverancier op `sha256(seed + GTIN)`), daarna de rest in dezelfde vaste volgorde; het maximum geldt over beide delen samen.
+- Zonder de nieuwe argumenten precies het bestaande gedrag (bestaande tests blijven groen).
+
+**`toets.py kandidaten` (opdrachtregel)**
+- `--alleen CODE` en `--alle CODE` zijn herhaalbaar; CODE ∈ K7 ∪ {`NUTRISCORE`}, anders exitcode 2 en niets geschreven. `--alle` = alles wat overblijft voor die code (ook boven 40), `--alleen` = hoogstens `--max-per` nieuwe.
+- `--bestaand <json>` is herhaalbaar; `--alleen` of `--alle` zonder `--bestaand` → exitcode 2 en niets geschreven (bestaand gedrag). Alle GTIN's uit alle bestaande lijsten gaan als `bestaand` mee.
+- Een aanvulling (`--alleen`/`--alle`) gebruikt alleen de gekozen rijen en geen gelijkende kandidaten.
+- `--print-laag-eerst`: `voorkeur` = de paren `(gln, gtin)` uit `<PM>/invoer/pool-met-converted-laag-20261008.txt` (één `doc_id` GLN-GTIN-doelmarkt per regel).
+- `--naam <naam>` (standaard `kandidaten-aanvulling` bij `--bestaand`, anders `kandidaten`) → `<toets>/<naam>.json` en `<naam>-paren.tsv`. Bestaat `<naam>.json` al bij een aanvulling, dan exitcode ≠ 0 en worden beide bestanden niet aangeraakt.
+- Stdout: één JSON-object `{"kandidaten": <aantal>, "bestand": "<pad van <naam>.json>", "per_keurmerk": {sleutel: {"toegevoegd": n, "over": m}}}`. Sleutels: bij een aanvulling de gekozen codes, anders alle 8 (K7 en `NUTRISCORE`). `toegevoegd` = kandidaten met `reden` gelijk aan de code (Nutri-Score: `reden` begint met `NUTRISCORE_`); `over` = unieke toets-GTIN's van dat keurmerk die niet in `bestaand` staan en in deze run niet gekozen zijn.
+
+**`beelden.py pdftekst`** — bestaat `--uit` al, dan wordt het aangevuld: vermeldingen van docs buiten de lijst blijven ongewijzigd, docs uit de lijst krijgen de nieuwe uitkomst (tekst of `null`).
+
+**`echt.py voorlabels`** — moduleconstante `GRENS_VOORLABELS = 50.0`; zonder `--grens` is de grens $50 (besluit Friso 01-11-2026), niet meer 1,5 × `--raming`; `--grens`/`--besluit` en de startcontrole (`grootboek + Σ_open max(1, ceil(tegels/16)) × 0.012 > grens` → `BudgetOverschreden` vóór de zdr-proef) ongewijzigd; stdout noemt de gebruikte grens.
+
+**`DRAAIPLAN.md`** (documenttest)
+- Stap 6: het `toets.py kandidaten`-commando bevat `--bestaand` en `--naam`; de ophaal- en bouwregels staan uitgeschreven: elke `beelden.py ophaallijst`/`origineel-paden`-regel schrijft naar een eigen map onder `$T` (niet `--uit $T` zelf), `bouwen`/`bouwen-origineel` naar `$T/gecombineerd`, `pdftekst` naar `$T/certificaten.json`; de stap noemt de eenmalige aanvulling vóór de bevestiging met "besluit Friso 01-11-2026" en een commando met `--print-laag-eerst` en `--alle`.
+- Stap 4: noemt de aanvulling vóór de bevestiging als volgende handeling na stoppunt 2 voor deze ronde, met verwijzing naar het besluit.
+- Stap 9: het `echt.py voorlabels`-commando bevat geen `--grens` en geen `$GRENS_VOORLABELS`; de stap noemt `$50` en "besluit Friso 01-11-2026"; geen "$15" en geen `GRENS_VOORLABELS`.
+- Kostennotitie bovenaan: noemt `$50` naast `$65`.
+- Vijftien stappen blijven (bestaande test).
+
+### Stap 4 — falende tests (worker A als subagent)
+
+| criterium | tests (`R4:` = `tests/test_ronde4_20261101.py`) | aantal | prio |
+|---|---|---:|---|
+| CAP-2 `kandidaten` aanvulling | R4: `test_r4_bestaande_kandidaten_komen_niet_terug_en_tellen_niet_mee`, `…_print_laag_eerst_daarna_de_rest_maximum_over_beide_delen`, `…_eigen_maximum_per_keurmerk_none_is_alles_ook_boven_40`, `…_gtin_bij_twee_keurmerken_een_keer_gekozen` | 4 | P0 |
+| CAP-2 opdrachtregel aanvulling | R4: `test_r4_cli_aanvulling_meerdere_keurmerken_print_laag_eerst_en_melding`, `…_overschrijft_nooit_een_bestaande_lijst` (eigen naam, standaard), `…_meerdere_bestaande_lijsten_geen_enkele_gtin_komt_terug`, `…_onbekende_code_of_alle_zonder_bestaand_exit_2_niets_geschreven` (3), `…_nutriscore_is_een_geldige_code_en_telt_per_letter` | 8 | P0 |
+| CAP-15 certificaattekst aanvullen | R4: `test_r4_pdftekst_vult_bestaande_certificaten_aan` | 1 | P0 |
+| CAP-14 voorlabels $50 | R4: `test_r4_echt_voorlabels_standaardgrens_50_projectie_per_aanroep` (49,92 start, 49,93 geweigerd; grens 50; stdout) | 1 | P0 |
+| CAP-2 voorinvulling na aanvulling | R4: `test_r4_voorinvulling_na_aanvulling_alleen_nieuwe_docs_betaald` (regressiebewaking, vooraf groen) | 1 | P1 |
+| CAP-10 draaiplan | R4: `test_r4_draaiplan_stap_6_aanvulling_met_eigen_naam_en_eigen_mappen`, `…_stap_4_noemt_de_aanvulling_voor_de_bevestiging`, `…_stap_9_voorlabels_standaardgrens_50_zonder_grens_optie`, `…_kostennotitie_noemt_50_naast_65` | 4 | P2 |
+
+**Bestaande tests aangepast aan het nieuwe contract (besluit Friso 01-11-2026, review #6):** in `tests/test_ronde3_20261101.py` vervallen `test_r3_echt_projectie_per_aanroep_tegen_standaardgrens_15` (vervangen door de $50-test) en `test_r3_draaiplan_stap_9_voorlabels_pas_na_besluit_over_hun_grens` (vervangen door de stap-9-test van ronde 4). Verder geen bestaande test gewijzigd; `test_ronde3_20261101.py` daarna 38 passed.
+
+**Aggregatie (step-04c):** worker A `success`; elke rode test faalt op ontbrekend gedrag (geen import- of fixturefout). Vooraf groen en bewust gehouden: de regressietest van de voorinvulling (bestaand gedrag) en het geval `alle-zonder-bestaand` (argparse leest `--alle` nu als afkorting van `--alleen` en weigert al zonder `--bestaand`; de bouw moet `--alle` als eigen optie toevoegen, de test blijft als bewaking). Interpretaties van worker A, vastgelegd zonder het contract te wijzigen: "de rest na het print-laagdeel" is getoetst met gegevens waarbij "om de beurt over de rest" en "volledige vaste volgorde min de voorkeur" hetzelfde geven; "bestaand" letterlijk = de volledige vaste volgorde met de bestaande GTIN's eruit (niet opnieuw om de beurt over wat overblijft); de volgorde over keurmerken volgt de bestaande verwerking (EU, Groene Punt, Recyclebaar, Nutri-Score, zwangerschap, MSC, Weidemelk, Vegan Society); bij een GTIN van twee keurmerken wordt alleen "één keer gekozen" getoetst; elk `toets.py kandidaten`-commando in stap 6 bevat `--bestaand` en `--naam`.
+
+### Rode run (01-11-2026)
+
+```
+cd _bmad-output/planning-artifacts/spike-getrainde-detector && uv run --group dev pytest -q -p no:cacheprovider
+17 failed, 543 passed, 18 warnings in 95.51s
+```
+
+560 tests (543 − 2 vervallen + 19 nieuw). Rood alleen in `test_ronde4_20261101.py` (17 van 19); elke bestaande test groen. Redenen: `kandidaten()` kent `bestaand`/`maxima`/`voorkeur` niet (TypeError), de opdrachtregel kent `--naam`/`--print-laag-eerst`/`--alle` niet, houdt alleen het laatste `--bestaand`, overschrijft een bestaande aanvullingslijst, neemt een onbekende code aan en print geen JSON-melding; `pdftekst` overschrijft `certificaten.json`; de voorlabels rekenen met de standaardgrens $15; DRAAIPLAN heeft de oude tekst.
+
+### Stap 5 — validatie en volgende stap
+
+- Voorwaarden: spec-update gereviewd (`bmad-review`, 15 bevindingen doorgevoerd); framework aanwezig. Elke gewijzigde regel van ronde 4 (CAP-2 aanvulling, CAP-14 $50, CAP-15 certificaten, toetsset §3–§4, randvoorwaarden §3, DRAAIPLAN stap 4/6/9 en kostennotitie) heeft minstens één test; geen placeholders; geen `test.skip()`; geen wachttijden; alleen verzonnen ids; alles in `tmp_path`; `~/logo-meetset-20261018/` niet gelezen door de tests; geen browsers gestart.
+- Niet van toepassing uit `checklist.md`: `playwright.config.ts`, mappen `tests/e2e|api|component`, CLI-sessies (geen browser in deze ronde).
+- Niet gedekt (bewust): de netwerkstappen van de aanvulling (ssh, rsync) zelf; die zijn al met een nagebootste uitvoerder getoetst (CAP-15) en draaien na de keten tegen productie (alleen lezen).
+- **Volgende stap:** `bmad-build` op dit interfacecontract; groen maken zonder tests te wijzigen, behalve bij een aantoonbare testfout (met reden in het buildverslag).
+
+
+### Na de bouw (bmad-build ronde 4, reviewpatches)
+
+Op verzoek van de codereview (geen testfout) kwamen er 9 testgevallen bij, alle groen: `test_r4_bouwen_en_bouwen_origineel_vullen_het_manifest_aan` (CAP-15: het manifest wordt aangevuld), `test_r4_cli_gewone_run_naar_toets_en_kant_train_naar_train` (doelbestand van de gewone run en de trainingskant), `test_r4_cli_weigert_zonder_iets_te_schrijven` (7 gevallen: lijst of parenbestand bestaat al met `--naam`, `--naam` met een map of `..`, `--bestaand` zonder `--alleen`/`--alle`, dezelfde code bij `--alleen` en `--alle`); de stap-6-test eist nu `--uit $T/$N`. Aanvullingen op het contract (bindend): een aanvulling vraagt `--alleen` of `--alle`; `--naam` is een bestandsnaam zonder map; elke run met `--naam` of `--bestaand` weigert als `<naam>.json` of `<naam>-paren.tsv` bestaat; dezelfde code bij `--alleen` en `--alle` weigert; `certificaten.json` wordt atomisch geschreven; `echt.py voorlabels` heeft geen `--raming` meer. Verduidelijking (review E9): bij Nutri-Score geldt de print-laagvoorkeur binnen elke letter; de groepsregel "gelijk verdeeld over A, B en C" gaat voor. Suite: 569 passed, 0 failed. Buildspec: `_bmad-output/implementation-artifacts/spec-spike-getrainde-detector-ronde4.md`.

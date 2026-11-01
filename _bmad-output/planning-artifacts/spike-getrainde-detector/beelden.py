@@ -11,6 +11,7 @@ geïmporteerd). Elke schrijver in de proef gaat via `veilig_doel`: nooit iets bi
                     (docs zonder gebouwde print-laag: ls in de bekende docmap) [--alleen-pdf: PDF-origineel van elk doc]
   python beelden.py bouwen-origineel --originelen <map>/originelen.tsv --bron <map>/bron-raw --uit <map>/gecombineerd
   python beelden.py pdftekst --originelen <map>/originelen.tsv --bron <map>/bron-raw --uit <map>/certificaten.json
+                    (vult een bestaand certificaten.json aan: andere docs blijven, docs uit de lijst krijgen de nieuwe uitkomst)
 """
 import argparse
 import csv
@@ -18,6 +19,7 @@ import hashlib
 import io
 import json
 import math
+import os
 import re
 import shlex
 import subprocess
@@ -282,15 +284,19 @@ def main(argv=None, run=uitvoerder):
         with open(args.originelen) as f:
             originelen = [(r["doc_id"], Path(args.bron) / r["location"]) for r in csv.DictReader(f, delimiter="\t")]
         if args.stap == "pdftekst":  # route A: alleen PDF-originelen; mislukt pdftotext → null (n.v.t.)
-            tekst = {}
+            nieuw = {}
             for doc, pad in originelen:
                 if pad.suffix.lower() == ".pdf":
                     try:
-                        tekst[doc] = run(["pdftotext", "-layout", str(pad), "-"]).decode(errors="replace")
+                        nieuw[doc] = run(["pdftotext", "-layout", str(pad), "-"]).decode(errors="replace")
                     except (OSError, subprocess.CalledProcessError):
-                        tekst[doc] = None
-            uit.write_text(json.dumps(tekst, ensure_ascii=False))
-            print(sum(v is not None for v in tekst.values()), "PDF-teksten van", len(tekst))
+                        nieuw[doc] = None
+            tekst = json.loads(uit.read_text()) if uit.exists() else {}  # aanvullen: andere docs blijven (toetsset §3)
+            tmp = uit.with_suffix(".tmp")  # atomisch: een onderbreking laat eerdere rondes heel (zoals kosten.Bewaker.boek)
+            tmp.write_text(json.dumps({**tekst, **nieuw}, ensure_ascii=False))
+            os.replace(tmp, uit)
+            print(sum(v is not None for v in nieuw.values()), "PDF-teksten van", len(nieuw), "→", len({**tekst, **nieuw}),
+                  "docs in", uit)
             return 0
         uit.mkdir(parents=True, exist_ok=True)
         mp = uit / "manifest.json"

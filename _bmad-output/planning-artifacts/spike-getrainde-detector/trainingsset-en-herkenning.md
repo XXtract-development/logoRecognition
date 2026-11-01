@@ -2,7 +2,7 @@
 titel: Trainingsset, detector, herkenning, beoordelaar en vergelijking
 hoort-bij: SPEC.md (CAP-4 t/m CAP-8, CAP-12)
 datum: 2026-10-31
-bijgewerkt: 2026-11-01 (besluit Friso: maat N; ronde 3: verzoekgrootte voorlabels)
+bijgewerkt: 2026-11-01 (besluit Friso: maat N; ronde 3: verzoekgrootte voorlabels; ronde 4: grens voorlabels $50)
 ---
 
 # Trainingsset, detector, herkenning, beoordelaar en vergelijking
@@ -50,7 +50,7 @@ Ontbreekt een verplicht referentieplaatje bij het bevriezen, dan is dat stoppunt
 ## 4. Echte trainingsvoorbeelden (CAP-5)
 
 - **Bron:** gedeclareerde GTIN's van trainingsleveranciers, tot **80 per keurmerk** (zwangerschap: alcoholproducten), plus de docs van trainingsleveranciers uit de fase-B-meetset (die hebben al AI-vakjes). Beelden zoals in [toetsset.md §3](toetsset.md#3-beelden-ophalen-en-bouwen-cap-15).
-- **Voorlabels:** een taalmodel tekent AI-vakjes, op dezelfde manier als variant K1 uit fase B (heel etiket + tegels, antwoordschema met de 10 klassen, gelijkende keurmerken en "ander"); standaard `google/gemini-3.8-flash`, via de gedeelde client, met verzoeken volgens [randvoorwaarden.md §5](randvoorwaarden.md#5-verzoekgrootte); kosten en grens volgens [randvoorwaarden.md §3](randvoorwaarden.md#3-kosten-cap-14) (start pas na Friso's besluit over de grens).
+- **Voorlabels:** een taalmodel tekent AI-vakjes, op dezelfde manier als variant K1 uit fase B (heel etiket + tegels, antwoordschema met de 10 klassen, gelijkende keurmerken en "ander"); standaard `google/gemini-3.8-flash`, via de gedeelde client, met verzoeken volgens [randvoorwaarden.md §5](randvoorwaarden.md#5-verzoekgrootte); kosten en grens volgens [randvoorwaarden.md §3](randvoorwaarden.md#3-kosten-cap-14) ($50 hard, besluit Friso 01-11-2026; start op zijn beurt in de vaste volgorde).
 - **Onzekere vakjes:** een vakje dat het model als onzeker markeert of dat buiten het beeld valt, wordt niet gebruikt, en elke tegel die zo'n vakje raakt gaat niet in de training (anders leert de detector het echte keurmerk als achtergrond).
 - Geen verplichte menselijke correctie van trainingsvakjes; de labelruis blijkt uit de validatieset.
 - **Validatieset:** per klasse 30% van de echte trainingsetiketten (vaste seed), gesplitst op dHash-cluster zodat bijna-gelijke etiketten aan één kant blijven, met dHash-controle tussen training en validatie. Hij dient voor modelkeuze en drempels; de toetsset wordt daar nooit voor gebruikt.

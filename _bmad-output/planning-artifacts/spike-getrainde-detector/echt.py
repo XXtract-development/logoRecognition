@@ -9,7 +9,7 @@ AI-vakjes tellen alleen met x0 < x1, y0 < y1 en zijden ≥ 4 px; hetzelfde keurm
 wordt per code samengevoegd (herken.nms, IoU 0,5).
 
   python echt.py voorlabels --lijst <json [{doc_id, gln, pad}]> --proef-map <PM> --uit <voorlabels.json> --zdr-logo <png>
-                            [--grens <dollar> --besluit "<verwijzing>"]   (standaard 1,5 × --raming)
+                            [--grens <dollar> --besluit "<verwijzing>"]   (standaard de grens $50, besluit Friso 01-11-2026)
   python echt.py dataset --lijst <json> --voorlabels <voorlabels.json> --proef-map <PM> --uit <PM>/train/echt
                          [--meng <PM>/train/nagemaakt/train --meng-aantal 1000]   (fase 2: deel nagemaakte tegels erbij)
       → train/, valid/, test/ (kopie van valid, voor rfdetr), achtergronden.json (alleen de trainingskant),
@@ -60,6 +60,8 @@ MIN_ZICHTBAAR = 0.6
 MIN_ZIJDE = 4  # px; kleinere of omgekeerde AI-vakjes tellen niet
 MAX_TEGELS = 16  # per aanroep, naast het hele etiket
 PER_AANROEP = 0.012  # verwachte kosten per aanroep (randvoorwaarden §3)
+GRENS_VOORLABELS = 50.0  # dollar, hard (besluit Friso 01-11-2026; randvoorwaarden §3)
+RAMING_VOORLABELS = 30.0  # dollar, informatief (randvoorwaarden §3: ±$25–35); de grens is GRENS_VOORLABELS
 
 
 def schoon(vakjes):
@@ -252,8 +254,7 @@ def main(argv=None):
     v.add_argument("--uit", required=True, type=Path)
     v.add_argument("--zdr-logo", required=True, type=Path)
     v.add_argument("--model", default="google/gemini-3.8-flash")
-    v.add_argument("--raming", type=float, default=10.0)
-    v.add_argument("--grens", type=float, help="andere uitgavengrens dan 1,5 × --raming; alleen met --besluit")
+    v.add_argument("--grens", type=float, help=f"andere uitgavengrens dan ${GRENS_VOORLABELS:.0f}; alleen met --besluit")
     v.add_argument("--besluit", help="verwijzing naar het besluit van Friso over --grens")
     d = sub.add_parser("dataset")
     d.add_argument("--lijst", required=True, type=Path)
@@ -269,7 +270,7 @@ def main(argv=None):
     w.add_argument("--uit", required=True, type=Path)
     a = ap.parse_args(argv)
     if a.stap == "voorlabels":
-        grens, besluit = grens_uit(ap, a, None)  # None: 1,5 × --raming
+        grens, besluit = grens_uit(ap, a, GRENS_VOORLABELS)
     if a.stap == "validatie-uitslag":  # AI-vakjes van de validatieset in het schema van uitslag.json, voor tel_proef
         import uitslag as us
 
@@ -296,8 +297,8 @@ def main(argv=None):
         uit = beelden.veilig_doel(a.uit)
         klaar = json.loads(uit.read_text()) if uit.exists() else {}
         af = {d for d, r in klaar.items() if d != "_zdr_proef" and "fout" not in r}  # een mislukt etiket opnieuw proberen
-        bewaker = kosten.Bewaker("voorlabels + achtergrondscreening", a.raming, grootboek=a.proef_map / "uitgaven.json",
-                                 grens=grens)
+        bewaker = kosten.Bewaker("voorlabels + achtergrondscreening", RAMING_VOORLABELS,
+                                 grootboek=a.proef_map / "uitgaven.json", grens=grens)
         print(f"grens voorlabels ${bewaker.grens:.2f}", f"(besluit: {besluit})" if besluit else "(standaard)")
         n = sum(aanroepen(e["pad"]) for e in lijst if e["doc_id"] not in af)  # open etiketten
         bewaker.controleer_start(n * PER_AANROEP)  # vóór de client en de zdr-proef

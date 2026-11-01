@@ -2,10 +2,11 @@
 stepsCompleted: ['step-01-load-context', 'step-02-discover-tests', 'step-03-map-criteria', 'step-04-analyze-gaps', 'step-05-gate-decision']
 lastStep: 'step-05-gate-decision'
 lastSaved: '2026-11-01'
-run: 4
-head: '89887f2 + niet-gecommitte ronde 3 (spec, ATDD, bouw)'
+run: 5
+head: '039b14f + niet-gecommitte ronde 4 (spec, ATDD, bouw)'
 gate: 'PASS'
 vorige_runs:
+  - {run: 4, head: '89887f2 + ronde 3 (gecommit als 039b14f e.e.)', gate: 'PASS', reden: 'ronde 3 volledig gedekt'}
   - {run: 3, head: 'c6c2a23 + testuitbreiding B-IO-1 (gecommit als 89887f2)', gate: 'PASS', reden: 'B-IO-1 gedicht'}
   - {run: 1, head: 'e157e5f', gate: 'FAIL', reden: 'licentietest echte omgeving rood (stoppunt 4)'}
   - {run: 2, head: 'c6c2a23', gate: 'FAIL', reden: 'P0-dekkingsgat B-IO-1 (hoofdletterongevoeligheid ongetest)'}
@@ -13,10 +14,10 @@ vorige_runs:
 
 # Traceability — spike proef getrainde detector
 
-> [!note] Gatebesluit run 4: PASS
-> P0-dekking 34/34 (100%), P1 10/10 (100%), totaal 45/47 (96%); alle tests groen (543/543 in drie volledige runs, `zwaar or lokaal` 4/4) en de licentiecontrole op de echte omgeving schoon (93 pakketten, 0 overtredingen). Nieuw in run 4: ronde 3 (verzoekgrootte, grens voorinvulling $65, klaar-teken invulpagina) met 10 criteria uit `spec-spike-getrainde-detector-ronde3.md`, alle FULL; de wankele browsertest is deterministisch aangetoond en opgelost (20/20 los groen). Blijft gedeeltelijk, zonder blokkade: CAP-6a en AC-2 (P2, MPS niet beweerd).
+> [!note] Gatebesluit run 5: PASS
+> P0-dekking 41/41 (100%), P1 11/11 (100%), totaal 53/55 (96%); alle tests groen (569/569 in twee volledige runs na de reviewpatches, `zwaar or lokaal` 4/4) en de licentiecontrole op de echte omgeving schoon (93 pakketten, 0 overtredingen). Nieuw in run 5: ronde 4 (aanvulling vóór de bevestiging, certificaattekst aanvullen, grens voorlabels $50; besluiten Friso 01-11-2026) met 8 criteria uit `spec-spike-getrainde-detector-ronde4.md`, alle FULL. Blijft gedeeltelijk, zonder blokkade: CAP-6a en AC-2 (P2, MPS niet beweerd).
 >
-> **Let op:** ronde 3 is nog niet gecommit; de werkboom is HEAD `89887f2` plus de spec-update, de ATDD-tests, de bouw en deze trace. Commit ze samen, anders klopt het besluit niet met de tak.
+> **Let op:** ronde 4 is nog niet gecommit; de werkboom is HEAD `039b14f` plus de spec-update, de ATDD-tests, de bouw en deze trace. Commit ze samen, anders klopt het besluit niet met de tak.
 
 ## Historie
 
@@ -25,7 +26,10 @@ vorige_runs:
 | 1 | 01-11-2026 | `e157e5f` | 417/418 / 3/4 | 23/25 (92%), P0 15/15, P1 7/7 | FAIL | P0-test `test_cap13_lokaal_echte_omgeving_zonder_overtredingen` rood: `torch` 2.15.0 (BSL-1.0-deel) en `regex` 2026.9.29 (CNRI-Python) buiten randvoorwaarden §4 → stoppunt 4; CAP-13, AC-1, AC-3 niet gehaald. PARTIAL: CAP-6, AC-2 (MPS niet beweerd). |
 | 2 | 01-11-2026 | `c6c2a23` | 485/485 / 4/4 | 34/37 (92%), P0 24/25, P1 9/9 | FAIL | P0-dekkingsgat B-IO-1 (hoofdletterongevoeligheid ongetest). Geen rode test. |
 | 3 | 01-11-2026 | `c6c2a23` + testuitbreiding | 494/494 / 4/4 | 35/37 (95%), P0 25/25, P1 9/9 | PASS | B-IO-1 gedicht; alleen P2 gedeeltelijk (CAP-6a, AC-2). |
-| 4 | 01-11-2026 | `89887f2` + ronde 3 | 543/543 / 4/4 | 45/47 (96%), P0 34/34, P1 10/10 | **PASS** | ronde 3 volledig gedekt; alleen P2 gedeeltelijk (CAP-6a, AC-2). |
+| 4 | 01-11-2026 | `89887f2` + ronde 3 | 543/543 / 4/4 | 45/47 (96%), P0 34/34, P1 10/10 | PASS | ronde 3 volledig gedekt; alleen P2 gedeeltelijk (CAP-6a, AC-2). |
+| 5 | 01-11-2026 | `039b14f` + ronde 4 | 569/569 / 4/4 | 53/55 (96%), P0 41/41, P1 11/11 | **PASS** | ronde 4 volledig gedekt; alleen P2 gedeeltelijk (CAP-6a, AC-2). |
+
+Wat in run 5 veranderde: ronde 4 (niet gecommit op `039b14f`). Spec-update via `bmad-spec` (SPEC CAP-2/14/15, Constraints uitgaven, stoppunt 2 en 5; randvoorwaarden §3; toetsset §3–§4; trainingsset §4), getoetst met `bmad-review` (15 bevindingen, alle doorgevoerd). ATDD ronde 4: 19 tests in `tests/test_ronde4_20261101.py`, rode run 17 failed / 543 passed; twee ronde-3-tests vervielen door het besluit van Friso (`test_r3_echt_projectie_per_aanroep_tegen_standaardgrens_15`, `test_r3_draaiplan_stap_9_voorlabels_pas_na_besluit_over_hun_grens`). Bouw via `bmad-build` (route dispatch, 3 reviewlagen; 13 patchgroepen doorgevoerd, waarvan 9 extra testgevallen; 1 uitgesteld, 9 verworpen). Productiecode: `toets.py` (`kandidaten` met `bestaand`/`maxima`/`voorkeur`, opdrachtregel `--alle`, `--naam`, `--print-laag-eerst`, herhaalbare `--alleen`/`--bestaand`, weigeringen, JSON-melding), `beelden.py` (`pdftekst` vult atomisch aan), `echt.py` (`GRENS_VOORLABELS = 50.0`, `--raming` weg); `DRAAIPLAN.md` stap 4/6/9 en kostennotitie.
 
 Wat in run 4 veranderde: ronde 3 (niet gecommit op `89887f2`). Spec-update via `bmad-spec` (SPEC CAP-2/3/5/14, Constraints, stoppunt 5; randvoorwaarden §3 en nieuwe §5; toetsset §5–§6; trainingsset §4), getoetst met `bmad-review` (24 bevindingen) en na de codereview nog eens bijgewerkt (B2, B9). ATDD ronde 3: 44 rode tests (rode run 44 failed / 494 passed). Bouw via `bmad-build` (route dispatch, 3 reviewlagen; 9 patchgroepen doorgevoerd, waarvan 5 extra tests). Testinfrastructuur: `tests/conftest.py` (`wacht_klaar`, `laad_klaar`), de fixture `pagina` in `test_review_20261101.py` en `openen()`/herladen in `test_cap03_invulpagina_browser.py` wachten op het klaar-teken. Productiecode: `openrouter.py`, `kosten.py`, `toets.py`, `echt.py`, `invul/index.html`; `DRAAIPLAN.md` stap 3/6/9 en kostennotitie.
 
@@ -55,7 +59,18 @@ Volledige tekst van run 1: `git show 55a22a9:_bmad-output/test-artifacts/traceab
 - **Prioriteiten:** R3-IO-1 t/m R3-IO-7 en R3-AC-1/2 P0 (geldpad, privacy van wat verstuurd wordt, wat Friso typt raakt nooit kwijt); R3-AC-3 (alleen toegestane paden gewijzigd) P1; de documenttests van CAP-10 P2.
 - **Klantdata:** deze trace las `~/logo-meetset-20261018/` niet; de `lokaal`-tests lezen hun invoer zelf.
 
+## Stap 1 — Context, aanvulling run 5
+
+- **Werkboom:** HEAD `039b14f` plus de niet-gecommitte paden van ronde 4; `git status --porcelain` bevat alleen de specmap, de ATDD-checklist, de buildspec `spec-spike-getrainde-detector-ronde4.md`, `deferred-work.md` en deze tracebestanden.
+- **Nieuwe criteria:** de bijgewerkte `success`-regels van CAP-2 (aanvulling), CAP-10 (draaiplan stap 4/6/9), CAP-14 (voorlabels $50) en CAP-15 (aanvullen van manifest en certificaattekst), met toetsset §3–§4 en randvoorwaarden §3; de 2 AC's en 6 I/O-rijen van `spec-spike-getrainde-detector-ronde4.md` (status `done`).
+- **Prioriteiten:** R4-IO-1 t/m R4-IO-6 en R4-AC-1 P0 (welke etiketten Friso bevestigt, gegevensverlies, geldpad); R4-AC-2 (alleen toegestane paden) P1.
+- **Vervallen door besluit:** de helft "voorlabels 1,5 × raming" van R3-IO-4 is vervangen door R4-IO-6 ($50); de voorinvulling-helft ($65) blijft gedekt.
+- **Klantdata:** deze trace las `~/logo-meetset-20261018/` niet; de `lokaal`-tests lezen hun invoer zelf.
+
 ## Stap 2 — Tests gevonden en ingedeeld
+
+**Run 5:** 23 testbestanden, **569 tests** (`pytest --collect-only`): 543 − 2 vervallen + 28 in `test_ronde4_20261101.py` (`R4:`; 23 P0, 1 P1, 4 P2).
+
 
 Map `_bmad-output/planning-artifacts/spike-getrainde-detector/tests/`, 21 testbestanden, **543 tests** na parametrisatie (run 3: 494; run 2: 485) (`pytest --collect-only`). Koppeling via de bestandsnaam (`test_capNN_*`) en het voorvoegsel van de testnaam; `R:` = `test_review_20261101.py`, `B:` = `test_besluiten_20261101.py`, `RB:` = `test_review_besluiten_20261101.py`.
 
@@ -88,6 +103,7 @@ Map `_bmad-output/planning-artifacts/spike-getrainde-detector/tests/`, 21 testbe
 
 - **Endpoints:** ongewijzigd; de invulserver (`GET /`, `GET /items.json`, `GET /stand`, `POST /opslaan`) en OpenRouter `POST /api/v1/chat/completions` (nagebootst) zijn direct getest. De nieuwe onderdelen hebben geen endpoint. `endpoints_without_tests: []`.
 - **Toegang:** ongewijzigd (alleen 127.0.0.1, vreemde Host/Origin → 403, OpenRouter 401/402/403 stopt, sleutel alleen uit de omgeving). `auth_missing_negative_paths: []`.
+- **Foutpaden (nieuw in ronde 4):** aanvullingslijst of parenbestand bestaat al, `--naam` met een map of `..`, `--bestaand` zonder `--alleen`/`--alle`, `--alleen`/`--alle` zonder `--bestaand`, onbekende code, dezelfde code bij beide, mislukte `pdftotext` (→ `null`), voorlabelprojectie boven $50 (49,93). `criteria_happy_path_only: []`.
 - **Foutpaden (nieuw in ronde 3):** overzicht + één tegel boven 20.000.000 bytes (`te_groot`, niets verstuurd, breekt de reeks weigeringen), onbekend beeldtype (4 vormen), `--grens` zonder/met leeg besluit, `inf`/`nan`/negatief, startprojectie boven de grens (ook per aanroep voor een groot etiket), lege `items.json`, `items.json`/`/stand` met 500, geen JSON, afgebroken, `null`. `criteria_happy_path_only: []`.
 - **Foutpaden (ronde 2):** andere maat zonder besluit (functie, snelheidsmeting vóór het werk, opdrachtregel), `BUSL-1.1`/`BSL-1.1`/`CNRI-Jython`/vrije tekst blijven overtreding, nakijken met ontbrekende regel / regel buiten de lijst / ongeldige waarde, oude `--correcties`, onvolledige tweede ronde, 7 ongeldige ronde-2-opties, lijst gewijzigd sinds stap 14 (hashcontrole), oude uitvoer blijft niet staan. `criteria_happy_path_only: []`.
 
@@ -100,7 +116,7 @@ Dekking = of elke deelbewering van het criterium een test heeft; "uitslag" = run
 | # | criterium (kern) | prio | tests (kern) | dekking | uitslag |
 |---|---|---|---|---|---|
 | CAP-1 | scheiding op GLN, uitsluitingen, uitputtend, deterministisch, dHash ≤ 6, `lokaal` tabel | P0 | 20 in `test_cap01_*`; R: `nutriscore_token_van_twee_letters_telt_niet` | FULL | groen |
-| CAP-2 | kandidaten ≤ 40 (+10), ontdubbeld, voorinvulling via zdr-client, rapport, stoppunt 2; **ronde 3:** JPEG, ≤ 16 tegels en 20.000.000 bytes per verzoek, beeldtype, grens en splitsing getoetst (hinttegels op etiketindex) | P1 | 15 in `test_cap02_*`; `test_openrouter_voorinvulling_weigert_het_k4aa_model`; R: 4; R3: `delen_*` (6), `client_*`/`zdr_proef_*` (6), `voorinvulling_splitst_op_bytes…`, `…te_groot…`, `toets_main_stuurt_jpeg_90…`, `toets_vijf_keer_te_groot…`, `toets_main_laat_beeldtype_weg_bij_overgenomen_etiket` | FULL | groen |
+| CAP-2 | kandidaten ≤ 40 (+10), ontdubbeld, voorinvulling via zdr-client, rapport, stoppunt 2; **ronde 3:** JPEG, ≤ 16 tegels en 20.000.000 bytes per verzoek, beeldtype, grens en splitsing getoetst (hinttegels op etiketindex) | P1 | 15 in `test_cap02_*`; `test_openrouter_voorinvulling_weigert_het_k4aa_model`; R: 4; R3: `delen_*` (6), `client_*`/`zdr_proef_*` (6), `voorinvulling_splitst_op_bytes…`, `…te_groot…`, `toets_main_stuurt_jpeg_90…`, `toets_vijf_keer_te_groot…`, `toets_main_laat_beeldtype_weg_bij_overgenomen_etiket`; **ronde 4 (aanvulling):** R4: `bestaande_kandidaten_komen_niet_terug…`, `print_laag_eerst…`, `eigen_maximum_per_keurmerk…`, `gtin_bij_twee_keurmerken…`, `cli_aanvulling_meerdere_keurmerken…`, `cli_meerdere_bestaande_lijsten…`, `cli_nutriscore…`, `cli_overschrijft_nooit…` (2), `cli_weigert_zonder_iets_te_schrijven` (7), `cli_onbekende_code…` (3), `cli_gewone_run_naar_toets_en_kant_train_naar_train`, `voorinvulling_na_aanvulling_alleen_nieuwe_docs_betaald` | FULL | groen |
 | CAP-3 | server atomisch, 8 gelijktijdig, weigeringen; browser: cursor/tekst, sneltoetsen, concept na herladen; stand; **ronde 3:** pas bruikbaar na het klaar-teken, elke browsertest wacht daarop na laden en herladen, sneltoets werkt direct na het klaar-teken ook als `items.json` na `/stand` komt, laadfout gemeld | P0 | 34 server + 12 browser (nu via `laad_klaar`); R: 4 (fixture `pagina` via `laad_klaar`); R3B: `oude_wachtregel_is_te_vroeg_klaar_teken_niet`, `klaar_pas_na_eerste_tonen_met_concept`, `lege_items_blijft_inert`, `laadfout_blijft_inert_en_meldt_het` (6) | FULL | groen |
 | CAP-4 | COCO, gelabeld/ongelabeld, geen overlap, 0–10% leeg, 4 varianten, bron-GTIN, seed | P1 | 10 in `test_cap04_*`; R: 1 | FULL | groen |
 | CAP-5 | voorlabels, geen toetsleverancier, onzekere tegels eruit, valsplit op dHash-cluster, rapport; **ronde 3:** verzoekregel §5, splitsing met juiste vakjescoördinaten | P1 | 12 in `test_cap05_*`; R: 9; R3: `voorlabels_splitst_op_bytes_vakjes_in_etiketcoordinaten`, `voorlabels_te_groot_zonder_aanroep`, `echt_main_stuurt_overzicht_en_tegels_als_jpeg`, `echt_te_groot_breekt_de_reeks…` | FULL | groen |
@@ -109,12 +125,12 @@ Dekking = of elke deelbewering van het criterium een test heeft; "uitslag" = run
 | CAP-7 | tegels, NMS, band, `laag`/`hoog` uit mini-validatie, certificaat alleen bevestigen | P1 | 35 in `test_cap07_*`; R: 4 | FULL | groen |
 | CAP-8 | twee beelden, schema ja/nee/twijfel, alleen `ja`, ongeldig = fout, hoog→laag, ≤ 10 | P0 | 15 in `test_cap08_*` | FULL | groen |
 | CAP-9 | tabellen §7 en blinde nakijklijst **met steekproef** (nieuw 01-11): seed vast in de code, zelfde trekking in elk proces, regels niet te onderscheiden (sleutel en `verschil.json` apart), oordeel per regel verplicht, steekproef apart, besluitregel met tweede ronde en "voorlopig"; plus de definities, Nutri-Score-groep, gedeelde negatieven, > 2%, zdr-stop, < 16 / < 35, grensgetallen §4, integratie | P0 | 47 in `test_cap09_*` (incl. aangepast `blinde_nakijklijst_zonder_routenamen`); B: 18 (`steekproef_seed_ligt_vast…`, `nakijklijst_verschillen_plus_steekproef…`, `regels_gelijk_van_vorm…`, `hangt_niet_af_van_de_volgorde…`, `zelfde_trekking_in_elk_proces` (PYTHONHASHSEED 1/4242), `sleutel_en_verschil_in_aparte_map_met_sha256_vooraf`, `nakijken_vraagt_een_oordeel…` (2), `fout_is_elk_afwijkend_oordeel…`, `steekproef_apart…wilson…gevoeligheid`, `fout_in_steekproef_geeft_voorlopig…`, `tweede_ronde_*` (3), `te_weinig_voorbeelden_gaat_voor_voorlopig` e.a.); RB: 14; R: `nakijken_voor_een_keurmerk_en_nutriscore`, `ongeldig_nakijken…` (4) | FULL | groen |
-| CAP-10 | `DRAAIPLAN.md`: volgorde, per stap commando/uitvoer/kosten/tijd/stoppunt, getest of `ongetest:`; nieuw: licentieblok weg, MAAT=N, stap 10/14/15 | P2 | 4 in `test_cap10_*`; B: 5 (`licentieblok_is_vervallen`, `maat_n_en_nergens_een_andere_maat_zonder_besluit`, `stap_10_…`, `stap_14_…`, `stap_15_…`); R3: `draaiplan_stap_3_…`, `…stap_6_…`, `…stap_9_voorlabels_pas_na_besluit_over_hun_grens`, `…kostennotitie_noemt_de_grens_per_post` | FULL | groen |
+| CAP-10 | `DRAAIPLAN.md`: volgorde, per stap commando/uitvoer/kosten/tijd/stoppunt, getest of `ongetest:`; nieuw: licentieblok weg, MAAT=N, stap 10/14/15 | P2 | 4 in `test_cap10_*`; B: 5 (`licentieblok_is_vervallen`, `maat_n_en_nergens_een_andere_maat_zonder_besluit`, `stap_10_…`, `stap_14_…`, `stap_15_…`); R3: `draaiplan_stap_3_…`, `…stap_6_…`, `…kostennotitie_noemt_de_grens_per_post`; R4: `draaiplan_stap_6_aanvulling_met_eigen_naam_en_eigen_mappen` (`--uit $T/$N`), `…stap_4_…`, `…stap_9_voorlabels_standaardgrens_50…`, `…kostennotitie_noemt_50_naast_65` | FULL | groen |
 | CAP-11 | `bevroren.json` met sha256, gewijzigd → geweigerd, tweede run alleen met `--herhaling` + reden | P0 | 7 in `test_cap11_*`; R: 4 | FULL | groen |
 | CAP-12 | referenties alleen trainingskant/publiek, elke detectie een melding, tijdsbudget, `budget_exhausted`, `no_zdr_provider`, kosten/tijd | P1 | 12 in `test_cap12_*`; R: 3 | FULL | groen |
 | CAP-13 | **BSL-1.0 en CNRI-Python toegestaan, andere buiten de lijst niet** (nieuw 01-11); verboden pakket stopt; `AND`/`OR`; leeg veld → licentiebestand; onbekend stopt; echte omgeving zonder overtredingen | P0 | 47 in `test_cap13_*` incl. `lokaal_echte_omgeving_zonder_overtredingen`; B: 13 (`bsl_1_0_en_cnri_python_zijn_toegestaan` (5), `torch_samengesteld…even_ruim`, `busl_bsl_1_1_en_cnri_jython_blijven_verboden` (6), `torch_regex_en_elk_ander_pakket…`); R: 1 | FULL | groen (ook `lokaal`) |
-| CAP-14 | post boven grens start niet, aanroep die grens passeert niet verstuurd, kosten uit `usage.cost` of tokens × tarief; **ronde 3:** voorinvulling standaard $65 (besluit Friso), andere grens alleen met besluitverwijzing, startprojectie per aanroep | P0 | 9 in `test_cap14_*`; client- en R-tests; R3: `bewaker_grens_…`, `toets_standaardgrens_65…`, `toets_rand_van_de_grens_65…`, `toets_projectie_*` (2), `toets_grens_*` (3 + 3 niet-eindig), `echt_projectie…`, `echt_grens_*` (3) | FULL | groen |
-| CAP-15 | ophaalquery `SELECT`, rsync/ssh met `nice -n 19`, samenvoegen, PDF en RGBA/CMYK, weigert git-werkboom | P1 | 30 in `test_cap15_*`; R: 5 | FULL | groen |
+| CAP-14 | post boven grens start niet, aanroep die grens passeert niet verstuurd, kosten uit `usage.cost` of tokens × tarief; **ronde 3:** voorinvulling standaard $65 (besluit Friso), andere grens alleen met besluitverwijzing, startprojectie per aanroep | P0 | 9 in `test_cap14_*`; client- en R-tests; R3: `bewaker_grens_…`, `toets_standaardgrens_65…`, `toets_rand_van_de_grens_65…`, `toets_projectie_*` (2), `toets_grens_*` (3 + 3 niet-eindig), `echt_grens_*` (3); **ronde 4:** voorlabels standaard $50 (besluit Friso) — R4: `echt_voorlabels_standaardgrens_50_projectie_per_aanroep` (49,92 start, 49,93 geweigerd) | FULL | groen |
+| CAP-15 | ophaalquery `SELECT`, rsync/ssh met `nice -n 19`, samenvoegen, PDF en RGBA/CMYK, weigert git-werkboom; **ronde 4:** een aanvulling vult manifest en certificaattekst aan zonder eerdere uitkomsten te overschrijven | P1 | 30 in `test_cap15_*`; R: 5; R4: `pdftekst_vult_bestaande_certificaten_aan`, `bouwen_en_bouwen_origineel_vullen_het_manifest_aan` | FULL | groen |
 | RV-1/2 | gedeelde OpenRouter-client: zdr, vaste URL, zdr-proef, statustabel, logs zonder inhoud, sleutel uit omgeving | P0 | 47 in `test_openrouter.py`; R: 2 | FULL | groen |
 
 ### Buildspec 1 — `spec-spike-getrainde-detector.md`
@@ -157,12 +173,28 @@ Dekking = of elke deelbewering van het criterium een test heeft; "uitslag" = run
 | R3-IO-1 | groot etiket → extra aanroepen, elk met overzicht; hinttegels/vakjes op etiketindex | P0 | R3: `delen_hoogstens_16_tegels…`, `delen_bytegrens_telt_het_overzicht_mee_ongelijke_splitsing`, `delen_constante_20_mb…`, `voorinvulling_splitst_op_bytes_hinttegels_op_etiketindex`, `voorlabels_splitst_op_bytes_vakjes_in_etiketcoordinaten`; bestaand R: `voorinvulling_verdeelt_tegels_over_aanroepen…` | FULL | groen |
 | R3-IO-2 | overzicht + tegel > grens → niets verstuurd, `te_groot`, geen weigering op rij | P0 | R3: `delen_overzicht_plus_een_tegel_te_groot_is_etiketfout`, `voorinvulling_te_groot…`, `voorlabels_te_groot…`, `toets_vijf_keer_te_groot_stopt_de_run_niet`, `echt_te_groot_breekt_de_reeks…` | FULL | groen |
 | R3-IO-3 | onbekend beeldtype → `ValueError`, niets verstuurd | P0 | R3: `client_onbekend_beeldtype_valueerror_zonder_verzenden` (gif, leeg, halve JPEG-kop, halve PNG-kop) | FULL | groen |
-| R3-IO-4 | geen `--grens` → voorinvulling $65, voorlabels 1,5 × raming | P0 | R3: `toets_standaardgrens_65_start_ook_boven_de_oude_31_50`, `toets_rand_van_de_grens_65…`, `echt_projectie_per_aanroep_tegen_standaardgrens_15`, `bewaker_grens_none…` | FULL | groen |
+| R3-IO-4 | geen `--grens` → voorinvulling $65, voorlabels 1,5 × raming (**run 5:** voorlabel-helft vervangen door R4-IO-6, besluit Friso) | P0 | R3: `toets_standaardgrens_65_start_ook_boven_de_oude_31_50`, `toets_rand_van_de_grens_65…`, `bewaker_grens_none…` | FULL | groen |
 | R3-IO-5 | `--grens X` zonder of met leeg besluit → niets gestart, exit ≠ 0, melding noemt "besluit" | P0 | R3: `toets_grens_zonder_besluit_weigert…` (2), `echt_grens_zonder_besluit_weigert…` (2), `toets_grens_niet_eindig_of_negatief_weigert…` (3), positief: `toets_/echt_grens_met_besluit_geldt_en_staat_op_stdout` (ook vastgelegd in het zdr-proefrecord) | FULL | groen |
 | R3-IO-6 | projectie > grens → post start niet, geen zdr-proef | P0 | R3: `toets_projectie_per_aanroep_groot_etiket_twee_aanroepen`, `toets_projectie_telt_alleen_open_etiketten`, `toets_rand_van_de_grens_65…`, `echt_projectie_per_aanroep…` | FULL | groen |
 | R3-IO-7 | lege `items.json` / laden mislukt → formulier blijft `inert`, `#voortgang` meldt het | P0 | R3B: `lege_items_blijft_inert`, `laadfout_blijft_inert_en_meldt_het` (items 500, items geen JSON, items afgebroken, stand 500, stand geen JSON, stand `null`) | FULL | groen |
 
+### Buildspec 4 — `spec-spike-getrainde-detector-ronde4.md` (nieuw, run 5)
+
+| # | criterium | prio | tests | dekking | uitslag |
+|---|---|---|---|---|---|
+| R4-AC-1 | volledige suite 0 failed (ook de 17 rode van ATDD ronde 4) | P0 | hele suite | FULL | gehaald: 569 passed in twee volledige runs na de reviewpatches (bouw 1×, deze trace 1×) |
+| R4-AC-2 | `git status --porcelain` alleen paden uit Boundaries | P1 | het commando zelf (deze run) | FULL | gehaald: specmap, ATDD-checklist, buildspec, `deferred-work.md`, tracebestanden |
+| R4-IO-1 | aanvulling met meerdere keurmerken, print-laag eerst, geen gelijkende, JSON-melding per keurmerk | P0 | R4: `cli_aanvulling_meerdere_keurmerken_print_laag_eerst_en_melding`, `cli_nutriscore…`, `cli_meerdere_bestaande_lijsten…`; unit `bestaande_kandidaten…`, `print_laag_eerst…`, `eigen_maximum…`, `gtin_bij_twee_keurmerken…` | FULL | groen |
+| R4-IO-2 | lijst bestaat → niets geschreven, exit ≠ 0 | P0 | R4: `cli_aanvulling_overschrijft_nooit_een_bestaande_lijst` (2), `cli_weigert_zonder_iets_te_schrijven` (lijst / parenbestand bestaat, `--naam` met map of `..`) | FULL | groen |
+| R4-IO-3 | onbekende code → exit 2, niets geschreven | P0 | R4: `cli_onbekende_code_of_alle_zonder_bestaand…` (`alleen-onbekend`, `alle-onbekend`) | FULL | groen |
+| R4-IO-4 | `--alleen`/`--alle` zonder `--bestaand` → exit 2, niets geschreven | P0 | R4: `…[alle-zonder-bestaand]`, `cli_weigert_zonder_iets_te_schrijven` (`--bestaand` zonder keuze, zelfde code bij beide); R: `alleen_zonder_bestaand_weigert` | FULL | groen |
+| R4-IO-5 | `certificaten.json` bestaat → andere docs blijven, docs uit de lijst nieuwe uitkomst, mislukte lezing `null` | P0 | R4: `pdftekst_vult_bestaande_certificaten_aan` | FULL | groen |
+| R4-IO-6 | voorlabels zonder `--grens` → $50; projectie > 50 start niet, geen zdr-proef | P0 | R4: `echt_voorlabels_standaardgrens_50_projectie_per_aanroep` | FULL | groen |
+
 ### Controle op de dekkingslogica
+
+- **Run 5:** P0 41/41 FULL, P1 11/11, P2 1/3 (CAP-6a, AC-2 ongewijzigd PARTIAL). Elk nieuw foutpad van ronde 4 heeft een negatieve test die ook controleert dat de toetsmap byte-gelijk blijft; de geluksscenario's (aanvulling, aanvullen van manifest en certificaten, $50 met start) hebben een positieve. De buildreview toonde met mutaties dat de manifest-, doelbestand- en overschrijfregels nu elk een rode test geven.
+
 
 - **Run 4:** P0 34/34 FULL, P1 10/10, P2 1/3 (CAP-6a, AC-2 ongewijzigd PARTIAL). Elk nieuw foutpad van ronde 3 heeft een negatieve test; de geluksscenario's (JPEG, splitsing, grens met besluit, klaar-teken) hebben ook een positieve. Dat elke browserfixture op het klaar-teken wacht, is geen automatische test maar in deze run gecontroleerd: geen enkele `expect_response(… "/stand")` om een `goto`/`reload` meer buiten de demonstratietest (`grep` op `tests/*.py`).
 
@@ -177,17 +209,17 @@ Dekking = of elke deelbewering van het criterium een test heeft; "uitslag" = run
 ## Stap 4 — Gatenanalyse (fase 1 afgerond)
 
 - **Uitvoermodus:** config `auto`; tellingen in één deterministisch script, na elkaar (headless keuze).
-- **Fase-1-matrix:** `/tmp/tea-trace-coverage-matrix-2026-11-01T17-07-48.json` (run 4, `phase: PHASE_1_COMPLETE`); run 3: `…T10-42-59.json`; run 2: `…T10-28-46.json`.
+- **Fase-1-matrix:** `/tmp/tea-trace-coverage-matrix-2026-11-01T18-40-00.json` (run 5, `phase: PHASE_1_COMPLETE`); run 4: `…T17-07-48.json`; run 3: `…T10-42-59.json`; run 2: `…T10-28-46.json`.
 
-| statistiek | run 4 | run 3 | run 2 | run 1 |
-|---|---|---|---|---|
-| criteria totaal | 47 | 37 | 37 | 25 |
-| FULL | 45 (96%) | 35 (95%) | 34 (92%) | 23 (92%) |
-| PARTIAL | 2 (CAP-6a P2, AC-2 P2) | 2 (CAP-6a P2, AC-2 P2) | 3 (+ B-IO-1 P0) | 2 (CAP-6, AC-2) |
-| NONE | 0 | 0 | 0 | 0 |
-| P0 | 34/34 (100%) | 25/25 (100%) | 24/25 (96%) | 15/15 (100%) |
-| P1 | 10/10 (100%) | 9/9 (100%) | 9/9 (100%) | 7/7 (100%) |
-| P2 | 1/3 (33%) | 1/3 (33%) | 1/3 (33%) | 1/3 (33%) |
+| statistiek | run 5 | run 4 | run 3 | run 2 | run 1 |
+|---|---|---|---|---|---|
+| criteria totaal | 55 | 47 | 37 | 37 | 25 |
+| FULL | 53 (96%) | 45 (96%) | 35 (95%) | 34 (92%) | 23 (92%) |
+| PARTIAL | 2 (CAP-6a P2, AC-2 P2) | 2 (CAP-6a P2, AC-2 P2) | 2 (CAP-6a P2, AC-2 P2) | 3 (+ B-IO-1 P0) | 2 (CAP-6, AC-2) |
+| NONE | 0 | 0 | 0 | 0 | 0 |
+| P0 | 41/41 (100%) | 34/34 (100%) | 25/25 (100%) | 24/25 (96%) | 15/15 (100%) |
+| P1 | 11/11 (100%) | 10/10 (100%) | 9/9 (100%) | 9/9 (100%) | 7/7 (100%) |
+| P2 | 1/3 (33%) | 1/3 (33%) | 1/3 (33%) | 1/3 (33%) | 1/3 (33%) |
 
 - **Gaten:** geen criterium zonder test; geen P0- of P1-criterium gedeeltelijk. Gedeeltelijk: CAP-6a en AC-2 (P2).
 - **Heuristieken:** endpoints zonder test 0; toegangsregels zonder negatief pad 0; alleen geluksscenario 0.
@@ -198,6 +230,24 @@ Dekking = of elke deelbewering van het criterium een test heeft; "uitslag" = run
 2. **LOW** — `bmad-testarch-test-review` voor de testkwaliteit (omvang van `test_review_20261101.py` en `test_besluiten_20261101.py`).
 
 ## Stap 5 — Gatebesluit (fase 2)
+
+### Bewijs run 5 (VERIFIED, 01-11-2026, HEAD `039b14f` + ronde 4)
+
+```
+cd _bmad-output/planning-artifacts/spike-getrainde-detector && uv run --group dev pytest -q -p no:cacheprovider --collect-only
+569 tests collected
+uv run --group dev pytest -q -p no:cacheprovider
+569 passed, 18 warnings in 88.41s (0:01:28)        # bouw na de reviewpatches: 569 passed (82,6 s)
+
+uv run --group dev --group detector pytest -q -p no:cacheprovider -m "zwaar or lokaal"
+4 passed, 565 deselected, 18 warnings in 38.09s
+
+uv run --group dev --group detector python licenties.py
+exit 0 · "pakketten": 93 · "overtredingen": [] · 8 onder "ruim"
+```
+
+- Rode run vóór de bouw (ATDD ronde 4): 17 failed, 543 passed (560 tests); na de bouw en de reviewpatches 569 passed (560 + 9 reviewtestgevallen).
+- Uitkomsten per prioriteit: P0 305/305 (283 − 1 vervallen + 23 R4), P1 115/115 (+1), P2 21/21 (18 − 1 vervallen + 4 documenttests), gemengde bestanden 128/128; totaal 569/569.
 
 ### Bewijs run 4 (VERIFIED, 01-11-2026, HEAD `89887f2` + ronde 3)
 
@@ -245,19 +295,19 @@ exit 0 · "pakketten": 93 · "overtredingen": [] · 8 onder "ruim" (zelfde lijst
 
 | regel | drempel | gemeten | status |
 |---|---|---|---|
-| P0-dekking | 100% | 100% (34/34) | MET |
-| P0-slaagpercentage | 100% | 100% (283/283) | MET |
-| P1-dekking | ≥ 90% (PASS), ≥ 80% (minimum) | 100% (10/10) | MET |
-| totale dekking | ≥ 80% | 96% (45/47) | MET |
-| totaal slaagpercentage | — | 100% (543/543) | informatief |
-| P2 | informatief | dekking 1/3, slagen 18/18 | blokkeert niet |
+| P0-dekking | 100% | 100% (41/41) | MET |
+| P0-slaagpercentage | 100% | 100% (305/305) | MET |
+| P1-dekking | ≥ 90% (PASS), ≥ 80% (minimum) | 100% (11/11) | MET |
+| totale dekking | ≥ 80% | 96% (53/55) | MET |
+| totaal slaagpercentage | — | 100% (569/569) | informatief |
+| P2 | informatief | dekking 1/3, slagen 21/21 | blokkeert niet |
 | waiver | — | geen nodig | — |
 
 Regel 4 van de beslisboom (P0 100%, P1 ≥ 90%, totaal ≥ 80%) geeft **PASS**.
 
 ### GATE DECISION: PASS
 
-**Reden (run 4):** elk P0- en P1-criterium, ook de 10 nieuwe van ronde 3, is volledig gedekt en elke test slaagt, ook de `lokaal`-tests op de echte invoer en de echte omgeving. De twee gedeeltelijke criteria (CAP-6a, AC-2) zijn P2 en betreffen alleen dat geen test beweert dat de training op MPS liep; het pytest-log en `snelheid.json` tonen het wel.
+**Reden (run 5):** elk P0- en P1-criterium, ook de 8 nieuwe van ronde 4, is volledig gedekt en elke test slaagt, ook de `lokaal`-tests op de echte invoer en de echte omgeving. De twee gedeeltelijke criteria (CAP-6a, AC-2) zijn P2 en betreffen alleen dat geen test beweert dat de training op MPS liep; het pytest-log en `snelheid.json` tonen het wel.
 
 **Risico (probability × impact, INFERENCE):** CAP-6a/AC-2 — kans 1 (de rooktests draaiden op MPS volgens het log), impact 1 (een training die stil op de processor loopt, valt op door de duur, die stoppunt 1 bewaakt) → score 1, DOCUMENT.
 
@@ -270,15 +320,17 @@ Geen blokkade. Ter kennisname:
 3. **Bijlage-regels zonder eigen gereedschap:** correctiepercentage per keurmerk, tekortschieten van N, de 8-uursgrens tijdens een lopende fase (zie stap 3).
 4. **Wankele browsertest:** opgelost in ronde 3 (klaar-teken + `laad_klaar`), afgesloten in `deferred-work.md`; 20/20 los groen.
 5. **Buildspec 1** staat nog op `in-review`; afronden valt buiten deze trace.
-6. **Niet gecommit:** ronde 3 (spec-update, ATDD-tests, bouw, buildspec, `deferred-work.md`) en deze trace; samen committen, anders geldt dit besluit niet voor de tak.
+6. **Niet gecommit:** ronde 4 (spec-update, ATDD-tests, bouw, buildspec, `deferred-work.md`) en deze trace; samen committen, anders geldt dit besluit niet voor de tak.
+8. **Uitgesteld uit de buildreview van ronde 4:** `manifest.json` wordt niet atomisch geschreven (bestond al; `deferred-work.md`).
+9. **Netwerkstappen van de aanvulling** (ssh, rsync tegen productie, alleen lezen) zijn niet automatisch getest; de bouwstenen wel (CAP-15).
 7. **Na de herhaalrun (geen gatecriterium):** JPEG $0,0431 per aanroep tegen PNG $0,0451 bij etiketten van 12–22 tegels: geen meerkosten (review #11, buildspec Implementation Notes).
 
 ```
 ✅ GATE DECISION: PASS
-- P0 Coverage: 100% (Required: 100%) → MET
-- P0 Test Pass Rate: 100% (283/283) → MET
-- P1 Coverage: 100% (PASS target: 90%, minimum: 80%) → MET
-- Overall Coverage: 96% (Minimum: 80%) → MET
+- P0 Coverage: 100% (41/41; Required: 100%) → MET
+- P0 Test Pass Rate: 100% (305/305) → MET
+- P1 Coverage: 100% (11/11; PASS target: 90%, minimum: 80%) → MET
+- Overall Coverage: 96% (53/55; Minimum: 80%) → MET
 ⚠️ Critical Gaps: 0
 📂 Gate-bestand: _bmad-output/test-artifacts/traceability/spike-getrainde-detector-gate.json
 ```
