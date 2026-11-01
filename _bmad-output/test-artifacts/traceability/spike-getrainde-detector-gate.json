@@ -1,38 +1,154 @@
 {
- "decision": "FAIL",
- "rationale": "Coverage meets thresholds (P0 100% 15/15, P1 100% 7/7, overall 92% 23/25), but one P0 test fails: test_cap13_lokaal_echte_omgeving_zonder_overtredingen finds 2 licences outside randvoorwaarden §4 (torch 2.15.0 with a BSL-1.0 part, regex 2026.9.29 with CNRI-Python). This is stop point 4, awaiting the product owner; CAP-13 (last clause), build AC-1 and AC-3 are not met. No waiver.",
+ "decision": "PASS",
+ "rationale": "P0 coverage 100% (25/25), P1 100% (9/9), overall 95% (35/37); all tests pass (494/494 dev, 4/4 zwaar-or-lokaal) and the real-environment licence check is clean (93 packages, 0 violations). The run-2 gap B-IO-1 is closed by 9 test cases covering other spellings (5 allowed, 4 still forbidden). Only P2 items CAP-6a and AC-2 remain partial (no assertion that training ran on mps).",
  "decision_date": "2026-11-01",
+ "run": 3,
  "subject": "spike-getrainde-detector",
- "head": "e157e5f",
+ "head": "c6c2a23 + uncommitted test extension (tests/test_besluiten_20261101.py, +6/-2)",
  "branch": "spike/proef-getrainde-detector",
- "spec": "_bmad-output/implementation-artifacts/spec-spike-getrainde-detector.md",
+ "specs": [
+  "_bmad-output/implementation-artifacts/spec-spike-getrainde-detector.md",
+  "_bmad-output/implementation-artifacts/spec-spike-getrainde-detector-besluiten.md"
+ ],
  "contract": "_bmad-output/planning-artifacts/spike-getrainde-detector/SPEC.md",
  "atdd_checklist": "_bmad-output/test-artifacts/atdd-checklist-spike-getrainde-detector.md",
+ "phase1_matrix": "/tmp/tea-trace-coverage-matrix-2026-11-01T10-42-59.json",
  "tests": [
-  {"command": "cd _bmad-output/planning-artifacts/spike-getrainde-detector && uv run --group dev pytest -q -p no:cacheprovider", "result": "417 passed, 1 failed, 0 skipped"},
-  {"command": "cd _bmad-output/planning-artifacts/spike-getrainde-detector && uv run --group dev --group detector pytest -q -p no:cacheprovider -m \"zwaar or lokaal\"", "result": "3 passed, 1 failed, 414 deselected"}
+  {
+   "command": "cd _bmad-output/planning-artifacts/spike-getrainde-detector && uv run --group dev pytest -q -p no:cacheprovider",
+   "result": "494 passed, 0 failed, 0 skipped"
+  },
+  {
+   "command": "cd _bmad-output/planning-artifacts/spike-getrainde-detector && uv run --group dev --group detector pytest -q -p no:cacheprovider -m \"zwaar or lokaal\"",
+   "result": "4 passed, 0 failed, 490 deselected"
+  },
+  {
+   "command": "cd _bmad-output/planning-artifacts/spike-getrainde-detector && uv run --group dev --group detector python licenties.py",
+   "result": "exit 0, 93 packages, 0 violations, 8 'ruim'"
+  }
  ],
- "failed_tests": ["tests/test_cap13_licenties.py::test_cap13_lokaal_echte_omgeving_zonder_overtredingen"],
+ "failed_tests": [],
+ "flaky_known": {
+  "test": "tests/test_review_20261101.py::test_pagina_b_zonder_alle_keuzes_slaat_niets_op_en_blijft_staan",
+  "seen_this_run": false,
+  "note": "failed once (493/494) in the bmad-testarch-automate run, then passed 3x in isolation",
+  "ledger": "_bmad-output/implementation-artifacts/deferred-work.md (last entry)"
+ },
  "gate_criteria": {
-  "p0_coverage_actual": "100% (15/15)", "p0_status": "MET",
-  "p0_test_pass_rate_actual": "99.6% (237/238)", "p0_test_pass_status": "NOT MET",
-  "p1_coverage_actual": "100% (7/7)", "p1_status": "MET",
-  "overall_coverage_actual": "92% (23/25)", "overall_status": "MET",
-  "overall_test_pass_rate": "99.8% (417/418)"
+  "p0_coverage_actual": "100% (25/25)",
+  "p0_status": "MET",
+  "p0_test_pass_rate_actual": "100% (238/238)",
+  "p0_test_pass_status": "MET",
+  "p1_coverage_actual": "100% (9/9)",
+  "p1_status": "MET",
+  "overall_coverage_actual": "95% (35/37)",
+  "overall_status": "MET",
+  "overall_test_pass_rate": "100% (494/494)"
  },
  "coverage": {
-  "FULL": ["CAP-1", "CAP-2", "CAP-3", "CAP-4", "CAP-5", "CAP-7", "CAP-8", "CAP-9", "CAP-10", "CAP-11", "CAP-12", "CAP-13", "CAP-14", "CAP-15", "RV-1/2", "AC-1", "AC-3", "IO-1", "IO-2", "IO-3", "IO-4", "IO-5", "IO-6"],
-  "PARTIAL": ["CAP-6", "AC-2"],
+  "FULL": [
+   "CAP-1",
+   "CAP-2",
+   "CAP-3",
+   "CAP-4",
+   "CAP-5",
+   "CAP-6b",
+   "CAP-7",
+   "CAP-8",
+   "CAP-9",
+   "CAP-10",
+   "CAP-11",
+   "CAP-12",
+   "CAP-13",
+   "CAP-14",
+   "CAP-15",
+   "RV-1/2",
+   "AC-1",
+   "AC-3",
+   "IO-1",
+   "IO-2",
+   "IO-3",
+   "IO-4",
+   "IO-5",
+   "IO-6",
+   "B-AC-1",
+   "B-AC-2",
+   "B-AC-3",
+   "B-IO-2",
+   "B-IO-3",
+   "B-IO-4",
+   "B-IO-5",
+   "B-IO-6",
+   "B-IO-7",
+   "B-IO-8",
+   "B-IO-1"
+  ],
+  "PARTIAL": [
+   "CAP-6a",
+   "AC-2"
+  ],
   "NONE": []
  },
- "covered_but_not_met": ["CAP-13", "AC-1", "AC-3"],
- "uncovered_requirements": [],
- "partial_reason": "CAP-6/AC-2: no test asserts the device is mps; only the pytest log ('GPU available: True (mps), used: True') shows it",
- "risk": {"probability": 3, "impact": 2, "score": 6, "action": "MITIGATE", "owner": "Friso (product owner)", "basis": "INFERENCE"},
- "deferred_outside_scope": [
-  "DRAAIPLAN 'ongetest:' steps 1-4, 6-13, 15: CLI and network steps (production, OpenRouter with customer artwork, full training, K4-aa main) not automated by design",
-  "manual removal of near-duplicate training images from manifest.json after step 7 (no tool yet)",
-  "review finding 11 (blind review list contains only differences) pending product-owner decision"
+ "partial_reasons": {
+  "CAP-6a": "P2: no test asserts the device is mps (unchanged since run 1)",
+  "AC-2": "P2: same as CAP-6a"
+ },
+ "headless_decisions": [
+  "CAP-6 split into CAP-6a (training/MPS/smoke test, P2) and CAP-6b (size N, other size only with a recorded decision, P1 per ATDD round 2)",
+  "build-spec-2 rows take the priority of the CAP they rest on; B-AC-2 is P0 because it includes the lokaal tests of CAP-1 and CAP-13",
+  "outputs updated in place instead of the default traceability-report.md"
  ],
- "next": "Product owner decides stop point 4: extend the allowed licence list (re-run CAP-13 lokaal test, re-trace, expected PASS) or grant a waiver (WAIVED with reason, approver, expiry)."
+ "uncovered_requirements": [],
+ "risk": {
+  "probability": 1,
+  "impact": 1,
+  "score": 1,
+  "action": "DOCUMENT",
+  "owner": "build orchestrator",
+  "basis": "INFERENCE: CAP-6a/AC-2 only; the log shows mps, and a CPU run would show up in the duration guarded by stop point 1"
+ },
+ "not_in_success_lines_untested": [
+  "correction rate per keurmerk (meetregels §6): 'veranderd' is recorded and tested (CAP-3) but never aggregated",
+  "N falling short on the validation set (trainingsset §5, stop point 1): read by hand from the validation table; only the DRAAIPLAN step 10 mention is tested",
+  "stopping a running training phase above 8 hours: manual"
+ ],
+ "deferred_outside_scope": [
+  "DRAAIPLAN 'ongetest:' steps 1-4, 6-13, 15: CLI and network steps not automated by design",
+  "manual removal of near-duplicate training images from manifest.json after step 7",
+  "build spec 1 still 'in-review' (rejected finding 9 in build-spec-2 triage)",
+  "test extension for B-IO-1 and this trace are not committed yet"
+ ],
+ "next": "Commit the test extension together with this trace. Optional (P2): assert apparaat == 'mps' in the two zwaar tests of CAP-6.",
+ "history": [
+  {
+   "run": 1,
+   "decision_date": "2026-11-01",
+   "head": "e157e5f",
+   "decision": "FAIL",
+   "rationale": "Coverage met thresholds (P0 100% 15/15, P1 100% 7/7, overall 92% 23/25), but P0 test test_cap13_lokaal_echte_omgeving_zonder_overtredingen failed: torch 2.15.0 (BSL-1.0 part) and regex 2026.9.29 (CNRI-Python) outside randvoorwaarden §4 (stop point 4). CAP-13, build AC-1 and AC-3 not met. PARTIAL: CAP-6, AC-2.",
+   "tests": [
+    "dev: 417 passed, 1 failed",
+    "zwaar or lokaal: 3 passed, 1 failed"
+   ],
+   "resolved_by": "owner decision c86a067 (BSL-1.0 and CNRI-Python allowed), built in 21f9d89",
+   "full_report": "git show 55a22a9:_bmad-output/test-artifacts/traceability/spike-getrainde-detector-trace.md"
+  },
+  {
+   "run": 2,
+   "decision_date": "2026-11-01",
+   "head": "c6c2a23",
+   "decision": "FAIL",
+   "rationale": "All tests pass (485/485 dev, 4/4 zwaar-or-lokaal) and the real-environment licence check is clean (93 packages, 0 violations), so stop point 4 is resolved. The gate fails on coverage rule 1 only: P0 coverage is 96% (24/25) because build-spec-2 I/O row 'ruime licentie' (B-IO-1) promises case-insensitive recognition of BSL-1.0 and CNRI-Python and no test asserts a non-exact spelling. The behaviour itself works (read-only probe: beoordeel('bsl-1.0') == 'toegestaan'). No waiver.",
+   "tests": [
+    "dev: 485 passed",
+    "zwaar or lokaal: 4 passed"
+   ],
+   "partial": [
+    "CAP-6a",
+    "AC-2",
+    "B-IO-1"
+   ],
+   "resolved_by": "bmad-testarch-automate: 9 extra cases in tests/test_besluiten_20261101.py (automation-summary-spike-getrainde-detector.md)"
+  }
+ ]
 }

@@ -75,7 +75,9 @@ TORCH = ("Apache-2.0 AND Apache-2.0 WITH LLVM-exception AND BSD-2-Clause AND BSD
 
 
 @pytest.mark.parametrize("uitdrukking", ["BSL-1.0", "CNRI-Python", "Apache-2.0 AND CNRI-Python", "MIT AND BSL-1.0",
-                                         "(BSL-1.0 OR GPL-3.0-only) AND MIT"])
+                                         "(BSL-1.0 OR GPL-3.0-only) AND MIT",
+                                         # hoofdletterongevoelig (buildspec I/O-matrix, B-IO-1)
+                                         "bsl-1.0", "Bsl-1.0", "cnri-python", "CNRI-PYTHON", "Apache-2.0 AND cnri-python"])
 def test_cap13_bsl_1_0_en_cnri_python_zijn_toegestaan(uitdrukking):
     assert mod("licenties").beoordeel(uitdrukking) == "toegestaan"
 
@@ -85,7 +87,9 @@ def test_cap13_torch_samengesteld_met_bsl_1_0_mag_en_staat_onder_even_ruim():
 
 
 @pytest.mark.parametrize("uitdrukking", ["BUSL-1.1", "BSL-1.1", "CNRI-Jython", "MIT AND BUSL-1.1", "Apache-2.0 AND CNRI-Jython",
-                                         "Business Source License 1.1"])
+                                         "Business Source License 1.1",
+                                         # de grens geldt ook in andere schrijfwijzen (B-IO-1)
+                                         "busl-1.1", "bsl-1.1", "cnri-jython", "CNRI-JYTHON"])
 def test_cap13_busl_bsl_1_1_en_cnri_jython_blijven_verboden(uitdrukking):
     assert mod("licenties").beoordeel(uitdrukking) not in ("toegestaan", "ruim")
 
