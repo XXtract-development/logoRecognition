@@ -1,0 +1,38 @@
+{
+ "decision": "FAIL",
+ "rationale": "Coverage meets thresholds (P0 100% 15/15, P1 100% 7/7, overall 92% 23/25), but one P0 test fails: test_cap13_lokaal_echte_omgeving_zonder_overtredingen finds 2 licences outside randvoorwaarden §4 (torch 2.15.0 with a BSL-1.0 part, regex 2026.9.29 with CNRI-Python). This is stop point 4, awaiting the product owner; CAP-13 (last clause), build AC-1 and AC-3 are not met. No waiver.",
+ "decision_date": "2026-11-01",
+ "subject": "spike-getrainde-detector",
+ "head": "e157e5f",
+ "branch": "spike/proef-getrainde-detector",
+ "spec": "_bmad-output/implementation-artifacts/spec-spike-getrainde-detector.md",
+ "contract": "_bmad-output/planning-artifacts/spike-getrainde-detector/SPEC.md",
+ "atdd_checklist": "_bmad-output/test-artifacts/atdd-checklist-spike-getrainde-detector.md",
+ "tests": [
+  {"command": "cd _bmad-output/planning-artifacts/spike-getrainde-detector && uv run --group dev pytest -q -p no:cacheprovider", "result": "417 passed, 1 failed, 0 skipped"},
+  {"command": "cd _bmad-output/planning-artifacts/spike-getrainde-detector && uv run --group dev --group detector pytest -q -p no:cacheprovider -m \"zwaar or lokaal\"", "result": "3 passed, 1 failed, 414 deselected"}
+ ],
+ "failed_tests": ["tests/test_cap13_licenties.py::test_cap13_lokaal_echte_omgeving_zonder_overtredingen"],
+ "gate_criteria": {
+  "p0_coverage_actual": "100% (15/15)", "p0_status": "MET",
+  "p0_test_pass_rate_actual": "99.6% (237/238)", "p0_test_pass_status": "NOT MET",
+  "p1_coverage_actual": "100% (7/7)", "p1_status": "MET",
+  "overall_coverage_actual": "92% (23/25)", "overall_status": "MET",
+  "overall_test_pass_rate": "99.8% (417/418)"
+ },
+ "coverage": {
+  "FULL": ["CAP-1", "CAP-2", "CAP-3", "CAP-4", "CAP-5", "CAP-7", "CAP-8", "CAP-9", "CAP-10", "CAP-11", "CAP-12", "CAP-13", "CAP-14", "CAP-15", "RV-1/2", "AC-1", "AC-3", "IO-1", "IO-2", "IO-3", "IO-4", "IO-5", "IO-6"],
+  "PARTIAL": ["CAP-6", "AC-2"],
+  "NONE": []
+ },
+ "covered_but_not_met": ["CAP-13", "AC-1", "AC-3"],
+ "uncovered_requirements": [],
+ "partial_reason": "CAP-6/AC-2: no test asserts the device is mps; only the pytest log ('GPU available: True (mps), used: True') shows it",
+ "risk": {"probability": 3, "impact": 2, "score": 6, "action": "MITIGATE", "owner": "Friso (product owner)", "basis": "INFERENCE"},
+ "deferred_outside_scope": [
+  "DRAAIPLAN 'ongetest:' steps 1-4, 6-13, 15: CLI and network steps (production, OpenRouter with customer artwork, full training, K4-aa main) not automated by design",
+  "manual removal of near-duplicate training images from manifest.json after step 7 (no tool yet)",
+  "review finding 11 (blind review list contains only differences) pending product-owner decision"
+ ],
+ "next": "Product owner decides stop point 4: extend the allowed licence list (re-run CAP-13 lokaal test, re-trace, expected PASS) or grant a waiver (WAIVED with reason, approver, expiry)."
+}
