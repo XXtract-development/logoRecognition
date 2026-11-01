@@ -8,7 +8,8 @@ import subprocess
 
 import pytest
 
-VERPLICHT = {"scheiding", "uitslag", "model", "drempels", "beoordelaar", "k4aa", "telcode", "gewichten"}
+VERPLICHT = {"scheiding", "uitslag", "model", "drempels", "beoordelaar", "k4aa", "telcode", "gewichten",
+             "referentieplaatjes", "instellingen", "code"}  # review 01-11: + beeldinhoud, instellingen, beslissende code
 
 
 @pytest.fixture
@@ -21,34 +22,48 @@ def onderdelen(tmp_path):
     d = tmp_path / "onderdelen"
     d.mkdir()
     paden = {}
-    for naam in sorted(VERPLICHT):
+    for naam in sorted(VERPLICHT - {"code", "referentieplaatjes", "instellingen"}):  # `code` vult bevries zelf
         paden[naam] = d / f"{naam}.json"
         paden[naam].write_text(json.dumps({"onderdeel": naam, "inhoud": f"verzonnen-{naam}"}))
+    (d / "ref-eu.png").write_bytes(b"verzonnen png")
+    paden["instellingen"] = d / "instellingen.json"
+    paden["instellingen"].write_text(json.dumps({"maat": "N", "tegel": 1024, "overlap": 256, "drempel": 0.05,
+                                                 "beoordelaar_model": "google/gemini-3.8-flash", "k4aa_budget": 300}))
     return paden
 
 
+@pytest.fixture
+def referentieplaatjes(onderdelen):
+    """Index {code: png}; de bevriezing hasht de inhoud van de beelden, niet de index."""
+    index = onderdelen["scheiding"].parent / "referenties.json"
+    index.write_text(json.dumps({"EU_ORGANIC_FARMING": str(onderdelen["scheiding"].parent / "ref-eu.png")}))
+    onderdelen["referentieplaatjes"] = index
+    return index
+
+
 def test_cap11_verplichte_onderdelen(bv):
-    assert set(bv.VERPLICHT) == VERPLICHT and len(bv.VERPLICHT) == 8
+    assert set(bv.VERPLICHT) == VERPLICHT and len(bv.VERPLICHT) == 11
 
 
-def test_cap11_bevroren_json_bevat_de_sha256_van_alle_onderdelen(bv, onderdelen, tmp_path):
+def test_cap11_bevroren_json_bevat_de_sha256_van_alle_onderdelen(bv, onderdelen, referentieplaatjes, tmp_path):
     uit = tmp_path / "bevroren.json"
     terug = bv.bevries(onderdelen, uit)
     bestand = json.loads(uit.read_text())
     tekst = json.dumps(bestand)
     for naam, pad in onderdelen.items():
-        assert naam in tekst and hashlib.sha256(pad.read_bytes()).hexdigest() in tekst
+        if naam != "referentieplaatjes":  # die hash gaat over de beelden in de index (eigen test)
+            assert naam in tekst and hashlib.sha256(pad.read_bytes()).hexdigest() in tekst
     assert isinstance(terug, dict) and json.loads(json.dumps(terug, default=str)) == bestand
 
 
-def test_cap11_ontbrekend_verplicht_onderdeel_is_een_fout(bv, onderdelen, tmp_path):
+def test_cap11_ontbrekend_verplicht_onderdeel_is_een_fout(bv, onderdelen, referentieplaatjes, tmp_path):
     del onderdelen["drempels"]
     with pytest.raises(ValueError):
         bv.bevries(onderdelen, tmp_path / "bevroren.json")
     assert not (tmp_path / "bevroren.json").exists()
 
 
-def test_cap11_toetsrun_met_een_gewijzigd_onderdeel_wordt_geweigerd(bv, onderdelen, tmp_path):
+def test_cap11_toetsrun_met_een_gewijzigd_onderdeel_wordt_geweigerd(bv, onderdelen, referentieplaatjes, tmp_path):
     uit = tmp_path / "bevroren.json"
     bv.bevries(onderdelen, uit)
     bv.controleer(uit, onderdelen)  # ongewijzigd: geen fout
@@ -82,7 +97,7 @@ def test_cap11_herhaling_met_technische_reden_mag_en_eerste_blijft_bewaard(bv, t
     assert bv.registreer_run(runs, "da").name == "da-run1.json"  # elke route heeft een eigen eerste run
 
 
-def test_cap11_bevroren_json_binnen_een_git_werkboom_wordt_geweigerd(bv, onderdelen, tmp_path):
+def test_cap11_bevroren_json_binnen_een_git_werkboom_wordt_geweigerd(bv, onderdelen, referentieplaatjes, tmp_path):
     beelden = importlib.import_module("beelden")
     repo = tmp_path / "repo"
     repo.mkdir()

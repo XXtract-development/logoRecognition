@@ -18,7 +18,7 @@ EU, GD = "EU_ORGANIC_FARMING", "GREEN_DOT"
 NSA, NSB, NSC = "NUTRISCORE_A", "NUTRISCORE_B", "NUTRISCORE_C"
 
 
-def wilson(k, n, z=1.96):
+def wilson(k, n, z=1.959963984540054):  # z zoals fase-b/tel.py (Z), die meetregels §1 voorschrijft
     p, z2 = k / n, z * z
     d = 1 + z2 / n
     c, h = (p + z2 / (2 * n)) / d, z * math.sqrt(p * (1 - p) / n + z2 / (4 * n * n)) / d
@@ -256,7 +256,8 @@ def schrijf_routes(tmp_path, k4aa_meld):
     uitslag, meld, meta = route_wereld()
     (tmp_path / "uitslag.json").write_text(json.dumps(uitslag))
     for naam, m in (("route-da", meld), ("route-k4aa", k4aa_meld(uitslag))):
-        (tmp_path / f"{naam}.json").write_text(json.dumps({d: (sorted(v) if isinstance(v, set) else v) for d, v in m.items()}))
+        etiketten = {d: (sorted(v) if isinstance(v, set) else v) for d, v in m.items()}  # run-bestand (review 01-11)
+        (tmp_path / f"{naam}.json").write_text(json.dumps({"status": "voltooid", "etiketten": etiketten}))
         (tmp_path / f"{naam}-meta.json").write_text(json.dumps(meta))
     argv = ["--uitslag", str(tmp_path / "uitslag.json"), "--uit", str(tmp_path / "uit")]
     for naam in ("route-da", "route-k4aa"):

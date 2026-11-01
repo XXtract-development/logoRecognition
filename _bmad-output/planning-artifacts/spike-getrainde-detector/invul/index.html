@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<title>Toetsset bevestigen — proef getrainde detector</title>
+<style>
+  :root { --navy: #2F5A7A; --teal: #54949E; --groen: #B7D945; --rood: #D64545; --tekst: #1E293B; --lijn: #D5DEE6; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.45 Inter, system-ui, sans-serif; color: var(--tekst); background: #F4F7F9; }
+  header { background: var(--navy); color: #fff; padding: 10px 20px; display: flex; gap: 24px; align-items: baseline; flex-wrap: wrap; }
+  header h1 { font-size: 16px; margin: 0; font-weight: 600; }
+  #voortgang { font-weight: 600; }
+  .uitleg { opacity: .85; font-size: 13px; }
+  #standen { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 20px; background: #fff; border-bottom: 1px solid var(--lijn); }
+  .stand { border: 1px solid var(--lijn); border-radius: 6px; padding: 3px 8px; font-size: 12px; }
+  .stand.gehaald { border-color: var(--teal); background: #EAF4F5; }
+  main { display: grid; grid-template-columns: minmax(320px, 1fr) 420px; gap: 20px; padding: 16px 20px; }
+  .kaart { background: #fff; border: 1px solid var(--lijn); border-radius: 8px; padding: 14px; }
+  .kop { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+  [data-testid="etiket-id"] { font-family: ui-monospace, monospace; font-weight: 600; color: var(--navy); }
+  [data-testid="overzicht"] { max-width: 100%; max-height: 70vh; min-width: 40px; min-height: 30px; border: 1px solid var(--lijn); background: #fff; }
+  #hints { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  #hints img { max-width: 220px; max-height: 220px; border: 2px solid var(--teal); border-radius: 4px; }
+  #notitie { color: var(--rood); font-weight: 600; min-height: 1em; }
+  table { border-collapse: collapse; width: 100%; }
+  td { padding: 5px 4px; border-bottom: 1px solid var(--lijn); vertical-align: middle; }
+  td.naam { font-weight: 600; }
+  td.ai { color: var(--teal); font-size: 12px; white-space: nowrap; }
+  label { cursor: pointer; margin-right: 8px; white-space: nowrap; }
+  .ns label { margin-right: 6px; }
+  textarea { width: 100%; min-height: 70px; font: inherit; color: inherit; border: 1px solid var(--lijn); border-radius: 6px; padding: 6px; margin-top: 10px; }
+  .knoppen { display: flex; gap: 8px; margin-top: 10px; align-items: center; flex-wrap: wrap; }
+  button { font: inherit; border-radius: 6px; padding: 7px 14px; cursor: pointer; border: 1px solid var(--navy); background: #fff; color: var(--navy); }
+  button.hoofd { background: var(--navy); color: #fff; }
+  #melding { font-size: 13px; }
+  #melding.fout { color: var(--rood); font-weight: 600; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Toetsset bevestigen</h1>
+  <span id="voortgang">laden…</span>
+  <span class="uitleg">← → vorige/volgende · b = bevestigd zoals ingevuld, door naar het volgende (niet in het tekstveld)</span>
+</header>
+<section id="standen" aria-label="Stand per keurmerk tegen het doel"></section>
+<main>
+  <div class="kaart">
+    <div class="kop"><span data-testid="etiket-id"></span><span id="positie"></span></div>
+    <a data-testid="volledig" target="_blank" rel="noopener"><img data-testid="overzicht" alt="overzicht van het etiket"></a>
+    <div id="hints" aria-label="tegels waarin de AI een keurmerk zag"></div>
+  </div>
+  <form class="kaart" id="keuzes" autocomplete="off" onsubmit="return false">
+    <div id="notitie"></div>
+    <table><tbody id="rijen"></tbody></table>
+    <textarea id="opmerking" placeholder="Opmerking bij dit etiket"></textarea>
+    <div class="knoppen">
+      <button type="button" class="hoofd" id="opslaan">Bevestigen en opslaan</button>
+      <button type="button" id="onleesbaar">Etiket onleesbaar</button>
+      <span id="melding" role="status"></span>
+    </div>
+  </form>
+</main>
+<script>
+"use strict";
+const K7 = ["EU_ORGANIC_FARMING", "GREEN_DOT", "RECYCLABLE_GENERAL_CLAIM", "PREGNANCY_WARNING",
+            "MARINE_STEWARDSHIP_COUNCIL_LABEL", "WEIDEMELK", "VEGAN_SOCIETY_VEGAN_LOGO"];
+const K8 = K7.concat(["NUTRISCORE"]);
+const NAAM = {EU_ORGANIC_FARMING: "EU-biologisch", GREEN_DOT: "Groene Punt", RECYCLABLE_GENERAL_CLAIM: "Recyclebaar",
+              PREGNANCY_WARNING: "Zwangerschapswaarschuwing", MARINE_STEWARDSHIP_COUNCIL_LABEL: "MSC",
+              WEIDEMELK: "Weidemelk", VEGAN_SOCIETY_VEGAN_LOGO: "Vegan Society", NUTRISCORE: "Nutri-Score"};
+const KEUZES = ["aanwezig", "afwezig", "onzeker"];
+const LETTERS = ["A", "B", "C", "D", "E"];
+const DOEL_MET = 16, DOEL_ZONDER = 50;
+
+let items = [], records = {}, idx = 0, nsGekozen = false, keten = Promise.resolve();
+const $ = (s) => document.querySelector(s);
+const el = (tag, attrs = {}, tekst) => {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+  if (tekst !== undefined) e.textContent = tekst;
+  return e;
+};
+const conceptSleutel = (id) => "concept:" + id;
+
+// --- het formulier wordt één keer gebouwd; daarna alleen waarden zetten ------------------------------------------
+function bouwFormulier() {
+  const rijen = $("#rijen");
+  for (const code of K7) {
+    const tr = el("tr");
+    tr.append(el("td", {class: "naam"}, NAAM[code]));
+    const td = el("td", {"data-testid": "keuze-" + code, role: "radiogroup", "aria-label": NAAM[code]});
+    for (const w of KEUZES) {
+      const lab = el("label");
+      lab.append(el("input", {type: "radio", name: "k-" + code, value: w}), document.createTextNode(" " + w));
+      td.append(lab);
+    }
+    tr.append(td, el("td", {class: "ai", id: "ai-" + code}));
+    rijen.append(tr);
+  }
+  const tr = el("tr");
+  tr.append(el("td", {class: "naam"}, NAAM.NUTRISCORE));
+  const td = el("td", {class: "ns"});
+  for (const x of LETTERS) {
+    const lab = el("label");
+    lab.append(el("input", {type: "checkbox", "data-testid": "ns-" + x, value: x}), document.createTextNode(" " + x));
+    td.append(lab);
+  }
+  const lab = el("label");
+  lab.append(el("input", {type: "checkbox", "data-testid": "ns-onleesbaar"}), document.createTextNode(" letter onleesbaar"));
+  td.append(lab);
+  tr.append(td, el("td", {class: "ai", id: "ai-NUTRISCORE"}));
+  rijen.append(tr);
+  const standen = $("#standen");
+  for (const k of K8) standen.append(el("span", {class: "stand", "data-testid": "stand-" + k, "data-met": "0", "data-zonder": "0"}));
+}
+
+// --- toestand ------------------------------------------------------------------------------------------------------
+function heeftVoorinvulling(it) {
+  const vi = it.voorinvulling || {};
+  return Object.keys(vi.keurmerken || {}).length > 0;
+}
+
+function uitVoorinvulling(it) {
+  const vi = it.voorinvulling || {}, keurmerken = {};
+  for (const code of K7) if (typeof (vi.keurmerken || {})[code] === "boolean") keurmerken[code] = vi.keurmerken[code] ? "aanwezig" : "afwezig";
+  const nutriscore = heeftVoorinvulling(it) ? [...(vi.nutriscore || [])].sort() : undefined;
+  return {keurmerken, nutriscore, opmerking: ""};
+}
+
+function getoond(it) {
+  const s = uitVoorinvulling(it);
+  s.nsGekozen = s.nutriscore !== undefined;  // Nutri-Score telt als keuze: voorgevuld, opgeslagen of aangeklikt
+  s.nutriscore = s.nutriscore || [];
+  const r = records[it.id];
+  if (r && r.nutriscore !== undefined) s.nsGekozen = true;
+  if (r) {
+    Object.assign(s.keurmerken, r.keurmerken || {});
+    if (r.nutriscore !== undefined) s.nutriscore = r.nutriscore;
+    if (r.opmerking !== undefined) s.opmerking = r.opmerking;
+  }
+  const c = sessionStorage.getItem(conceptSleutel(it.id));
+  if (c) {
+    try { Object.assign(s, JSON.parse(c)); } catch (e) { /* kapot concept: serverstand blijft */ }
+  }
+  return s;
+}
+
+function formulier() {
+  const keurmerken = {};
+  for (const code of K7) {
+    const r = document.querySelector(`input[name="k-${code}"]:checked`);
+    if (r) keurmerken[code] = r.value;
+  }
+  const nutriscore = !nsGekozen ? undefined : $('[data-testid="ns-onleesbaar"]').checked ? "onleesbaar"
+    : LETTERS.filter((x) => $(`[data-testid="ns-${x}"]`).checked);
+  return {keurmerken, nutriscore, opmerking: $("#opmerking").value};
+}
+
+function volledig(s) {
+  return K7.every((c) => s.keurmerken[c]) && s.nutriscore !== undefined;
+}
+
+function veranderd(it, s) {
+  const vi = uitVoorinvulling(it), uit = K7.filter((c) => s.keurmerken[c] !== vi.keurmerken[c]);
+  if (s.nutriscore === undefined) return uit;
+  const ns = JSON.stringify(s.nutriscore === "onleesbaar" ? s.nutriscore : [...s.nutriscore].sort());
+  const gekozen = s.nutriscore === "onleesbaar" || s.nutriscore.length > 0;
+  if (vi.nutriscore === undefined ? gekozen : ns !== JSON.stringify(vi.nutriscore)) uit.push("NUTRISCORE");
+  return uit;
+}
+
+function bewaarConcept() {
+  const it = items[idx];
+  if (it) sessionStorage.setItem(conceptSleutel(it.id), JSON.stringify({...formulier(), nsGekozen}));
+}
+
+// --- tonen: alleen waarden zetten, nooit focus verplaatsen ----------------------------------------------------------
+function toon() {
+  const it = items[idx], s = getoond(it), vi = uitVoorinvulling(it);
+  $('[data-testid="etiket-id"]').textContent = it.id;
+  $("#positie").textContent = `${idx + 1} / ${items.length}` + (records[it.id] && records[it.id].status ? ` · ${records[it.id].status}` : "");
+  $('[data-testid="overzicht"]').src = it.beeld;
+  $('[data-testid="volledig"]').href = it.beeld;
+  $("#hints").replaceChildren(...(it.hint || []).map((p) => el("img", {src: p, alt: "hinttegel"})));
+  $("#notitie").textContent = heeftVoorinvulling(it) ? "" : "AI-voorinvulling ontbreekt of is mislukt: vul alles zelf in.";
+  for (const code of K7) {
+    for (const r of document.querySelectorAll(`input[name="k-${code}"]`)) r.checked = s.keurmerken[code] === r.value;
+    $("#ai-" + code).textContent = vi.keurmerken[code] ? "AI: " + vi.keurmerken[code] : "AI: —";
+  }
+  nsGekozen = !!s.nsGekozen;
+  const onleesbaar = s.nutriscore === "onleesbaar";
+  for (const x of LETTERS) $(`[data-testid="ns-${x}"]`).checked = !onleesbaar && s.nutriscore.includes(x);
+  $('[data-testid="ns-onleesbaar"]').checked = onleesbaar;
+  $("#ai-NUTRISCORE").textContent = vi.nutriscore === undefined ? "AI: —" : "AI: " + (vi.nutriscore.join(", ") || "geen");
+  $("#opmerking").value = s.opmerking || "";
+  $("#melding").textContent = "";
+}
+
+function ga(stap) {
+  const nieuw = Math.min(items.length - 1, Math.max(0, idx + stap));
+  if (nieuw !== idx) { idx = nieuw; toon(); }
+}
+
+// --- stand van de server: alleen textContent/attributen op de tellers ----------------------------------------------
+function zetStand(antwoord) {
+  records = antwoord.uitslag || {};
+  const klaar = items.filter((it) => records[it.id] && ["bevestigd", "onleesbaar"].includes(records[it.id].status)).length;
+  $("#voortgang").textContent = `${klaar} van ${items.length} etiketten afgehandeld`;
+  for (const k of K8) {
+    const st = (antwoord.stand || {})[k] || {met: 0, zonder: 0}, e = $(`[data-testid="stand-${k}"]`);
+    e.setAttribute("data-met", String(st.met));
+    e.setAttribute("data-zonder", String(st.zonder));
+    e.textContent = `${NAAM[k]}: mét ${st.met}/${DOEL_MET} · zonder ${st.zonder}/${DOEL_ZONDER}`;
+    e.classList.toggle("gehaald", st.met >= DOEL_MET && st.zonder >= DOEL_ZONDER);
+  }
+}
+
+async function haalStand() {
+  const r = await fetch("stand", {cache: "no-store"});
+  if (r.ok) zetStand(await r.json());
+}
+
+// --- opslaan: één voor één (één keten), concept pas weg als de server deze stand heeft bevestigd ----------------------
+function sla(it, waarde) {
+  const momentopname = sessionStorage.getItem(conceptSleutel(it.id));
+  const stap = keten.then(() => slaNu(it, waarde, momentopname));
+  keten = stap.catch(() => {});
+  return stap;
+}
+
+async function slaNu(it, waarde, momentopname) {
+  const sleutel = conceptSleutel(it.id);
+  const melding = $("#melding");
+  try {
+    const r = await fetch("opslaan", {method: "POST", headers: {"Content-Type": "application/json"},
+                                      body: JSON.stringify({id: it.id, waarde})});
+    if (!r.ok) throw new Error(r.status === 400 ? "geweigerd: kies eerst bij alle 8 keurmerken" : "server " + r.status);
+    if (sessionStorage.getItem(sleutel) === momentopname) sessionStorage.removeItem(sleutel);
+    records[it.id] = waarde;
+    melding.className = "";
+    melding.textContent = waarde.status ? `Opgeslagen (${waarde.status}).` : "Keuze opgeslagen.";
+    await haalStand();
+  } catch (e) {
+    melding.className = "fout";
+    melding.textContent = "Opslaan mislukt (" + e.message + "); je invoer staat nog in deze pagina.";
+  }
+}
+
+function slaHuidigeOp(status) {
+  const it = items[idx], s = formulier();
+  if (status === "bevestigd" && !volledig(s)) {  // niet opslaan en niet doorgaan: eerst overal een keuze
+    $("#melding").className = "fout";
+    $("#melding").textContent = "Kies eerst bij alle 7 keurmerken en bij Nutri-Score; niets opgeslagen.";
+    return false;
+  }
+  const waarde = {keurmerken: s.keurmerken, veranderd: veranderd(it, s), opmerking: s.opmerking};
+  if (s.nutriscore !== undefined) waarde.nutriscore = s.nutriscore;
+  if (status) waarde.status = status;
+  sla(it, waarde);
+  return true;
+}
+
+function isTekstveld(t) {
+  return t instanceof HTMLTextAreaElement || (t instanceof HTMLInputElement && !["radio", "checkbox"].includes(t.type)) || t.isContentEditable;
+}
+
+function koppel() {
+  const form = $("#keuzes");
+  form.addEventListener("input", bewaarConcept);
+  form.addEventListener("change", (e) => {
+    if (e.target.type !== "radio" && e.target.type !== "checkbox") return;
+    if (e.target.type === "checkbox") nsGekozen = true;
+    bewaarConcept();
+    slaHuidigeOp(null);  // elke keuze direct naar uitslag.json, als tussenstand
+  });
+  $("#opslaan").addEventListener("click", () => slaHuidigeOp("bevestigd"));
+  $("#onleesbaar").addEventListener("click", () => slaHuidigeOp("onleesbaar"));
+  document.addEventListener("keydown", (e) => {
+    if (!items.length || e.ctrlKey || e.metaKey || e.altKey || isTekstveld(e.target)) return;
+    const radio = e.target instanceof HTMLInputElement && e.target.type === "radio";
+    if (e.key === "ArrowLeft" && !radio) { e.preventDefault(); ga(-1); }
+    else if (e.key === "ArrowRight" && !radio) { e.preventDefault(); ga(1); }
+    else if (e.key === "b") { e.preventDefault(); if (slaHuidigeOp("bevestigd")) ga(1); }
+  });
+}
+
+async function start() {
+  bouwFormulier();
+  const [ri, rs] = await Promise.all([fetch("items.json", {cache: "no-store"}), fetch("stand", {cache: "no-store"})]);
+  items = await ri.json();
+  if (!items.length) { $("#voortgang").textContent = "geen etiketten in items.json"; return; }
+  zetStand(await rs.json());
+  const open = items.findIndex((it) => !(records[it.id] && ["bevestigd", "onleesbaar"].includes(records[it.id].status)));
+  idx = open < 0 ? 0 : open;
+  toon();
+  koppel();
+}
+start();
+</script>
+</body>
+</html>

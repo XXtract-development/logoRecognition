@@ -136,7 +136,7 @@ def test_cap02_voorinvulling_heel_etiket_dan_tegels_als_losse_beelden(ts):
 
 def test_cap02_voorinvulling_uitvoer_per_etiket(ts):
     uit = ts.voorinvulling(NepClient(ANTWOORD, kosten=0.061), png(), [png(), png(), png()])
-    assert uit["keurmerken"] == {code: code == GD for code in K7}
+    assert uit["keurmerken"] == {GD: True, WM: False}  # alleen teruggegeven codes (review 01-11): de rest zonder voorinvulling
     assert uit["nutriscore"] == ["A", "C"]
     assert uit["hinttegels"][GD] == [0, 2] and uit["hinttegels"].get(WM, []) == []
     assert uit["gelijkend"] == ["TRIMAN"]

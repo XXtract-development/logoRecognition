@@ -151,6 +151,20 @@ Uit Worker B (pagina):
 - `echt.voorlabels`-antwoord: `{"vakjes": [{"beeld", "code", "box", "onzeker"}]}` (`beeld` 0 = heel etiket, 1… = tegels; omrekening met de schaal van elke tegel); `echt.rapport` telt onzekere vakjes niet.
 - `tel_proef.tabel`: leverancierstrekkingen over de leveranciers van de toetsetiketten; `verschil` = route a min route b in procentpunten; `tabellen.json` = één tabel per routenaam.
 
+### Wijzigingen in het contract na de code review (01-11-2026, bindend)
+
+Op aanwijzing van de review (bmad-build step-04); drie bestaande tests zijn daarop aangepast (reden in de specfile):
+- `toets.voorinvulling`: `keurmerken` bevat alleen de codes die het model teruggaf (een ontbrekende code blijft zonder voorinvulling); hoogstens het hele etiket + 16 tegels per aanroep, meer tegels in extra aanroepen, samengevoegd; een antwoord in een andere vorm → `fout: antwoord_ongeldig`.
+- `bevries.VERPLICHT` = 11: de 8 van meetregels §6 plus `referentieplaatjes` (hash over de inhoud van elk beeld in de index), `instellingen` (`maat`, `tegel`, `overlap`, `drempel`, `beoordelaar_model`, `k4aa_budget`) en `code` (vult `bevries` zelf). Nieuw: `lees_run`, `schrijf_run`, `laatste`, `bevroren_instellingen`.
+- Run-bestanden (D+A, D, K4-aa) zijn `{"status": "gestart"|"voltooid"|"afgebroken", "reden"?, "etiketten": {doc: [codes] | {"fout": klasse}}}`; `tel_proef` weigert een run die niet voltooid is, en een afgebroken run met reden `geen_zdr` is de zdr-stop.
+- `tel_proef`: Nutri-Score gevonden alleen als alle gemelde letters in de ware verzameling zitten (meetregels §3, bijgewerkt); `corrigeer` valideert de correcties.
+- `kosten.Bewaker(post, raming, factor=1.5, grootboek=None)`: met een grootboek telt de grens per post over processen en herstarts; `controleer_start` rekent het al uitgegeven bedrag mee.
+- `openrouter.Client` weigert een model zonder tarief in `kosten.TARIEF`.
+- `echt.valsplit(..., overgeslagen=None)`, `echt.schoon(vakjes)`; `validatie-waarheid.json` = `{doc: {"aanwezig": [...], "onzeker": [...]}}`.
+- `herken.tegels`: `ValueError` tenzij `0 <= overlap < tegel`.
+- Invulserver: tussenstand houdt de status; vreemde Host of Origin → 403. Pagina: opslagen één voor één; `b`/opslaan alleen met een keuze bij alle 7 keurmerken en Nutri-Score.
+- Nieuwe tests: `tests/test_review_20261101.py`.
+
 ### Testbestanden (rode fase)
 
 | bestand | tests | CAP |

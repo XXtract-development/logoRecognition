@@ -40,7 +40,7 @@ IJkpunten zijn de drie keurmerken die ook in de vorige proef (fase B) gemeten zi
 ## 3. Nutri-Score als groep
 
 - Friso legt per etiket de verzameling zichtbare letters vast (A–E), of "letter onleesbaar".
-- **Mét:** etiketten met minstens één van A, B, C. **Gevonden** als er een Nutri-Score-melding is met een letter uit die verzameling. Een melding met alleen een verkeerde letter is **gemist**, en wordt apart geteld als "verkeerde letter".
+- **Mét:** etiketten met minstens één van A, B, C. **Gevonden** als alle gemelde Nutri-Score-letters in die verzameling zitten (en er minstens één is). Een gemelde letter buiten de verzameling, ook naast de juiste, maakt het etiket **gemist**; het wordt apart geteld als "verkeerde letter".
 - **Zonder:** etiketten zonder A, B en C, dus ook etiketten met alleen Nutri-Score D of E (de detector kent D en E niet als klasse). Op zulke etiketten is elke melding A, B of C **vals**.
 - "Letter onleesbaar" telt aan geen van beide kanten mee.
 - A, B en C worden ook per letter gerapporteerd, ter informatie; het besluit valt op de groep.
