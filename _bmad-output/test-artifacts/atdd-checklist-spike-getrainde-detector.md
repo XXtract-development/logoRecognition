@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-generation-mode', 'step-03-test-strategy', 'step-04-generate-tests', 'step-04c-aggregate', 'step-05-validate-and-complete']
 lastStep: 'step-05-validate-and-complete'
-lastSaved: '2026-10-31'
+lastSaved: '2026-11-01'
 story_id: spike-getrainde-detector
 inputDocuments:
   - _bmad-output/planning-artifacts/spike-getrainde-detector/SPEC.md
@@ -13,6 +13,8 @@ inputDocuments:
   - _bmad-output/planning-artifacts/spike-architectuurkeuze-logoherkenning/fase-b/test_tel.py
   - apps/ml-service/app/services/k4aa.py
   - _bmad/tea/testarch/knowledge/{test-quality,test-levels-framework,test-priorities-matrix,data-factories,test-healing-patterns,component-tdd,ci-burn-in}.md
+  - _bmad-output/planning-artifacts/spike-getrainde-detector/DRAAIPLAN.md (ronde 2)
+  - git show c86a067 (ronde 2: besluiten Friso 01-11-2026)
 ---
 
 # ATDD-checklist: proef getrainde detector
@@ -209,3 +211,81 @@ Redenen (gegroepeerd): 362 × `ModuleNotFoundError` (17 nog te bouwen modules) e
 - **Geen achtergebleven browsers of sessies;** tijdelijke JSON-samenvattingen staan in `/tmp` (buiten de repo, alleen werkgeheugen van de workers).
 - **Klantdata:** alleen verzonnen GLN/GTIN en gegenereerde beelden in de tests; de twee `lokaal`-tests lezen echte invoer uitsluitend buiten de repo.
 - **Volgende stap:** `bmad-build` op SPEC.md met deze checklist als bindend contract; groen maken zonder een test aan te passen om hem te laten slagen (een test wijzigen mag alleen bij een aantoonbare testfout, met reden in het buildverslag).
+
+## Ronde 2 (besluiten Friso 01-11-2026)
+
+Bron: commit `c86a067` (spec-update na `bmad-review`, 25 bevindingen doorgevoerd). Alleen de criteria die daarin veranderden: CAP-13 (randvoorwaarden §4), CAP-6 (trainingsset §5), CAP-9 (meetregels §6–§7) en CAP-10 (DRAAIPLAN stap 10, 14–15, licentieblok). De rest van deze checklist blijft bindend.
+
+### Stap 1–3 — context, modus en strategie
+
+- **Werkwijze:** `bmad-testarch-atdd` in Create-modus, headless (geen mens; voor de hand liggende keuzes zelf gemaakt en hieronder vastgelegd). Uitvoeringsmodus **sequentieel**: geen worker-subagents; de hoofddraad schreef de tests zelf (toegestaan door de opdrachtgever). Worker B (E2E) is niet van toepassing: puur backend.
+- **Stack:** `backend` (Python 3.12, pytest via `uv`). Uitgangstoestand: 418 tests, alles groen behalve `test_cap13_lokaal_echte_omgeving_zonder_overtredingen` (torch `… AND BSL-1.0 AND …`, regex `Apache-2.0 AND CNRI-Python`).
+- **Gelezen:** SPEC.md, meetregels §6–§7, randvoorwaarden §4, trainingsset §5, `tel_proef.py`, `licenties.py`, `train.py`, `bevries.py`, `uitslag.py`, `beelden.veilig_doel`, `DRAAIPLAN.md`, de bestaande tests en kennisfragmenten `test-quality`, `data-factories`, `test-levels-framework`, `test-healing-patterns` (kernregels; de rest is Playwright/JS-gericht).
+- **Generatiemodus:** AI-generatie (backend, geen opname).
+- **Niveaus en prioriteit:** CAP-13 unit, P0. CAP-6 unit + opdrachtregel (training gemonkeypatcht), P1. CAP-9 unit (`nakijklijst`) + integratie (`main` met bestanden, twee echte processen met verschillende `PYTHONHASHSEED`), P0. CAP-10 documenttest, P2.
+- **Bewuste afwijking van de stapbestanden:** geen `test.skip()` (Playwright-patroon); de tests draaien rood, want de keten vraagt een rode run met aantallen.
+
+### Aanvullingen op het interfacecontract (bindend)
+
+**`licenties.py`** — `beoordeel("BSL-1.0") == beoordeel("CNRI-Python") == "toegestaan"` als exacte SPDX-id, voor elk pakket (geen uitzondering per pakketnaam); ze staan niet onder "ruim". `BUSL-1.1`, `BSL-1.1`, `CNRI-Jython` en vrije tekst als "Business Source License 1.1" blijven niet toegestaan. Samengesteld volgens de bestaande regel (AND = zwaarste deel, OR = lichtste): torch 2.15.0 (`Apache-2.0 AND Apache-2.0 WITH LLVM-exception AND BSD-2-Clause AND BSD-3-Clause AND BSL-1.0 AND ISC AND MIT AND Zlib`) → `"ruim"` (door ISC en Zlib) en dus vermeld onder `ruim`; regex → `"toegestaan"`.
+
+**`train.py`** — `config(fase, maat, dataset, uit, epochs, seed, start=None, besluit=None)`: maat `S`/`M`/`L` zonder besluit (`None`, leeg of alleen spaties) → `ValueError` waarvan de melding "besluit" noemt; met besluit → `cfg["besluit"]` = de verwijzing (komt zo ook in `train-resultaat.json`, dat de config bevat). Maat `N` mag zonder besluit; `cfg["besluit"]` is dan `None`. `snelheid(maat, dataset, uit, iteraties=50, tegels_per_epoch=5000, epochs=20, besluit=None)` hanteert dezelfde regel en weigert vóór enig werk (geen map, geen dataset lezen). Opdrachtregel: `train` en `snelheid` krijgen `--besluit "<verwijzing>"`; `train --maat S` zonder `--besluit` start niets en eindigt niet-nul (`ValueError` of exitcode ≠ 0).
+
+**`tel_proef.py`** (meetregels §6–§7):
+- `STEEKPROEF_SEED = 20261101` (moduleconstante; geen opdrachtregeloptie). `--seed` blijft alleen voor de leveranciersbootstrap en verandert lijst en sleutel niet.
+- `nakijklijst(uitslag, routes) -> (lijst, sleutel)` (geen `seed`-parameter meer). Paren die tellen: (bevestigd etiket, keurmerk uit `KEURMERKEN8`) met oordeel aanwezig/afwezig, Nutri-Score als groep met leesbare letters (zelfde indeling als `uitslag.per_keurmerk`). Een route stemt overeen als ze bij "mét" meldt (Nutri-Score: `_ns_goed`) en bij "zonder" niet meldt; een fout of ontbrekend record = geen melding. **Verschil** = minstens één route wijkt af. **Steekproef** = per keurmerk en kant de paren waar alle routes overeenkomen, `ceil(10%)`, dus minstens 1 bij een niet-lege kant en 0 bij 0; getrokken uit de gesorteerde paren, onafhankelijk van de volgorde van de invoer en van `PYTHONHASHSEED`. De routes die tellen zijn de `--route`-routes; de informatieve K4-aa-run met alle referenties wordt niet als `--route` meegegeven (afgedwongen in DRAAIPLAN stap 14, documenttest). Overgeslagen: een aparte optie voor informatieve routes; toevoegen als die tabel in dezelfde run nodig is.
+- Elke regel heeft precies de velden `nr`, `doc_id`, `keurmerk`, `waarheid` (Friso's eerdere oordeel zoals in `uitslag.json`); `nr` = 1…n in lijstvolgorde; verschillen en steekproef door elkaar geschud (deterministisch); geen routenaam en geen herkomstveld. `sleutel` = `{str(nr): "verschil" | "steekproef"}` voor precies de regels van de lijst.
+- `main` (stap 14) schrijft `<uit>/nakijklijst.json`, `<uit>/niet-voor-nakijker/nakijk-sleutel.json`, `<uit>/niet-voor-nakijker/verschil.json` (niet meer in `<uit>` zelf) en `<uit>/nakijk-sha256.json` = `{"nakijklijst.json": sha256, "nakijk-sleutel.json": sha256}` over de bytes van die bestanden. Overgeslagen: de hashes bij het nakijken controleren; vastleggen is wat de spec vraagt.
+- `--nakijken <pad>` (vervangt `--correcties`, dat vervalt): `{str(nr): oordeel}` voor **elke** regel van de lijst; Nutri-Score-regel: lijst letters A–E of `"onleesbaar"`, andere: `"aanwezig"`/`"afwezig"`/`"onzeker"`. Ontbrekende regel, regel buiten de lijst of ongeldige waarde → `main` geeft niet-nul terug en schrijft geen `tabellen-na-nakijken.*`. Correcties gelden voor alle routes gelijk (zelfde toepassing als het oude `corrigeer`).
+- **Fout in de waarheid** = elk oordeel dat afwijkt van de eerdere waarheid: ook naar `onzeker`/`onleesbaar`; bij Nutri-Score elke andere letterverzameling (volgorde telt niet: `["B","A"]` = `["A","B"]`).
+- `tabellen-na-nakijken.json`: per route per keurmerk (`KEURMERKEN8`) ook `"steekproef": {"met": {"nagekeken", "fouten", "bovengrens"}, "zonder": {…}}` (bovengrens = Wilson-bovengrens van fouten/nagekeken, `None` bij 0 nagekeken; in de md "–"), voor alle routes gelijk; en `"gevoeligheid"` = het besluit (`automatisch` / `mens bevestigt` / `te weinig voorbeelden`) als de steekproefbovengrens per kant in het nadeel van de route op de overeenkomende paren wordt toegepast (informatief; de test eist alleen dat een bovengrens van ±66% een "automatisch" onmogelijk maakt). De md noemt de steekproef en de gevoeligheid.
+- **Besluitregel:** minstens één fout in de steekproef van keurmerk K → besluit voor K in alle routes `"mens bevestigt (voorlopig)"` en `<uit>/nakijklijst-ronde2-<K>.json` met alle overige overeenkomende paren van K (overeenkomend volgens de eerdere waarheid, min de steekproefregels; zelfde vier velden, `nr` 1…n). Geen fout → geen tweede-rondebestand. Voorrang: `te weinig voorbeelden` (op de gecorrigeerde waarheid) > `voorlopig` > tabel.
+- `--nakijken-ronde2 <K>=<pad>` (herhaalbaar): antwoorden op de tweede ronde van K, zelfde vorm en volledigheidseis (anders niet-nul, geen tabellen ná nakijken); daarna geldt voor K het gewone besluit op de waarheid na beide rondes.
+- `--ronde2-overgeslagen <K>` (herhaalbaar): de expliciete keuze om de tweede ronde van K niet na te kijken → `"mens bevestigt"` (definitief), tenzij te weinig voorbeelden. Zonder antwoord en zonder deze optie blijft K op "voorlopig".
+
+**`DRAAIPLAN.md`** — het licentieblok ("tot dan geen training") vervalt; `MAAT=N`, en elke `--maat` anders dan `N`/`$MAAT` staat alleen in een commando met `--besluit` (raakt ook stap 9: de meting van S vervalt of krijgt een besluit); stap 10 zonder "herhaal met een andere maat" en met stoppunt 1 bij tekortschieten van N op de validatieset; stap 14 telt precies `--route D+A`, `D` en `K4-aa` en noemt steekproef, `niet-voor-nakijker`, `nakijk-sleutel.json`, `nakijk-sha256.json`; stap 15 noemt `nakijken.json`, `--nakijken`, "elke regel", `nakijklijst-ronde2-`, `--nakijken-ronde2`, `--ronde2-overgeslagen` en "voorlopig", zonder `--correcties` en zonder "Kijkt Friso niet na".
+
+### Testlijst per criterium (`tests/test_besluiten_20261101.py`, 52 tests)
+
+| criterium | tests | aantal |
+|---|---|---:|
+| CAP-13 BSL-1.0/CNRI-Python toegestaan | `test_cap13_bsl_1_0_en_cnri_python_zijn_toegestaan` (5 uitdrukkingen), `…_torch_samengesteld_…_even_ruim`, `…_torch_regex_en_elk_ander_pakket_…` | 7 |
+| CAP-13 grens blijft | `test_cap13_busl_bsl_1_1_en_cnri_jython_blijven_verboden` (6; al groen, bewaakt een te ruime bouw) | 6 |
+| CAP-6 maat N / besluit | `test_cap06_andere_maat_dan_n_zonder_besluit_wordt_geweigerd` (S/M/L × None/""/spaties), `…_zonder_besluit_parameter_weigert_config_s`, `…_maat_n_zonder_besluit_mag_en_een_besluit_wordt_vastgelegd`, `…_snelheidsmeting_…_weigert_voor_het_werk` (3), `…_opdrachtregel_train_vraagt_besluit…`, `…_opdrachtregel_snelheid_geeft_besluit_door` | 16 |
+| CAP-9 steekproef en sleutel | `test_cap09_steekproef_seed_ligt_vast_in_de_telcode`, `…_nakijklijst_verschillen_plus_steekproef_per_keurmerk_en_kant`, `…_regels_gelijk_van_vorm_geschud_en_zonder_herkomst`, `…_hangt_niet_af_van_de_volgorde_van_de_invoer`, `…_zelfde_trekking_in_elk_proces` (2 processen, PYTHONHASHSEED 1/4242), `…_opdrachtregeloptie_seed_verandert_de_steekproef_niet`, `…_sleutel_en_verschil_in_aparte_map_met_sha256_vooraf` | 7 |
+| CAP-9 nakijken en besluitregel | `test_cap09_nakijken_vraagt_een_oordeel_voor_precies_elke_regel` (2), `…_oude_correctievorm_wordt_niet_meer_aangenomen`, `…_correcties_gelden_voor_alle_routes_gelijk`, `…_fout_is_elk_afwijkend_oordeel_…`, `…_steekproef_apart_gerapporteerd_met_wilson_bovengrens_en_gevoeligheid`, `…_fout_in_steekproef_geeft_voorlopig_en_een_tweede_ronde_…`, `…_tweede_ronde_nagekeken_geeft_het_gewone_besluit`, `…_tweede_ronde_vraagt_ook_een_oordeel_voor_elke_regel`, `…_tweede_ronde_uitdrukkelijk_overgeslagen_geeft_mens_bevestigt`, `…_te_weinig_voorbeelden_gaat_voor_voorlopig` | 11 |
+| CAP-10 draaiplan | `test_cap10_licentieblok_is_vervallen`, `…_maat_n_en_nergens_een_andere_maat_zonder_besluit`, `…_stap_10_…`, `…_stap_14_…`, `…_stap_15_…` | 5 |
+
+Verzonnen werelden met nagerekende uitkomst. Steekproefwereld: 6 verschillen en 42 steekproefregels (o.a. GD mét 11 → 2, GD zonder 29 → 3, EU mét 1 → 1, Nutri-Score zonder 31 → 4: `ceil`, niet afronden); de verschillen en strata zijn nagerekend met de bestaande `nakijklijst` en `uitslag.per_keurmerk`. Telwereld: 20 mét GD (+ Nutri-Score A, B) en 40 zonder; D+A mist GD op één etiket; vóór nakijken GD D+A "mens bevestigt", D en K4-aa "automatisch" (nagerekend met `tel`).
+
+### Bestaande tests aangepast aan het nieuwe contract
+
+| test | wijziging | reden |
+|---|---|---|
+| `tests/test_cap09_telling.py::test_cap09_blinde_nakijklijst_zonder_routenamen` | `nakijklijst(uitslag, routes)` zonder `seed`, pakt `(lijst, sleutel)` uit en toetst de verschilregels via de sleutel | seed staat vast in de code; de lijst bevat nu ook de steekproef |
+| `tests/test_cap06_training.py::test_cap06_configuratie_legt_fase_maat_seed_epochs_en_mappen_vast` (2) | maat S met `besluit=`, en `cfg["besluit"]` getoetst | S zonder besluitverwijzing wordt geweigerd |
+| `tests/test_review_20261101.py::test_correcties_voor_een_keurmerk_en_nutriscore` → `test_nakijken_voor_een_keurmerk_en_nutriscore` | eerst stap 14 (lijst uitgeven), dan `--nakijken` met `{nr: oordeel}` voor elke regel; zelfde verwachte tabellen | `--correcties` (per doc_id) vervalt |
+| `tests/test_review_20261101.py::test_ongeldige_correcties_geven_geen_tabellen` (4) → `test_ongeldig_nakijken_geeft_geen_tabellen_na_nakijken` (4) | ongeldige waarden in de nieuwe vorm (Nutri-Score als keurmerkoordeel, letter F, letters bij een keurmerk, "ja"); toetst dat `tabellen-na-nakijken.json` ontbreekt | regels worden per nummer aangewezen (onbekend etiket/keurmerk kan niet meer); de tabellen van vóór nakijken bestaan al uit stap 14 |
+
+Ongewijzigd en nu rood tot de bouw: `tests/test_cap13_licenties.py::test_cap13_lokaal_echte_omgeving_zonder_overtredingen` (het bewijs op de echte omgeving).
+
+### Rode run (01-11-2026, 09:15)
+
+```
+cd _bmad-output/planning-artifacts/spike-getrainde-detector && uv run --group dev pytest -q -p no:cacheprovider
+55 failed, 415 passed, 18 warnings in 63.09s
+```
+
+470 tests (418 + 52 nieuw; de vervangen tests in `test_review_20261101.py` houden hun aantal). Geen errors. Per bestand rood: `test_besluiten_20261101.py` 46, `test_review_20261101.py` 5, `test_cap06_training.py` 2, `test_cap09_telling.py` 1, `test_cap13_licenties.py` 1 (lokaal). Redenen, allemaal ontbrekend nieuw gedrag:
+- licenties: `beoordeel` geeft `onbekend` voor BSL-1.0/CNRI-Python (6×), `controleer` meldt torch/regex als overtreding (2×, waarvan 1 de lokaal-test);
+- training: `config()` kent `besluit` niet (11× `TypeError`), S wordt aangenomen (`DID NOT RAISE`, `KeyError: 'besluit'`), `snelheid` begint aan het werk (3× `FileNotFoundError` op de dataset in plaats van een weigering), de opdrachtregel start S zonder besluit en kent `--besluit` niet;
+- telling: `STEEKPROEF_SEED` ontbreekt, `nakijklijst` geeft nog één lijst (4× "too many values to unpack"), `niet-voor-nakijker/nakijk-sleutel.json` ontbreekt (13×), `--correcties` wordt nog aangenomen, `--nakijken` bestaat niet (5× `SystemExit: 2`);
+- draaiplan: oude tekst (licentieblok, `--maat S` in stap 9, "Herhaal met een andere maat", geen steekproef in stap 14, geen `--nakijken` in stap 15).
+
+Al groen vóór de bouw (6): de grenzen BUSL-1.1, BSL-1.1, CNRI-Jython, "MIT AND BUSL-1.1", "Apache-2.0 AND CNRI-Jython", "Business Source License 1.1" — bewaking tegen een te ruime regel, moet groen blijven. Testfouten gevonden en hersteld vóór deze run: een K4-aa-record in de steekproefwereld liet Groene Punt weg (zou een zevende verschil geven); de volgordetest was zonder het nieuwe retourformaat vacuüm groen en pakt nu `(lijst, sleutel)` uit.
+
+### Validatie en volgende stap
+
+- Voorwaarden voldaan (spec-update gereviewd, framework en omgeving aanwezig); elke gewijzigde regel uit `c86a067` voor CAP-6/9/10/13 heeft minstens één test; geen placeholders; geen browsers of tijdelijke bestanden buiten `tmp_path`; alleen verzonnen GLN's/GTIN's; `~/logo-meetset-20261018/` niet gelezen.
+- Niet gedekt (bewust): de exacte formule van de gevoeligheid (alleen de richting is getoetst); het tekortschieten van N wordt uit de validatietabel afgelezen, zonder eigen gereedschap (alleen de vermelding in DRAAIPLAN stap 10 is getoetst); correctiepercentage-logging (niet veranderd in `c86a067`).
+- **Volgende stap:** `bmad-build` op deze sectie als bindend contract; groen maken zonder een test aan te passen, behalve bij een aantoonbare testfout (met reden in het buildverslag).

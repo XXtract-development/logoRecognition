@@ -143,11 +143,14 @@ def test_cap09_blinde_nakijklijst_zonder_routenamen(tp):
         "route-geheim-1": {"a": {GD}, "b": {GD}, "c": set(), "d": {GD}, "e": {"fout": "aanbieder"}},
         "route-geheim-2": {"a": set(), "b": set(), "c": set(), "d": set(), "e": {GD}},
     }
-    lijst = tp.nakijklijst(uitslag, routes, seed=20261031)
-    assert docs_in(lijst, uitslag) == {"a", "b", "e"}
+    # Ronde 2 (besluiten 01-11-2026): vaste seed in de code, geen parameter; de lijst bevat ook de steekproef, de sleutel
+    # zegt welke regel een verschil is.
+    lijst, sleutel = tp.nakijklijst(uitslag, routes)
+    verschil = [e for e in lijst if {str(k): v for k, v in sleutel.items()}[str(e["nr"])] == "verschil"]
+    assert docs_in(verschil, uitslag) == {"a", "b", "e"}
     tekst = json.dumps(lijst, default=str)
     assert "route-geheim" not in tekst
-    assert tp.nakijklijst(uitslag, routes, seed=20261031) == lijst
+    assert tp.nakijklijst(uitslag, routes) == (lijst, sleutel)
 
 
 def test_cap09_integratie_server_uitslag_json_telscript(tp, tmp_path):

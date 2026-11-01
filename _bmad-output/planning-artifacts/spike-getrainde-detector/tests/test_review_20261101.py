@@ -647,37 +647,43 @@ def test_nutriscore_gemelde_letter_buiten_de_waarheid_is_gemist():
     assert (r["NUTRISCORE"]["gevonden"], r["NUTRISCORE"]["verkeerde_letter"]) == (1, 1)
 
 
-def telling_argv(tmp_path, correcties=None):
+def telling_argv(tmp_path):
     docs = [f"{TOETS_GLN}-{50000000000000 + i}-528" for i in range(3)]
     schrijf(tmp_path / "uitslag.json", {docs[0]: et(aanwezig={GD}, nutriscore=["A"]), docs[1]: et(), docs[2]: et(nutriscore=["A"])})
     run_bestand(tmp_path / "run.json", {docs[0]: {GD, NSA}, docs[1]: {GD}, docs[2]: set()})
     argv = ["--uitslag", str(tmp_path / "uitslag.json"), "--route", f"da={tmp_path / 'run.json'}", "--uit", str(tmp_path / "t")]
-    if correcties is not None:
-        argv += ["--correcties", str(schrijf(tmp_path / "c.json", correcties))]
     return argv, docs
 
 
-def test_correcties_voor_een_keurmerk_en_nutriscore(tmp_path):
+def nakijken_pad(tmp_path, wijzig):
+    """Ronde 2 (besluiten 01-11-2026): `nakijken.json` = {nr: oordeel} voor elke regel van de uitgegeven lijst; hier
+    Friso's eerdere oordeel, behalve `wijzig` ({(doc_id, keurmerk): oordeel})."""
+    lijst = json.loads((tmp_path / "t" / "nakijklijst.json").read_text())
+    return str(schrijf(tmp_path / "nakijken.json",
+                       {str(r["nr"]): wijzig.get((r["doc_id"], r["keurmerk"]), r["waarheid"]) for r in lijst}))
+
+
+def test_nakijken_voor_een_keurmerk_en_nutriscore(tmp_path):
     tp = mod("tel_proef")
     argv, docs = telling_argv(tmp_path)
-    argv, _ = telling_argv(tmp_path, {docs[1]: {GD: "aanwezig"}, docs[2]: {"NUTRISCORE": ["D"]}})
-    assert tp.main(argv) == 0
+    assert tp.main(argv) == 0  # stap 14: lijst uitgeven
+    pad = nakijken_pad(tmp_path, {(docs[1], GD): "aanwezig", (docs[2], "NUTRISCORE"): ["D"]})
+    assert tp.main(argv + ["--nakijken", pad]) == 0
     voor = json.loads((tmp_path / "t" / "tabellen.json").read_text())["da"]
     na = json.loads((tmp_path / "t" / "tabellen-na-nakijken.json").read_text())["da"]
     assert (voor[GD]["met"], voor[GD]["gevonden"], na[GD]["met"], na[GD]["gevonden"]) == (1, 1, 2, 2)
     assert (voor["NUTRISCORE"]["met"], na["NUTRISCORE"]["met"], na["NUTRISCORE"]["zonder"]) == (2, 1, 2)
 
 
-@pytest.mark.parametrize("fout", [{"9999999999999-99999999999999-528": {GD: "aanwezig"}}, "nutriscore_als_keurmerk",
-                                  "onbekend_keurmerk", "waarde"])
-def test_ongeldige_correcties_geven_geen_tabellen(tmp_path, fout):
+@pytest.mark.parametrize("fout", ["nutriscore_als_keurmerk", "letter_buiten_a_e", "keurmerk_als_letters", "waarde"])
+def test_ongeldig_nakijken_geeft_geen_tabellen_na_nakijken(tmp_path, fout):
     tp = mod("tel_proef")
-    _, docs = telling_argv(tmp_path)
-    c = fout if isinstance(fout, dict) else {"nutriscore_als_keurmerk": {docs[0]: {"NUTRISCORE": "aanwezig"}},
-                                            "onbekend_keurmerk": {docs[0]: {"VEGAN": "aanwezig"}},
-                                            "waarde": {docs[0]: {GD: "ja"}}}[fout]
-    argv, _ = telling_argv(tmp_path, c)
-    assert tp.main(argv) != 0 and not (tmp_path / "t" / "tabellen.json").exists()
+    argv, docs = telling_argv(tmp_path)
+    assert tp.main(argv) == 0
+    wijzig = {"nutriscore_als_keurmerk": {(docs[2], "NUTRISCORE"): "aanwezig"}, "letter_buiten_a_e": {(docs[2], "NUTRISCORE"): ["F"]},
+              "keurmerk_als_letters": {(docs[1], GD): ["A"]}, "waarde": {(docs[1], GD): "ja"}}[fout]
+    assert tp.main(argv + ["--nakijken", nakijken_pad(tmp_path, wijzig)]) != 0
+    assert not (tmp_path / "t" / "tabellen-na-nakijken.json").exists()
 
 
 def test_tabel_aandeel_requires_review():

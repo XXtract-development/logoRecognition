@@ -22,11 +22,12 @@ def test_cap06_maten_n_s_m_l(tr):
 
 @pytest.mark.parametrize("fase", ["nagemaakt", "echt"])
 def test_cap06_configuratie_legt_fase_maat_seed_epochs_en_mappen_vast(tr, tmp_path, fase):
-    cfg = tr.config(fase, "S", tmp_path / "dataset", tmp_path / "modellen", epochs=12, seed=20261031)
-    assert (cfg["fase"], cfg["maat"], cfg["epochs"], cfg["seed"]) == (fase, "S", 12, 20261031)
+    besluit = "besluit Friso 2026-11-08 (verzonnen)"  # maat S alleen met besluitverwijzing (besluit Friso 01-11-2026)
+    cfg = tr.config(fase, "S", tmp_path / "dataset", tmp_path / "modellen", epochs=12, seed=20261031, besluit=besluit)
+    assert (cfg["fase"], cfg["maat"], cfg["epochs"], cfg["seed"], cfg["besluit"]) == (fase, "S", 12, 20261031, besluit)
     tekst = json.dumps(cfg, default=str)
     assert "RFDETRSmall" in tekst and str(tmp_path / "dataset") in tekst and str(tmp_path / "modellen") in tekst
-    assert tr.config(fase, "S", tmp_path / "dataset", tmp_path / "modellen", epochs=12, seed=20261031) == cfg
+    assert tr.config(fase, "S", tmp_path / "dataset", tmp_path / "modellen", epochs=12, seed=20261031, besluit=besluit) == cfg
 
 
 @pytest.mark.parametrize("fase,maat", [("nagemaakt", "XL"), ("nagemaakt", "s"), ("toets", "S"), ("", "N")])
