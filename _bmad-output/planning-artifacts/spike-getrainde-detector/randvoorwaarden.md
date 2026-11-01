@@ -51,11 +51,12 @@ Raming (tarieven OpenRouter 30-10-2026; per post stoppen bij 1,5×):
 ## 4. Licenties (CAP-13)
 
 - **Python-pakketten:** de controle leest van elk geïnstalleerd pakket de licentie uit de metadata (`License-Expression`, `License`, classifiers); is die leeg, dan de eerste regels van het meegeleverde licentiebestand.
-  - Toegestaan: Apache-2.0, MIT, BSD (alle varianten), MPL-2.0.
+  - Toegestaan: Apache-2.0, MIT, BSD (alle varianten), MPL-2.0, en — als exacte SPDX-id — `BSL-1.0` (Boost) en `CNRI-Python`, voor elk pakket (besluit Friso 01-11-2026; aanleiding: `torch`, `regex`). Niet toegestaan blijven onder meer `BUSL-1.1`, `BSL-1.1` en `CNRI-Jython`; elke andere licentie buiten de lijst blijft stoppunt 4.
   - Even ruim en toegestaan, en vermeld in het rapport: ISC, PSF, HPND, Unlicense, CC0, zlib.
   - Samengestelde uitdrukking: bij `AND` moeten alle delen toegestaan zijn, bij `OR` minstens één.
   - Elke andere of onbekende licentie → stoppunt 4.
 - **Verboden pakketten**, ongeacht hun metadata: `ultralytics`, YOLOE, `PyMuPDF`/`fitz`, `albumentationsx`, `albumentations` ≥ 2.0.9, DEIMv2, `rfdetr_plus` (de platformmaten van RF-DETR), DINOv3. De extra's `plus` en `augment` van `rfdetr` worden niet geïnstalleerd (licentierisico via Albumentations en de platformlicentie).
 - **Externe programma's**, alleen als los proces aangeroepen: `pdftoppm` en `pdftotext` (poppler; de briefing noemt de poppler-programma's als toegestaan alternatief voor PyMuPDF), `rsync`, `ssh`. Andere externe programma's niet.
 - **Gewichten:** URL, sha256 en licentie van elk gedownload model (RF-DETR N/S/M/L: Apache-2.0; SigLIP 2 voor K4-aa: Apache-2.0) in `bevroren.json`.
-- Gemeten op 31-10-2026 in een wegwerpomgeving: `rfdetr[train]` 1.11.2 trekt 87 pakketten mee; alle toegestaan (PSF, ISC en FreeBSD onder "even ruim"; `faster-coco-eval` en `torch-hungarian` zonder metadata, met een Apache-2.0-licentiebestand).
+- Gemeten op 31-10-2026 in een wegwerpomgeving: `rfdetr[train]` 1.11.2 trekt 87 pakketten mee; `faster-coco-eval` en `torch-hungarian` hebben geen licentiemetadata en vallen terug op hun Apache-2.0-licentiebestand.
+- Gemeten op 01-11-2026 in de detectoromgeving: `torch` 2.15.0 (`… AND BSL-1.0 AND …`) en `regex` 2026.9.29 (`Apache-2.0 AND CNRI-Python`) vielen buiten de oorspronkelijke lijst (stoppunt 4); Friso liet BSL-1.0 en CNRI-Python op 01-11-2026 toe. Na de bouw wordt de controle opnieuw gedraaid; aantal pakketten, nul overtredingen en de lijst "even ruim" komen in het buildverslag.

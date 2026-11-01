@@ -2,7 +2,7 @@
 titel: Meetregels proef getrainde detector
 hoort-bij: SPEC.md (CAP-9, CAP-11, stopregel)
 datum: 2026-10-31
-bijgewerkt: 2026-10-31 (na bmad-review)
+bijgewerkt: 2026-11-01 (besluiten Friso: steekproef bij nakijken, akkoord ≥ 50 zonder)
 ---
 
 # Meetregels
@@ -59,7 +59,7 @@ IJkpunten zijn de drie keurmerken die ook in de vorige proef (fase B) gemeten zi
 |---|---|---|---|---|---|---|
 | Min. gevonden | 16 | 20 | 24 | 29 | 37 | 46 |
 
-> [!warning] Correctie op het doel "30–50 zonder" (ter kennisname aan Friso)
+> [!warning] Correctie op het doel "30–50 zonder" (akkoord Friso 01-11-2026)
 > Met 30 tot 34 etiketten zonder keurmerk is "< 10% vals" nooit te bewijzen, ook niet met nul fouten. Doel daarom: **≥ 50 zonder per keurmerk**. Dat kost geen extra etiketten: elk etiket waarop Friso een keurmerk afwezig verklaart, telt als "zonder" voor dat keurmerk (**gedeelde negatieven**).
 
 **Doel per keurmerk:** ≥ 16 bevestigde etiketten mét het keurmerk (liefst ≥ 25) en ≥ 50 zonder, waarvan liefst ≥ 10 met een gelijkend keurmerk (§2). Het aantal met een gelijkend keurmerk komt uit de voorinvulling en is niet door Friso bevestigd.
@@ -86,7 +86,15 @@ Vóór de eerste toetsrun liggen vast in `bevroren.json`, elk met sha256:
 
 - **De eerste toetsrun per route telt.** Een tweede run mag alleen met `--herhaling` en een vastgelegde technische reden (niet na een tegenvallende uitslag); de eerste uitslag blijft bewaard. Een gewijzigde hash wordt geweigerd.
 - Niets wordt afgesteld op de toetsset.
-- **Blind nakijken.** Na de runs maakt de telcode een lijst van alle etiketten waar een route en de waarheid verschillen, zonder te zeggen welke route het was. Kijkt Friso die na, dan geldt het besluit op de uitslag ná nakijken (voor beide routes dezelfde correcties); de uitslag ervóór wordt ook gerapporteerd. Kijkt hij niet na, dan geldt de uitslag ervóór.
+- **Blind nakijken** (akkoord Friso 01-11-2026: vóór het besluit).
+  - **Paren die tellen:** (etiket, keurmerk) met een bevestigd oordeel aanwezig/afwezig; Nutri-Score als één groep met leesbare letters. **Routes:** D+A, D en K4-aa (gefilterd); de informatieve K4-aa-run met alle referenties telt niet mee.
+  - **Nakijklijst** = alle paren waar minstens één route van de waarheid afwijkt, plus een **steekproef** van de paren waar alle drie routes met de waarheid overeenkomen: per keurmerk en per kant (mét/zonder) 10% van die paren, naar boven afgerond, minstens 1 als de kant niet leeg is, 0 bij 0 paren. Getrokken uit de gesorteerde paren met seed `20261101`, die in de telcode vastligt (geen opdrachtregeloptie; bevroren via de hash van de code).
+  - Elke regel heeft dezelfde velden (nummer, etiket, keurmerk, Friso's eerdere oordeel), door elkaar geschud, zonder routenaam en zonder aanduiding of een paar uit de verschillen of uit de steekproef komt. Wat welk paar is, staat in `nakijk-sleutel.json`; dat bestand en `verschil.json` (dat de verschillen verraadt) komen in een aparte map `niet-voor-nakijker/`. De sha256 van lijst en sleutel wordt vóór het nakijken vastgelegd.
+  - **Antwoord:** voor elke regel een oordeel in `nakijken.json` (`{nummer: oordeel}`): Nutri-Score als lijst letters A–E of "onleesbaar", de andere keurmerken "aanwezig"/"afwezig"/"onzeker". Een ontbrekende regel of een oordeel voor een paar buiten de lijst is een fout: dan geen tabellen ná nakijken. Correcties gelden voor alle routes gelijk.
+  - **Fout in de waarheid:** elk oordeel dat afwijkt van Friso's eerdere oordeel, ook een wijziging naar "onzeker" of "onleesbaar" en elke wijziging van de Nutri-Score-letters.
+- **Steekproef apart gerapporteerd:** per keurmerk en per kant het aantal nagekeken overeenkomende paren, het aantal fouten en de Wilson-bovengrens van die foutkans ("–" bij 0 paren). Ter informatie ook het besluit dat zou volgen als die bovengrens in het nadeel van de route op de overeenkomende paren werd toegepast (gevoeligheid; het besluit zelf volgt de regel hieronder).
+- **Besluitregel bij fouten in de steekproef:** vindt de steekproef bij een keurmerk minstens één fout, dan volgt een **tweede ronde** met alle overige overeenkomende paren van dat keurmerk, in een eigen bestand (`nakijklijst-ronde2-<KEURMERK>.json`); die ronde is alleen blind voor de route, want alle regels zijn overeenkomende paren. Tot de tweede ronde is nagekeken, is het besluit voor dat keurmerk **"mens bevestigt (voorlopig)"**; wordt hij niet nagekeken, dan **"mens bevestigt"** (definitief).
+- **Tijd voor Friso (INFERENCE):** de steekproef voegt ±230 regels toe (±40 minuten); een tweede ronde ±290 regels per keurmerk (±50 minuten).
 - Per keurmerk wordt gelogd hoe vaak Friso de voorinvulling veranderde (correctiepercentage).
 
 ## 7. Uitvoer per route en keurmerk
@@ -100,6 +108,7 @@ Eén getoetst script maakt uit de bevroren uitvoer drie tabellen: **D+A** (detec
 | verkeerde letter | alleen Nutri-Score |
 | spreiding per leverancier | 95%-interval als je de leveranciers opnieuw trekt (GLN-bootstrap, `trekkingen`/`bootstrap` uit `tel.py`; informatief) |
 | leveranciers | aantal leveranciers (GLN's) aan de mét-kant |
-| besluit | automatisch / mens bevestigt / te weinig voorbeelden |
+| besluit | automatisch / mens bevestigt / mens bevestigt (voorlopig) / te weinig voorbeelden; voorrang: te weinig voorbeelden, dan voorlopig (§6), dan de tabel |
+| steekproef (na nakijken) | per kant: nagekeken / fouten / Wilson-bovengrens; voor alle routes gelijk (één per keurmerk) |
 
 Daarnaast per route: tijd per etiket (mediaan, p90, max), kosten per etiket (gemiddeld en totaal, uit `usage.cost`), aantal beoordelaaraanroepen, foutpercentage, en voor K4-aa het aandeel meldingen met "requires_review". **Elke K4-aa-detectie telt als melding**, ook met "requires_review". En per keurmerk het verschil tussen D+A en K4-aa (gevonden en vals in procentpunten), met de etiketten waarop ze verschillen als lokale lijst.

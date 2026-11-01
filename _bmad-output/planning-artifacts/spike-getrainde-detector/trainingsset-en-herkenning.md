@@ -2,7 +2,7 @@
 titel: Trainingsset, detector, herkenning, beoordelaar en vergelijking
 hoort-bij: SPEC.md (CAP-4 t/m CAP-8, CAP-12)
 datum: 2026-10-31
-bijgewerkt: 2026-10-31 (na bmad-review)
+bijgewerkt: 2026-11-01 (besluit Friso: maat N)
 ---
 
 # Trainingsset, detector, herkenning, beoordelaar en vergelijking
@@ -58,10 +58,11 @@ Ontbreekt een verplicht referentieplaatje bij het bevriezen, dan is dat stoppunt
 
 ## 5. Detector en training (CAP-6)
 
-- **RF-DETR** (`rfdetr`, Apache-2.0), maten **N, S, M of L**. D-FINE (Apache-2.0) is de gedocumenteerde terugval als RF-DETR niet installeert of niet traint; hij wordt niet gebouwd.
+- **RF-DETR** (`rfdetr`, Apache-2.0), **maat N** (besluit Friso 01-11-2026: eerst alleen N op de Mac). S, M of L, of een GPU, alleen als N op de validatieset de stopregel niet haalt, en dan pas na een nieuw besluit van Friso (stoppunt 1). D-FINE (Apache-2.0) is de gedocumenteerde terugval als RF-DETR niet installeert of niet traint; hij wordt niet gebouwd.
 - **Tegels:** tegel 1024 px op werkschaal, overlap 256 px (minstens het grootste logo), modelinvoer = resolutie van de maat.
-- **Twee fasen:** eerst op nagemaakte beelden, daarna bijtrainen op echte trainingsvoorbeelden (met een deel nagemaakte beelden erbij). Maat, aantal epochs en de keuze tussen tegel 768/1024/1536 vallen op de validatieset.
-- **Hardware:** lokaal op deze Mac (M3 Pro, 18 GB) op de grafische chip (MPS). **Eerst een korte snelheidsmeting** (± 50 iteraties per maat) met de verwachte duur van de volle training in het rapport. Duurt een fase volgens de meting meer dan 8 uur, of werkt MPS niet: stoppunt 1.
+- **Twee fasen:** eerst op nagemaakte beelden, daarna bijtrainen op echte trainingsvoorbeelden (met een deel nagemaakte beelden erbij). Aantal epochs en de keuze tussen tegel 768/1024/1536 vallen op de validatieset (maat N vast).
+- **Hardware:** lokaal op deze Mac (M3 Pro, 18 GB) op de grafische chip (MPS). **Eerst een korte snelheidsmeting** (± 50 iteraties per maat) met de verwachte duur van de volle training in het rapport. Gemeten 01-11-2026 (tegel 1024): N ±7,2 uur per fase, binnen de grens; S erboven. De snelheid wordt opnieuw gemeten voor de gekozen tegelinstelling vóór de volle training. Duurt een fase met N volgens de meting meer dan 8 uur, overschrijdt een lopende fase de 8 uur (dan stoppen), of werkt MPS niet: stoppunt 1.
+- **Tekortschieten van N op de validatieset (stoppunt 1):** in de validatietabel van route D+A (draaiplan stap 10) haalt minstens één keurmerk met genoeg validatievoorbeelden (≥ 10 mét en ≥ 30 zonder) als puntschatting niet ≥ 80% gevonden of < 10% vals. Puntschattingen, omdat de validatiewaarheid uit AI-vakjes bestaat en klein is; "te weinig voorbeelden" op de validatieset telt niet als tekortschieten. Een maat anders dan N wordt alleen gebruikt met een vastgelegde verwijzing naar een besluit van Friso.
 - Elk getraind model: checkpoint, configuratie, seed, trainingslog, sha256, en URL + sha256 + licentie van de voorgetrainde gewichten.
 
 ## 6. Herkenning op het hele etiket (CAP-7)

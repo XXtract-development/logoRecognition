@@ -3,7 +3,7 @@ id: SPEC-spike-getrainde-detector
 title: "Proef: herkent een getrainde detector onze keurmerken betrouwbaarder dan de huidige route?"
 type: spike (gereedschap + draaiplan; het experiment zelf draait daarna)
 datum: 2026-10-31
-bijgewerkt: 2026-10-31 (na bmad-review, 77 bevindingen doorgevoerd)
+bijgewerkt: 2026-11-01 (besluiten Friso: licenties, maat N, steekproef bij nakijken)
 peildatum_code: origin/acc 8c9373d
 companions:
   - meetregels.md
@@ -42,8 +42,8 @@ Er is een probleem en een eis van de producteigenaar. Een keurmerk mag pas "auto
   - **intent:** echte productie-etiketten van trainingsleveranciers met AI-vakjes (kaders die een taalmodel om elk gevonden keurmerk tekent) als trainingsmateriaal, plus een validatieset.
   - **success:** voorlabels via de gedeelde client; tests bewijzen: geen toetsleverancier in de uitvoer; tegels die een onzeker vakje raken vallen af; validatiesplit per klasse op dHash-cluster. Een rapport geeft per keurmerk het aantal overgebleven echte etiketten en vakjes.
 - **CAP-6** — training van de detector ([trainingsset-en-herkenning.md §5](trainingsset-en-herkenning.md#5-detector-en-training-cap-6))
-  - **intent:** een RF-DETR-model (N/S/M/L) op tegels, eerst op nagemaakte beelden en daarna bijgetraind op echte, reproduceerbaar.
-  - **success:** trainingscommando met configuratie, seed, log, checkpoint, sha256 en gewichtsherkomst; een snelheidsmeting op de grafische chip van de Mac (MPS) met de verwachte duur; rooktest: een paar iteraties op een kleine lokale set leveren een checkpoint dat de herkenning kan laden.
+  - **intent:** een RF-DETR-model (maat N; S/M/L alleen na een nieuw besluit van Friso) op tegels, eerst op nagemaakte beelden en daarna bijgetraind op echte, reproduceerbaar.
+  - **success:** trainingscommando met configuratie, seed, log, checkpoint, sha256 en gewichtsherkomst; een andere maat dan N wordt geweigerd zonder vastgelegde besluitverwijzing; een snelheidsmeting op de grafische chip van de Mac (MPS) met de verwachte duur; rooktest: een paar iteraties op een kleine lokale set leveren een checkpoint dat de herkenning kan laden.
 - **CAP-7** — herkenning op het hele etiket ([trainingsset-en-herkenning.md §6 en §8](trainingsset-en-herkenning.md#6-herkenning-op-het-hele-etiket-cap-7))
   - **intent:** de detector loopt op de processor in tegels over het hele etiket en geeft per code een melding, een twijfelgeval of niets; een certificaatnummer kan een twijfelgeval bevestigen.
   - **success:** tests op verzonnen beelden en scores bewijzen: tegelomrekening, samenvoegen van overlappende vakjes (ook over de Nutri-Score-letters), de bandregel, het afleiden van `laag`/`hoog` uit een mini-validatieset met bekende uitkomst (ook de terugval naar gezamenlijke drempels en `hoog` = 1,01), en dat een certificaatnummer een twijfelgeval alleen kan bevestigen en nooit een melding weghaalt.
@@ -52,7 +52,7 @@ Er is een probleem en een eis van de producteigenaar. Een keurmerk mag pas "auto
   - **success:** tests bewijzen: twee losse beelden, JSON-schema met ja/nee/twijfel, alleen `ja` wordt een melding, een ongeldig antwoord is een fout en geen `nee`, kandidaten per code van hoog naar laag tot `ja`, hoogstens 10 per etiket.
 - **CAP-9** — telling, stopregel en vergelijking ([meetregels.md](meetregels.md))
   - **intent:** per keurmerk gevonden en vals met Wilson-grenzen, kosten en tijd per etiket, en het besluit volgens de stopregel, voor D+A, D en K4-aa op dezelfde toetsset.
-  - **success:** één getoetst script maakt uit bevroren uitvoer en `uitslag.json` de tabellen van [meetregels.md §7](meetregels.md#7-uitvoer-per-route-en-keurmerk) en de blinde nakijklijst. Tests met verzonnen mini-sets bewijzen: de definities, de Nutri-Score-groep (verkeerde letter = gemist, D/E = zonder), gedeelde negatieven (een etiket telt als "zonder" voor elk keurmerk dat Friso afwezig verklaarde), "onzeker" en "onleesbaar" uitgesloten, fouten als geen melding, foutpercentage boven 2% maakt de run ongeldig, een zdr-weigering stopt de run, "te weinig voorbeelden" onder 16 mét of 35 zonder, en het besluit bij de grensgetallen uit [meetregels.md §4](meetregels.md#4-benodigde-aantallen-wilson-95-nagerekend-met-wilson-31-10-2026). Eén integratietest gaat van de server via `uitslag.json` naar dit script.
+  - **success:** één getoetst script maakt uit bevroren uitvoer en `uitslag.json` de tabellen van [meetregels.md §7](meetregels.md#7-uitvoer-per-route-en-keurmerk) en de blinde nakijklijst met de steekproef van overeenkomende paren ([meetregels.md §6](meetregels.md#6-bevriezing-en-eenmalige-toetsrun-cap-11)): steekproef per keurmerk en kant met vaste seed in de code (dezelfde trekking in elk proces), regels niet te onderscheiden (sleutel en `verschil.json` in een aparte map), een oordeel voor elke regel verplicht, steekproefuitslag apart, en de besluitregel met tweede ronde en "mens bevestigt (voorlopig)". Tests met verzonnen mini-sets bewijzen: de definities, de Nutri-Score-groep (verkeerde letter = gemist, D/E = zonder), gedeelde negatieven (een etiket telt als "zonder" voor elk keurmerk dat Friso afwezig verklaarde), "onzeker" en "onleesbaar" uitgesloten, fouten als geen melding, foutpercentage boven 2% maakt de run ongeldig, een zdr-weigering stopt de run, "te weinig voorbeelden" onder 16 mét of 35 zonder, en het besluit bij de grensgetallen uit [meetregels.md §4](meetregels.md#4-benodigde-aantallen-wilson-95-nagerekend-met-wilson-31-10-2026). Eén integratietest gaat van de server via `uitslag.json` naar dit script.
 - **CAP-10** — draaiplan
   - **intent:** wie het experiment draait, weet per stap wat te draaien, wat eruit moet komen, wat het kost en wanneer te stoppen.
   - **success:** `DRAAIPLAN.md` in de specmap volgt de vaste volgorde uit [toetsset.md §4](toetsset.md#4-kandidaten-voor-de-toets-cap-2) en geeft per stap het commando, de verwachte uitvoer, de geschatte kosten en tijd, en de stoppunten; elke stap verwijst naar getest gereedschap uit deze build, of noemt uitdrukkelijk dat de stap ongetest is en waarom.
@@ -64,7 +64,7 @@ Er is een probleem en een eis van de producteigenaar. Een keurmerk mag pas "auto
   - **success:** tests met een nagebootste aanbieder bewijzen: alleen referenties van trainingsleveranciers en publieke bronnen worden geladen; elke detectie (ook "requires_review") wordt een melding; het tijdsbudget per etiket wordt doorgegeven; `budget_exhausted` is een routefout; `no_zdr_provider` stopt de run; uitvoer per etiket met kosten en tijd.
 - **CAP-13** — licentiecontrole ([randvoorwaarden.md §4](randvoorwaarden.md#4-licenties-cap-13))
   - **intent:** geen pakket, gewicht of extern programma met een licentie buiten de toegestane lijst komt in de proef.
-  - **success:** tests bewijzen: een verboden pakket of licentie stopt de controle; `AND`/`OR`-uitdrukkingen worden juist beoordeeld; een leeg licentieveld leidt naar het licentiebestand, en blijft het onbekend, dan stopt de controle; op de echte omgeving geeft de controle een rapport zonder overtredingen.
+  - **success:** tests bewijzen: BSL-1.0 en CNRI-Python zijn toegestaan (besluit Friso 01-11-2026), andere licenties buiten de lijst niet; een verboden pakket of licentie stopt de controle; `AND`/`OR`-uitdrukkingen worden juist beoordeeld; een leeg licentieveld leidt naar het licentiebestand, en blijft het onbekend, dan stopt de controle; op de echte omgeving geeft de controle een rapport zonder overtredingen.
 - **CAP-14** — uitgavenbewaking ([randvoorwaarden.md §3](randvoorwaarden.md#3-kosten-cap-14))
   - **intent:** geen post geeft meer uit dan 1,5× de raming.
   - **success:** tests bewijzen: een post met een verwachte uitgave boven de grens start niet; de aanroep die de grens zou passeren wordt niet verstuurd; kosten komen uit `usage.cost`, anders uit tokens × tarief.
@@ -74,8 +74,8 @@ Er is een probleem en een eis van de producteigenaar. Een keurmerk mag pas "auto
 
 ## Constraints
 
-- **Definities en stopregel liggen vast** (Friso, 31-10-2026); de telling is per etiket op aanwezigheid ([meetregels.md](meetregels.md)). Toetsdoel per keurmerk: ≥ 16 bevestigde etiketten mét het keurmerk (liefst ≥ 25) en ≥ 50 zonder; de ≥ 50 is een correctie op het doel "30–50" en gaat ter kennisname naar Friso.
-- **Niets afstellen op de toetsset.** Model, maat, tegels, drempels en beoordelaar worden gekozen op de validatieset van de trainingskant en bevroren vóór de eerste toetsrun; de eerste toetsrun per route telt ([meetregels.md §6](meetregels.md#6-bevriezing-en-eenmalige-toetsrun-cap-11)).
+- **Definities en stopregel liggen vast** (Friso, 31-10-2026); de telling is per etiket op aanwezigheid ([meetregels.md](meetregels.md)). Toetsdoel per keurmerk: ≥ 16 bevestigde etiketten mét het keurmerk (liefst ≥ 25) en ≥ 50 zonder (correctie op "30–50"; akkoord Friso 01-11-2026).
+- **Niets afstellen op de toetsset.** Model (maat N, vast), tegels, drempels en beoordelaar worden gekozen op de validatieset van de trainingskant en bevroren vóór de eerste toetsrun; de eerste toetsrun per route telt ([meetregels.md §6](meetregels.md#6-bevriezing-en-eenmalige-toetsrun-cap-11)).
 - **Scheiding op leverancier (GLN)**, in de vaste volgorde bevroren vóór de snelheidsmeting. Versoepelen is een keuze van Friso.
 - **Eerlijke vergelijking:** K4-aa krijgt voor het besluit geen referenties van toetsleveranciers, en etiketten uit de fase-B-meetset (waarop K4-aa gekozen is) komen niet in de toets.
 - **Privacy:** elke taalmodelaanroep met klantartwork gaat via OpenRouter met zdr (de aanbieder bewaart niets), geen batch-API, sleutel alleen in de omgeving ([randvoorwaarden.md §1](randvoorwaarden.md#1-privacy-zdr)).
@@ -83,10 +83,10 @@ Er is een probleem en een eis van de producteigenaar. Een keurmerk mag pas "auto
 - **Klantdata buiten elke git-werkboom** (`~/logo-meetset-20261018/proef-detector/`): geen beelden, uitsneden, GLN's, GTIN's of certificaatnummers in commits; de spec noemt leveranciers alleen geanonimiseerd.
 - **Productie en ACC alleen lezen:** `banana:/media/Xmedia` met `nice -n 19` en zonder volledige `find`; `replica-db` alleen `SELECT`; MongoDB alleen op `_id`. Geen zware proeven in de ACC ml-service, geen migraties.
 - **Herkenning op de processor** (ACC heeft geen GPU), gemeten met 8 threads; training lokaal op MPS.
-- **Uitgaven:** ±$42 in totaal; per post stoppen bij 1,5× de raming ([randvoorwaarden.md §3](randvoorwaarden.md#3-kosten-cap-14)). Friso's bevestigingswerk: ±2 uur voor ±350 etiketten (INFERENCE).
+- **Uitgaven:** ±$42 in totaal; per post stoppen bij 1,5× de raming ([randvoorwaarden.md §3](randvoorwaarden.md#3-kosten-cap-14)). Friso's werk: ±2 uur bevestigen voor ±350 etiketten, plus ±40 minuten steekproef bij het nakijken en ±50 minuten per eventuele tweede ronde (INFERENCE).
 - Bestaande suites in de repository blijven groen.
 - **Stoppunten** (de enige lijst; terug naar Friso, niet zelf beslissen):
-  1. Volgens de snelheidsmeting duurt een trainingsfase meer dan 8 uur, of MPS werkt niet (een GPU huren?).
+  1. Maat N schiet tekort op de validatieset (definitie in [trainingsset-en-herkenning.md §5](trainingsset-en-herkenning.md#5-detector-en-training-cap-6)), of een trainingsfase met N duurt volgens de meting of in werkelijkheid meer dan 8 uur, of MPS werkt niet (grotere maat of GPU? Besluit Friso 01-11-2026: eerst alleen N).
   2. Na de voorinvulling of na het aanvullen staat een keurmerk aan de toetskant op minder dan 16 etiketten (waarschijnlijk of bevestigd) (scheiding versoepelen, of het keurmerk zonder besluit laten?).
   3. Een model heeft geen zdr-endpoint, of de zdr-proefaanroep mislukt.
   4. Een pakket, gewicht of programma met een licentie buiten de toegestane lijst.
