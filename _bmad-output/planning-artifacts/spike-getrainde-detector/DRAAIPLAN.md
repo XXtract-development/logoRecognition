@@ -19,8 +19,11 @@ uv sync --group dev                                    # stap 9 en verder: uv sy
 ```
 
 > [!note] Kosten en uitgavengrens
-> Elke betaalde stap rekent vóór de start de verwachte uitgave uit en start niet boven 1,5× de raming (stoppunt 5); tijdens
-> de stap wordt de aanroep die de grens zou passeren niet verstuurd. Tijden met "INFERENCE" zijn geschat, niet gemeten.
+> Elke betaalde stap rekent vóór de start de verwachte uitgave uit (al uitgegeven plus, per open etiket, 1 aanroep per 16
+> tegels, minstens 1) en start niet boven de grens per post (stoppunt 5): voorinvulling $65 hard (besluit Friso
+> 01-11-2026), de andere posten 1,5× de raming tot Friso anders beslist. Een andere grens geeft het gereedschap alleen met
+> `--grens` én een niet-lege `--besluit` (randvoorwaarden §3). Tijdens de stap wordt de aanroep die de grens zou passeren
+> niet verstuurd. Tijden met "INFERENCE" zijn geschat, niet gemeten.
 
 ### Stap 1 — scheiding
 
@@ -55,10 +58,10 @@ ongetest: `kandidaten`, `ontdubbel`, de query, de rsync-/ssh-opdracht, samenvoeg
 
 ### Stap 3 — voorinvulling
 
-Commando: `uv run python toets.py voorinvulling --proef-map $PM --manifest $PM/toets/gecombineerd/manifest.json --docs $PM/toets/toets-docs.json --zdr-logo $PM/logos/zdr-proef.png`
-Uitvoer: `$PM/toets/zdr-proef.json` (uitkomst van de zdr-proef met een officieel logo, geen klantartwork), `voorinvulling.json` (per etiket de keurmerken die het model beoordeelde, Nutri-Score-letters, hinttegels, gelijkende, model `anthropic/claude-sonnet-5.5`, kosten, ruwe JSON; een keurmerk zonder AI-oordeel blijft op de pagina zonder keuze; een mislukte voorinvulling heeft lege velden en `fout`), `items.json` en `beelden/` voor de invulpagina. Per aanroep het hele etiket plus hoogstens 16 tegels; een hoog etiket krijgt extra aanroepen. Na elk etiket weggeschreven; opnieuw starten slaat klare etiketten over en probeert mislukte opnieuw. Vijf etiketten op rij geweigerd door de aanbieder: de run stopt.
-Kosten: ±$21 (±350 × $0,06); grens $31,50, over herstarts heen bijgehouden in `$PM/uitgaven.json`
-Tijd: ±3 uur (±30 s per aanroep, één voor één; INFERENCE)
+Commando: `uv run python toets.py voorinvulling --proef-map $PM --manifest $PM/toets/gecombineerd/manifest.json --docs $PM/toets/toets-docs.json --zdr-logo $PM/logos/zdr-proef.png --grens 65 --besluit "besluit Friso 01-11-2026 ±14:05 (randvoorwaarden §3)"`
+Uitvoer: `$PM/toets/zdr-proef.json` (uitkomst van de zdr-proef met een officieel logo, geen klantartwork), `voorinvulling.json` (per etiket de keurmerken die het model beoordeelde, Nutri-Score-letters, hinttegels, gelijkende, model `anthropic/claude-sonnet-5.5`, kosten, ruwe JSON, `beeldtype: jpeg`; een keurmerk zonder AI-oordeel blijft op de pagina zonder keuze; een mislukte voorinvulling heeft lege velden en `fout`), `items.json` en `beelden/` voor de invulpagina. Overzicht en tegels gaan als JPEG (kwaliteit 90); hinttegels en de beelden voor de pagina blijven PNG. Per aanroep het hele etiket plus hoogstens 16 tegels en hoogstens 20.000.000 beeldbytes (randvoorwaarden §5); een groot etiket krijgt extra aanroepen. Past het overzicht plus één tegel niet, dan wordt niets verstuurd en krijgt het etiket `fout: te_groot` (telt niet mee voor de vijf weigeringen). De gebruikte grens staat bij de start op het scherm. Na elk etiket weggeschreven; opnieuw starten slaat klare etiketten over en probeert mislukte opnieuw. Vijf etiketten op rij geweigerd door de aanbieder: de run stopt.
+Kosten: ±$42 (±350 × $0,12 per etiket, gemeten: gemiddeld 2,6 aanroepen van ±$0,06); grens $65 hard (besluit Friso 01-11-2026), over herstarts heen bijgehouden in `$PM/uitgaven.json`
+Tijd: ±7–8 uur (±910 aanroepen: ±350 etiketten × gemiddeld 2,6, ±30 s per aanroep, één voor één; INFERENCE)
 Stoppunt: 3 als de zdr-proef mislukt of de aanbieder 404 geeft (geen zdr-endpoint); 5 bij de uitgavengrens.
 ongetest: `voorinvulling` en de client zijn getest met een nagebootste aanbieder; de opdrachtregel (beelden, tegels, hinttegels, items.json) draaide niet, omdat de build geen klantartwork naar OpenRouter stuurt. Leg vóór de start `$PM/logos/zdr-proef.png` neer (bijvoorbeeld het Wikimedia-logo van EU-biologisch uit de momentopname).
 
@@ -83,7 +86,7 @@ Stoppunt: geen
 
 Commando: `uv run python toets.py kandidaten --proef-map $PM --alleen <CODE> --max-per 60 --bestaand $PM/toets/kandidaten.json` (CODE = het keurmerk onder het doel, of `NUTRISCORE`; `--alleen` zonder `--bestaand` weigert), daarna voor `kandidaten-aanvulling-paren.tsv` de ophaal- en bouwregels van stap 2, dan `uv run python toets.py ontdubbel --proef-map $PM --manifest $PM/toets/gecombineerd/manifest.json --kandidaten $PM/toets/kandidaten-aanvulling.json` (ontdubbelt tegen de bestaande `toets-docs.json` en voegt de nieuwe docs eraan toe), stap 3 opnieuw (klare etiketten worden overgeslagen) en de server herstarten (hij leest `items.json` bij de start).
 Uitvoer: `$PM/toets/kandidaten-aanvulling.json` met alleen nieuwe GTIN's, in dezelfde vaste volgorde (om de beurt per leverancier, binnen een leverancier op sha256("20261031" + GTIN)); `toets-docs.json` aangevuld.
-Kosten: $0,06 per extra etiket (valt onder de post voorinvulling)
+Kosten: $0,12 per extra etiket (gemiddelde; valt onder de post voorinvulling, grens $65)
 Tijd: per ronde ±30 minuten plus Friso's bevestiging (INFERENCE)
 Stoppunt: 2 als een keurmerk na aanvullen nog onder 16 bevestigde etiketten mét blijft.
 ongetest: de volgorde komt uit de geteste functie `kandidaten`; de weigering van `--alleen` zonder `--bestaand` en het samenvoegen in `ontdubbel` zijn getest, het ophalen van de aanvulling niet (netwerk).
@@ -117,10 +120,12 @@ Commando: eerst de licentiecontrole, in een eigen blok:
 ```sh
 uv sync --group dev --group detector && uv run --group dev --group detector python licenties.py
 ```
-Eindigt dit blok met een exitcode ≠ 0 (een overtreding in `"overtredingen"`), dan hier stoppen (stoppunt 4) en het volgende blok niet draaien: dat start de betaalde voorlabels. Anders een kleine nagemaakte set maken en maat N meten:
+Eindigt dit blok met een exitcode ≠ 0 (een overtreding in `"overtredingen"`), dan hier stoppen (stoppunt 4) en het volgende blok niet draaien: dat start de betaalde voorlabels.
+
+De voorlabels starten pas nadat Friso hun grens besliste (stoppunt 5): bij ±800 etiketten verwacht de startcontrole ±$25–30, boven de standaardgrens van $15 (1,5× de raming). Zet daarna `GRENS_VOORLABELS` (dollar) en `BESLUIT_VOORLABELS` (verwijzing naar dat besluit); is een van de twee leeg, dan weigert het commando en start er niets. Houdt Friso de standaardgrens aan, zet dan `GRENS_VOORLABELS=15` met de verwijzing naar dat besluit. Daarna een kleine nagemaakte set maken en maat N meten:
 ```sh
 uv run python generator.py logos --proef-map $PM
-uv run python echt.py voorlabels --lijst $PM/train/lijst.json --proef-map $PM --uit $PM/train/voorlabels.json --zdr-logo $PM/logos/zdr-proef.png
+uv run python echt.py voorlabels --lijst $PM/train/lijst.json --proef-map $PM --uit $PM/train/voorlabels.json --zdr-logo $PM/logos/zdr-proef.png --grens "$GRENS_VOORLABELS" --besluit "$BESLUIT_VOORLABELS"
 uv run python echt.py dataset --lijst $PM/train/lijst.json --voorlabels $PM/train/voorlabels.json --proef-map $PM --uit $PM/train/echt
 uv run python generator.py tegels --proef-map $PM --achtergronden $PM/train/echt/achtergronden.json --uit $PM/train/snelheid --n 200
 uv run python generator.py tegels --proef-map $PM --achtergronden $PM/train/echt/achtergronden.json --uit $PM/train/snelheid --n 8 --split valid --seed 7
@@ -129,8 +134,8 @@ uv run python train.py snelheid --maat $MAAT --dataset $PM/train/snelheid --uit 
 ```
 `$PM/train/lijst.json` = `[{doc_id, gln, pad}]` van de gebouwde trainingsetiketten uit stap 7 (nog geen gereedschap: maak hem uit `$PM/train/gecombineerd/manifest.json`). De voorlabels (ook de achtergrondscreening) horen bij de post "voorlabels + achtergrondscreening" en zijn ook nodig voor stap 10; een mislukt etiket wordt bij een herstart opnieuw geprobeerd, vijf weigeringen op rij stoppen de run. `echt.py dataset` maakt `train/`, `valid/` en `test/` (kopie van `valid`, omdat `rfdetr` een testmap wil) en `achtergronden.json` alleen uit de trainingskant, zodat validatie-etiketten nooit via de generator in de training komen. De meting gebruikt 50 iteraties × batch 4 = 200 trainingstegels (vandaar `--n 200`) en 4 validatietegels.
 Uitvoer: het licentierapport (aantal pakketten, overtredingen, lijst "even ruim"); voor maat N seconden per iteratie, apparaat (MPS) en de verwachte duur van een trainingsfase in `snelheid.json`. Rooktest 01-11-2026: N ±7,2 uur per fase; S liep vast en kwam op ±11 uur, waarna Friso besliste: alleen N. Een meting van een andere maat hoort alleen bij een nieuw besluit (`--besluit "<verwijzing>"`, komt in `snelheid.json`); zie "Snelheid" hieronder.
-Kosten: voorlabels ±$10 (±800 etiketten × $0,012; grens $15, bijgehouden in `$PM/uitgaven.json`); snelheidsmeting $0
-Tijd: voorlabels ±2 uur (INFERENCE); meting ±15 minuten
+Kosten: voorlabels ±$25–30 (±800 etiketten × gemiddeld 2,6 aanroepen × $0,012; INFERENCE), grens zoals Friso besliste (standaard $15 = 1,5× de raming $10), bijgehouden in `$PM/uitgaven.json`; snelheidsmeting $0
+Tijd: voorlabels ±5 uur (±2.080 aanroepen: ±800 etiketten × gemiddeld 2,6; INFERENCE); meting ±15 minuten
 Stoppunt: 1 als een trainingsfase met N volgens de meting langer dan 8 uur duurt of MPS niet werkt; 4 als de licentiecontrole een overtreding meldt; 8 als RF-DETR niet installeert of niet traint; 3 en 5 voor de voorlabels.
 ongetest: `generator.genereer`, `echt.naar_tegels`/`valsplit`/`voorlabels`/`rapport` en `train.snelheid` (rooktest `zwaar` op MPS) zijn getest; de opdrachtregels van `generator logos/tegels` en `echt dataset` draaiden alleen in een rooktest op verzonnen beelden in een tijdelijke map, `echt voorlabels` niet (geen klantartwork naar OpenRouter in de build).
 

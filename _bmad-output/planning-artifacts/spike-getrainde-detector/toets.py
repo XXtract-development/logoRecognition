@@ -8,6 +8,7 @@ gedeelde zdr-client.
   python toets.py ontdubbel --proef-map <PM> --manifest <gecombineerd/manifest.json> [--kandidaten <kandidaten-aanvulling.json>]
                   (ontdubbelt ook tegen een bestaande toets-docs.json en voegt de nieuwe docs daaraan toe)
   python toets.py voorinvulling --proef-map <PM> --manifest <gecombineerd/manifest.json> --zdr-logo <png>
+                  [--grens <dollar> --besluit "<verwijzing>"]   (standaard de grens $65, besluit Friso 01-11-2026)
   python toets.py rapport --proef-map <PM>
   python toets.py lijst --proef-map <PM> --manifest <gecombineerd/manifest.json>   (bevestigde toetsetiketten voor de runs)
 """
@@ -15,6 +16,7 @@ import argparse
 import hashlib
 import io
 import json
+import math
 import shutil
 import sys
 import time
@@ -128,20 +130,23 @@ def ontdubbel(items):
 
 
 MAX_TEGELS = 16  # per aanroep, naast het hele etiket (grens van de aanbieder op beelden per verzoek)
+GRENS_VOORINVULLING = 65.0  # dollar, hard (besluit Friso 01-11-2026 ±14:05; randvoorwaarden §3)
+PER_AANROEP = 0.06  # verwachte kosten per aanroep (heel etiket + hoogstens 16 tegels; randvoorwaarden §3)
 
 
-def voorinvulling(client, beeld_png, tegels):
-    """Heel etiket, dan hoogstens MAX_TEGELS tegels per aanroep; meer tegels gaan in extra aanroepen waarvan de uitkomst
-    wordt samengevoegd (aanwezig = in een van de aanroepen, hinttegels met de juiste tegelindex). Alleen codes die het
-    model teruggaf staan in `keurmerken`; een ontbrekende code blijft zonder voorinvulling. Mislukt (EtiketFout of een
-    onleesbaar antwoord) → lege velden met `fout`; RunStop gaat door."""
+def voorinvulling(client, beeld, tegels):
+    """Heel etiket, dan per aanroep de tegels die `openrouter.delen` toelaat (hoogstens MAX_TEGELS en MAX_BEELD_BYTES,
+    overzicht meegeteld); de uitkomsten worden samengevoegd (aanwezig = in een van de aanroepen, hinttegels op
+    etiketindex). Alleen codes die het model teruggaf staan in `keurmerken`; een ontbrekende code blijft zonder
+    voorinvulling. Mislukt (EtiketFout, ook `te_groot` zonder aanroep, of een onleesbaar antwoord) → lege velden met
+    `fout`; RunStop gaat door."""
     leeg = {"keurmerken": {}, "nutriscore": [], "hinttegels": {}, "gelijkend": [], "model": client.model, "kosten": 0.0,
             "tijd": time.strftime("%Y-%m-%dT%H:%M:%S%z")}
     keurmerken, letters, hint, gelijkend, prijs, ruw = {}, set(), {}, set(), 0.0, []
     try:
-        for start in range(0, max(1, len(tegels)), MAX_TEGELS):
-            deel = tegels[start:start + MAX_TEGELS]
-            a, p = client.vraag(PROMPT, [beeld_png, *deel], SCHEMA_VOORINVULLING, verwacht=0.06)
+        for r in openrouter.delen([len(t) for t in tegels], vast=len(beeld), max_aantal=MAX_TEGELS):
+            deel = tegels[r.start:r.stop]
+            a, p = client.vraag(PROMPT, [beeld, *deel], SCHEMA_VOORINVULLING, verwacht=PER_AANROEP)
             prijs += p
             ruw.append(a)
             for k in a["keurmerken"]:
@@ -149,7 +154,7 @@ def voorinvulling(client, beeld_png, tegels):
                     continue
                 keurmerken[k["code"]] = keurmerken.get(k["code"], False) or bool(k["aanwezig"])
                 if k["aanwezig"]:
-                    hint.setdefault(k["code"], set()).update(start + i for i in k["tegels"] if 0 <= i < len(deel))
+                    hint.setdefault(k["code"], set()).update(r.start + i for i in k["tegels"] if 0 <= i < len(deel))
             letters |= {x for x in a["nutriscore"] if x in ("A", "B", "C", "D", "E")}
             gelijkend |= set(a["gelijkend"])
     except openrouter.EtiketFout as e:
@@ -207,10 +212,32 @@ def _toets_rijen(pm, kant="toets"):
     return rijen_toets, gelijkend
 
 
-def _png(im):
+def jpeg(im):
+    """Overzicht en tegels voor de aanbieder: JPEG kwaliteit 90 (randvoorwaarden §5); hinttegels en paginabeelden blijven PNG."""
     buf = io.BytesIO()
-    im.save(buf, "PNG")
+    im.save(buf, "JPEG", quality=90)
     return buf.getvalue()
+
+
+def aanroepen(pad):
+    """Verwacht aantal aanroepen voor één etiket (startcontrole, §3): 1 per 16 tegels, minstens 1; maat uit het bestand."""
+    import herken
+    from PIL import Image
+
+    with Image.open(pad) as im:
+        return max(1, math.ceil(len(herken.tegels(*im.size)) / MAX_TEGELS))
+
+
+def grens_uit(ap, a, standaard):
+    """(grens, besluit of None). Een andere grens dan de standaard alleen als eindig bedrag ≥ 0 met een niet-lege
+    besluitverwijzing (randvoorwaarden §3), anders stopt de opdrachtregel vóór elke aanroep."""
+    if a.grens is None:
+        return standaard, None
+    if not (a.besluit or "").strip():
+        ap.error("--grens vraagt een niet-leeg --besluit \"<verwijzing naar het besluit van Friso>\"; niets gestart")
+    if not math.isfinite(a.grens) or a.grens < 0:
+        ap.error("--grens moet een eindig bedrag van 0 of meer zijn; niets gestart")
+    return a.grens, a.besluit.strip()
 
 
 def main(argv=None):
@@ -233,14 +260,17 @@ def main(argv=None):
     v.add_argument("--proef-map", required=True, type=Path)
     v.add_argument("--manifest", required=True, type=Path, help="manifest.json van beelden.py bouwen (doc_id → sha256, …)")
     v.add_argument("--model", default="anthropic/claude-sonnet-5.5")
-    v.add_argument("--raming", type=float, default=21.0)
     v.add_argument("--zdr-logo", type=Path, required=True, help="niet-klantbeeld (officieel logo) voor de zdr-proef")
     v.add_argument("--docs", type=Path, help="json-lijst doc_id's (uitvoer van ontdubbel); standaard alle in het manifest")
+    v.add_argument("--grens", type=float, help=f"andere uitgavengrens dan ${GRENS_VOORINVULLING:.0f}; alleen met --besluit")
+    v.add_argument("--besluit", help="verwijzing naar het besluit van Friso over --grens")
     r = sub.add_parser("rapport")
     r.add_argument("--proef-map", required=True, type=Path)
     a = ap.parse_args(argv)
     if a.stap == "kandidaten" and a.alleen and not a.bestaand:
         ap.error("--alleen vraagt --bestaand (anders zou kandidaten.json overschreven worden)")
+    if a.stap == "voorinvulling":
+        grens, besluit = grens_uit(ap, a, GRENS_VOORINVULLING)
     toets_map = beelden.veilig_doel(a.proef_map / "toets")
     toets_map.mkdir(parents=True, exist_ok=True)
 
@@ -274,8 +304,10 @@ def main(argv=None):
         uitvoer = toets_map / "voorinvulling.json"
         klaar = json.loads(uitvoer.read_text()) if uitvoer.exists() else {}
         klaar = {d: v for d, v in klaar.items() if "fout" not in v}  # een mislukte voorinvulling wordt opnieuw geprobeerd
-        bewaker = kosten.Bewaker("voorinvulling toets", a.raming, grootboek=a.proef_map / "uitgaven.json")
-        bewaker.controleer_start(sum(d not in klaar for d in docs) * 0.06)
+        bewaker = kosten.Bewaker("voorinvulling toets", 42.0, grootboek=a.proef_map / "uitgaven.json", grens=grens)  # raming §3, informatief
+        print(f"grens voorinvulling ${grens:.2f}", f"(besluit: {besluit})" if besluit else "(standaard)")
+        n = sum(aanroepen(a.manifest.parent / f"{d}.png") for d in docs if d not in klaar)  # open etiketten
+        bewaker.controleer_start(n * PER_AANROEP)  # vóór de client en de zdr-proef
         client = openrouter.Client(a.model, "voorinvulling", bewaker=bewaker)
         proef = client.zdr_proef(a.zdr_logo.read_bytes())
         (toets_map / "beelden").mkdir(exist_ok=True)
@@ -287,9 +319,9 @@ def main(argv=None):
             if doc not in klaar:
                 overzicht = im.copy()
                 overzicht.thumbnail((1500, 1500))
-                klaar[doc] = voorinvulling(client, _png(overzicht), [_png(im.crop(t)) for t in vakken])
+                klaar[doc] = {**voorinvulling(client, jpeg(overzicht), [jpeg(im.crop(t)) for t in vakken]), "beeldtype": "jpeg"}
                 uitvoer.write_text(json.dumps(klaar, indent=1) + "\n")  # na elk etiket: een onderbreking verliest niets
-                geweigerd = geweigerd + 1 if klaar[doc].get("fout") == "geweigerd" else 0
+                geweigerd = geweigerd + 1 if klaar[doc].get("fout") == "geweigerd" else 0  # te_groot breekt de reeks
                 if geweigerd >= 5:
                     raise SystemExit("5 etiketten op rij geweigerd door de aanbieder: run gestopt (zie randvoorwaarden §2)")
             hint = []
@@ -306,7 +338,7 @@ def main(argv=None):
             if not volledig.exists():
                 shutil.copyfile(pad, volledig)
             items.append({"id": doc, "beeld": f"beelden/{doc}.png", "hint": hint, "voorinvulling": klaar[doc]})
-        (toets_map / "zdr-proef.json").write_text(json.dumps(proef) + "\n")
+        (toets_map / "zdr-proef.json").write_text(json.dumps({**proef, "grens": grens, "besluit": besluit}) + "\n")
         (toets_map / "items.json").write_text(json.dumps(items, indent=1) + "\n")
         print(len(items), "etiketten, uitgegeven $%.2f" % bewaker.uitgegeven)
     elif a.stap == "ontdubbel":

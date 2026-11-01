@@ -9,6 +9,7 @@ AI-vakjes tellen alleen met x0 < x1, y0 < y1 en zijden ≥ 4 px; hetzelfde keurm
 wordt per code samengevoegd (herken.nms, IoU 0,5).
 
   python echt.py voorlabels --lijst <json [{doc_id, gln, pad}]> --proef-map <PM> --uit <voorlabels.json> --zdr-logo <png>
+                            [--grens <dollar> --besluit "<verwijzing>"]   (standaard 1,5 × --raming)
   python echt.py dataset --lijst <json> --voorlabels <voorlabels.json> --proef-map <PM> --uit <PM>/train/echt
                          [--meng <PM>/train/nagemaakt/train --meng-aantal 1000]   (fase 2: deel nagemaakte tegels erbij)
       → train/, valid/, test/ (kopie van valid, voor rfdetr), achtergronden.json (alleen de trainingskant),
@@ -30,6 +31,7 @@ import beelden
 import herken
 import openrouter
 import scheiding
+from toets import aanroepen, grens_uit, jpeg
 from train import KLASSEN
 GELIJKEND = ("AGRICULTURE_BIOLOGIQUE", "BDIH_LOGO", "TRIMAN", "SEPARATE_COLLECTION", "SOCIETY_PLASTICS_INDUSTRY",
              "RETURNABLE_CAN_NL", "NUTRISCORE_D", "NUTRISCORE_E", "MINIMUM_DRINKING_AGE_18_WARNING",
@@ -57,6 +59,7 @@ PROMPT = (
 MIN_ZICHTBAAR = 0.6
 MIN_ZIJDE = 4  # px; kleinere of omgekeerde AI-vakjes tellen niet
 MAX_TEGELS = 16  # per aanroep, naast het hele etiket
+PER_AANROEP = 0.012  # verwachte kosten per aanroep (randvoorwaarden §3)
 
 
 def schoon(vakjes):
@@ -159,17 +162,20 @@ def valsplit(etiketten, fractie=0.3, seed=20261031, overgeslagen=None):
     return {e["doc_id"] for e in etiketten} - v, v
 
 
-def voorlabels(client, beeld_png, tegels, maat=None):
-    """Heel etiket, dan hoogstens MAX_TEGELS tegels per aanroep (meer tegels: extra aanroepen); vakjes van de 10
-    klassen in etiketcoördinaten, opgeschoond met `schoon`. `tegels` = [(png, (x0, y0, x1, y1) in het etiket)];
-    `maat` = (w, h) van het etiket als het hele beeld verkleind is. Een antwoord in een andere vorm: EtiketFout."""
-    w0, h0 = _maat(beeld_png)
+def voorlabels(client, beeld, tegels, maat=None):
+    """Heel etiket, dan per aanroep de tegels die `openrouter.delen` toelaat (hoogstens MAX_TEGELS en MAX_BEELD_BYTES,
+    overzicht meegeteld); vakjes van de 10 klassen in etiketcoördinaten, opgeschoond met `schoon`. `tegels` =
+    [(beeldbytes, (x0, y0, x1, y1) in het etiket)]; `maat` = (w, h) van het etiket als het hele beeld verkleind is.
+    Past het overzicht plus één tegel niet: EtiketFout("te_groot") zonder aanroep. Een antwoord in een andere vorm:
+    EtiketFout("antwoord_ongeldig")."""
+    w0, h0 = _maat(beeld)
     heel = ((maat or (w0, h0))[0] / w0, (maat or (w0, h0))[1] / h0, 0, 0)
+    delen = openrouter.delen([len(t) for t, _ in tegels], vast=len(beeld), max_aantal=MAX_TEGELS)
     uit = []
     try:
-        for start in range(0, max(1, len(tegels)), MAX_TEGELS):
-            deel = tegels[start:start + MAX_TEGELS]
-            a, _ = client.vraag(PROMPT, [beeld_png, *(t for t, _ in deel)], SCHEMA_VOORLABELS, verwacht=0.012)
+        for r in delen:
+            deel = tegels[r.start:r.stop]
+            a, _ = client.vraag(PROMPT, [beeld, *(t for t, _ in deel)], SCHEMA_VOORLABELS, verwacht=PER_AANROEP)
             schalen = [heel]
             for png, (x0, y0, x1, y1) in deel:
                 tw, th = _maat(png)
@@ -199,12 +205,6 @@ def rapport(train, valid):
 
 
 # --- opdrachtregel (lijm) ----------------------------------------------------------------------------------------
-
-def _png(im):
-    buf = io.BytesIO()
-    im.save(buf, "PNG")
-    return buf.getvalue()
-
 
 def _rgb(pad):
     with Image.open(pad) as im:
@@ -253,6 +253,8 @@ def main(argv=None):
     v.add_argument("--zdr-logo", required=True, type=Path)
     v.add_argument("--model", default="google/gemini-3.8-flash")
     v.add_argument("--raming", type=float, default=10.0)
+    v.add_argument("--grens", type=float, help="andere uitgavengrens dan 1,5 × --raming; alleen met --besluit")
+    v.add_argument("--besluit", help="verwijzing naar het besluit van Friso over --grens")
     d = sub.add_parser("dataset")
     d.add_argument("--lijst", required=True, type=Path)
     d.add_argument("--voorlabels", required=True, type=Path)
@@ -266,6 +268,8 @@ def main(argv=None):
     w.add_argument("--waarheid", required=True, type=Path)
     w.add_argument("--uit", required=True, type=Path)
     a = ap.parse_args(argv)
+    if a.stap == "voorlabels":
+        grens, besluit = grens_uit(ap, a, None)  # None: 1,5 × --raming
     if a.stap == "validatie-uitslag":  # AI-vakjes van de validatieset in het schema van uitslag.json, voor tel_proef
         import uitslag as us
 
@@ -292,10 +296,13 @@ def main(argv=None):
         uit = beelden.veilig_doel(a.uit)
         klaar = json.loads(uit.read_text()) if uit.exists() else {}
         af = {d for d, r in klaar.items() if d != "_zdr_proef" and "fout" not in r}  # een mislukt etiket opnieuw proberen
-        bewaker = kosten.Bewaker("voorlabels + achtergrondscreening", a.raming, grootboek=a.proef_map / "uitgaven.json")
-        bewaker.controleer_start(sum(e["doc_id"] not in af for e in lijst) * 0.012)
+        bewaker = kosten.Bewaker("voorlabels + achtergrondscreening", a.raming, grootboek=a.proef_map / "uitgaven.json",
+                                 grens=grens)
+        print(f"grens voorlabels ${bewaker.grens:.2f}", f"(besluit: {besluit})" if besluit else "(standaard)")
+        n = sum(aanroepen(e["pad"]) for e in lijst if e["doc_id"] not in af)  # open etiketten
+        bewaker.controleer_start(n * PER_AANROEP)  # vóór de client en de zdr-proef
         client = openrouter.Client(a.model, "voorlabels", bewaker=bewaker)
-        klaar["_zdr_proef"] = client.zdr_proef(a.zdr_logo.read_bytes())
+        klaar["_zdr_proef"] = {**client.zdr_proef(a.zdr_logo.read_bytes()), "grens": bewaker.grens, "besluit": besluit}
         geweigerd = 0
         for e in lijst:
             if e["doc_id"] in af:
@@ -305,11 +312,11 @@ def main(argv=None):
             heel.thumbnail((1500, 1500))
             vak = herken.tegels(*im.size)
             try:
-                klaar[e["doc_id"]] = {"vakjes": voorlabels(client, _png(heel), [(_png(im.crop(t)), t) for t in vak], im.size)}
+                klaar[e["doc_id"]] = {"vakjes": voorlabels(client, jpeg(heel), [(jpeg(im.crop(t)), t) for t in vak], im.size)}
                 geweigerd = 0
             except openrouter.EtiketFout as f:
                 klaar[e["doc_id"]] = {"fout": f.klasse}
-                geweigerd = geweigerd + 1 if f.klasse == "geweigerd" else 0
+                geweigerd = geweigerd + 1 if f.klasse == "geweigerd" else 0  # te_groot breekt de reeks
             uit.write_text(json.dumps(klaar, indent=1))
             if geweigerd >= 5:
                 raise SystemExit("5 etiketten op rij geweigerd door de aanbieder: run gestopt (zie randvoorwaarden §2)")

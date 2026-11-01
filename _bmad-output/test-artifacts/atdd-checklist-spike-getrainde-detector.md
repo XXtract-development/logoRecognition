@@ -15,6 +15,8 @@ inputDocuments:
   - _bmad/tea/testarch/knowledge/{test-quality,test-levels-framework,test-priorities-matrix,data-factories,test-healing-patterns,component-tdd,ci-burn-in}.md
   - _bmad-output/planning-artifacts/spike-getrainde-detector/DRAAIPLAN.md (ronde 2)
   - git show c86a067 (ronde 2: besluiten Friso 01-11-2026)
+  - git diff 89887f2 -- _bmad-output/planning-artifacts/spike-getrainde-detector/ (ronde 3: spec-update na bmad-review, 24 bevindingen)
+  - _bmad/tea/testarch/knowledge/{timing-debugging,selector-resilience}.md (ronde 3, browser)
 ---
 
 # ATDD-checklist: proef getrainde detector
@@ -289,3 +291,95 @@ Al groen vóór de bouw (6): de grenzen BUSL-1.1, BSL-1.1, CNRI-Jython, "MIT AND
 - Voorwaarden voldaan (spec-update gereviewd, framework en omgeving aanwezig); elke gewijzigde regel uit `c86a067` voor CAP-6/9/10/13 heeft minstens één test; geen placeholders; geen browsers of tijdelijke bestanden buiten `tmp_path`; alleen verzonnen GLN's/GTIN's; `~/logo-meetset-20261018/` niet gelezen.
 - Niet gedekt (bewust): de exacte formule van de gevoeligheid (alleen de richting is getoetst); het tekortschieten van N wordt uit de validatietabel afgelezen, zonder eigen gereedschap (alleen de vermelding in DRAAIPLAN stap 10 is getoetst); correctiepercentage-logging (niet veranderd in `c86a067`).
 - **Volgende stap:** `bmad-build` op deze sectie als bindend contract; groen maken zonder een test aan te passen, behalve bij een aantoonbare testfout (met reden in het buildverslag).
+
+## Ronde 3 (verzoekgrootte, grens voorinvulling $65, klaar-teken invulpagina; 01-11-2026)
+
+Bron: de niet-gecommitte spec-update op HEAD `89887f2` (`bmad-spec`, daarna `bmad-review` met 24 bevindingen, alle doorgevoerd): SPEC CAP-2, CAP-3, CAP-5, CAP-14; randvoorwaarden §3 en nieuwe §5; toetsset §5–§6; de laatste memlog-regels. De rest van deze checklist blijft bindend.
+
+### Stap 1 — preflight en context
+
+- **Werkwijze:** `bmad-testarch-atdd`, Create-modus, headless (geen mens; keuzes hieronder vastgelegd).
+- **Stack:** `backend` (Python 3.12, pytest via `uv`) plus Playwright voor Python (Chromium) voor de invulpagina. Uitgangstoestand: 494 passed, 0 failed (`uv run --group dev pytest -q -p no:cacheprovider`, 01-11-2026, 68 s); de bekende wankele browsertest trad daarin niet op.
+- **Gelezen:** SPEC.md, randvoorwaarden §2–§5, toetsset §5–§6, trainingsset §4, de memlog (ronde 3), `toets.py`, `echt.py`, `openrouter.py`, `kosten.py`, `herken.tegels`, `invul/index.html`, `tests/conftest.py`, `tests/test_review_20261101.py` (fixtures `pagina`, `NepClient`, `toets_pm`), `tests/test_cap03_invulpagina_browser.py` (`openen`, herladen), `tests/test_openrouter.py`, `tests/test_cap14_uitgaven.py`. Kennis: kern (`test-quality`, `data-factories`, `test-healing-patterns`, `component-tdd`), backend (`test-levels-framework`, `test-priorities-matrix`, `ci-burn-in`) en voor de browser `timing-debugging` (wacht op een waarneembare toestandswissel, niet op een netwerkantwoord of een vaste wachttijd) en `selector-resilience`.
+- **Gemeten als invoer (geen klantdata in deze checklist):** op de 21 mislukte etiketten ruwe PNG-beeldbytes per aanroep 22,6–30,1 MB, als JPEG kwaliteit 90 2,7–5,1 MB; `herken.tegels`: 4096×4096 → 25 tegels (2 aanroepen), 3000×3000 → 16 (1 aanroep).
+
+### Stap 2 — generatiemodus
+
+AI-generatie. Geen opname: de paginastructuur en de selectors staan in `invul/index.html` en het contract hieronder.
+
+### Stap 3 — teststrategie
+
+| criterium | niveau | prio |
+|---|---|---|
+| CAP-3 klaar-teken, wachten in elke browsertest, laadfout | browser (Playwright) | P0 (wat Friso typt raakt nooit kwijt; wankele test) |
+| CAP-2/CAP-5 JPEG, bytegrens, splitsing, `te_groot` | unit (`delen`, `voorinvulling`, `voorlabels`, `Client._body`) + opdrachtregel met nagebootste client | P0 (21 etiketten zonder voorinvulling) |
+| CAP-14 vaste grens $65, besluitverwijzing, projectie per aanroep | unit (`Bewaker`) + opdrachtregel met grootboek | P0 (geldpad) |
+| CAP-10 draaiplan stap 3/6/9 en kostennotitie | documenttest | P2 |
+
+Uitvoeringsmodus: `tea_execution_mode = auto`, subagents beschikbaar → **subagent**: worker A (unit/opdrachtregel, CAP-2/5/14/10) en worker B (browser, CAP-3) parallel, met **gescheiden bestanden** (geen twee schrijvers op één bestand). Bewuste afwijking van de stapbestanden, zoals in ronde 2: geen `test.skip()` (Playwright/JS-patroon); de tests draaien echt rood, want de keten vraagt een rode run met aantallen. De workers schrijven hun testbestanden direct op schijf (bestaande bestanden wijzigen kan niet als JSON-inhoud zonder het hele bestand te herhalen) en leveren het JSON-verslag van step-04a/04b in `/tmp`.
+
+### Interfacecontract ronde 3 (bindend voor tests én bouw)
+
+**`openrouter.py`**
+- `MAX_BEELD_BYTES = 20_000_000` (moduleconstante, bij elke aanroep opnieuw gelezen; tests mogen hem monkeypatchen).
+- `delen(groottes, vast=0, max_aantal=16)` → lijst van `range`s die `0..len(groottes)` op volgorde en zonder overlap dekken; per range `len ≤ max_aantal` en `vast + som(groottes[r]) ≤ MAX_BEELD_BYTES`; lege invoer → `[range(0, 0)]` (één aanroep zonder tegels); is `vast + groottes[i] > MAX_BEELD_BYTES` voor een `i` → `EtiketFout("te_groot")`.
+- `Client._body`: per beeld het type uit de eerste bytes: `b"\xff\xd8\xff"` → `data:image/jpeg;base64,…`, `b"\x89PNG\r\n\x1a\n"` → `data:image/png;base64,…`; elk ander begin → `ValueError` en er gaat niets naar de transport (ook niet via `vraag` of `zdr_proef`).
+
+**`toets.py`**
+- `voorinvulling(client, beeld, tegels)` verdeelt met `openrouter.delen([len(t) for t in tegels], vast=len(beeld), max_aantal=MAX_TEGELS)`; elke aanroep krijgt `[beeld, *tegels[r]]`; hinttegels op etiketindex (`r.start + i`); `te_groot` → `{… lege velden …, "fout": "te_groot"}` zonder aanroep.
+- `main voorinvulling`: overzicht en tegels als JPEG (kwaliteit 90; eerste bytes `FFD8FF`), hinttegels en `beelden/<doc>.png` blijven PNG; elk etiket dat deze versie (opnieuw) invult krijgt `"beeldtype": "jpeg"` in `voorinvulling.json` en dus in `items.json`.
+- `--grens` (float) en `--besluit` (tekst): zonder `--grens` is de grens **65.0** (moduleconstante `GRENS_VOORINVULLING = 65.0`); `--grens` zonder niet-lege `--besluit` → exitcode ≠ 0 vóór enige aanroep (ook geen zdr-proef) en geen `voorinvulling.json`; met besluit → die grens; de gebruikte grens (en het besluit, als gegeven) staat op stdout.
+- Startcontrole: `grootboek[post] + Σ_open max(1, ceil(n_tegels/16)) × 0.06 > grens` → `kosten.BudgetOverschreden` vóór enige aanroep (ook geen zdr-proef); `n_tegels = len(herken.tegels(w, h))` van het gebouwde beeld (maat uit het bestand, niet uit het manifest). Open = niet in `voorinvulling.json` of met `fout`.
+- Vijf etiketten op rij `geweigerd` stoppen de run; `te_groot` telt daar niet voor.
+
+**`echt.py`**
+- `voorlabels(client, beeld, tegels, maat=None)` verdeelt met `openrouter.delen` op de bytes van de tegels (`tegels = [(bytes, box)]`), vakjes per aanroep in etiketcoördinaten (ook bij een ongelijke splitsing); `te_groot` → `EtiketFout("te_groot")` zonder aanroep.
+- `main voorlabels`: overzicht en tegels als JPEG; `--grens`/`--besluit` volgens dezelfde regel, standaardgrens = 1,5 × `--raming` (15); startcontrole `grootboek[post] + Σ_open max(1, ceil(n_tegels/16)) × 0.012 > grens` → `BudgetOverschreden` vóór enige aanroep; `te_groot` breekt de reeks van vijf weigeringen (zoals elke andere fout dan `geweigerd`).
+
+**`kosten.py`** — `Bewaker(post, raming, factor=1.5, grootboek=None, grens=None)`: `grens=None` → `raming × factor` (bestaand gedrag); anders precies `grens`.
+
+**`invul/index.html`** (toetsset §6)
+- Het formulier `#keuzes` heeft in de HTML het attribuut `inert`; `start()` haalt het pas weg na het eerste `toon()` en na `koppel()` — het **klaar-teken** is dus `#keuzes:not([inert])`.
+- Lege `items.json` → formulier blijft `inert`, `#voortgang` bevat "geen etiketten"; `items.json` of `/stand` geeft geen 2xx of geen geldige JSON, of de fetch faalt → formulier blijft `inert`, `#voortgang` bevat "laden mislukt".
+- Verder geen gedragswijziging (geen `focus()`/`select()`, geen vervangen ouder van een invoerveld, concepten in `sessionStorage`).
+
+**Tests** — gedeelde hulp in `tests/conftest.py`: `wacht_klaar(page)` (wacht op `#keuzes:not([inert])`, attached) en `laad_klaar(page, url=None)`: met `url` `page.goto(url)`, zonder `page.reload()`; daarna wachten op `#keuzes:not([inert])` (attached). Elke browserfixture en elk herladen gebruikt hem; de bestaande wachtregel op `/stand` vervalt daar (wankele test, deferred-work).
+
+**`DRAAIPLAN.md`** (documenttest) — stap 3: commando met `--grens 65` en een niet-lege `--besluit` (anders weigert het eigen commando; aanvulling worker A), kostenregel met $0,12 per etiket en grens $65 (besluit Friso 01-11-2026), geen "$31,50"; stap 6: $0,12 per extra etiket; stap 9: de tekst zegt dat de voorlabels pas starten nadat Friso hun grens besliste (stoppunt 5), en het `echt.py voorlabels`-commando bevat `--grens` én `--besluit`; de kostennotitie bovenaan noemt de grens per post in plaats van alleen "1,5× de raming".
+
+### Stap 4 — falende tests (workers A en B, parallel als subagent)
+
+| criterium | tests (`R3:` = `tests/test_ronde3_20261101.py`, `R3B:` = `tests/test_ronde3_browser_20261101.py`) | aantal | prio |
+|---|---|---:|---|
+| CAP-2/CAP-5 `delen`, `MAX_BEELD_BYTES` | R3: `test_r3_delen_constante_20_mb_…`, `…_hoogstens_16_tegels_op_volgorde_zonder_overlap`, `…_bytegrens_telt_het_overzicht_mee_ongelijke_splitsing`, `…_lege_invoer_…`, `…_overzicht_plus_een_tegel_te_groot_is_etiketfout`, `…_leest_de_grens_bij_elke_aanroep` | 6 | P0 |
+| CAP-2/CAP-5 beeldtype in de client | R3: `test_r3_client_jpeg_als_image_jpeg_en_png_als_image_png`, `test_r3_zdr_proef_png_logo_blijft_png_jpeg_logo_wordt_jpeg`, `test_r3_client_onbekend_beeldtype_valueerror_zonder_verzenden` (gif, leeg, halve JPEG-kop, halve PNG-kop) | 6 | P0 |
+| CAP-2 voorinvulling | R3: `test_r3_voorinvulling_splitst_op_bytes_hinttegels_op_etiketindex`, `…_te_groot_lege_velden_zonder_aanroep`, `test_r3_toets_main_stuurt_jpeg_90_en_houdt_paginabeelden_png` (kwaliteit 90 via de kwantisatietabellen, `beeldtype`), `test_r3_toets_vijf_keer_te_groot_stopt_de_run_niet` | 4 | P0 |
+| CAP-5 voorlabels | R3: `test_r3_voorlabels_splitst_op_bytes_vakjes_in_etiketcoordinaten`, `…_te_groot_zonder_aanroep`, `test_r3_echt_main_stuurt_overzicht_en_tegels_als_jpeg`, `test_r3_echt_te_groot_breekt_de_reeks_van_vijf_weigeringen` | 4 | P0 |
+| CAP-14 grens, besluitverwijzing, projectie | R3: `test_r3_toets_standaardgrens_65_start_ook_boven_de_oude_31_50`, `…_rand_van_de_grens_65_…`, `…_projectie_per_aanroep_groot_etiket_twee_aanroepen` (4096² → 25 tegels), `…_projectie_telt_alleen_open_etiketten`, `…_grens_zonder_besluit_weigert_voor_elke_aanroep` (2), `…_grens_met_besluit_geldt_en_staat_op_stdout`, `test_r3_echt_projectie_per_aanroep_tegen_standaardgrens_15`, `test_r3_echt_grens_zonder_besluit_…` (2), `test_r3_echt_grens_met_besluit_…`, `test_r3_bewaker_grens_none_is_raming_maal_factor_anders_precies_de_grens` | 12 | P0 |
+| CAP-10 draaiplan | R3: `test_r3_draaiplan_stap_3_…`, `…_stap_6_…`, `…_stap_9_voorlabels_pas_na_besluit_over_hun_grens`, `…_kostennotitie_noemt_de_grens_per_post` | 4 | P2 |
+| CAP-3 klaar-teken | R3B: `test_p0_oude_wachtregel_is_te_vroeg_klaar_teken_niet` (deterministische demonstratie: `items.json` vastgehouden tot na `/stand`; met de oude wachtregel is de pagina nog niet klaar, het tekstveld neemt geen focus of tekst aan en `b` doet niets; na `wacht_klaar` geeft `b` "Kies eerst" en blijft het etiket staan, niets opgeslagen), `test_p0_klaar_pas_na_eerste_tonen_met_concept` (laden en herladen, `items.json` 1 s vertraagd in de pagina), `test_p0_lege_items_blijft_inert`, `test_p0_laadfout_blijft_inert_en_meldt_het` (items 500, items geen JSON, items afgebroken, stand 500, stand geen JSON) | 8 | P0 |
+
+**Bestaande tests aangepast (testinfrastructuur, wankele test):** `tests/conftest.py` (+`wacht_klaar`, `laad_klaar`); `tests/test_review_20261101.py` fixture `pagina` en `tests/test_cap03_invulpagina_browser.py` `openen()` en het herladen in `test_p0_concept_per_toetsaanslag_en_gaat_voor_op_serverstand` wachten nu met `laad_klaar` op het klaar-teken in plaats van op `/stand`. Tegen de huidige pagina blijven ze groen (`#keuzes:not([inert])` past daar meteen): `-m browser` op die twee bestanden 14 passed (worker B). Geen andere bestaande test gewijzigd; regressie van worker A op `test_review_20261101.py`, `test_openrouter.py`, `test_cap14_uitgaven.py` (niet-browser): 106 passed.
+
+**Aggregatie (step-04c):** beide workers `success`; alle tests rood door ontbrekend gedrag (geen import- of fixturefout); beide workers bewezen haalbaarheid op een weggegooide kopie buiten de repository (A: 36/36 groen; B: 22 browsertests groen tegen een gepatchte paginakopie). Gemelde onduidelijkheden, opgelost zonder het contract stil te wijzigen (vastgelegd hierboven): stap-3-commando vraagt ook `--besluit`; `te_groot` in `echt.voorlabels` telt het overzicht mee (randvoorwaarden §5); de weigertests van `--grens` eisen dat de melding "besluit" noemt (anders zouden ze nu al slagen op "unrecognized arguments"); test a houdt `items.json` zelf vast in plaats van een timer (volledig deterministisch); in de rode run geeft test a één onschuldige asyncio-regel omdat het vastgehouden verzoek daar nooit wordt losgelaten.
+
+### Rode run (01-11-2026)
+
+```
+cd _bmad-output/planning-artifacts/spike-getrainde-detector && uv run --group dev pytest -q -p no:cacheprovider
+44 failed, 494 passed, 18 warnings in 96.89s
+```
+
+538 tests (494 + 36 + 8). Rood per bestand: `test_ronde3_20261101.py` 36, `test_ronde3_browser_20261101.py` 8; elke bestaande test groen. Redenen: `openrouter.delen`/`MAX_BEELD_BYTES` ontbreken (AttributeError), JPEG wordt als `image/png` verstuurd en onbekende bytes gaan gewoon mee, `voorinvulling` splitst alleen op 16 (`[17,17,4]` in plaats van `[17,4,17]`) en kent geen `te_groot`, `voorlabels` splitst niet op bytes, de opdrachtregels sturen PNG, kennen `--grens`/`--besluit` niet, rekenen met $31,50 en $0,06/$0,012 per etiket, `Bewaker` kent `grens` niet (TypeError), DRAAIPLAN heeft de oude tekst; de pagina zet nooit `inert` (klaar-teken direct waar, eerste etiket nog leeg op dat moment) en meldt "laden…"/"0 van 2" in plaats van "laden mislukt".
+
+### Stap 5 — validatie en volgende stap
+
+- Voorwaarden: spec-update gereviewd (`bmad-review`, 24 bevindingen doorgevoerd), framework en Chromium aanwezig. Elke gewijzigde regel van ronde 3 (CAP-2, CAP-3, CAP-5, CAP-14, randvoorwaarden §3/§5, toetsset §6, DRAAIPLAN stap 3/6/9) heeft minstens één test; geen placeholders; geen `test.skip()`; waits op waarneembare toestand (klaar-teken, `expect` met auto-retry), een vastgehouden verzoek in plaats van een wachttijd; alleen verzonnen ids; geen browsers of bestanden buiten `tmp_path`; `~/logo-meetset-20261018/` niet gelezen door de tests.
+- Niet van toepassing uit `checklist.md`: `playwright.config.ts`, mappen `tests/e2e|api|component` (Python-suite plat in `tests/`, zoals rondes 1–2).
+- Niet gedekt (bewust): dat elke browserfixture `laad_klaar` gebruikt is niet automatisch afgedwongen (codecontrole: de drie wachtplekken zijn omgezet); de kostenvergelijking JPEG/PNG volgt na de herhaalrun (memlog, review #11).
+- **Volgende stap:** `bmad-build` op dit interfacecontract; groen maken zonder tests te wijzigen, behalve bij een aantoonbare testfout (met reden in het buildverslag).
+
+
+### Na de bouw (bmad-build, reviewpatches)
+
+Op verzoek van de codereview (geen testfout) kwamen er 5 tests bij, alle groen: `test_r3_toets_grens_niet_eindig_of_negatief_weigert_voor_elke_aanroep` (inf, nan, −1), `test_r3_toets_main_laat_beeldtype_weg_bij_overgenomen_etiket`, en `test_p0_laadfout_blijft_inert_en_meldt_het[stand-null]`; de twee `--besluit`-tests toetsen nu ook de vastgelegde grens en het besluit. Suite: 543 passed, 0 failed (2× na elkaar). Buildspec: `_bmad-output/implementation-artifacts/spec-spike-getrainde-detector-ronde3.md`.

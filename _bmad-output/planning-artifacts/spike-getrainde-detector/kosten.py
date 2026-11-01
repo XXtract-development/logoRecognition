@@ -1,8 +1,9 @@
 """Uitgavenbewaking (CAP-14; randvoorwaarden §3). Alleen standaardbibliotheek.
 
-Een post start niet als de verwachte uitgave boven 1,5× de raming ligt; tijdens een post wordt een aanroep die de
-grens zou passeren niet verstuurd (de client vraagt `mag` vóór elke aanroep). Kosten komen uit `usage.cost`, anders uit
-tokens × tarief (OpenRouter-tarieven 30-10-2026, dollar per token). Met een grootboek (`PROEF_MAP/uitgaven.json`) telt
+Een post start niet als de verwachte uitgave boven de grens ligt (1,5× de raming, of de vaste grens die Friso besliste,
+§3); tijdens een post wordt een aanroep die de grens zou passeren niet verstuurd (de client vraagt `mag` vóór elke
+aanroep). Kosten komen uit `usage.cost`, anders uit tokens × tarief (OpenRouter-tarieven 30-10-2026, dollar per
+token). Met een grootboek (`PROEF_MAP/uitgaven.json`) telt
 de grens per post over alle processen en herstarts: de bewaker leest bij de start wat de post al uitgaf en schrijft na
 elke boeking de nieuwe stand weg."""
 import json
@@ -28,8 +29,9 @@ def kosten_uit(envelope, model):
 
 
 class Bewaker:
-    def __init__(self, post, raming, factor=1.5, grootboek=None):
-        self.post, self.raming, self.grens, self.uitgegeven = post, raming, raming * factor, 0.0
+    def __init__(self, post, raming, factor=1.5, grootboek=None, grens=None):
+        self.post, self.raming, self.uitgegeven = post, raming, 0.0
+        self.grens = raming * factor if grens is None else grens
         self.grootboek = None
         if grootboek:
             from beelden import veilig_doel  # grootboek staat in PROEF_MAP, nooit in een git-werkboom

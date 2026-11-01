@@ -49,7 +49,7 @@
     <a data-testid="volledig" target="_blank" rel="noopener"><img data-testid="overzicht" alt="overzicht van het etiket"></a>
     <div id="hints" aria-label="tegels waarin de AI een keurmerk zag"></div>
   </div>
-  <form class="kaart" id="keuzes" autocomplete="off" onsubmit="return false">
+  <form class="kaart" id="keuzes" autocomplete="off" onsubmit="return false" inert>
     <div id="notitie"></div>
     <table><tbody id="rijen"></tbody></table>
     <textarea id="opmerking" placeholder="Opmerking bij dit etiket"></textarea>
@@ -284,16 +284,26 @@ function koppel() {
   });
 }
 
+// Klaar-teken (toetsset §6): #keuzes blijft inert tot het eerste toon() en koppel(); bij een laadfout of lege lijst blijft het zo.
 async function start() {
   bouwFormulier();
-  const [ri, rs] = await Promise.all([fetch("items.json", {cache: "no-store"}), fetch("stand", {cache: "no-store"})]);
-  items = await ri.json();
-  if (!items.length) { $("#voortgang").textContent = "geen etiketten in items.json"; return; }
-  zetStand(await rs.json());
-  const open = items.findIndex((it) => !(records[it.id] && ["bevestigd", "onleesbaar"].includes(records[it.id].status)));
-  idx = open < 0 ? 0 : open;
-  toon();
-  koppel();
+  let stand;
+  try {
+    const [ri, rs] = await Promise.all([fetch("items.json", {cache: "no-store"}), fetch("stand", {cache: "no-store"})]);
+    if (!ri.ok || !rs.ok) throw new Error("status");
+    [items, stand] = await Promise.all([ri.json(), rs.json()]);
+    if (!Array.isArray(items)) throw new Error("items.json is geen lijst");
+    if (!items.length) { $("#voortgang").textContent = "geen etiketten in items.json"; return; }
+    zetStand(stand);
+    const open = items.findIndex((it) => !(records[it.id] && ["bevestigd", "onleesbaar"].includes(records[it.id].status)));
+    idx = open < 0 ? 0 : open;
+    toon();
+    koppel();
+    $("#keuzes").removeAttribute("inert");
+  } catch (e) {  // ook een /stand of item in de verkeerde vorm: formulier blijft inert
+    items = [];
+    $("#voortgang").textContent = "laden mislukt; herlaad de pagina";
+  }
 }
 start();
 </script>

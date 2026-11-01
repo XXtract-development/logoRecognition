@@ -2,7 +2,7 @@
 titel: Toetsset, scheiding training/toets en beelden
 hoort-bij: SPEC.md (CAP-1, CAP-2, CAP-3, CAP-15)
 datum: 2026-10-31
-bijgewerkt: 2026-10-31 (na bmad-review)
+bijgewerkt: 2026-11-01 (ronde 3: verzoekgrootte voorinvulling, klaar-teken invulpagina)
 gemeten-op: declaraties-prod-basiseenheden-20261008.tsv, alcohol-kandidaten.tsv, referentiemomentopname 2026-10-30, voorlopige-selectie.json
 ---
 
@@ -89,7 +89,9 @@ Verwachte omvang: ±350 etiketten. Bij ±20 seconden per etiket kost bevestigen 
 - Per etiket: heel etiket plus **tegels** (vaste, overlappende uitsneden van het etiket op werkschaal). Uitkomst per keurmerk: aanwezig ja/nee, voor Nutri-Score de verzameling letters (A–E), de tegels waarin het model het keurmerk zag (hinttegels), en gezien gelijkende keurmerken.
 - Model: **een ander model dan het taalmodel van K4-aa** (`google/gemini-3.8-flash`); standaard `anthropic/claude-sonnet-5.5`. De client weigert het K4-aa-model. Reden: fouten van de voorinvulling mogen niet meebewegen met de route die vergeleken wordt.
 - Via de gedeelde OpenRouter-client ([randvoorwaarden.md §1](randvoorwaarden.md#1-privacy-zdr)). Geen zdr-endpoint voor dit model → stoppunt 3.
-- Uitvoer per etiket: model, tijdstip, `usage.cost`, ruwe JSON. Een mislukte voorinvulling laat de velden leeg; de pagina toont dat.
+- Verzoeken volgens [randvoorwaarden.md §5](randvoorwaarden.md#5-verzoekgrootte); kosten en grens volgens [randvoorwaarden.md §3](randvoorwaarden.md#3-kosten-cap-14).
+- Herstart: etiketten met een fout worden opnieuw geprobeerd, klare etiketten niet opnieuw betaald.
+- Uitvoer per etiket: model, tijdstip, `usage.cost`, beeldtype, ruwe JSON. Een mislukte voorinvulling laat de velden leeg; de pagina toont dat.
 
 ## 6. Invulpagina voor Friso (CAP-3)
 
@@ -102,7 +104,8 @@ Lokale server op `127.0.0.1` (patroon `~/logo-meetset-20261018/ontwikkelmeting-2
   - geen `focus()` of `select()` op een ander veld dan waar de invuller staat;
   - geen stuk pagina vervangen zolang er getypt wordt (tellers bijwerken met `textContent` op het tellerelement zelf; geen `innerHTML`, `outerHTML`, `replaceChildren` of `insertAdjacentHTML` op een ouder van een invoerveld);
   - elke toetsaanslag als concept in `sessionStorage`; bij het laden gaat het concept vóór op de opgeslagen stand; een concept verdwijnt pas als de server de opslag heeft bevestigd;
-  - herbouwen alleen na een klik op opslaan.
+  - herbouwen alleen na een klik op opslaan;
+  - tijdens het laden is het formulier `#keuzes` `inert` (niet aan te klikken of te typen). Het attribuut verdwijnt pas na het eerste tonen (met concept) en nadat sneltoetsen en invoerafhandeling gekoppeld zijn: dat is het klaar-teken. Zo overschrijft het eerste tonen geen invoer van tijdens het laden, en wachten browsertests na elke paginalading (ook herladen) hierop, niet op het antwoord van `/stand`. Lege `items.json` of mislukt laden (netwerk- of JSON-fout): het formulier blijft `inert` en de voortgangsregel meldt het.
 - **Opslaan:** elke keuze direct naar `PROEF_MAP/toets/uitslag.json`. De server verwerkt opslagen één voor één (lock rond lezen-wijzigen-schrijven), schrijft atomisch (tijdelijk bestand + vervangen), weigert onbekende etiketten en ongeldige waarden, en weigert "bevestigd" zolang niet alle 8 keurmerken een keuze hebben.
 - **Schema `uitslag.json`:** `{"<doc_id>": {"status": "bevestigd"|"onleesbaar", "keurmerken": {"<code van keurmerk 1–3, 5–8>": "aanwezig"|"afwezig"|"onzeker"}, "nutriscore": ["A".."E"] | "onleesbaar", "veranderd": [<codes waar Friso de voorinvulling wijzigde>], "opmerking": "<tekst>", "tijd": "<ISO-8601>"}}`. De pagina, de voortgangsteller en de telcode gebruiken één gedeelde functie om dit te lezen.
 

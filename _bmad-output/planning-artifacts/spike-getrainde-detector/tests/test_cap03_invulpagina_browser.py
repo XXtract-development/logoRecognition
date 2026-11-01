@@ -21,6 +21,8 @@ import pytest
 from PIL import Image
 from playwright.sync_api import expect, sync_playwright
 
+from conftest import laad_klaar
+
 pytestmark = pytest.mark.browser
 expect.set_options(timeout=5_000)
 
@@ -141,9 +143,8 @@ def is_pad(pad):
 
 
 def openen(page, url):
-    """Open de pagina en wacht tot de serverstand binnen is (geen asserts)."""
-    with page.expect_response(is_pad("/stand")):
-        page.goto(url)
+    """Open de pagina en wacht op het klaar-teken (geen asserts)."""
+    laad_klaar(page, url)
 
 
 def houd_opslaan_vast(page):
@@ -245,8 +246,7 @@ def test_p0_concept_per_toetsaanslag_en_gaat_voor_op_serverstand(page, basis_url
     }})
     assert andere_stand.status == 200
 
-    with page.expect_response(is_pad("/stand")):
-        page.reload()
+    laad_klaar(page)
     page.keyboard.press("ArrowLeft")  # opent de pagina op het eerste open etiket, dan terug naar E1
     expect(page.get_by_test_id("etiket-id")).to_have_text(E1)
     expect(page.locator("#opmerking")).to_have_value(tekst)

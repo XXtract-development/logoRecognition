@@ -1,49 +1,55 @@
 {
  "decision": "PASS",
- "rationale": "P0 coverage 100% (25/25), P1 100% (9/9), overall 95% (35/37); all tests pass (494/494 dev, 4/4 zwaar-or-lokaal) and the real-environment licence check is clean (93 packages, 0 violations). The run-2 gap B-IO-1 is closed by 9 test cases covering other spellings (5 allowed, 4 still forbidden). Only P2 items CAP-6a and AC-2 remain partial (no assertion that training ran on mps).",
+ "rationale": "P0 coverage 100% (34/34), P1 100% (10/10), overall 96% (45/47); all tests pass (543/543 dev in three full runs, 4/4 zwaar-or-lokaal) and the real-environment licence check is clean (93 packages, 0 violations). Run 4 adds round 3 (request size: JPEG q90, <=16 tiles and 20,000,000 image bytes per request; prefill limit $65 per Friso's decision with a decision reference required for any other limit; fill-in page readiness sign) with 10 criteria from spec-spike-getrainde-detector-ronde3.md, all FULL. The flaky browser test was shown to be a test fault and is fixed (20/20 isolated). Only P2 items CAP-6a and AC-2 remain partial (no assertion that training ran on mps).",
  "decision_date": "2026-11-01",
- "run": 3,
+ "run": 4,
  "subject": "spike-getrainde-detector",
- "head": "c6c2a23 + uncommitted test extension (tests/test_besluiten_20261101.py, +6/-2)",
+ "head": "89887f2 + uncommitted round 3 (spec update, ATDD tests, build, trace)",
  "branch": "spike/proef-getrainde-detector",
  "specs": [
-  "_bmad-output/implementation-artifacts/spec-spike-getrainde-detector.md",
-  "_bmad-output/implementation-artifacts/spec-spike-getrainde-detector-besluiten.md"
+  "_bmad-output/implementation-artifacts/spec-spike-getrainde-detector-besluiten.md",
+  "_bmad-output/implementation-artifacts/spec-spike-getrainde-detector-ronde3.md",
+  "_bmad-output/implementation-artifacts/spec-spike-getrainde-detector.md"
  ],
  "contract": "_bmad-output/planning-artifacts/spike-getrainde-detector/SPEC.md",
  "atdd_checklist": "_bmad-output/test-artifacts/atdd-checklist-spike-getrainde-detector.md",
- "phase1_matrix": "/tmp/tea-trace-coverage-matrix-2026-11-01T10-42-59.json",
+ "phase1_matrix": "/tmp/tea-trace-coverage-matrix-2026-11-01T17-07-48.json",
  "tests": [
   {
    "command": "cd _bmad-output/planning-artifacts/spike-getrainde-detector && uv run --group dev pytest -q -p no:cacheprovider",
-   "result": "494 passed, 0 failed, 0 skipped"
+   "result": "543 passed, 0 failed, 0 skipped"
   },
   {
    "command": "cd _bmad-output/planning-artifacts/spike-getrainde-detector && uv run --group dev --group detector pytest -q -p no:cacheprovider -m \"zwaar or lokaal\"",
-   "result": "4 passed, 0 failed, 490 deselected"
+   "result": "4 passed, 0 failed, 539 deselected"
   },
   {
    "command": "cd _bmad-output/planning-artifacts/spike-getrainde-detector && uv run --group dev --group detector python licenties.py",
    "result": "exit 0, 93 packages, 0 violations, 8 'ruim'"
+  },
+  {
+   "command": "20x tests/test_review_20261101.py::test_pagina_b_zonder_alle_keuzes_slaat_niets_op_en_blijft_staan",
+   "result": "20/20 passed"
   }
  ],
  "failed_tests": [],
  "flaky_known": {
   "test": "tests/test_review_20261101.py::test_pagina_b_zonder_alle_keuzes_slaat_niets_op_en_blijft_staan",
-  "seen_this_run": false,
-  "note": "failed once (493/494) in the bmad-testarch-automate run, then passed 3x in isolation",
-  "ledger": "_bmad-output/implementation-artifacts/deferred-work.md (last entry)"
+  "status": "resolved in round 3",
+  "verdict": "test fault: fixtures waited for /stand, page binds keys only after items.json",
+  "evidence": "tests/test_ronde3_browser_20261101.py::test_p0_oude_wachtregel_is_te_vroeg_klaar_teken_niet; 20/20 isolated; green in every full run since the build",
+  "ledger": "_bmad-output/implementation-artifacts/deferred-work.md (resolution line)"
  },
  "gate_criteria": {
-  "p0_coverage_actual": "100% (25/25)",
+  "p0_coverage_actual": "100% (34/34)",
   "p0_status": "MET",
-  "p0_test_pass_rate_actual": "100% (238/238)",
+  "p0_test_pass_rate_actual": "100% (283/283)",
   "p0_test_pass_status": "MET",
-  "p1_coverage_actual": "100% (9/9)",
+  "p1_coverage_actual": "100% (10/10)",
   "p1_status": "MET",
-  "overall_coverage_actual": "95% (35/37)",
+  "overall_coverage_actual": "96% (45/47)",
   "overall_status": "MET",
-  "overall_test_pass_rate": "100% (494/494)"
+  "overall_test_pass_rate": "100% (543/543)"
  },
  "coverage": {
   "FULL": [
@@ -81,7 +87,17 @@
    "B-IO-6",
    "B-IO-7",
    "B-IO-8",
-   "B-IO-1"
+   "B-IO-1",
+   "R3-AC-1",
+   "R3-AC-2",
+   "R3-AC-3",
+   "R3-IO-1",
+   "R3-IO-2",
+   "R3-IO-3",
+   "R3-IO-4",
+   "R3-IO-5",
+   "R3-IO-6",
+   "R3-IO-7"
   ],
   "PARTIAL": [
    "CAP-6a",
@@ -96,7 +112,8 @@
  "headless_decisions": [
   "CAP-6 split into CAP-6a (training/MPS/smoke test, P2) and CAP-6b (size N, other size only with a recorded decision, P1 per ATDD round 2)",
   "build-spec-2 rows take the priority of the CAP they rest on; B-AC-2 is P0 because it includes the lokaal tests of CAP-1 and CAP-13",
-  "outputs updated in place instead of the default traceability-report.md"
+  "outputs updated in place instead of the default traceability-report.md",
+  "run 4: build-spec-3 rows R3-IO-1..7 and R3-AC-1/2 are P0 (money path, what is sent, typed input never lost); R3-AC-3 (only allowed paths changed) P1, verified by command"
  ],
  "uncovered_requirements": [],
  "risk": {
@@ -118,7 +135,7 @@
   "build spec 1 still 'in-review' (rejected finding 9 in build-spec-2 triage)",
   "test extension for B-IO-1 and this trace are not committed yet"
  ],
- "next": "Commit the test extension together with this trace. Optional (P2): assert apparaat == 'mps' in the two zwaar tests of CAP-6.",
+ "next": "Commit round 3 (spec update, ATDD tests, build, build spec, deferred-work line) together with this trace. Optional (P2): assert apparaat == 'mps' in the two zwaar tests of CAP-6.",
  "history": [
   {
    "run": 1,
@@ -149,6 +166,21 @@
     "B-IO-1"
    ],
    "resolved_by": "bmad-testarch-automate: 9 extra cases in tests/test_besluiten_20261101.py (automation-summary-spike-getrainde-detector.md)"
+  },
+  {
+   "run": 3,
+   "decision_date": "2026-11-01",
+   "head": "c6c2a23 + test extension (committed as 89887f2)",
+   "decision": "PASS",
+   "rationale": "B-IO-1 closed; P0 25/25, P1 9/9, overall 35/37",
+   "tests": [
+    "dev: 494 passed",
+    "zwaar or lokaal: 4 passed"
+   ]
   }
- ]
+ ],
+ "atdd_red_run_round3": {
+  "command": "cd _bmad-output/planning-artifacts/spike-getrainde-detector && uv run --group dev pytest -q -p no:cacheprovider",
+  "result": "44 failed, 494 passed"
+ }
 }

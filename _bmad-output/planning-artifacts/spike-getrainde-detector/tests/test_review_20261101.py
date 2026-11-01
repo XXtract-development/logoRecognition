@@ -17,6 +17,8 @@ import numpy as np
 import pytest
 from PIL import Image, ImageDraw
 
+from conftest import laad_klaar
+
 K7 = ("EU_ORGANIC_FARMING", "GREEN_DOT", "RECYCLABLE_GENERAL_CLAIM", "PREGNANCY_WARNING",
       "MARINE_STEWARDSHIP_COUNCIL_LABEL", "WEIDEMELK", "VEGAN_SOCIETY_VEGAN_LOGO")
 GD, EU, WM = "GREEN_DOT", "EU_ORGANIC_FARMING", "WEIDEMELK"
@@ -124,8 +126,7 @@ def pagina(tmp_path):
         page.set_default_timeout(5_000)
         posts = []
         page.on("request", lambda r: posts.append(r) if r.method == "POST" else None)
-        with page.expect_response(lambda r: r.url.endswith("/stand")):
-            page.goto(f"http://127.0.0.1:{srv.server_address[1]}/")
+        laad_klaar(page, f"http://127.0.0.1:{srv.server_address[1]}/")
         yield SimpleNamespace(page=page, posts=posts, map=tmp_path)
         browser.close()
     srv.shutdown()

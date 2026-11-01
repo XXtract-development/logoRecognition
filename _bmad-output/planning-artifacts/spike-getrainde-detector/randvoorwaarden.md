@@ -1,12 +1,13 @@
 ---
-titel: Randvoorwaarden proef getrainde detector — privacy, foutafhandeling, kosten, licenties
-hoort-bij: SPEC.md (Constraints, CAP-11, CAP-13, CAP-14)
+titel: Randvoorwaarden proef getrainde detector — privacy, foutafhandeling, kosten, licenties, verzoekgrootte
+hoort-bij: SPEC.md (Constraints, CAP-2, CAP-5, CAP-11, CAP-13, CAP-14)
 datum: 2026-10-31
+bijgewerkt: 2026-11-01 (ronde 3: verzoekgrootte, grens voorinvulling $65)
 ---
 
 # Randvoorwaarden
 
-Dit bestand is de enige plek voor privacy, foutafhandeling van taalmodelaanroepen, kosten en licenties. De stoppunten staan alleen in [SPEC.md](SPEC.md#constraints).
+Dit bestand is de enige plek voor privacy, foutafhandeling van taalmodelaanroepen, kosten, licenties en verzoekgrootte. De stoppunten staan alleen in [SPEC.md](SPEC.md#constraints).
 
 ## 1. Privacy (zdr)
 
@@ -34,18 +35,21 @@ Een fout voor een etiket telt als "geen melding" ([meetregels.md §5](meetregels
 
 ## 3. Kosten (CAP-14)
 
-Raming (tarieven OpenRouter 30-10-2026; per post stoppen bij 1,5×):
+Raming (tarieven OpenRouter 30-10-2026; voorinvulling gemeten 01-11-2026; per post stoppen bij de grens):
 
-| post | aantal | per stuk | raming |
-|---|---|---|---|
-| voorinvulling toets (`anthropic/claude-sonnet-5.5`) | ±350 etiketten | ±$0,06 | ±$21 |
-| voorlabels + achtergrondscreening training (`google/gemini-3.8-flash`) | ±800 etiketten | ±$0,012 | ±$10 |
-| beoordelaar (validatie + toets) | ±1.500 kandidaten | ±$0,002 | ±$3 |
-| K4-aa op de toets (gefilterd + informatief volledig) | 2 × ±350 etiketten | ±$0,012 | ±$8 |
-| **totaal** | | | **±$42** |
+| post | aantal | per stuk | raming | grens |
+|---|---|---|---|---|
+| voorinvulling toets (`anthropic/claude-sonnet-5.5`) | ±350 etiketten | $0,12 (gemeten) | ±$42 | **$65, hard** (besluit Friso 01-11-2026 ±14:05) |
+| voorlabels + achtergrondscreening training (`google/gemini-3.8-flash`) | ±800 etiketten | ±$0,012 | ±$10 | $15 (1,5×; zie hieronder) |
+| beoordelaar (validatie + toets) | ±1.500 kandidaten | ±$0,002 | ±$3 | $4,50 (1,5×) |
+| K4-aa op de toets (gefilterd + informatief volledig) | 2 × ±350 etiketten | ±$0,012 | ±$8 | $12 (1,5×) |
+| **totaal** | | | **±$63** (verwacht ±$78–83 met de voorlabels op 2,6–3×, INFERENCE) | |
 
-- **Vóór de start van een post** wordt de verwachte uitgave berekend (aantal × gemeten of geraamde kosten per stuk). Ligt die boven 1,5× de raming, dan start de post niet (stoppunt 5). Zo kan een toetsrun niet halverwege op de grens stuiten.
-- **Tijdens een post** wordt een aanroep die de grens van 1,5× zou passeren niet verstuurd; de post stopt en meldt de stand.
+- **Grens per post:** 1,5× de raming, tenzij Friso een vaste grens besliste. Een andere grens geeft het gereedschap alleen met een besluitverwijzing (`--grens` met `--besluit`, voor de voorinvulling en de voorlabels); zo kan een harde grens niet stil verhoogd worden.
+- **Voorinvulling toets: $65 hard** in plaats van 1,5 × $21 = $31,50 (besluit Friso 01-11-2026 ±14:05). Reden, gemeten op de 211 etiketten met voorinvulling: gemiddeld $0,12 per etiket (mediaan $0,08, p90 $0,30, max $0,59), omdat een etiket gemiddeld 33 tegels van 1024 px heeft (mediaan 20, p90 88, max 180) en dus 2,6 aanroepen; ≤ 4 tegels kost $0,016, > 16 tegels $0,18. Stand bij het besluit: 232 etiketten gebouwd, 211 met voorinvulling, 21 mislukt (zie §5), $25,52 uitgegeven (grootboek); ±350 gepland, dus de aanvulling kan nog ±118 etiketten toevoegen.
+- **Voorlabels + achtergrondscreening:** zelfde tegels, dus naar verwachting ±$25–30 tegen grens $15: 2,6–3× de raming (INFERENCE: ±800 etiketten × 2,6 aanroepen × $0,012 = ±$25, in plaats van de ene aanroep per etiket waarop de raming rustte). Friso beslist over deze grens voordat de post start (stoppunt 5); de startcontrole hieronder weigert hem tot dan.
+- **Vóór de start van een post** wordt de verwachte uitgave berekend: al uitgegeven (grootboek) plus, per open etiket, het aantal aanroepen (1 per 16 tegels, minstens 1) × de verwachte kosten per aanroep (voorinvulling $0,06, voorlabels $0,012). Een herhaald etiket betaalt al zijn aanroepen opnieuw. Ligt de verwachte uitgave boven de grens, dan start de post niet (stoppunt 5). De projectie is een schatting (vaste kosten per aanroep, extra aanroepen door de bytegrens van §5 niet meegeteld): stoppen halverwege wordt onwaarschijnlijk, niet onmogelijk. Stopt de bewaking tijdens de post, dan probeert een herstart alleen de open etiketten.
+- **Tijdens een post** wordt een aanroep die de grens zou passeren niet verstuurd; de post stopt en meldt de stand.
 - Kosten komen uit `usage.cost` van elk antwoord; ontbreekt dat, dan uit tokens × tarief.
 
 ## 4. Licenties (CAP-13)
@@ -60,3 +64,13 @@ Raming (tarieven OpenRouter 30-10-2026; per post stoppen bij 1,5×):
 - **Gewichten:** URL, sha256 en licentie van elk gedownload model (RF-DETR N/S/M/L: Apache-2.0; SigLIP 2 voor K4-aa: Apache-2.0) in `bevroren.json`.
 - Gemeten op 31-10-2026 in een wegwerpomgeving: `rfdetr[train]` 1.11.2 trekt 87 pakketten mee; `faster-coco-eval` en `torch-hungarian` hebben geen licentiemetadata en vallen terug op hun Apache-2.0-licentiebestand.
 - Gemeten op 01-11-2026 in de detectoromgeving: `torch` 2.15.0 (`… AND BSL-1.0 AND …`) en `regex` 2026.9.29 (`Apache-2.0 AND CNRI-Python`) vielen buiten de oorspronkelijke lijst (stoppunt 4); Friso liet BSL-1.0 en CNRI-Python op 01-11-2026 toe. Na de bouw wordt de controle opnieuw gedraaid; aantal pakketten, nul overtredingen en de lijst "even ruim" komen in het buildverslag.
+
+## 5. Verzoekgrootte
+
+Geldt voor de voorinvulling en de voorlabels (heel etiket plus tegels per verzoek).
+
+- Overzicht en tegels gaan als **JPEG (kwaliteit 90)**. Hinttegels en beelden voor de invulpagina blijven PNG, net als de zdr-proef. De client bepaalt het beeldtype uit de eerste bytes (PNG of JPEG) en geeft het mee; elk ander type is een fout vóór verzenden.
+- Per verzoek hoogstens **16 tegels** naast het overzicht en hoogstens **20.000.000 bytes** aan beelden, overzicht meegeteld, gemeten vóór base64 (±26,7 MB op de lijn). Past de volgende tegel niet meer, dan gaat hij in een extra aanroep; de uitkomsten worden samengevoegd (aanwezig als een aanroep het zag, hinttegels op etiketindex, vakjes in etiketcoördinaten).
+- Past het overzicht plus één tegel niet binnen de grens, dan wordt niets verstuurd en is het een fout voor dit etiket (`te_groot`); die telt niet mee voor "vijf weigeringen op rij".
+- De voorinvulling legt per etiket het beeldtype vast (`jpeg`); ontbreekt het, dan ging het etiket als PNG (vóór 01-11-2026).
+- Aanleiding (01-11-2026): 21 van 232 etiketten kregen geen voorinvulling; hun verzoek was 30–40 MB, elk geslaagd verzoek ≤ 29,8 MB. Gemeten op die 21: ruwe PNG-beeldbytes per aanroep 22,6–30,1 MB, als JPEG 2,7–5,1 MB.

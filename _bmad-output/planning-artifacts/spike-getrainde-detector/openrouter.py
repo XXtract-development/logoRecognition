@@ -3,8 +3,9 @@
 Elke aanroep gaat naar chat/completions met zdr (`provider = PROVIDER`), nooit naar een batch- of bestands-API. Vóór de
 eerste aanroep met klantartwork moet `zdr_proef` met een niet-klantbeeld slagen. Statustabel (§2): 404 en 401/402/403
 stoppen de hele run (`RunStop`), 429/5xx/verbindingsfout worden hoogstens 2 keer herhaald, een ongeldig 200-antwoord
-is een fout voor dit etiket (`EtiketFout`), nooit een stille "nee". De sleutel komt alleen uit de omgeving; logs bevatten
-nooit sleutel, prompt, beeld of antwoordinhoud. Alleen standaardbibliotheek."""
+is een fout voor dit etiket (`EtiketFout`), nooit een stille "nee". Beelden gaan als PNG of JPEG (type uit de eerste
+bytes; elk ander type is een ValueError vóór verzenden); `delen` verdeelt tegels over aanroepen (§5). De sleutel komt
+alleen uit de omgeving; logs bevatten nooit sleutel, prompt, beeld of antwoordinhoud. Alleen standaardbibliotheek."""
 import base64
 import http.client
 import json
@@ -26,6 +27,8 @@ MAX_HERHALINGEN = 2
 PROEF_SCHEMA = {"type": "object", "properties": {"zichtbaar": {"type": "boolean"}}, "required": ["zichtbaar"],
                 "additionalProperties": False}
 STOP = {404: "geen_zdr", 401: "auth", 402: "tegoed", 403: "rechten"}
+MAX_BEELD_BYTES = 20_000_000  # beeldbytes per verzoek, overzicht meegeteld, vóór base64 (randvoorwaarden §5)
+BEELDTYPE = {b"\xff\xd8\xff": "jpeg", b"\x89PNG\r\n\x1a\n": "png"}  # eerste bytes → type in de data-URL
 
 log = logging.getLogger("proef.openrouter")
 
@@ -44,6 +47,28 @@ class EtiketFout(Exception):
     def __init__(self, klasse):
         super().__init__(klasse)
         self.klasse = klasse
+
+
+def delen(groottes, vast=0, max_aantal=16):
+    """Verdeel beelden van `groottes` bytes op volgorde over aanroepen (lijst van ranges): per aanroep hoogstens
+    `max_aantal` beelden en `vast` (het overzicht) + hun bytes ≤ MAX_BEELD_BYTES. Lege invoer → één aanroep zonder
+    tegels. Past het overzicht plus één beeld niet → EtiketFout("te_groot"), dan wordt niets verstuurd."""
+    grens, uit, begin, som = MAX_BEELD_BYTES, [], 0, vast
+    for i, g in enumerate(groottes):
+        if vast + g > grens:
+            raise EtiketFout("te_groot")
+        if i - begin == max_aantal or som + g > grens:
+            uit.append(range(begin, i))
+            begin, som = i, vast
+        som += g
+    return uit + [range(begin, len(groottes))]
+
+
+def _data_url(beeld):
+    for kop, soort in BEELDTYPE.items():
+        if beeld.startswith(kop):
+            return f"data:image/{soort};base64," + base64.b64encode(beeld).decode()
+    raise ValueError("beeld is geen PNG of JPEG; niets verstuurd")
 
 
 def _urllib(url, body, headers, timeout):
@@ -94,10 +119,8 @@ class Client:
         self.proef = None
 
     def _body(self, tekst, beelden, schema):
-        delen = [{"type": "text", "text": tekst}] + [
-            {"type": "image_url", "image_url": {"url": "data:image/png;base64," + base64.b64encode(b).decode()}}
-            for b in beelden]
-        return {"model": self.model, "temperature": 0, "messages": [{"role": "user", "content": delen}],
+        inhoud = [{"type": "text", "text": tekst}] + [{"type": "image_url", "image_url": {"url": _data_url(b)}} for b in beelden]
+        return {"model": self.model, "temperature": 0, "messages": [{"role": "user", "content": inhoud}],
                 "response_format": {"type": "json_schema", "json_schema": {"name": "antwoord", "strict": True, "schema": schema}},
                 "provider": PROVIDER, "usage": {"include": True}}
 
