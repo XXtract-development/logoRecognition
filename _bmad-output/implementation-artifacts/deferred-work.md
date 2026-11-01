@@ -75,3 +75,6 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-logo-scan-k4aa-2.md`
   summary: De ml-service-limiet op ACC staat op 12G voor de K4-aa-proeven; herzien of terugzetten naar 8G zodra de proeven klaar zijn of de route weer uit blijft.
   evidence: review F11 (31-10-2026); besluit Friso noemt geen einddatum; ACC-host 30 GB, 11 GB vrij.
+- source_spec: `_bmad-output/implementation-artifacts/spec-spike-getrainde-detector-besluiten.md`
+  summary: Browsertest `test_review_20261101.py::test_pagina_b_zonder_alle_keuzes_slaat_niets_op_en_blijft_staan` faalde 2× bij de bouw (beide de eerste browserrun na een codewijziging), niet gereproduceerd in 59 latere runs (ook onder parallelle belasting); oorzaak in de test, niet in de pagina.
+  evidence: De fixture `pagina` wacht alleen op het antwoord van `/stand`; daarna wacht `start()` in `invul/index.html` nog op `ri.json()`/`rs.json()` vóór `toon(); koppel();` de toetsafhandeling koppelt. Bij een trage start komt `keyboard.press("b")` vóór `koppel()` en verschijnt "Kies eerst" niet. Voor de invuller is dat onschadelijk: een toets vóór het laden doet niets en verliest geen invoer. Fix (testfixture): wacht tot `data-testid="etiket-id"` tekst heeft, want `toon()` en `koppel()` lopen direct na elkaar.
