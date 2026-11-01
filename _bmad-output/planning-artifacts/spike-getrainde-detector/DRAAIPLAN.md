@@ -13,16 +13,10 @@ zelf beslissen ([SPEC.md](SPEC.md#constraints)). Alle commando's draaien vanuit 
 
 ```sh
 export PM=~/logo-meetset-20261018/proef-detector      # PROEF_MAP
-MAAT=N                                                 # detectormaat; alleen N past op MPS binnen 8 uur, S/M/L = stoppunt 1 (zie "Snelheid")
+MAAT=N                                                 # detectormaat N (besluit Friso 01-11-2026); S/M/L alleen na een nieuw besluit, met --besluit
 set -a; . ~/claude-team-config/secrets/.env; set +a    # alleen OPENROUTER_API_KEY nodig; nooit in een bestand of log zetten
 uv sync --group dev                                    # stap 9 en verder: uv sync --group dev --group detector
 ```
-
-> [!warning] Licentiecontrole (stoppunt 4) vóór de eerste training
-> `uv run --group dev --group detector python licenties.py` meldde op 01-11-2026 twee pakketten buiten de toegestane lijst:
-> `torch` 2.15.0 (`… AND BSL-1.0 AND …`, Boost-licentie van meegeleverde code) en `regex` 2026.9.29
-> (`Apache-2.0 AND CNRI-Python`). Beide zijn ruime licenties, maar staan niet in randvoorwaarden §4. Friso beslist of ze
-> bij "even ruim" mogen; tot dan geen training (stap 9 en 10).
 
 > [!note] Kosten en uitgavengrens
 > Elke betaalde stap rekent vóór de start de verwachte uitgave uit en start niet boven 1,5× de raming (stoppunt 5); tijdens
@@ -119,23 +113,25 @@ ongetest: alleen een sha256 vastleggen (zelfde functie als de geteste bevriezing
 
 ### Stap 9 — snelheidsmeting
 
-Commando: maak een kleine nagemaakte set en meet per maat:
+Commando: eerst de licentiecontrole, in een eigen blok:
 ```sh
-uv sync --group dev --group detector
+uv sync --group dev --group detector && uv run --group dev --group detector python licenties.py
+```
+Eindigt dit blok met een exitcode ≠ 0 (een overtreding in `"overtredingen"`), dan hier stoppen (stoppunt 4) en het volgende blok niet draaien: dat start de betaalde voorlabels. Anders een kleine nagemaakte set maken en maat N meten:
+```sh
 uv run python generator.py logos --proef-map $PM
 uv run python echt.py voorlabels --lijst $PM/train/lijst.json --proef-map $PM --uit $PM/train/voorlabels.json --zdr-logo $PM/logos/zdr-proef.png
 uv run python echt.py dataset --lijst $PM/train/lijst.json --voorlabels $PM/train/voorlabels.json --proef-map $PM --uit $PM/train/echt
 uv run python generator.py tegels --proef-map $PM --achtergronden $PM/train/echt/achtergronden.json --uit $PM/train/snelheid --n 200
 uv run python generator.py tegels --proef-map $PM --achtergronden $PM/train/echt/achtergronden.json --uit $PM/train/snelheid --n 8 --split valid --seed 7
 uv run python generator.py tegels --proef-map $PM --achtergronden $PM/train/echt/achtergronden.json --uit $PM/train/snelheid --n 8 --split test --seed 8
-uv run python train.py snelheid --maat N --dataset $PM/train/snelheid --uit $PM/modellen/snelheid-N
-uv run python train.py snelheid --maat S --dataset $PM/train/snelheid --uit $PM/modellen/snelheid-S
+uv run python train.py snelheid --maat $MAAT --dataset $PM/train/snelheid --uit $PM/modellen/snelheid-$MAAT
 ```
 `$PM/train/lijst.json` = `[{doc_id, gln, pad}]` van de gebouwde trainingsetiketten uit stap 7 (nog geen gereedschap: maak hem uit `$PM/train/gecombineerd/manifest.json`). De voorlabels (ook de achtergrondscreening) horen bij de post "voorlabels + achtergrondscreening" en zijn ook nodig voor stap 10; een mislukt etiket wordt bij een herstart opnieuw geprobeerd, vijf weigeringen op rij stoppen de run. `echt.py dataset` maakt `train/`, `valid/` en `test/` (kopie van `valid`, omdat `rfdetr` een testmap wil) en `achtergronden.json` alleen uit de trainingskant, zodat validatie-etiketten nooit via de generator in de training komen. De meting gebruikt 50 iteraties × batch 4 = 200 trainingstegels (vandaar `--n 200`) en 4 validatietegels.
-Uitvoer: per maat seconden per iteratie, apparaat (MPS) en de verwachte duur van een trainingsfase. Rooktest 01-11-2026: N ±7,2 uur per fase, S vastgelopen en ±11 uur (stoppunt 1); zie "Snelheid" hieronder.
+Uitvoer: het licentierapport (aantal pakketten, overtredingen, lijst "even ruim"); voor maat N seconden per iteratie, apparaat (MPS) en de verwachte duur van een trainingsfase in `snelheid.json`. Rooktest 01-11-2026: N ±7,2 uur per fase; S liep vast en kwam op ±11 uur, waarna Friso besliste: alleen N. Een meting van een andere maat hoort alleen bij een nieuw besluit (`--besluit "<verwijzing>"`, komt in `snelheid.json`); zie "Snelheid" hieronder.
 Kosten: voorlabels ±$10 (±800 etiketten × $0,012; grens $15, bijgehouden in `$PM/uitgaven.json`); snelheidsmeting $0
-Tijd: voorlabels ±2 uur (INFERENCE); meting ±15 minuten per maat
-Stoppunt: 1 als een trainingsfase volgens de meting langer dan 8 uur duurt of MPS niet werkt; 8 als RF-DETR niet installeert of niet traint; 3 en 5 voor de voorlabels.
+Tijd: voorlabels ±2 uur (INFERENCE); meting ±15 minuten
+Stoppunt: 1 als een trainingsfase met N volgens de meting langer dan 8 uur duurt of MPS niet werkt; 4 als de licentiecontrole een overtreding meldt; 8 als RF-DETR niet installeert of niet traint; 3 en 5 voor de voorlabels.
 ongetest: `generator.genereer`, `echt.naar_tegels`/`valsplit`/`voorlabels`/`rapport` en `train.snelheid` (rooktest `zwaar` op MPS) zijn getest; de opdrachtregels van `generator logos/tegels` en `echt dataset` draaiden alleen in een rooktest op verzonnen beelden in een tijdelijke map, `echt voorlabels` niet (geen klantartwork naar OpenRouter in de build).
 
 ### Stap 10 — training
@@ -154,13 +150,13 @@ uv run python echt.py validatie-uitslag --waarheid $PM/train/echt/validatie-waar
 uv run python herken.py beslis --kandidaten $PM/train/valid-kandidaten.json --drempels $PM/modellen/drempels.json \
     --lijst $PM/train/echt/validatie-lijst.json --referenties $PM/logos/referenties.json --grootboek $PM/uitgaven.json \
     --uit $PM/train/valid-da.json --meta $PM/train/valid-da-meta.json
-uv run python tel_proef.py --uitslag $PM/train/echt/validatie-uitslag.json --route $MAAT=$PM/train/valid-da.json --meta $MAAT=$PM/train/valid-da-meta.json --uit $PM/train/valid-tabellen
+uv run python tel_proef.py --uitslag $PM/train/echt/validatie-uitslag.json --route D+A=$PM/train/valid-da.json --meta D+A=$PM/train/valid-da-meta.json --uit $PM/train/valid-tabellen
 ```
-Herhaal met een andere maat (alleen binnen stoppunt 1), een ander aantal epochs of tegel 768/1536 alleen op de validatieset; kies daar, nooit op de toetsset (verwijder voor een nieuwe kandidaat `valid-kandidaten.json` en `valid-da.json`: beide slaan klare etiketten over). Een code die op een validatie-etiket alleen onzekere AI-vakjes heeft, staat in `validatie-waarheid.json` als `onzeker`: hij telt voor de drempels en de validatietabel niet als afwezig.
+De maat blijft N. Een ander aantal epochs of tegel 768/1536 probeer je alleen op de validatieset; kies daar, nooit op de toetsset (verwijder voor een nieuwe kandidaat `valid-kandidaten.json` en `valid-da.json`: beide slaan klare etiketten over). Een code die op een validatie-etiket alleen onzekere AI-vakjes heeft, staat in `validatie-waarheid.json` als `onzeker`: hij telt voor de drempels en de validatietabel niet als afwezig.
 Uitvoer: per fase checkpoint, configuratie, seed, trainingslog, sha256 en herkomst van de voorgetrainde gewichten (`train-resultaat.json`; fase 2 neemt de herkomst van fase 1 over); `drempels.json` (`laag`/`hoog` per code, met terugval op gezamenlijke drempels); validatietabellen per kandidaatmodel; `rapport.json` met per keurmerk de echte etiketten en vakjes en de dHash-clusters die te groot waren voor de validatieset.
 Kosten: beoordelaar op de validatieset ±$1,5 (de post "beoordelaar" is samen met D+A en D ±$3; grens $4,50, bijgehouden in `$PM/uitgaven.json`); training $0
 Tijd: per fase volgens stap 9 (zie "Snelheid"); detectie op de processor ±5–20 s per etiket (INFERENCE)
-Stoppunt: 1 (fase > 8 uur volgens de meting), 8 (RF-DETR traint niet; terugval D-FINE is niet gebouwd), 5 (beoordelaar), 7 (`beslis` stopt als een code in de drempels geen referentieplaatje heeft).
+Stoppunt: 1 als een fase volgens de meting langer dan 8 uur duurt, of als N op de validatieset tekortschiet: lees in `$PM/train/valid-tabellen/tabellen.md`, sectie `## D+A`, de kolommen gevonden/aanwezig en vals/afwezig (k/n); een keurmerk met ≥ 10 mét en ≥ 30 zonder telt mee, ook als de kolom besluit "te weinig voorbeelden" zegt (die rekent met 16/35), en N schiet tekort als minstens één zo'n keurmerk gevonden < 80% of vals ≥ 10% heeft (puntschatting); dan beslist Friso over S/M/L of een GPU, en die maat draait alleen met `--besluit "<verwijzing>"`. Verder 8 (RF-DETR traint niet; terugval D-FINE is niet gebouwd), 5 (beoordelaar), 7 (`beslis` stopt als een code in de drempels geen referentieplaatje heeft).
 ongetest: `config`, `train` en `snelheid` hebben een rooktest op MPS (`zwaar`), `drempels`/`beslis`/`beoordeel` en `tel_proef` zijn getest; de volle training, `--start` (bijtrainen), `--meng`, `detecteer` op echte etiketten en `beslis` met de echte aanbieder draaiden in deze build niet.
 
 ### Stap 11 — bevriezen
@@ -222,7 +218,7 @@ ongetest: `filter_referenties`, `meldingen_uit`, `draai_etiket`, `draai` (met de
 
 ### Stap 14 — telling
 
-Commando: neem per route de laatste voltooide run en tel:
+Commando: neem per route de laatste voltooide run en tel precies de drie routes D+A, D en K4-aa (gefilterd):
 ```sh
 DA=$(uv run python bevries.py laatste --map $PM/uitvoer --route da)
 K4=$(uv run python bevries.py laatste --map $PM/uitvoer --route k4aa)
@@ -230,19 +226,28 @@ uv run python tel_proef.py --uitslag $PM/toets/uitslag.json --route D+A=$DA --me
     --route D=$PM/uitvoer/d.json --meta D=$PM/uitvoer/d-meta.json --route K4-aa=$K4 --meta K4-aa=$PM/uitvoer/k4aa-meta.json \
     --uit $PM/uitvoer/telling
 ```
-Uitvoer: `tabellen.json` en `tabellen.md` (per route en keurmerk: gevonden k/n met Wilson-ondergrens, vals k/n met Wilson-bovengrens, verkeerde letter, spreiding per leverancier, leveranciers, besluit; per route tijd, kosten, beoordelaaraanroepen, foutpercentage), `verschil.json` (D+A min elke andere route in procentpunten, met de etiketten waarop ze verschillen) en `nakijklijst.json`. Een run die niet voltooid is wordt geweigerd; een zdr-weigering in een route: geen tabellen, exitcode 1.
+De informatieve K4-aa-run met alle referenties (`k4aa-volledig.json`, stap 13) telt niet mee en wordt hier niet als route meegegeven: hij zou de nakijklijst en de steekproef veranderen. Wie er een tabel van wil, telt hem los, met alleen die route, in een eigen map (bijvoorbeeld `$PM/uitvoer/telling-informatief`).
+Uitvoer: `tabellen.json` en `tabellen.md` (per route en keurmerk: gevonden k/n met Wilson-ondergrens, vals k/n met Wilson-bovengrens, verkeerde letter, spreiding per leverancier, leveranciers, besluit; per route tijd, kosten, beoordelaaraanroepen, foutpercentage) en de blinde `nakijklijst.json`: elk paar (etiket, keurmerk) waar minstens één route van Friso's oordeel afwijkt, plus een steekproef van de paren waar alle drie routes overeenkomen (per keurmerk en kant mét/zonder 10%, naar boven afgerond, minstens 1 bij een niet-lege kant; vaste seed 20261101 in `tel_proef.py`, dus elke keer dezelfde trekking). Elke regel heeft alleen nummer, etiket, keurmerk en Friso's eerdere oordeel, door elkaar geschud. In de aparte map `niet-voor-nakijker/` staan `nakijk-sleutel.json` (per nummer: verschil of steekproef) en `verschil.json` (D+A min elke andere route in procentpunten, met de etiketten waarop ze verschillen); die map opent Friso niet vóór het nakijken. `nakijk-sha256.json` legt de sha256 van `nakijklijst.json` en `nakijk-sleutel.json` vast: bewaar die vóór het nakijken (bijvoorbeeld in de opmerking bij de run). Een run die niet voltooid is wordt geweigerd; een zdr-weigering in een route: geen tabellen, exitcode 1.
 Kosten: $0
 Tijd: < 1 minuut
 Stoppunt: geen (foutpercentage boven 2% maakt de run ongeldig; dat staat in de tabel).
 
 ### Stap 15 — blind nakijken
 
-Commando: Friso kijkt `$PM/uitvoer/telling/nakijklijst.json` na (per regel etiket, keurmerk en zijn eerdere oordeel, zonder routenaam) en legt correcties vast in `$PM/uitvoer/nakijken.json` als `{doc_id: {keurmerk: "aanwezig"|"afwezig"|"onzeker", "NUTRISCORE": ["A".."E"] | "onleesbaar"}}` (Nutri-Score als de verzameling zichtbare letters, net als op de invulpagina); daarna `uv run python tel_proef.py <zelfde argumenten als stap 14> --correcties $PM/uitvoer/nakijken.json`
-Uitvoer: `tabellen-na-nakijken.json/.md` naast de tabellen van vóór het nakijken; het besluit geldt op de uitslag ná nakijken (voor alle routes dezelfde correcties). Een onbekend etiket of keurmerk of een ongeldige waarde: foutmelding en geen tabellen. Kijkt Friso niet na, dan geldt stap 14.
+Commando: Friso kijkt `$PM/uitvoer/telling/nakijklijst.json` na (per regel nummer, etiket, keurmerk en zijn eerdere oordeel; niet de map `niet-voor-nakijker/`) en legt voor elke regel een oordeel vast in `$PM/uitvoer/nakijken.json` als `{"<nummer>": oordeel}`: Nutri-Score als lijst zichtbare letters `["A".."E"]` of `"onleesbaar"`, de andere keurmerken `"aanwezig"`, `"afwezig"` of `"onzeker"`. Daarna:
+```sh
+uv run python tel_proef.py <zelfde argumenten als stap 14> --nakijken $PM/uitvoer/nakijken.json
+```
+Vindt de steekproef bij een keurmerk K minstens één fout, dan staat er `$PM/uitvoer/telling/nakijklijst-ronde2-<K>.json` met alle overige overeenkomende paren van K, en is het besluit voor K "mens bevestigt (voorlopig)". Friso kijkt die tweede ronde op dezelfde manier na (een oordeel voor elke regel, in `$PM/uitvoer/nakijken-ronde2-<K>.json`) en telt opnieuw, of kiest uitdrukkelijk om hem over te slaan:
+```sh
+uv run python tel_proef.py <zelfde argumenten als stap 14> --nakijken $PM/uitvoer/nakijken.json --nakijken-ronde2 <K>=$PM/uitvoer/nakijken-ronde2-<K>.json
+uv run python tel_proef.py <zelfde argumenten als stap 14> --nakijken $PM/uitvoer/nakijken.json --ronde2-overgeslagen <K>
+```
+Uitvoer: `tabellen-na-nakijken.json/.md` naast de tabellen van vóór het nakijken; het besluit geldt op de uitslag ná nakijken (voor alle routes dezelfde correcties). Per keurmerk en kant de steekproef (nagekeken, fouten in Friso's eerdere oordeel, Wilson-bovengrens; "–" bij 0) en de gevoeligheid (informatief: het besluit als die bovengrens in het nadeel van de route werd toegepast). Een fout is elk oordeel dat afwijkt van het eerdere, ook naar "onzeker" of "onleesbaar" en elke andere verzameling Nutri-Score-letters. Besluit: "te weinig voorbeelden" gaat voor; dan "mens bevestigt (voorlopig)" zolang een tweede ronde openstaat; na de tweede ronde het gewone besluit, na `--ronde2-overgeslagen` "mens bevestigt". Ontbreekt een oordeel, staat er een nummer buiten de lijst of een ongeldige waarde in, of hoort een ronde-2-optie bij een keurmerk zonder tweede ronde: foutmelding, exitcode 1 en geen tabellen ná nakijken.
 Kosten: $0
-Tijd: ±10 s per regel voor Friso (INFERENCE)
+Tijd: ±10 s per regel voor Friso; de steekproef voegt ±230 regels toe (±40 minuten), een tweede ronde ±290 regels per keurmerk (±50 minuten) (INFERENCE)
 Stoppunt: geen
-ongetest: `nakijklijst` en `--correcties` (één keurmerk en Nutri-Score) zijn getest; er is geen invulpagina voor het nakijken gebouwd (de lijst is JSON).
+ongetest: `nakijklijst` (steekproef en sleutel), `--nakijken`, `--nakijken-ronde2` en `--ronde2-overgeslagen` zijn getest op verzonnen werelden; er is geen invulpagina voor het nakijken gebouwd (de lijsten zijn JSON).
 
 ## Snelheid (rooktest stap 9, 01-11-2026)
 
@@ -269,10 +274,12 @@ in `train/_annotations.coco.json`).
 | S | 512 | ±1,6 vóór het vastlopen (0,62 it/s) | ±11 uur | ±11 uur (INFERENCE) | **stoppunt 1** |
 | M, L | 576, 704 | niet gemeten | langer dan S | langer dan S | stoppunt 1 (INFERENCE) |
 
-> [!warning] Stoppunt 1 voor maat S (en dus M en L); N zit krap onder de grens
+> [!note] Besluit Friso 01-11-2026: alleen maat N op deze Mac
 > De meting voor S liep twee keer vast op iteratie 20 van 50 (het proces gebruikte 12 GB, het wisselgeheugen van de Mac
-> stond vol). De snelheid tot dat moment geeft ±11 uur per fase, boven de grens van 8 uur. Alleen N past op MPS binnen
-> de grens, met de validatie per epoch erbij ±7,5 uur. Friso beslist: alleen N op deze Mac, of een GPU huren voor S/M/L.
+> stond vol). De snelheid tot dat moment gaf ±11 uur per fase, boven de grens van 8 uur. Alleen N past op MPS binnen
+> de grens, met de validatie per epoch erbij ±7,5 uur. Friso besliste: eerst alleen N. S, M of L (of een GPU) alleen als N
+> op de validatieset tekortschiet (stap 10, stoppunt 1) en na een nieuw besluit; `train.py` weigert die maten zonder
+> `--besluit "<verwijzing>"`.
 
 ## Terugval
 

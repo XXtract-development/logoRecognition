@@ -1,9 +1,10 @@
 """Licentiecontrole (CAP-13; randvoorwaarden §4). Alleen standaardbibliotheek.
 
 Per geïnstalleerd pakket de licentie uit de metadata (License-Expression, License, classifiers); is die leeg, dan de
-eerste regels van het meegeleverde licentiebestand. Toegestaan: Apache-2.0, MIT, BSD, MPL-2.0; even ruim (vermeld):
-ISC, PSF, HPND, Unlicense, CC0, zlib. Bij AND moeten alle delen mogen, bij OR minstens één. Verboden pakketten stoppen
-ongeacht hun metadata. Elke andere of onbekende licentie is een overtreding (stoppunt 4).
+eerste regels van het meegeleverde licentiebestand. Toegestaan: Apache-2.0, MIT, BSD, MPL-2.0, en als exacte SPDX-id
+BSL-1.0 en CNRI-Python (besluit Friso 01-11-2026, voor elk pakket; BUSL-1.1, BSL-1.1 en CNRI-Jython blijven een
+overtreding); even ruim (vermeld): ISC, PSF, HPND, Unlicense, CC0, zlib. Bij AND moeten alle delen mogen, bij OR
+minstens één. Verboden pakketten stoppen ongeacht hun metadata. Elke andere of onbekende licentie is een overtreding (stoppunt 4).
 
   python licenties.py        rapport over de huidige omgeving; niet-nul bij een overtreding
 """
@@ -17,6 +18,7 @@ EXTERN = {"pdftoppm", "pdftotext", "rsync", "ssh"}
 RANG = {"toegestaan": 0, "ruim": 1, "onbekend": 2, "verboden": 3}
 _NIET = re.compile(r"gpl|sspl|eupl|\bosl\b|cddl|\bepl\b|-nc\b|noncommercial|proprietary|licenseref", re.I)
 _TOEGESTAAN = re.compile(r"apache|\bmit\b|mit-|bsd|mpl-2\.0|mozilla public license 2", re.I)
+_EXACT = {"BSL-1.0", "CNRI-PYTHON"}  # alleen als hele SPDX-id (hoofdletterongevoelig), besluit Friso 01-11-2026
 _RUIM = re.compile(r"\bisc\b|psf|python software foundation|python-2\.0|hpnd|historical permission|unlicense|cc0|zlib", re.I)
 _TEKST = [  # eerste regels van een licentiebestand → licentie
     (re.compile(r"GNU (AFFERO |LESSER )?GENERAL PUBLIC LICENSE", re.I), "GPL"),
@@ -48,7 +50,7 @@ def _blad(term):
         return "onbekend"
     if _NIET.search(term):
         return "verboden"
-    if _TOEGESTAAN.search(term):
+    if term.upper() in _EXACT or _TOEGESTAAN.search(term):
         return "toegestaan"
     if _RUIM.search(term):
         return "ruim"

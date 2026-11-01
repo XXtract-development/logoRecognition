@@ -1,11 +1,13 @@
-"""Training van de detector (CAP-6; trainingsset-en-herkenning §5). RF-DETR (`rfdetr`, Apache-2.0), maten N/S/M/L.
+"""Training van de detector (CAP-6; trainingsset-en-herkenning §5). RF-DETR (`rfdetr`, Apache-2.0), maat N.
+S/M/L alleen met een vastgelegde verwijzing naar een besluit van Friso (`--besluit`; besluit 01-11-2026: eerst alleen N).
 
 `config` is licht (stdlib); `train` en `snelheid` importeren `rfdetr`/`torch` pas bij gebruik (groep `detector`).
 Uitvoer van rfdetr gaat expliciet naar `uit` (via beelden.veilig_doel, dus nooit in een git-werkboom); de
 voorgetrainde gewichten komen in de cache van rfdetr (`RF_HOME`, standaard ~/.roboflow/models), buiten elke repo.
 
   python train.py snelheid --maat N --dataset <coco-map> --uit <map> [--iteraties 50 --tegels-per-epoch 5000 --epochs 20]
-  python train.py train --fase nagemaakt --maat S --dataset <coco-map> --uit <map> --epochs 20 --seed 20261031 [--start <ckpt>]
+  python train.py train --fase nagemaakt --maat N --dataset <coco-map> --uit <map> --epochs 20 --seed 20261031 [--start <ckpt>]
+  ... --maat S --besluit "<verwijzing naar het besluit van Friso>"     (S/M/L; zonder besluit start er niets)
 """
 import argparse
 import hashlib
@@ -31,15 +33,25 @@ GEWICHTEN = {  # rfdetr 1.11.2, rfdetr/assets/model_weights.py
 BATCH = 4
 
 
-def config(fase, maat, dataset, uit, epochs, seed, start=None):
-    """Vaste trainingsconfiguratie; ValueError bij een andere fase of maat; `uit` via veilig_doel."""
-    if fase not in FASEN:
-        raise ValueError(f"fase {fase!r} niet in {FASEN}")
+def _maat(maat, besluit):
+    """Gestript besluit of None; ValueError bij een onbekende maat, of bij S/M/L zonder besluit (trainingsset §5)."""
     if maat not in MATEN:
         raise ValueError(f"maat {maat!r} niet in {sorted(MATEN)}")
+    besluit = (besluit or "").strip() or None
+    if maat != "N" and besluit is None:
+        raise ValueError(f"maat {maat} alleen met een vastgelegd besluit van Friso (--besluit \"<verwijzing>\"); N mag zonder")
+    return besluit
+
+
+def config(fase, maat, dataset, uit, epochs, seed, start=None, besluit=None):
+    """Vaste trainingsconfiguratie; ValueError bij een andere fase of maat, of S/M/L zonder besluit; `uit` via
+    veilig_doel. `besluit` (de verwijzing, of None bij N) komt zo ook in train-resultaat.json."""
+    if fase not in FASEN:
+        raise ValueError(f"fase {fase!r} niet in {FASEN}")
+    besluit = _maat(maat, besluit)
     uit = veilig_doel(uit)
-    return {"fase": fase, "maat": maat, "model": MATEN[maat], "resolutie": RESOLUTIE[maat], "dataset": str(dataset),
-            "uit": str(uit), "epochs": int(epochs), "seed": int(seed), "batch_size": BATCH,
+    return {"fase": fase, "maat": maat, "besluit": besluit, "model": MATEN[maat], "resolutie": RESOLUTIE[maat],
+            "dataset": str(dataset), "uit": str(uit), "epochs": int(epochs), "seed": int(seed), "batch_size": BATCH,
             "start": str(start) if start else None, "gewichten": {"bestand": GEWICHTEN[maat][0], "url": GEWICHTEN[maat][1],
                                                                  "licentie": "Apache-2.0"}}
 
@@ -154,16 +166,15 @@ def train(cfg):
     return resultaat
 
 
-def snelheid(maat, dataset, uit, iteraties=50, tegels_per_epoch=5000, epochs=20):
+def snelheid(maat, dataset, uit, iteraties=50, tegels_per_epoch=5000, epochs=20, besluit=None):
     """Snelheidsmeting op MPS (stoppunt 1). Traint één epoch op de eerste `iteraties × batch` trainingsbeelden van
     `dataset` en deelt de wandkloktijd van `model.train` door `iteraties`; vaste kosten (model bouwen, validatie)
     tellen mee, dus de schatting is aan de hoge kant. Verwachte duur van één fase = tegels_per_epoch / batch ×
     epochs × s_per_iteratie (standaard 5.000 tegels × 20 epochs; tegels van 1024 px, geschaald naar de resolutie van
-    de maat)."""
+    de maat). Zelfde maatregel als `config`, vóór enig werk."""
     import shutil
 
-    if maat not in MATEN:
-        raise ValueError(f"maat {maat!r} niet in {sorted(MATEN)}")
+    besluit = _maat(maat, besluit)
     uit = veilig_doel(uit)
     deel = uit / "dataset"
     if deel.exists():
@@ -184,10 +195,10 @@ def snelheid(maat, dataset, uit, iteraties=50, tegels_per_epoch=5000, epochs=20)
             ann += [{**a, "id": len(ann) + j, "image_id": i} for j, a in enumerate(x for x in coco["annotations"]
                                                                                    if x["image_id"] == im["id"])]
         (deel / split / "_annotations.coco.json").write_text(json.dumps({**coco, "images": nieuwe, "annotations": ann}))
-    cfg = config("nagemaakt", maat, deel, uit / "run", epochs=1, seed=20261031)
+    cfg = config("nagemaakt", maat, deel, uit / "run", epochs=1, seed=20261031, besluit=besluit)
     _, apparaat, duur = _train(cfg, uit / "snelheid.log", voortgang="tqdm")  # tqdm: stapsnelheid op stderr
     s = duur / iteraties
-    meting = {"maat": maat, "apparaat": apparaat, "iteraties": iteraties, "batch_size": BATCH, "resolutie": RESOLUTIE[maat],
+    meting = {"maat": maat, "besluit": besluit, "apparaat": apparaat, "iteraties": iteraties, "batch_size": BATCH, "resolutie": RESOLUTIE[maat],
             "s_per_iteratie": s, "tegels_per_epoch": tegels_per_epoch, "epochs": epochs,
             "verwacht_uur": tegels_per_epoch / BATCH * epochs * s / 3600}
     (uit / "snelheid.json").write_text(json.dumps(meting, indent=1, sort_keys=True))  # rfdetr schrijft ook naar stdout
@@ -204,6 +215,7 @@ def main(argv=None):
     s.add_argument("--iteraties", type=int, default=50)
     s.add_argument("--tegels-per-epoch", type=int, default=5000)
     s.add_argument("--epochs", type=int, default=20)
+    s.add_argument("--besluit", help="verwijzing naar het besluit van Friso; verplicht voor S/M/L")
     t = sub.add_parser("train")
     t.add_argument("--fase", required=True)
     t.add_argument("--maat", required=True)
@@ -212,11 +224,20 @@ def main(argv=None):
     t.add_argument("--epochs", type=int, required=True)
     t.add_argument("--seed", type=int, default=20261031)
     t.add_argument("--start", help="checkpoint van fase 1 (bijtrainen op echte voorbeelden)")
+    t.add_argument("--besluit", help="verwijzing naar het besluit van Friso; verplicht voor S/M/L")
     a = ap.parse_args(argv)
+    try:  # alleen de controle vooraf; een fout tijdens het werk houdt zijn traceback
+        if a.stap == "snelheid":
+            _maat(a.maat, a.besluit)
+        else:
+            cfg = config(a.fase, a.maat, a.dataset, a.uit, a.epochs, a.seed, a.start, besluit=a.besluit)
+    except ValueError as e:
+        print(f"niet gestart: {e}", file=sys.stderr)
+        return 2
     if a.stap == "snelheid":
-        uitkomst = snelheid(a.maat, a.dataset, a.uit, a.iteraties, a.tegels_per_epoch, a.epochs)
+        uitkomst = snelheid(a.maat, a.dataset, a.uit, a.iteraties, a.tegels_per_epoch, a.epochs, besluit=a.besluit)
     else:
-        uitkomst = train(config(a.fase, a.maat, a.dataset, a.uit, a.epochs, a.seed, a.start))
+        uitkomst = train(cfg)
     print(json.dumps(uitkomst, indent=1, sort_keys=True, default=str))
     return 0
 

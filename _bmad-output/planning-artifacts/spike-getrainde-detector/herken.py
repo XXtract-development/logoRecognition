@@ -3,7 +3,7 @@
 Lichte functies (tegels, NMS, band, drempels, certificaatnummers, beslissing) gebruiken alleen stdlib + numpy.
 `rfdetr`/`torch` worden alleen lui geïmporteerd in `laad_model` en `voorspel` (groep `detector`).
 
-  python herken.py detecteer --model <ckpt> --maat S --lijst lijst.json --uit kandidaten.json [--threads 8]
+  python herken.py detecteer --model <ckpt> --maat N --lijst lijst.json --uit kandidaten.json [--threads 8]
   python herken.py drempels --kandidaten valid-kandidaten.json --waarheid waarheid.json --uit drempels.json
   python herken.py beslis --kandidaten toets-kandidaten.json --drempels drempels.json --lijst lijst.json \
       --referenties referenties.json --grootboek <PM>/uitgaven.json --uit route-da.json --meta route-da-meta.json \

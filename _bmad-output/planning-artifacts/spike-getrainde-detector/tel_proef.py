@@ -4,18 +4,30 @@ fase-b/tel.py (geïmporteerd, niet gekopieerd).
 Per etiket op aanwezigheid: gevonden = meldingen op etiketten mét het keurmerk, vals = meldingen op etiketten zonder.
 Een fout telt als geen melding en wordt geteld; boven 2% fouten is de run ongeldig; een zdr-weigering stopt de telling.
 
-  python tel_proef.py --uitslag <toets/uitslag.json> --route D+A=<pad> --meta D+A=<pad> --route K4-aa=<pad> --meta K4-aa=<pad>
-                      --uit <map> [--correcties <nakijken.json>]
+  python tel_proef.py --uitslag <toets/uitslag.json> --route D+A=<pad> --meta D+A=<pad> --route D=<pad> --meta D=<pad>
+                      --route K4-aa=<pad> --meta K4-aa=<pad> --uit <map>
+                      [--nakijken <nakijken.json> [--nakijken-ronde2 K=<pad>]... [--ronde2-overgeslagen K]...]
 Een route is een run-bestand {"status": "voltooid", "etiketten": {doc_id: [codes] | {"fout": klasse}}}; een run die niet
-voltooid is wordt geweigerd (een afgebroken run met reden geen_zdr is de zdr-stop). Schrijft tabellen.json, tabellen.md,
-verschil.json en nakijklijst.json (blind). Met --correcties ({doc_id: {keurmerk: "aanwezig"|"afwezig"|"onzeker",
-"NUTRISCORE": [letters A-E] | "onleesbaar"}}, voor elke route dezelfde) ook tabellen-na-nakijken.json/.md; de tabellen
-van ervóór blijven. Een onbekend etiket, keurmerk of een ongeldige waarde in de correcties: foutmelding, geen tabellen.
+voltooid is wordt geweigerd (een afgebroken run met reden geen_zdr is de zdr-stop). Alleen de --route-routes tellen voor
+de nakijklijst; de informatieve K4-aa-run met alle referenties hoort er niet bij.
+Schrijft tabellen.json, tabellen.md, nakijklijst.json (blind: nr, doc_id, keurmerk, waarheid; geschud), en apart in
+niet-voor-nakijker/ de sleutel (nakijk-sleutel.json: per nr "verschil" of "steekproef") en verschil.json;
+nakijk-sha256.json legt de sha256 van lijst en sleutel vast. Nakijklijst = elk paar (etiket, keurmerk) waar minstens één
+route van de waarheid afwijkt, plus per keurmerk en kant een steekproef van ceil(10%) van de paren waar alle routes
+overeenkomen, getrokken met STEEKPROEF_SEED (vast in de code; --seed geldt alleen voor de leveranciersbootstrap).
+--nakijken = {nr: oordeel} voor elke regel ("aanwezig"/"afwezig"/"onzeker"; Nutri-Score: letters A-E of "onleesbaar"),
+voor alle routes gelijk toegepast, alleen als lijst en sleutel nog byte-gelijk zijn aan nakijk-sha256.json van stap 14
+(die drie bestanden worden dan niet opnieuw geschreven; oude tabellen ná nakijken gaan eerst weg); geeft tabellen-na-nakijken.json/.md met per keurmerk het steekproefrapport en de
+gevoeligheid. Een fout in de steekproef van K (elk afwijkend oordeel) maakt het besluit voor K "mens bevestigt
+(voorlopig)" en schrijft nakijklijst-ronde2-<K>.json; --nakijken-ronde2 K=<pad> (antwoord op elke regel) geeft daarna het
+gewone besluit, --ronde2-overgeslagen K "mens bevestigt". "te weinig voorbeelden" gaat altijd voor. Een onvolledig of
+ongeldig antwoord of een ongeldige ronde-2-keuze: foutmelding, exitcode 1, geen tabellen ná nakijken.
 Nutri-Score: gevonden als alle gemelde letters in de ware verzameling zitten (en er minstens één is); een gemelde letter
 erbuiten maakt het etiket gemist en telt als verkeerde letter (meetregels §3).
 """
 import argparse
 import copy
+import hashlib
 import json
 import math
 import random
@@ -31,6 +43,8 @@ import uitslag as us  # noqa: E402
 
 NS = {"NUTRISCORE_A": "A", "NUTRISCORE_B": "B", "NUTRISCORE_C": "C"}
 MIN_MET, MIN_ZONDER, MAX_FOUT_PCT = 16, 35, 2.0
+STEEKPROEF_SEED = 20261101  # meetregels §6: vast in de telcode (bevroren via de hash), geen opdrachtregeloptie
+KANTEN = ("met", "zonder")
 
 
 def besluit(gevonden, met, vals, zonder):
@@ -159,40 +173,137 @@ def verschil_etiketten(a, b):
     return uit
 
 
-def nakijklijst(uitslag, routes, seed=20261031):
-    """Elk (etiket, keurmerk) waar minstens één route van de waarheid afwijkt, zonder routenaam, in geschudde volgorde."""
+def _trekking(uitslag, routes):
+    """(verschil, eens, steekproef): de paren waar minstens één route van de waarheid afwijkt; per (keurmerk, kant) de
+    gesorteerde etiketten waar alle routes overeenkomen; en per (keurmerk, kant) ceil(10%) daarvan, getrokken met
+    STEEKPROEF_SEED. Onafhankelijk van de volgorde van de invoer en van PYTHONHASHSEED (alles gesorteerd, int-seed)."""
     pk = us.per_keurmerk(uitslag)
-    paren = set()
+    verschil = set()
     for meld in routes.values():
         for k in us.KEURMERKEN7:
-            paren |= {(d, k) for d in pk[k]["met"] if k not in _codes(meld.get(d))}
-            paren |= {(d, k) for d in pk[k]["zonder"] if k in _codes(meld.get(d))}
-        paren |= {(d, "NUTRISCORE") for d in pk["NUTRISCORE"]["met"] if not _ns_goed(meld.get(d), uitslag[d]["nutriscore"])}
-        paren |= {(d, "NUTRISCORE") for d in pk["NUTRISCORE"]["zonder"] if _letters(_codes(meld.get(d)))}
+            verschil |= {(d, k) for d in pk[k]["met"] if k not in _codes(meld.get(d))}
+            verschil |= {(d, k) for d in pk[k]["zonder"] if k in _codes(meld.get(d))}
+        verschil |= {(d, "NUTRISCORE") for d in pk["NUTRISCORE"]["met"] if not _ns_goed(meld.get(d), uitslag[d]["nutriscore"])}
+        verschil |= {(d, "NUTRISCORE") for d in pk["NUTRISCORE"]["zonder"] if _letters(_codes(meld.get(d)))}
+    rng, eens, steek = random.Random(STEEKPROEF_SEED), {}, set()
+    for k in us.KEURMERKEN8:
+        for kant in KANTEN:
+            eens[k, kant] = sorted(d for d in pk[k][kant] if (d, k) not in verschil)
+            steek |= {(d, k) for d in rng.sample(eens[k, kant], (len(eens[k, kant]) + 9) // 10)}  # ceil zonder float
+    return verschil, eens, steek
+
+
+def _regels(uitslag, paren):
+    """Paren gesorteerd en geschud met STEEKPROEF_SEED, genummerd 1…n, met Friso's eerdere oordeel; geen herkomst."""
     lijst = sorted(paren)
-    random.Random(seed).shuffle(lijst)
-    uit = []
-    for n, (d, k) in enumerate(lijst, 1):
-        waar = uitslag[d]["nutriscore"] if k == "NUTRISCORE" else uitslag[d]["keurmerken"][k]
-        uit.append({"nr": n, "doc_id": d, "keurmerk": k, "waarheid": waar})
-    return uit
+    random.Random(STEEKPROEF_SEED).shuffle(lijst)
+    return [{"nr": n, "doc_id": d, "keurmerk": k,
+             "waarheid": uitslag[d]["nutriscore"] if k == "NUTRISCORE" else uitslag[d]["keurmerken"][k]}
+            for n, (d, k) in enumerate(lijst, 1)]
+
+
+def nakijklijst(uitslag, routes):
+    """(lijst, sleutel): verschillen en steekproef door elkaar, zonder routenaam of herkomst (meetregels §6); de sleutel
+    {str(nr): "verschil" | "steekproef"} hoort niet bij de nakijker."""
+    verschil, _, steek = _trekking(uitslag, routes)
+    lijst = _regels(uitslag, verschil | steek)
+    return lijst, {str(r["nr"]): "verschil" if (r["doc_id"], r["keurmerk"]) in verschil else "steekproef" for r in lijst}
+
+
+def _antwoorden(pad, lijst):
+    """({nr: oordeel}, correcties {doc_id: {keurmerk: oordeel}}) uit een nakijkbestand met een oordeel voor precies elke
+    regel van `lijst`; de waarden controleert `corrigeer`."""
+    a = json.loads(Path(pad).read_text(encoding="utf-8"))
+    nrs = {str(r["nr"]) for r in lijst}
+    if not isinstance(a, dict):
+        raise ValueError(f"{pad}: verwacht {{nr: oordeel}}")
+    if set(a) != nrs:
+        raise ValueError(f"{pad}: een oordeel voor precies elke regel nodig (ontbreekt: {sorted(nrs - set(a))[:10]}, "
+                         f"buiten de lijst: {sorted(set(a) - nrs)[:10]})")
+    correcties = {}
+    for r in lijst:
+        correcties.setdefault(r["doc_id"], {})[r["keurmerk"]] = a[str(r["nr"])]
+    return a, correcties
+
+
+def _fout(oud, nieuw):
+    """Elk afwijkend oordeel, ook naar onzeker/onleesbaar; Nutri-Score als verzameling (volgorde telt niet)."""
+    return set(oud) != set(nieuw) if isinstance(oud, list) and isinstance(nieuw, list) else oud != nieuw
+
+
+def na_nakijken(uitslag, routes, metas, nakijken, ronde2=None, overgeslagen=(), seed=20261030):
+    """(tabellen ná nakijken, {keurmerk: lijst voor de tweede ronde}) volgens meetregels §6-§7. ValueError bij een
+    onvolledig of ongeldig antwoord, of een ronde-2-keuze voor een onbekend keurmerk, een keurmerk zonder tweede ronde
+    of met beide opties."""
+    ronde2, overgeslagen = dict(ronde2 or {}), set(overgeslagen)
+    _, eens, steek = _trekking(uitslag, routes)
+    lijst, sleutel = nakijklijst(uitslag, routes)
+    antwoord, correcties = _antwoorden(nakijken, lijst)
+    waar = corrigeer(uitslag, correcties)
+    kant = {(d, k): z for (k, z), ds in eens.items() for d in ds}
+    rapport = {k: {z: {"nagekeken": 0, "fouten": 0} for z in KANTEN} for k in us.KEURMERKEN8}
+    for r in lijst:
+        if sleutel[str(r["nr"])] == "steekproef":
+            s = rapport[r["keurmerk"]][kant[r["doc_id"], r["keurmerk"]]]
+            s["nagekeken"] += 1
+            s["fouten"] += _fout(r["waarheid"], antwoord[str(r["nr"])])
+    for s in (s for per in rapport.values() for s in per.values()):
+        s["bovengrens"] = wilson(s["fouten"], s["nagekeken"])[1] if s["nagekeken"] else None
+    fout = {k for k, per in rapport.items() if any(s["fouten"] for s in per.values())}
+    tweede = {k: _regels(uitslag, {(d, k) for z in KANTEN for d in eens[k, z]} - steek) for k in sorted(fout)}
+    for k in sorted(set(ronde2) | overgeslagen):
+        if k not in fout:
+            raise ValueError(f"{k}: geen tweede ronde (onbekend keurmerk of geen fout in de steekproef)")
+        if k in ronde2 and k in overgeslagen:
+            raise ValueError(f"{k}: tweede ronde nagekeken én overgeslagen")
+    for k, pad in ronde2.items():
+        waar = corrigeer(waar, _antwoorden(pad, tweede[k])[1])
+    uit = {}
+    for naam, meld in routes.items():
+        t = uit[naam] = tabel(waar, meld, metas.get(naam, {}), seed=seed)
+        for k in us.KEURMERKEN8:
+            v, sp = t[k], rapport[k]
+            # gevoeligheid (informatief): bovengrens per kant in het nadeel van de route op de overeenkomende paren die
+            # niet zijn nagekeken (niet in de steekproef, niet in een nagekeken tweede ronde)
+            e = {z: 0 if k in ronde2 or sp[z]["bovengrens"] is None else
+                 math.ceil(sp[z]["bovengrens"] * (len(eens[k, z]) - sp[z]["nagekeken"])) for z in KANTEN}
+            v["steekproef"] = sp
+            v["gevoeligheid"] = besluit(v["gevonden"] - e["met"], v["met"] - e["met"] + e["zonder"], v["vals"] + e["met"],
+                                        v["zonder"] + e["met"] - e["zonder"])
+            if v["besluit"] != "te weinig voorbeelden" and k in fout and k not in ronde2:
+                v["besluit"] = "mens bevestigt" if k in overgeslagen else "mens bevestigt (voorlopig)"
+    return uit, tweede
 
 
 def _pct(x):
     return "–" if x is None else f"{100 * x:.1f}%"
 
 
+def _steek_md(s):
+    return f"{s['nagekeken']} / {s['fouten']} / {_pct(s['bovengrens'])}"
+
+
 def _md(tabellen):
     regels = []
     for naam, t in tabellen.items():
+        na = "steekproef" in t[us.KEURMERKEN8[0]]
         regels += [f"## {naam}", "", "| keurmerk | mét (gevonden/aanwezig) | ondergrens | zonder (vals/afwezig) | bovengrens | "
-                   "verkeerde letter | spreiding gevonden | leveranciers | besluit |", "|---|---|---|---|---|---|---|---|---|"]
+                   "verkeerde letter | spreiding gevonden | leveranciers | besluit |"
+                   + (" steekproef mét (nagekeken / fouten / bovengrens) | steekproef zonder | gevoeligheid |" if na else ""),
+                   "|---|---|---|---|---|---|---|---|---|" + ("---|---|---|" if na else "")]
         for k in us.KEURMERKEN8:
             v = t[k]
             sp = v["spreiding"]["gevonden"]
             regels.append(f"| {k} | {v['gevonden']}/{v['met']} | {_pct(v['ondergrens'])} | {v['vals']}/{v['zonder']} | "
                           f"{_pct(v['bovengrens'])} | {'' if v['verkeerde_letter'] is None else v['verkeerde_letter']} | "
-                          f"{'–' if sp is None else f'{_pct(sp[0])}–{_pct(sp[1])}'} | {v['leveranciers']} | {v['besluit']} |")
+                          f"{'–' if sp is None else f'{_pct(sp[0])}–{_pct(sp[1])}'} | {v['leveranciers']} | {v['besluit']} |"
+                          + (f" {_steek_md(v['steekproef']['met'])} | {_steek_md(v['steekproef']['zonder'])} | "
+                             f"{v['gevoeligheid']} |" if na else ""))
+        if na:
+            regels += ["", "Steekproef: per kant de nagekeken overeenkomende paren, de fouten in Friso's eerdere oordeel en de "
+                       "Wilson-bovengrens van die foutkans (voor alle routes gelijk). Gevoeligheid (informatief): het besluit "
+                       "als die bovengrens in het nadeel van de route op de niet-nagekeken overeenkomende paren wordt "
+                       "toegepast."]
         r = t["route"]
         tijd = r["tijd"] or {}
         kosten = r["kosten"] or {}
@@ -204,6 +315,9 @@ def _md(tabellen):
 
 
 def _paren(lijst):
+    zonder = [x for x in lijst or [] if "=" not in x]
+    if zonder:
+        raise ValueError(f"verwacht NAAM=PAD, kreeg {zonder}")
     return dict(x.split("=", 1) for x in lijst or [])
 
 
@@ -241,39 +355,77 @@ def _json(x):
     return json.dumps(x, indent=1, ensure_ascii=False, sort_keys=True, default=lambda s: sorted(s))
 
 
+def _sha(tekst):
+    return hashlib.sha256(tekst.encode("utf-8")).hexdigest()
+
+
+def _controleer_sha(uit, lijst, sleutel):
+    """Stap 15: lijst en sleutel van nu moeten byte-gelijk zijn aan die van stap 14 (nakijk-sha256.json); anders horen
+    de antwoorden per nummer bij andere paren."""
+    pad = Path(uit) / "nakijk-sha256.json"
+    nu = {"nakijklijst.json": _sha(_json(lijst)), "nakijk-sleutel.json": _sha(_json(sleutel))}
+    if not pad.exists() or json.loads(pad.read_text(encoding="utf-8")) != nu:
+        raise ValueError(f"lijst veranderd sinds stap 14 (of {pad} ontbreekt): de antwoorden horen bij een andere "
+                         "nakijklijst; tel met dezelfde routes als in stap 14")
+
+
 def main(argv=None):
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter, allow_abbrev=False)
     ap.add_argument("--uitslag", required=True, type=Path)
     ap.add_argument("--route", action="append", required=True,
                     help='NAAM=pad naar een run-bestand {"status": "voltooid", "etiketten": {doc_id: [codes] | {fout}}}')
     ap.add_argument("--meta", action="append", help="NAAM=pad naar {doc_id: {gln, tijd, kosten, beoordeeld}}")
     ap.add_argument("--uit", required=True, type=Path)
-    ap.add_argument("--correcties", type=Path)
-    ap.add_argument("--seed", type=int, default=20261030)
+    ap.add_argument("--nakijken", type=Path, help="{nr: oordeel} voor elke regel van nakijklijst.json (stap 15)")
+    ap.add_argument("--nakijken-ronde2", action="append", default=[], metavar="K=PAD",
+                    help="antwoorden op nakijklijst-ronde2-<K>.json (een oordeel voor elke regel)")
+    ap.add_argument("--ronde2-overgeslagen", action="append", default=[], metavar="K",
+                    help="tweede ronde van K bewust niet nagekeken: besluit 'mens bevestigt'")
+    ap.add_argument("--seed", type=int, default=20261030, help="alleen de leveranciersbootstrap; de steekproef ligt vast")
     a = ap.parse_args(argv)
-    uitslag = json.loads(a.uitslag.read_text(encoding="utf-8"))
-    metas = {n: json.loads(Path(p).read_text()) for n, p in _paren(a.meta).items()}
+    uit = beelden.veilig_doel(a.uit)
+    if a.nakijken:  # een mislukte run laat geen tabellen ná nakijken van een eerdere run achter
+        for f in ("tabellen-na-nakijken.json", "tabellen-na-nakijken.md"):
+            (uit / f).unlink(missing_ok=True)
     try:
+        uitslag = json.loads(a.uitslag.read_text(encoding="utf-8"))
+        metas = {n: json.loads(Path(p).read_text(encoding="utf-8")) for n, p in _paren(a.meta).items()}
         routes = {n: _lees_route(p) for n, p in _paren(a.route).items()}
-        gecorrigeerd = corrigeer(uitslag, json.loads(a.correcties.read_text())) if a.correcties else None
         tabellen = {n: tabel(uitslag, m, metas.get(n, {}), seed=a.seed) for n, m in routes.items()}
-        na = {n: tabel(gecorrigeerd, m, metas.get(n, {}), seed=a.seed) for n, m in routes.items()} if gecorrigeerd else None
-    except ValueError as e:
+        lijst, sleutel = nakijklijst(uitslag, routes)
+        if a.nakijken:
+            _controleer_sha(uit, lijst, sleutel)
+            na, tweede = na_nakijken(uitslag, routes, metas, a.nakijken, _paren(a.nakijken_ronde2), a.ronde2_overgeslagen,
+                                     seed=a.seed)
+        elif a.nakijken_ronde2 or a.ronde2_overgeslagen:
+            raise ValueError("--nakijken-ronde2 en --ronde2-overgeslagen alleen samen met --nakijken")
+        else:
+            na, tweede = None, {}
+    except (ValueError, OSError) as e:
         print(f"telling gestopt: {e}", file=sys.stderr)
         return 1
     namen = list(routes)
-    uit = beelden.veilig_doel(a.uit)
-    uit.mkdir(parents=True, exist_ok=True)
+    apart = uit / "niet-voor-nakijker"  # sleutel en verschil verraden de herkomst van een regel
+    apart.mkdir(parents=True, exist_ok=True)
     (uit / "tabellen.json").write_text(_json(tabellen), encoding="utf-8")
     (uit / "tabellen.md").write_text(_md(tabellen), encoding="utf-8")
-    (uit / "verschil.json").write_text(_json({f"{namen[0]} min {b}": {
+    (apart / "verschil.json").write_text(_json({f"{namen[0]} min {b}": {
         "procentpunten": verschil(tabellen[namen[0]], tabellen[b]),
         "etiketten": verschil_etiketten(routes[namen[0]], routes[b])} for b in namen[1:]}), encoding="utf-8")
-    (uit / "nakijklijst.json").write_text(_json(nakijklijst(uitslag, routes)), encoding="utf-8")
+    if not a.nakijken:  # stap 15 controleert lijst en sleutel tegen stap 14 en schrijft ze niet opnieuw
+        (uit / "nakijklijst.json").write_text(_json(lijst), encoding="utf-8")
+        (apart / "nakijk-sleutel.json").write_text(_json(sleutel), encoding="utf-8")
+        (uit / "nakijk-sha256.json").write_text(_json({"nakijklijst.json": _sha(_json(lijst)),
+                                                       "nakijk-sleutel.json": _sha(_json(sleutel))}), encoding="utf-8")
     if na:
+        for oud in uit.glob("nakijklijst-ronde2-*.json"):  # keurmerken die geen tweede ronde meer hebben
+            if oud.name.removeprefix("nakijklijst-ronde2-").removesuffix(".json") not in tweede:
+                oud.unlink()
+        for k, regels in tweede.items():
+            (uit / f"nakijklijst-ronde2-{k}.json").write_text(_json(regels), encoding="utf-8")
         (uit / "tabellen-na-nakijken.json").write_text(_json(na), encoding="utf-8")
         (uit / "tabellen-na-nakijken.md").write_text(_md(na), encoding="utf-8")
-    print(_md(tabellen))
+    print(_md(na or tabellen))
     return 0
 
 
