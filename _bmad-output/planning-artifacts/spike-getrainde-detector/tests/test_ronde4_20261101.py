@@ -275,20 +275,20 @@ def test_r4_bouwen_en_bouwen_origineel_vullen_het_manifest_aan(tmp_path):  # P0,
     assert set(manifest) == set(oud) | {print_doc, orig_doc}
 
 
-# --- echt.py voorlabels: standaardgrens $50 (CAP-14, besluit Friso 01-11-2026) ----------------------------------------
+# --- echt.py voorlabels: standaardgrens $55 (CAP-14, besluit Friso 02-11-2026 22:20; eerder $50 van 01-11-2026) ----------------------------------------
 
-def test_r4_echt_voorlabels_standaardgrens_50_projectie_per_aanroep(tmp_path, monkeypatch, capsys):  # P0
+def test_r4_echt_voorlabels_standaardgrens_55_projectie_per_aanroep(tmp_path, monkeypatch, capsys):  # P0
     ec = mod("echt")
-    for boek, verwacht in ((49.92, "gestart"), (49.93, "geweigerd")):  # 3 grote etiketten × 2 aanroepen × 0,012 = 0,072
+    for boek, verwacht in ((54.92, "gestart"), (54.93, "geweigerd")):  # 3 grote etiketten × 2 aanroepen × 0,012 = 0,072: 54,992 en 55,002
         argv, uit, _ = echt_r3(tmp_path / str(boek), 3, groot=True, boek=boek)
         client = vervang(monkeypatch, Opname({"vakjes": []}, model=FLASH, stop=Gestart()))
         assert start(lambda: ec.main(argv)) == verwacht, boek
         out = capsys.readouterr().out
         if verwacht == "gestart":
-            assert client.kw["bewaker"].grens == pytest.approx(50.0)
-            assert re.search(r"\b50\b", out), out  # de gebruikte grens staat op stdout
+            assert client.kw["bewaker"].grens == pytest.approx(55.0)
+            assert re.search(r"\b55\b", out), out  # de gebruikte grens staat op stdout
     assert not client.zdr and not client.calls and not uit.exists()
-    assert getattr(ec, "GRENS_VOORLABELS", None) == 50.0
+    assert getattr(ec, "GRENS_VOORLABELS", None) == 55.0
 
 
 # --- toets.py voorinvulling na een aanvulling: alle docs op de pagina, alleen de nieuwe betaald (regressie) ------------
@@ -343,12 +343,12 @@ def test_r4_draaiplan_stap_4_noemt_de_aanvulling_voor_de_bevestiging():  # P2
     assert re.search(r"aanvul", s4) and re.search(r"v[oó]{2}r de bevestiging", s4) and BESLUIT in s4
 
 
-def test_r4_draaiplan_stap_9_voorlabels_standaardgrens_50_zonder_grens_optie():  # P2
+def test_r4_draaiplan_stap_9_voorlabels_standaardgrens_55_zonder_grens_optie():  # P2
     s9 = stap(9)
     cmds = opdrachten(s9, r"echt\.py\s+voorlabels")
     assert cmds and not any("--grens" in c for c in cmds), cmds
     assert "GRENS_VOORLABELS" not in s9
-    assert "$50" in s9 and BESLUIT in s9
+    assert "$55" in s9 and "besluit Friso 02-11-2026 22:20" in s9  # besluit 02-11-2026 22:20 vervangt 01-11-2026
     assert not re.search(r"\$15\b", s9)
 
 

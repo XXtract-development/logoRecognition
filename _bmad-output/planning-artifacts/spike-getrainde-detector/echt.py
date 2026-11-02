@@ -9,7 +9,7 @@ AI-vakjes tellen alleen met x0 < x1, y0 < y1 en zijden ≥ 4 px; hetzelfde keurm
 wordt per code samengevoegd (herken.nms, IoU 0,5).
 
   python echt.py voorlabels --lijst <json [{doc_id, gln, pad}]> --proef-map <PM> --uit <voorlabels.json> --zdr-logo <png>
-                            [--grens <dollar> --besluit "<verwijzing>"]   (standaard de grens $50, besluit Friso 01-11-2026)
+                            [--grens <dollar> --besluit "<verwijzing>"]   (standaard de grens $55, besluit Friso 02-11-2026 22:20)
   python echt.py dataset --lijst <json> --voorlabels <voorlabels.json> --proef-map <PM> --uit <PM>/train/echt
                          [--meng <PM>/train/nagemaakt/train --meng-aantal 1000] [--nutrigreen <PM>/nutrigreen/coco]
       (fase 2: het mengbudget --meng-aantal gaat eerst naar NutriGreen tot zijn grens (kies_nutrigreen: ≤ 20% van de
@@ -73,7 +73,7 @@ MIN_ZICHTBAAR = 0.6
 MIN_ZIJDE = 4  # px; kleinere of omgekeerde AI-vakjes tellen niet
 MAX_TEGELS = 16  # per aanroep, naast het hele etiket
 PER_AANROEP = 0.012  # verwachte kosten per aanroep (randvoorwaarden §3)
-GRENS_VOORLABELS = 50.0  # dollar, hard (besluit Friso 01-11-2026; randvoorwaarden §3)
+GRENS_VOORLABELS = 55.0  # dollar, hard (besluit Friso 02-11-2026 22:20: verhoogd van $50 naar ±$55; randvoorwaarden §3)
 RAMING_VOORLABELS = 30.0  # dollar, informatief (randvoorwaarden §3: ±$25–35); de grens is GRENS_VOORLABELS
 
 

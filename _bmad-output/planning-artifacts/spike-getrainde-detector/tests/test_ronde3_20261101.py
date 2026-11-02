@@ -263,18 +263,18 @@ def test_r3_toets_main_stuurt_jpeg_90_en_houdt_paginabeelden_png(tmp_path, monke
     assert [i["voorinvulling"].get("beeldtype") for i in json.loads((t / "items.json").read_text())] == ["jpeg", "jpeg"]
 
 
-def test_r3_toets_standaardgrens_65_start_ook_boven_de_oude_31_50(tmp_path, monkeypatch, capsys):
+def test_r3_toets_standaardgrens_73_start_ook_boven_de_oude_31_50(tmp_path, monkeypatch, capsys):
     ts = mod("toets")
-    argv, _, _ = toets_r3(tmp_path, 6, boek=31.40)  # 31,40 + 6 × 0,06 = 31,76: boven 1,5 × 21, onder 65
+    argv, _, _ = toets_r3(tmp_path, 6, boek=31.40)  # 31,40 + 6 × 0,06 = 31,76: boven 1,5 × 21, onder 73 (besluit Friso 02-11-2026 22:20)
     client = vervang(monkeypatch, Opname(LEEG))
     assert ts.main(argv) == 0
-    assert client.kw["bewaker"].grens == pytest.approx(65.0)
-    assert re.search(r"\b65\b", capsys.readouterr().out)  # de gebruikte grens staat op stdout
-    assert ts.GRENS_VOORINVULLING == 65.0
+    assert client.kw["bewaker"].grens == pytest.approx(73.0)
+    assert re.search(r"\b73\b", capsys.readouterr().out)  # de gebruikte grens staat op stdout
+    assert ts.GRENS_VOORINVULLING == 73.0
 
 
-def test_r3_toets_rand_van_de_grens_65_kleine_etiketten(tmp_path, monkeypatch):
-    for boek, verwacht in ((64.60, "gestart"), (64.70, "geweigerd")):  # + 6 × 0,06: 64,96 en 65,06
+def test_r3_toets_rand_van_de_grens_73_kleine_etiketten(tmp_path, monkeypatch):
+    for boek, verwacht in ((72.60, "gestart"), (72.70, "geweigerd")):  # + 6 × 0,06: 72,96 en 73,06
         argv, t, _ = toets_r3(tmp_path / str(boek), 6, boek=boek)
         client = vervang(monkeypatch, Opname(LEEG, stop=Gestart()))
         assert start(lambda: mod("toets").main(argv)) == verwacht, boek
@@ -282,7 +282,7 @@ def test_r3_toets_rand_van_de_grens_65_kleine_etiketten(tmp_path, monkeypatch):
 
 
 def test_r3_toets_projectie_per_aanroep_groot_etiket_twee_aanroepen(tmp_path, monkeypatch):
-    for boek, verwacht in ((64.85, "gestart"), (64.90, "geweigerd")):  # + 2 × 0,06 (25 tegels): 64,97 en 65,02
+    for boek, verwacht in ((72.85, "gestart"), (72.90, "geweigerd")):  # + 2 × 0,06 (25 tegels): 72,97 en 73,02
         argv, t, _ = toets_r3(tmp_path / str(boek), 1, groot=(0,), boek=boek)
         client = vervang(monkeypatch, Opname(LEEG, stop=Gestart()))
         assert start(lambda: mod("toets").main(argv)) == verwacht, boek  # per etiket 0,06 zou beide laten starten
@@ -290,7 +290,7 @@ def test_r3_toets_projectie_per_aanroep_groot_etiket_twee_aanroepen(tmp_path, mo
 
 
 def test_r3_toets_projectie_telt_alleen_open_etiketten(tmp_path, monkeypatch):
-    for boek, verwacht in ((64.90, "gestart"), (64.95, "geweigerd")):
+    for boek, verwacht in ((72.90, "gestart"), (72.95, "geweigerd")):  # grens $73 (besluit 02-11-2026 22:20)
         argv, t, docs = toets_r3(tmp_path / str(boek), 2, groot=(0,), boek=boek)
         schrijf(t / "voorinvulling.json", {docs[0]: {**LEEG, "keurmerken": {}, "hinttegels": {}},  # groot, klaar
                                            docs[1]: {**LEEG, "keurmerken": {}, "fout": "geweigerd"}})  # klein, opnieuw
@@ -450,9 +450,9 @@ BESLUIT = re.compile(r"--besluit\s+(\"[^\"]*\S[^\"]*\"|'[^']*\S[^']*'|[^\s\"'-]\
 def test_r3_draaiplan_stap_3_grens_65_met_besluit_en_kosten_0_12():
     s3 = stap(3)
     cmd, kosten = regel(s3, "Commando:"), regel(s3, "Kosten:")
-    assert re.search(r"--grens\s+65\b", cmd)
+    assert re.search(r"--grens\s+73\b", cmd)
     assert BESLUIT.search(cmd), "--grens zonder niet-lege --besluit weigert (contract toets.py)"
-    assert all(w in kosten for w in ("$0,12", "$65", "Friso", "01-11-2026")), kosten
+    assert all(w in kosten for w in ("$0,12", "$73", "Friso", "02-11-2026")), kosten
     assert "$31,50" not in s3
 
 

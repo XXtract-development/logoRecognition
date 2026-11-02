@@ -115,7 +115,7 @@ Verwachte omvang: ±345 etiketten (322 voorgevuld vóór ronde 5, plus ±12 V-la
 3. **V-label** (besluit Friso 01-11-2026 (2), ronde 5): elk toetsproduct met een V-label-declaratie (vegan of vegetarisch) dat nog geen kandidaat was, eerst die met print-laag; bij het besluit 18 GTIN's (12 met print-laag, 7 leveranciers), 10 al kandidaat.
 4. **Nutri-Score E** (ronde 5, opdracht van de coördinator om NS-D/E-kandidaten mee te nemen): de letter E stond op 10 waarschijnlijke etiketten, D op 33; daarom hoogstens 20 nieuwe kandidaten voor letter E, print-laag eerst (±13 gebouwd, ±$1,5; samen met het V-label ±$3, randvoorwaarden §3). Het besluit valt op de groep; per letter is informatief, maar zo heeft ook E een telling.
 
-Alle extra voorinvullingen vallen onder de post voorinvulling toets en haar grens van $65 ([randvoorwaarden.md §3](randvoorwaarden.md#3-kosten-cap-14)). Staat een keurmerk na deze aanvulling onder 16 waarschijnlijke etiketten, dan is dat opnieuw stoppunt 2; meer aanvullen dan dit besluit toestaat, vraagt een nieuw besluit van Friso. De aanvulling na de bevestiging blijft daarnaast bestaan.
+Alle extra voorinvullingen vallen onder de post voorinvulling toets en haar grens van $73 (besluit Friso 02-11-2026 22:20) ([randvoorwaarden.md §3](randvoorwaarden.md#3-kosten-cap-14)). Staat een keurmerk na deze aanvulling onder 16 waarschijnlijke etiketten, dan is dat opnieuw stoppunt 2; meer aanvullen dan dit besluit toestaat, vraagt een nieuw besluit van Friso. De aanvulling na de bevestiging blijft daarnaast bestaan.
 
 ## 5. AI-voorinvulling (CAP-2)
 

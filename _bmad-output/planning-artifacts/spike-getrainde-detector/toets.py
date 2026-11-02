@@ -12,7 +12,7 @@ gedeelde zdr-client.
   python toets.py ontdubbel --proef-map <PM> --manifest <gecombineerd/manifest.json> [--kandidaten <kandidaten-aanvulling.json>]
                   (ontdubbelt ook tegen een bestaande toets-docs.json en voegt de nieuwe docs daaraan toe)
   python toets.py voorinvulling --proef-map <PM> --manifest <gecombineerd/manifest.json> --zdr-logo <png>
-                  [--grens <dollar> --besluit "<verwijzing>"]   (standaard de grens $65, besluit Friso 01-11-2026)
+                  [--grens <dollar> --besluit "<verwijzing>"]   (standaard de grens $73, besluit Friso 02-11-2026 22:20)
   python toets.py voorinvulling-r9 --proef-map <PM> --manifest <gecombineerd/manifest.json> --zdr-logo <png>
                   [--docs <json>] [--grens <dollar> --besluit "<verwijzing>"] [--items <pad>]
                   (ronde 9: alleen FSC, Triman, kunststofcode, PlanetProof; lege tegels niet verstuurd; schrijft
@@ -194,7 +194,7 @@ def ontdubbel(items):
 
 RONDE = 5  # voorinvullingen met dit kenmerk vroegen het V-label zelf; zonder kenmerk: van vóór ronde 5 (toetsset §5)
 MAX_TEGELS = 16  # per aanroep, naast het hele etiket (grens van de aanbieder op beelden per verzoek)
-GRENS_VOORINVULLING = 65.0  # dollar, hard (besluit Friso 01-11-2026 ±14:05; randvoorwaarden §3)
+GRENS_VOORINVULLING = 73.0  # dollar, hard (besluit Friso 02-11-2026 22:20: verhoogd van $65 naar ±$73; randvoorwaarden §3)
 PER_AANROEP = 0.06  # verwachte kosten per aanroep (heel etiket + hoogstens 16 tegels; randvoorwaarden §3)
 
 
