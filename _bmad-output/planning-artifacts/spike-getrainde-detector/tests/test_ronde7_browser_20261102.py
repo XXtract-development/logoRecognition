@@ -9,6 +9,10 @@ Contract: atdd-checklist, "Ronde 7" → "Interfacecontract ronde 7". Nieuwe sele
 Alle etiketten zijn verzonnen (GLN-GTIN-528 met 999…-nummers), alle beelden komen uit PIL in `tmp_path`; alleen
 127.0.0.1. De zwaarste gemeten vormen (02-11-2026, alleen aantallen): 4096×780 (h/b 0,19) met 6 uitsneden en
 200×3920 (h/b 19,6).
+
+Ronde 8 (contract "Interfacecontract ronde 8", "Vervalt uit ronde 7"): `data-stand="breedte"` bestaat niet meer; elk
+etiket begint `passend`. De beeldtests hieronder zijn daarop aangepast; de nieuwe beeldregels staan in
+`test_ronde8_browser_20261102.py`.
 """
 import json
 import re
@@ -73,7 +77,7 @@ def etiket(id_, maat, hints, voor):
 
 H1 = [("PREGNANCY_WARNING", 0), (V, 1), ("MARINE_STEWARDSHIP_COUNCIL_LABEL", 2), ("VEGAN_SOCIETY_VEGAN_LOGO", 3),
       ("RECYCLABLE_GENERAL_CLAIM", 4), ("PREGNANCY_WARNING", 4)]
-H2 = [("GREEN_DOT", 3), ("WEIDEMELK", 4)]  # eerste kader niet bovenaan: "breedte" moet ernaar scrollen
+H2 = [("GREEN_DOT", 3), ("WEIDEMELK", 4)]  # kaders laag op een hoog etiket (ronde 8: toch passend, geen scroll)
 H3 = [("EU_ORGANIC_FARMING", 5), ("GREEN_DOT", 1)]  # 5 = laatste tegel (lengte - tegel in x én y)
 H4 = [("PREGNANCY_WARNING", 2)]
 H6 = [("GREEN_DOT", 0), "x-tegel-0.png", ("MARINE_STEWARDSHIP_COUNCIL_LABEL", 3)]  # 3 valt buiten 1 tegel
@@ -370,29 +374,21 @@ def test_r7_uitsneden_zonder_leesbare_naam_en_zonder_uitsneden(page, start_serve
     expect(tid(page, "kader")).to_have_attribute("data-code", "GREEN_DOT")
 
 
-@pytest.mark.parametrize("id_,stand", [(E1, "passend"), (E3, "passend"), (E2, "breedte"), (E4, "breedte"),
-                                       (E5, "breedte")])
-def test_r7_beginstand_passend_of_breedte(page, start_server, id_, stand):
+# Ronde 8: elk etiket begint passend, ook de hoge (h/b > 3) die in ronde 7 op "breedte" begonnen.
+@pytest.mark.parametrize("id_", [E1, E3, E2, E4, E5], ids=["4096x780", "2500x1100", "200x3920", "900x3000", "300x1200"])
+def test_r7_beginstand_passend_of_breedte(page, start_server, id_):
+    """Naam behouden voor de trace; sinds ronde 8 alleen nog `passend`. De volledige passend-regel (raakt een kant,
+    gecentreerd) staat in `test_r8_passend_hele_etiket_in_beeld`."""
     laad_klaar(page, start_server())
     naar(page, id_)
     e = PER_ID[id_]
     wacht_beeld(page, e["maat"][0])
     vak = tid(page, "beeldvak")
-    expect(vak).to_have_attribute("data-stand", stand)
-    if stand == "passend":
-        v, b = vakmaat(page), beeldvlak(page)
-        assert v["sw"] <= v["w"] + 1 and v["sh"] <= v["h"] + 1, v
-        assert b["x"] >= v["x"] - 1 and b["y"] >= v["y"] - 1, (b, v)
-        assert b["x"] + b["w"] <= v["x"] + v["w"] + 1 and b["y"] + b["h"] <= v["y"] + v["h"] + 1, (b, v)
-        return
+    expect(vak).to_have_attribute("data-stand", "passend")
     v, b = vakmaat(page), beeldvlak(page)
-    assert abs(b["w"] - v["w"]) <= 2, (b, v)
-    assert v["sh"] > v["h"], v
-    if leesbaar(e):
-        kader_in_vak(page, '[data-testid="kader"]')
-        assert vakmaat(page)["st"] > 0
-    else:
-        assert v["st"] == 0, v
+    assert v["sw"] <= v["w"] + 1 and v["sh"] <= v["h"] + 1, v
+    assert b["x"] >= v["x"] - 1 and b["y"] >= v["y"] - 1, (b, v)
+    assert b["x"] + b["w"] <= v["x"] + v["w"] + 1 and b["y"] + b["h"] <= v["y"] + v["h"] + 1, (b, v)
 
 
 KLIKSPION = """() => { window.__kliks = [];
@@ -412,8 +408,9 @@ def zichtbaar_midden(page):
     return x, y, (x - b["x"]) / b["w"], (y - b["y"]) / b["h"]
 
 
-@pytest.mark.parametrize("id_,begin", [(E1, "passend"), (E2, "breedte")])
-def test_r7_klik_zoomt_in_en_esc_en_wissel_terug(page, start_server, id_, begin):
+@pytest.mark.parametrize("id_", [E1, E2], ids=["breed-4096x780", "hoog-200x3920"])  # ronde 8: ook het hoge etiket (E2) begint passend
+def test_r7_klik_zoomt_in_en_esc_en_wissel_terug(page, start_server, id_):
+    begin = "passend"
     popups = []
     page.on("popup", lambda p: popups.append(p))
     basis = start_server()
@@ -445,7 +442,7 @@ def test_r7_klik_zoomt_in_en_esc_en_wissel_terug(page, start_server, id_, begin)
     page.wait_for_function("w => Math.abs(document.querySelector('[data-testid=\"overzicht\"]')"
                            ".getBoundingClientRect().width - w) <= 2", arg=max(w, 3 * w0))
     assert abs(beeldvlak(page)["w"] - max(w, 3 * w0)) <= 2
-    if begin == "passend":  # het aangeklikte punt staat horizontaal in het midden van het vak
+    if id_ == E1:  # passend breed beeld: het aangeklikte punt staat horizontaal in het midden van het vak
         v, b = vakmaat(page), beeldvlak(page)
         assert abs(b["x"] + fx * b["w"] - (v["x"] + v["w"] / 2)) <= 10, (b, v, fx)
 
@@ -463,10 +460,10 @@ def test_r7_klik_zoomt_in_en_esc_en_wissel_terug(page, start_server, id_, begin)
     x, y, _, _ = zichtbaar_midden(page)
     page.mouse.click(x, y)
     expect(vak).to_have_attribute("data-stand", "in")
-    page.keyboard.press("ArrowRight")  # ander etiket: altijd de beginstand
+    page.keyboard.press("ArrowRight")  # ander etiket: altijd passend
     volgende = ALLE[NR[id_] + 1]
     expect(tid(page, "etiket-id")).to_have_text(volgende["id"])
-    expect(vak).to_have_attribute("data-stand", "passend" if volgende["maat"][1] <= 3 * volgende["maat"][0] else "breedte")
+    expect(vak).to_have_attribute("data-stand", "passend")
     page.keyboard.press("ArrowLeft")
     expect(vak).to_have_attribute("data-stand", begin)
     assert page.url == url and popups == []
@@ -903,29 +900,6 @@ def test_r7_nutriscore_letter_zet_onleesbaar_uit(page, start_server):
 
 
 # --- automate (trace run 9): gedrag uit reviewronde 1 dat nog geen onderscheidende test had ---------------------------
-# Hoog beeld (200×3920, tegels y0 = 0, 768, 1536, 2304, 2896): `hint` staat op code gesorteerd, dus GREEN_DOT (tegel 4,
-# laag op het etiket) komt in de lijst vóór RECYCLABLE (tegel 2, hoger). "breedte" moet naar het bovenste kader.
-H_OMGEKEERD = [("GREEN_DOT", 4), ("RECYCLABLE_GENERAL_CLAIM", 2)]
-OMGEKEERD = [etiket(doc(301), (200, 3920), H_OMGEKEERD,
-                    vi({"GREEN_DOT", "RECYCLABLE_GENERAL_CLAIM"}, ["A"], hints=H_OMGEKEERD))]
-
-
-def test_r7_breedte_scrollt_naar_bovenste_kader_niet_eerste_in_hint(page, start_server):  # R7-6b
-    laad_klaar(page, start_server(OMGEKEERD))
-    wacht_beeld(page, 200)
-    expect(tid(page, "kader")).to_have_count(2)
-    assert [k.get_attribute("data-code") for k in tid(page, "kader").all()] == ["GREEN_DOT", "RECYCLABLE_GENERAL_CLAIM"]
-    expect(tid(page, "beeldvak")).to_have_attribute("data-stand", "breedte")  # zelfde handler als de scroll
-    boven = '[data-testid="kader"][data-code="RECYCLABLE_GENERAL_CLAIM"]'
-    kader_in_vak(page, boven)
-    st, top_boven, top_onder = page.evaluate("""() => {
-      const k = (c) => document.querySelector(`[data-testid="kader"][data-code="${c}"]`);
-      return [document.querySelector('[data-testid="beeldvak"]').scrollTop, k('RECYCLABLE_GENERAL_CLAIM').offsetTop,
-              k('GREEN_DOT').offsetTop]; }""")
-    assert top_boven < top_onder
-    assert abs(st - max(0, top_boven - 8)) <= 2, (st, top_boven, top_onder)
-
-
 def test_r7_opslagfout_blijft_staan_tot_dat_etiket_opslaat(page, start_server):  # R7-17b
     laad_klaar(page, start_server())
     expect(tid(page, "etiket-id")).to_have_text(E1)
@@ -1000,21 +974,6 @@ def test_r7_enter_op_beeldlink_zoomt_op_het_midden(page, start_server):  # R7-26
     assert v["sl"] > 0 and v["sw"] > v["w"], v
     _, _, fx, fy = zichtbaar_midden(page)
     assert abs(fx - 0.5) <= 0.02 and abs(fy - 0.5) <= 0.02, (fx, fy, v)
-
-
-def test_r7_resize_in_breedte_houdt_de_scrollpositie(page, start_server):  # R7-27
-    laad_klaar(page, start_server())
-    naar(page, E2)
-    wacht_beeld(page, 200)
-    expect(tid(page, "beeldvak")).to_have_attribute("data-stand", "breedte")
-    kader_in_vak(page, '[data-testid="kader"]')
-    st = page.evaluate("""() => { const v = document.querySelector('[data-testid="beeldvak"]'); v.scrollTop = 200;
-      window.__resized = false; addEventListener('resize', () => { window.__resized = true; }); return v.scrollTop; }""")
-    assert st == 200
-    page.set_viewport_size({"width": 1400, "height": 800})
-    page.wait_for_function("() => window.__resized")  # na de eigen resize-handler van de pagina
-    expect(tid(page, "beeldvak")).to_have_attribute("data-stand", "breedte")
-    assert abs(vakmaat(page)["st"] - st) <= 2
 
 
 def test_r7_paneel_scrollt_in_laag_venster(page, start_server):  # R7-28 (paneel)

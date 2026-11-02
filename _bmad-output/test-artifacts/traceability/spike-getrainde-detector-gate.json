@@ -1,11 +1,11 @@
 {
  "decision": "PASS",
- "rationale": "P0 100% (89/89), P1 100% (41/41), overall 99% (141/143); all tests pass (809 passed, 2 skipped). Run 10 adds round 7 (owner request Friso 02-11-2026: confirmation page on one screen) with 31 criteria, all FULL; the run-9 gaps (review behaviour without tests) are closed with 9 mutation-checked tests. Only P2 partial (CAP-6a, AC-2).",
+ "rationale": "P0 100% (95/95), P1 100% (45/45), overall 99% (151/153); 837 passed, 2 skipped (twice). Run 11 adds round 8 (owner Friso 02-11-2026: whole label fitted, zoom only on request) with 12 criteria, all FULL; R7-6b and R7-27 retired by the round-8 contract. Only P2 partial (CAP-6a, AC-2).",
  "decision_date": "2026-11-02",
- "run": 10,
+ "run": 11,
  "subject": "spike-getrainde-detector",
- "head": "8bc97a7 + round 7 + test extension run 3",
- "branch": "spike/proef-invulpagina-ux",
+ "head": "a7a729b + round 8",
+ "branch": "spike/proef-invulpagina-ux-r8 (pushed to spike/proef-invulpagina-ux)",
  "specs": [
   "_bmad-output/implementation-artifacts/spec-spike-getrainde-detector-besluiten.md",
   "_bmad-output/implementation-artifacts/spec-spike-getrainde-detector-invulpagina-ux.md",
@@ -13,15 +13,16 @@
   "_bmad-output/implementation-artifacts/spec-spike-getrainde-detector-ronde4.md",
   "_bmad-output/implementation-artifacts/spec-spike-getrainde-detector-ronde5.md",
   "_bmad-output/implementation-artifacts/spec-spike-getrainde-detector-ronde6.md",
+  "_bmad-output/implementation-artifacts/spec-spike-getrainde-detector-ronde8.md",
   "_bmad-output/implementation-artifacts/spec-spike-getrainde-detector.md"
  ],
  "contract": "_bmad-output/planning-artifacts/spike-getrainde-detector/SPEC.md",
  "atdd_checklist": "_bmad-output/test-artifacts/atdd-checklist-spike-getrainde-detector.md",
- "phase1_matrix": "/tmp/tea-trace-coverage-matrix-2026-11-02T-run10.json",
+ "phase1_matrix": "/tmp/tea-trace-coverage-matrix-2026-11-02T-run11.json",
  "tests": {
-  "dev": "809 passed, 2 skipped",
+  "dev": "837 passed, 2 skipped",
   "zwaar_or_lokaal": "4/4",
-  "collected": 811,
+  "collected": 839,
   "licence_check": {
    "packages": 93,
    "violations": 0
@@ -36,7 +37,7 @@
   "ledger": "_bmad-output/implementation-artifacts/deferred-work.md (resolution line)"
  },
  "gate_criteria": {
-  "p0_coverage_actual": "100% (89/89)",
+  "p0_coverage_actual": "100% (95/95)",
   "p0_status": "MET",
   "p0_test_pass_rate_actual": "100%",
   "p0_test_pass_status": "MET",
@@ -283,6 +284,11 @@
    "run": 9,
    "decision": "FAIL",
    "reason": "P1 77% (R7-6b, R7-17b, R7-24 untested)"
+  },
+  {
+   "run": 10,
+   "decision": "PASS",
+   "reason": "round 7 fully covered"
   }
  ]
 }

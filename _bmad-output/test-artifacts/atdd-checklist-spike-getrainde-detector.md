@@ -815,3 +815,74 @@ cd _bmad-output/planning-artifacts/spike-getrainde-detector && uv run --group de
 ### Na de bouw (bmad-build ronde 7, reviewpatches)
 
 Bouw groen na twee testfouten (reden in de buildspec): Ctrl-klik is op macOS een rechterklik (test gebruikt daar alleen Cmd), en het concept werd ná de bevestigde opslag gelezen (test bespiedt nu `Storage.setItem`). Codereview (drie lagen, 26 bevindingen; 20 doorgevoerd, 6 verworpen) maakte de tests strenger (zichtbaarheid uitsnedekolom en `beeld-fout`, ↑/↓ op een keuze met focus, herhaalde `b`/Esc, zichtbare tekst "AI", geslaagde-opslagmelding) en voegde `test_r7_nutriscore_letter_zet_onleesbaar_uit` toe; de wankele bestaande test `test_cap03…::test_p0_gewijzigde_keuze_gaat_mee_met_opslaan` wacht nu elke tussenstand af (asserts ongewijzigd). Aanvullingen op het contract (bindend): breedte-beginstand scrollt naar het bovenste kader (kleinste y0); een opslagfout van een ander etiket blijft in `#melding` tot dat etiket opslaat; "gewijzigd" en "AI: …" staan naast de naam, de stand staat alleen en volledig op regel 2; een letter wijzigen zet "letter onleesbaar" uit en "letter onleesbaar" dempt de letters; `#keuzes` scrollt intern in een te laag venster; de titel krimpt vóór de etiketcode; Enter op de beeldlink zoomt op het midden; resize herberekent alleen `passend`. Trace run 9 FAIL (P1 77%) → `bmad-testarch-automate` run 3 (9 tests, mutatiegecontroleerd) → trace run 10 PASS. Suite: **809 passed, 2 skipped, 0 failed**. Buildspec: `_bmad-output/implementation-artifacts/spec-spike-getrainde-detector-invulpagina-ux.md`.
+
+## Ronde 8 (hele etiket passend in beeld, inzoomen op verzoek; besluit Friso 02-11-2026)
+
+Bron: de niet-gecommitte spec-update op HEAD `a7a729b` in worktree `.claude/worktrees/proef-invulpagina-r8` (`bmad-ux` Update → `invul-ux/EXPERIENCE.md` paragraaf *Etiketbeeld*, `DESIGN.md`; `bmad-spec` → SPEC CAP-3, toetsset §6; `bmad-review` twee keer, 5 lenzen: de eerste op een vervallen tussenversie, de tweede op de aangescherpte tekst, alle bevindingen doorgevoerd of hier opgenomen). Friso letterlijk: "Het etiket is te groot, deze moet inzoomen tot 100% breedte of hoogte." De rest van deze checklist blijft bindend, behalve waar dit contract hem vervangt.
+
+### Stap 1 — preflight en context
+
+- **Werkwijze:** `bmad-testarch-atdd`, Create-modus, headless. Eigen worktree, omdat de live pagina (:8767) `invul/index.html` uit worktree `proef-invulpagina` bij elke aanvraag opnieuw leest.
+- **Stack:** `fullstack` (zoals ronde 7). Uitgangstoestand: **809 passed, 2 skipped, 0 failed** (HEAD `a7a729b`).
+- **Gelezen:** SPEC CAP-3, toetsset §6, `invul-ux/EXPERIENCE.md` (*Etiketbeeld*), `DESIGN.md`, `invul/index.html`, `tests/test_ronde7_browser_20261102.py`, contract ronde 7 hierboven.
+
+### Stap 2 — generatiemodus
+
+AI-generatie (browser).
+
+### Stap 3 — teststrategie
+
+| criterium | niveau | prio |
+|---|---|---|
+| Passend: hele etiket, één kant = binnenmaat vak ±2 px, andere past, geen scroll in het vak, in beide richtingen gecentreerd; 200×3920 en 4096×780 in 1440×800, 1920×970, 1280×700; klein etiket vergroot | E2E | P0 (het besluit) |
+| Geen automatisch inzoomen: na laden, na ↑/↓, na cijfertoets, na etiketwissel: `passend`, scroll 0,0 | E2E | P0 |
+| Alle AI-kaders van de actieve rij gemarkeerd (rand 3 px navy, niet-transparante vulling, boven de andere); inactieve zonder vulling; markering volgt ↑/↓, ook ingezoomd zonder beeldbeweging | E2E | P1 |
+| Inzoomen op verzoek: klik op beeld → `in`; klik in de witte rand → niets; klik op ingezoomd beeld of Esc → `passend`; klik op uitsnede → `in` met dat kader in beeld, ook vanuit `in` | E2E | P1 |
+| Beeldvak verandert van maat: passend blijft passend; ingezoomd houdt zoom en scroll | E2E | P2 |
+| Concept in de vorm van ronde 7 in `sessionStorage` wordt na laden getoond (Friso's open tabblad) | E2E | P0 |
+| Ronde-7-tests die `breedte` vastleggen herschrijven naar ronde 8 | E2E | P0 |
+
+Uitvoeringsmodus: subagent, alleen worker B (browser). Geen `test.skip()`; echt rood.
+
+### Interfacecontract ronde 8 (bindend voor tests én bouw)
+
+**Vervalt uit ronde 7:** `data-stand="breedte"` (regel "`data-stand` = `passend` | `breedte` | `in`" wordt `passend` | `in`); de beginstand "passend als ware hoogte ≤ 3 × ware breedte, anders `breedte` … `scrollTop` zo dat het eerste/bovenste kader in beeld is"; "Esc: terug naar de beginstand" wordt "terug naar `passend`"; "resize herberekent alleen `passend`" wordt de regel hieronder. Tests R7-6b (`test_r7_breedte_scrollt_naar_bovenste_kader_niet_eerste_in_hint`) en R7-27 (`test_r7_resize_in_breedte_houdt_de_scrollpositie`) vervallen en worden vervangen; `test_r7_beginstand_passend_of_breedte` en `test_r7_klik_zoomt_in_en_esc_en_wissel_terug` verwachten overal `passend`.
+
+**Gedrag**
+- *Passend (beginstand bij elk getoond etiket):* schaal = min(`clientWidth` vak / ware breedte, `clientHeight` vak / ware hoogte) van `beeldvak`; de beeldbox van `overzicht` ligt binnen de binnenbox van het vak; één kant gelijk aan de binnenmaat (±2 px), de andere ≤ binnenmaat; `beeldvak` heeft `scrollWidth ≤ clientWidth + 1` en `scrollHeight ≤ clientHeight + 1`; het midden van de beeldbox ligt in het midden van de binnenbox (±2 px, beide richtingen). Een etiket kleiner dan het vak wordt vergroot. `data-stand="passend"`.
+- *Geen automatisch inzoomen:* na laden, na ↑/↓, na een cijfertoets die de rij doorschuift, na klik/Tab in een rij en na een etiketwissel blijft (of wordt) `data-stand="passend"` met `scrollTop = scrollLeft = 0`.
+- *Markering:* alle `kader`-elementen met `data-code` = de code van de actieve rij hebben `data-actief="true"`, een berekende rand van 3 px in navy (`rgb(47, 90, 122)`), een niet-transparante achtergrond en een berekende `z-index` hoger dan die van de andere kaders; inactieve kaders hebben een transparante achtergrond. Bij een rijwissel gaat de markering mee; in stand `in` blijven zoom en scroll gelijk.
+- *Inzoomen op verzoek:* klik (linkerknop, zonder Cmd/Ctrl/Shift) binnen de beeldbox van `overzicht` in stand `passend` → `in`, breedte = max(ware breedte, 3 × passende breedte) ±2 px, geen navigatie. Klik in het beeldvak búíten de beeldbox → niets (blijft `passend`, geen navigatie). Klik op het beeld in stand `in` → `passend`. Esc (niet in een tekstveld) → `passend`. Klik op een `uitsnede` met `data-code` → `in`, het kader van die tegel overlapt het zichtbare deel van het vak (≥ 8 px), ook als de stand al `in` was; de rij van die code wordt actief.
+- *Maatwijziging:* verandert de maat van het vak (venster), dan voldoet `passend` daarna weer aan de passend-regel; in stand `in` blijven breedte (±2 px) en `scrollTop`/`scrollLeft` (±2 px) gelijk.
+- *Concept ronde 7:* een concept onder `concept:<id>` met de vorm `{keurmerken, nutriscore, opmerking, nsGekozen}` dat al in `sessionStorage` staat vóór het laden, wordt na het klaar-teken getoond (keuzes en opmerking) en gaat vóór op de serverstand.
+
+### Stap 4 — falende tests (worker B, subagent)
+
+| criterium | tests (`R8:` = `tests/test_ronde8_browser_20261102.py`) | functies (gevallen) | prio |
+|---|---|---:|---|
+| Passend: één kant ±2 px, andere past, geen scroll, gecentreerd; 200×3920 en 4096×780 × 1440×800 / 1920×970 / 1280×700 | R8: `test_r8_passend_hele_etiket_in_beeld` | 1 (6) | P0 |
+| Klein etiket vergroot | R8: `test_r8_klein_etiket_wordt_vergroot` | 1 (2) | P0 |
+| Geen automatisch inzoomen | R8: `test_r8_geen_automatisch_inzoomen` | 1 (1) | P0 |
+| Markering alle kaders van de actieve rij (ook gedeelde tegel), volgt ↑/↓ ook ingezoomd | R8: `test_r8_markering_alle_kaders_van_actieve_rij` | 1 (1) | P1 |
+| Klik op beeld → `in`; klik op ingezoomd beeld / Esc → `passend` | R8: `test_r8_klik_op_beeld_zoomt_in_en_terug_naar_passend` | 1 (3) | P1 |
+| Klik in de witte rand doet niets | R8: `test_r8_klik_in_witte_rand_doet_niets` | 1 (3) | P1 |
+| Uitsnede → `in` op haar kader, ook vanuit `in` | R8: `test_r8_uitsnede_zoomt_in_op_haar_kader_ook_vanuit_in` | 1 (2) | P1 |
+| Maatwijziging passend / ingezoomd | R8: `test_r8_maatwijziging_passend_blijft_passend`, `…ingezoomd_houdt_zoom_en_scroll` | 2 (4) | P2 |
+| Concept in ronde-7-vorm gaat vóór | R8: `test_r8_concept_van_ronde_7_gaat_voor_op_serverstand` | 1 (1) | P0 |
+
+Totaal ronde 8: 10 functies, 23 gevallen. **Ronde-7-tests aangepast aan het nieuwe contract:** `test_r7_beginstand_passend_of_breedte` (overal `passend`; `breedte`-tak weg, passend-asserts behouden), `test_r7_klik_zoomt_in_en_esc_en_wissel_terug` (begin en na wissel `passend`; middenpunt-controle alleen op het brede etiket, zoals de verduidelijking van ronde 7); `test_r7_breedte_scrollt_naar_bovenste_kader_niet_eerste_in_hint` en `test_r7_resize_in_breedte_houdt_de_scrollpositie` vervallen (vervangen door de uitsnede- en maatwijzigingtests van ronde 8; de fixture `OMGEKEERD` verhuisde als `HOOG`). Namen van ronde-7-tests blijven voor de trace.
+
+Al groen vóór de bouw (gedrag dat ronde 7 al had en het contract houdt): `klein…[hoogte-raakt]`, `witte_rand…[breed-rand-boven-onder]`, `uitsnede…[breed]`, `ingezoomd…[breed]`, `concept…`.
+
+### Rode run (02-11-2026)
+
+```
+cd _bmad-output/planning-artifacts/spike-getrainde-detector && uv run --group dev pytest -q -p no:cacheprovider
+23 failed, 807 passed, 2 skipped
+```
+
+Rood: ronde 8 18 van 23, ronde 7 5 (alle op `breedte` waar nu `passend` hoort). Geen `test.skip()`. **Volgende stap:** `bmad-build`.
+
+### Na de bouw (bmad-build ronde 8, route oneshot, reviewpatches)
+
+Bouw zonder testwijziging groen (830 passed). Blind Hunter (12 bevindingen; 10 doorgevoerd, 2 verworpen) voegde toe (bindend): de passende maat wordt gemeten nadat het beeld eerst gekrompen is (scrollbalken van een ingezoomd beeld tellen niet mee); de zoomcursor staat alleen op het etiket. Tests erbij in `tests/test_ronde8_browser_20261102.py`: `met_scrollbalken_terug_naar_passend` (2), `met_scrollbalken_tweede_uitsnede_houdt_de_zoombreedte` (eigen Chromium zonder `--hide-scrollbars`, via dezelfde Playwright-instantie), `uitsnede_zet_haar_kader_zo_veel_mogelijk_in_het_midden` (2), `zoomcursor_alleen_op_het_etiket`, en een klein etiket met twee uitsneden (`KLEIN2`) in de uitsnedetest. Totaal ronde 8: 14 functies, 30 gevallen. Trace run 11: PASS. Suite: **837 passed, 2 skipped, 0 failed** (2×). Buildspec: `_bmad-output/implementation-artifacts/spec-spike-getrainde-detector-ronde8.md`.

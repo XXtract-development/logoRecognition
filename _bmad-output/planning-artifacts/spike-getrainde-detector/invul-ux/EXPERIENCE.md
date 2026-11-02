@@ -66,12 +66,20 @@ Bestaande meldingsteksten blijven letterlijk staan, bijvoorbeeld "Kies eerst bij
 | "gewijzigd" | Zichtbaar precies als de code in `veranderd` zit, met dezelfde functie die ook bij opslaan `veranderd` bepaalt. |
 | Stand | `stand-<CODE>` in de rij: "mét 3/16 · zonder 12/50"; groen bolletje als beide gehaald. |
 | Nutri-Score-rij | Vijf aan/uit-letters (`ns-A`…`ns-E`) en "letter onleesbaar" (`ns-onleesbaar`). Ongewijzigd: checkboxes, zelfde bedienbaarheid als de radio-inputs. Een letter aan- of uitzetten zet "letter onleesbaar" uit; "letter onleesbaar" aan laat de letters staan maar gedempt (opgeslagen wordt dan "onleesbaar"). |
-| Etiketbeeld | Beginstand **passend**: is het etiket hoogstens 3× zo hoog als breed, dan past het hele etiket in het vak; is het hoger, dan vult het de breedte van het vak en scrollt het vak verticaal, beginnend bij het bovenste AI-kader (anders bovenaan). Klik = **ingezoomd** op het aangeklikte punt: breedte = max(ware breedte, 3× de passende breedte), het vak scrollt; nogmaals klikken of Esc = terug naar de beginstand. Cmd/Ctrl/middenklik opent de volledige resolutie (`data-testid="volledig"` blijft de link om `data-testid="overzicht"`). Kaders op de plek van elke uitsnede, in procenten van de ware maat, zodat ze met het beeld meeschalen; het kader van de actieve rij valt op. Kaders verschijnen pas als het beeld van het getoonde etiket geladen is. |
-| Uitsnede | Klik = het beeld zoomt in op die plek en de rij van dat keurmerk wordt actief. Uitsneden van de actieve rij vallen op. Is code of tegelnummer niet uit de bestandsnaam te lezen of buiten het tegelvlak, dan staat de uitsnede er zonder naam, kader en rijkoppeling. Geen uitsneden → kolom vervalt en het beeld wordt breder. |
+| Etiketbeeld | Zie de paragraaf *Etiketbeeld* onder deze tabel. Cmd-klik (Mac), Ctrl-klik of middenklik opent de volledige resolutie (`data-testid="volledig"` blijft de link om `data-testid="overzicht"`). |
+| Uitsnede | Klik = het beeld zoomt in op het AI-kader van die uitsnede (zie *Etiketbeeld*) en de rij van dat keurmerk wordt actief. Uitsneden van de actieve rij vallen op. Is code of tegelnummer niet uit de bestandsnaam te lezen of buiten het tegelvlak, dan staat de uitsnede er zonder kader en rijkoppeling (de naam staat er alleen als code én tegelnummer geldig zijn; vóór het laden van het beeld al op grond van de bestandsnaam). Geen uitsneden → kolom vervalt en het beeld wordt breder. |
 | Hoofdknop "Bevestigen en volgende" (`#volgende`) | Binnen `#keuzes`. Doet precies wat sneltoets `b` doet: bevestigen zoals ingevuld en meteen naar het volgende etiket (volgend nummer, niet het volgende open etiket); is niet alles gekozen, dan niet opslaan en niet verder. Op het laatste etiket: bevestigen en blijven staan. |
 | Knop "Bevestigen" (`#opslaan`) | Ongewijzigd: bevestigt en blijft op dit etiket (handig om een eerder etiket te corrigeren). |
 | Knop "Etiket onleesbaar" (`#onleesbaar`) | Ongewijzigd: slaat status onleesbaar op en blijft staan. |
 | Opmerkingveld | Ongewijzigd: elke toetsaanslag als concept; sneltoetsen werken hier nooit. 2 regels hoog. |
+
+### Etiketbeeld
+
+Ronde 8 (Friso 02-11-2026, letterlijk: "Het etiket is te groot, deze moet inzoomen tot 100% breedte of hoogte.").
+
+- **Beginstand passend:** bij elk getoond etiket staat het hele etiket in het beeldvak: schaal = min(binnenbreedte vak / breedte etiket, binnenhoogte vak / hoogte etiket), met de binnenmaat van het vak (zonder rand of scrollbalk). Het etiket raakt dus 100% van de breedte óf de hoogte, verhouding behouden, niets afgesneden, geen scrollbalk, in beide richtingen gecentreerd. Een klein etiket (bijvoorbeeld 428×354) wordt vergroot; een heel hoog etiket (bijvoorbeeld 842×9179) wordt een smalle, volledige strook; details via de uitsneden of door in te zoomen.
+- **AI-kaders:** op de plek van elke uitsnede een AI-kader, in procenten van de ware maat zodat het met het beeld meeschaalt. Alle AI-kaders van de actieve rij zijn gemarkeerd en liggen bovenop de andere (ook als twee keurmerken dezelfde tegel delen). Bij een rijwissel (↑/↓, klik of Tab in een rij) gaat de markering naar de AI-kaders van de nieuwe actieve rij; het beeld zelf zoomt of verschuift niet, ook niet als het ingezoomd is. AI-kaders verschijnen pas als het beeld van het getoonde etiket geladen is; het beeld wordt pas zichtbaar in de beginstand.
+- **Inzoomen alleen op verzoek:** klik op het beeld = ingezoomd op het aangeklikte punt; breedte = max(ware breedte, 3× de passende breedte), met de passende breedte berekend uit beeld- en vakmaat. Een gewone klik naast het etiket (in de witte rand) doet niets; daar staat ook geen zoomcursor. Klik op een uitsnede = ingezoomd met dat AI-kader zo veel mogelijk in het midden, ook als het beeld al ingezoomd is. Alleen een klik op het ingezoomde beeld of Esc gaat terug naar passend.
 
 ## State Patterns
 
@@ -91,7 +99,9 @@ Bestaande meldingsteksten blijven letterlijk staan, bijvoorbeeld "Kies eerst bij
 | Opslaan mislukt | Bestaande foutmelding; invoer en concept blijven; de etiketcode staat erbij als het een ander etiket is dan het getoonde. |
 | Laatste etiket | `b` en "Bevestigen en volgende" slaan op en blijven staan. |
 | Alle etiketten afgehandeld | Voortgang "352 van 352 etiketten afgehandeld"; verder niets bijzonders. |
-| Ingezoomd | Beeldvak scrollt intern; Esc of klik gaat terug naar de beginstand; een ander etiket begint altijd in de beginstand. |
+| Passend (beginstand) | Zie *Etiketbeeld*. |
+| Ingezoomd | Alleen op verzoek (zie *Etiketbeeld*). Het beeldvak scrollt intern; een ander etiket begint altijd passend. |
+| Beeldvak verandert van maat (venster, browserzoom) | Passend: opnieuw passend. Ingezoomd: zoom en scrollpositie blijven. |
 
 ## Interaction Primitives
 
@@ -100,12 +110,12 @@ Sneltoetsen werken niet zolang de cursor in een tekstveld staat, niet in combina
 | Toets | Werking |
 |---|---|
 | ← / → | vorig / volgend etiket (ook als een segmentknop of letter de focus heeft) |
-| ↑ / ↓ | vorige / volgende keurmerkrij actief maken |
+| ↑ / ↓ | vorige / volgende keurmerkrij actief maken; de markering gaat naar de AI-kaders van die rij (het beeld zelf zoomt of verschuift niet) |
 | 1 / 2 / 3 (een van de 8 rijen actief) | aanwezig / afwezig / onzeker; daarna wordt de volgende rij actief, maar nooit automatisch de Nutri-Score-rij (na de laatste van de 8 blijft die actief) |
 | 1–5 en 0 (Nutri-Score-rij actief) | letter A–E aan/uit; 0 = letter onleesbaar aan/uit; geen automatische rijwissel |
 | 4 / 5 / 0 buiten de Nutri-Score-rij | niets |
 | b | bevestigen zoals ingevuld en door naar het volgende etiket |
-| Esc | terug naar de beginstand van het beeld |
+| Esc | beeld terug naar passend |
 
 Een keuze via het toetsenbord volgt exact dezelfde weg als een klik: concept bewaren en direct opslaan als tussenstand. Bij het openen van een etiket is de eerste rij actief. Enter of Spatie op de hoofdknop met focus doet wat een klik doet; daarom haalt het wisselen van etiket de focus van die knop (Foundation).
 
@@ -136,7 +146,7 @@ Een scherm van 1440×900 geeft in een browser met adresbalk en bladwijzers een v
 ### Flow 1 — Friso keurt een etiket goed waar de AI gelijk heeft
 
 1. Friso opent de pagina; die springt naar het eerste open etiket.
-2. Links ziet hij het hele etiket met twee tealkaders; in de middenkolom de twee uitsneden "EU-biologisch".
+2. Links staat het hele etiket passend in beeld, met twee AI-kaders; die van EU-biologisch (de actieve rij) zijn gemarkeerd. In de middenkolom de twee uitsneden "EU-biologisch".
 3. In het paneel is de rij EU-biologisch teal gemarkeerd; "Aanwezig" is gekozen en draagt het AI-merkje. Nutri-Score staat op C met AI-merkje.
 4. Hij kijkt naar de uitsneden en ziet het EU-blad.
 5. **Hoogtepunt:** hij drukt `b`. Het etiket is bevestigd, de voortgang telt op en het volgende etiket staat in beeld, zonder een keer te scrollen.
@@ -145,10 +155,10 @@ Fout: opslaan mislukt → rode melding met de etiketcode, concept blijft; met �
 
 ### Flow 2 — Friso corrigeert de AI
 
-1. Op het volgende etiket staat Groene Punt op "Afwezig", maar hij ziet het logo rechtsonder op het etiket.
+1. Op het volgende etiket staat Groene Punt op "Afwezig", maar in het passende beeld ziet hij rechtsonder iets dat erop lijkt.
 2. Hij klikt op die plek in het beeld; het beeld zoomt daar in. Het is Groene Punt.
 3. Hij klikt in de rij Groene Punt op "Aanwezig" (of: ↓ naar de rij en `1`). De rij toont "gewijzigd"; de keuze is al als tussenstand opgeslagen.
-4. Esc brengt het beeld terug in de beginstand.
+4. Esc brengt het beeld terug naar passend.
 5. **Hoogtepunt:** "Bevestigen en volgende"; `veranderd` bevat GREEN_DOT, het volgende etiket staat klaar.
 
 Fout: hij drukt `b` terwijl hij nog een opmerking typt → er gebeurt niets in het veld behalve de letter b; om te bevestigen klikt hij eerst buiten het veld.

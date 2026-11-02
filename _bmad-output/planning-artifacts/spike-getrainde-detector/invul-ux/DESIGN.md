@@ -8,6 +8,7 @@ sources:
   - ../toetsset.md
 colors:
   navy: '#2F5A7A'
+  navy-vulling: 'rgba(47, 90, 122, 0.18)'  # {colors.navy} op 18%
   teal: '#54949E'
   teal-licht: '#EAF4F5'
   groen: '#B7D945'
@@ -75,6 +76,7 @@ components:
     border: '{colors.teal}'
   tegelkader-actief:
     border: '{colors.navy}'
+    background: '{colors.navy-vulling}'
   knop-hoofd:
     background: '{colors.navy}'
     foreground: '{colors.wit}'
@@ -131,7 +133,7 @@ Geen schaduwen. Vlakken onderscheiden zich door `{colors.wit}` op `{colors.vlak}
 ## Components
 
 - **Kopregel** — `{components.kopregel}`. Eén regel, nooit afbreken: titel, voortgang ("9 van 352 etiketten afgehandeld"), positie ("10 / 352"), statusmerkje van het etiket (bevestigd / onleesbaar), etiketcode in `{typography.code}`. Bij te weinig ruimte wordt eerst de titel en daarna de etiketcode afgekapt met een beletselteken. De sneltoetsen staan onderaan het paneel in `{typography.klein}`.
-- **Etiketbeeld** — wit vlak; beginstand en zoom zoals EXPERIENCE.md (Etiketbeeld) beschrijft; over het beeld `{components.tegelkader}`-kaders (2 px) op de plek van elke AI-uitsnede, het kader van de actieve rij in `{components.tegelkader-actief}` (3 px). Ingezoomd: cursor `zoom-out`; beginstand: cursor `zoom-in`. Kan het beeld niet laden: gedempte tekst in het midden van het vak.
+- **Etiketbeeld** — wit vlak; beginstand en zoom zoals EXPERIENCE.md (Etiketbeeld) beschrijft; over het beeld `{components.tegelkader}`-kaders (2 px) op de plek van elke AI-uitsnede, alle kaders van de actieve rij in `{components.tegelkader-actief}`: 3 px navy rand en lichte navy vulling, bovenop de andere kaders, zodat ze ook op een smalle strook opvallen; inactieve kaders hebben geen vulling. Beginstand passend (hele etiket, 100% breedte of hoogte van het vak, in beide richtingen gecentreerd, geen scrollbalk): cursor `zoom-in`; ingezoomd: cursor `zoom-out`. Kan het beeld niet laden: gedempte tekst in het midden van het vak.
 - **Uitsnede** — vierkant beeld (max. kolombreedte) met 2 px teal rand en eronder de keurmerknaam in `{typography.klein}`; uitsneden van de actieve rij krijgen een navy rand.
 - **Keurmerkrij** — links een kolom van `{spacing.naamkolom}` met op de eerste regel de naam (vet) en zo nodig "gewijzigd" of "AI: —" / "AI: geen letter", daaronder in `{typography.klein}` `{colors.tekst-gedempt}` alleen de stand ("mét 3/16 · zonder 12/50", groen bolletje als gehaald); rechts de segmentknop. AI zag het keurmerk → linkerrand 3 px teal en achtergrond `{colors.teal-licht}`. Actieve rij → outline 2 px navy. Gewijzigd t.o.v. AI → woordje "gewijzigd" in navy, `{typography.klein}`, naast de naam.
 - **Segmentknop** — drie aaneengesloten knoppen Aanwezig / Afwezig / Onzeker (`{components.segmentknop}`); gekozen = `{components.segmentknop-gekozen}`. De knop met de AI-voorinvulling draagt rechtsboven een `{components.ai-merkje}` "AI". De echte radio-input ligt onzichtbaar over de knop (zelfde afmeting). Zichtbare focusring bij toetsenbordbediening.

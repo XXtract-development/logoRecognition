@@ -30,14 +30,15 @@
   /* etiketbeeld */
   .beeld { flex: 1; min-width: 0; position: relative; overflow: hidden; }
   #beeldvak { position: absolute; inset: 0; overflow: auto; }
-  #beeldvak a { display: block; cursor: zoom-in; }
-  #beeldvak[data-stand="in"] a { cursor: zoom-out; }
+  #beeldvak a { display: block; cursor: default; }
+  #omhulsel { cursor: zoom-in; }
+  #beeldvak[data-stand="in"] #omhulsel { cursor: zoom-out; }
   #omhulsel { position: relative; width: 100%; margin: 0 auto; }
   [data-testid="overzicht"] { display: block; width: 100%; height: auto; }
   [data-testid="overzicht"].laden { visibility: hidden; }
   #kaders { position: absolute; inset: 0; pointer-events: none; }
-  [data-testid="kader"] { position: absolute; border: 2px solid var(--teal); }
-  [data-testid="kader"][data-actief="true"] { border: 3px solid var(--navy); }
+  [data-testid="kader"] { position: absolute; border: 2px solid var(--teal); background: transparent; z-index: 1; }
+  [data-testid="kader"][data-actief="true"] { border: 3px solid var(--navy); background: color-mix(in srgb, var(--navy) 18%, transparent); z-index: 2; }
   [data-testid="beeld-fout"] { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
                                color: var(--gedempt); }
 
@@ -148,7 +149,7 @@ const TEGEL = 1024, OVERLAP = 256;  // zelfde regel als herken.tegels
 
 let items = [], records = {}, idx = 0, nsGekozen = false, keten = Promise.resolve();
 let actief = 0;                                  // index in KEURMERKEN van de actieve rij
-let beeld = null, stand = null, w0 = 0;          // ware maat + tegels van het getoonde beeld; beeldstand; breedte in de beginstand
+let beeld = null, stand = null;                 // ware maat + tegels van het getoonde beeld; beeldstand (passend | in)
 let uitsneden = [];
 let fout = null;                                 // {id, tekst}: mislukte opslag, blijft staan tot dat etiket wél opslaat                              // per hint: {fig, img, code, tegel} (code/tegel uit de bestandsnaam)
 const $ = (s) => document.querySelector(s);
@@ -229,27 +230,26 @@ function zetStandBeeld(s) {
   $("#beeldvak").setAttribute("data-stand", s);
 }
 
-function beginstand() {
-  if (!beeld) return;
+function passendeMaat() {  // ronde 8: hele etiket, 100% van de binnenbreedte óf -hoogte van het vak (wat het eerst raakt)
   const vak = $("#beeldvak"), om = $("#omhulsel");
-  vak.scrollLeft = 0;
-  if (beeld.h <= 3 * beeld.w) {  // passend: het hele etiket in het vak
-    om.style.width = Math.floor(Math.min(vak.offsetWidth, vak.offsetHeight * beeld.w / beeld.h)) + "px";
-    zetStandBeeld("passend");
-    vak.scrollTop = 0;
-  } else {  // breedte: vult de breedte, het vak scrollt verticaal vanaf het eerste kader
-    om.style.width = "100%";
-    zetStandBeeld("breedte");
-    const y0 = (k) => Number(k.getAttribute("data-vak").split(",")[1]);
-    const eerste = [...document.querySelectorAll('[data-testid="kader"]')].sort((a, b) => y0(a) - y0(b))[0];
-    vak.scrollTop = eerste ? Math.max(0, eerste.offsetTop - 8) : 0;
-  }
+  om.style.width = "0px"; om.style.marginTop = "0px";  // eerst krimpen: meten zonder scrollbalken van een ingezoomd beeld
+  const schaal = Math.min(vak.clientWidth / beeld.w, vak.clientHeight / beeld.h);
+  return {w: beeld.w * schaal, h: beeld.h * schaal, vak};  // geen afronding: anders raakt een smalle strook de hoogte niet
+}
+
+function beginstand() {  // altijd passend, in beide richtingen gecentreerd; inzoomen alleen op verzoek
+  if (!beeld) return;
+  const {w, h, vak} = passendeMaat(), om = $("#omhulsel");
+  om.style.width = w + "px";
+  om.style.marginTop = Math.max(0, Math.floor((vak.clientHeight - h) / 2)) + "px";
+  zetStandBeeld("passend");
+  vak.scrollTop = 0; vak.scrollLeft = 0;
 }
 
 function zoomIn(fx, fy) {  // fx, fy = fractie van het beeld die in het midden van het vak moet komen
-  const vak = $("#beeldvak"), img = tid("overzicht");
-  if (stand !== "in") w0 = img.getBoundingClientRect().width;
-  $("#omhulsel").style.width = Math.max(beeld.w, 3 * w0) + "px";
+  const vak = $("#beeldvak"), img = tid("overzicht"), om = $("#omhulsel");
+  om.style.width = Math.max(beeld.w, 3 * passendeMaat().w) + "px";  // passende breedte zonder scrollbalken gemeten
+  om.style.marginTop = "0px";
   zetStandBeeld("in");
   const r = img.getBoundingClientRect();
   vak.scrollLeft = fx * r.width - vak.clientWidth / 2;
@@ -375,6 +375,7 @@ function toon() {
   vak.removeAttribute("data-stand");
   vak.scrollTop = 0; vak.scrollLeft = 0;
   $("#omhulsel").style.width = "100%";
+  $("#omhulsel").style.marginTop = "0px";
   $("#kaders").replaceChildren();
   tid("beeld-fout").hidden = true;
   img.classList.add("laden");
@@ -544,7 +545,9 @@ function koppel() {
     if (stand === "in") return beginstand();
     if (e.detail === 0) return zoomIn(0.5, 0.5);  // Enter op de link: geen muispositie
     const r = tid("overzicht").getBoundingClientRect();
-    zoomIn((e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height);
+    const fx = (e.clientX - r.left) / r.width, fy = (e.clientY - r.top) / r.height;
+    if (fx < 0 || fx > 1 || fy < 0 || fy > 1) return;  // klik naast het etiket (witte rand): niets
+    zoomIn(fx, fy);
   });
   tid("uitsneden").addEventListener("click", (e) => {
     const u = uitsneden.find((x) => x.fig.contains(e.target));
