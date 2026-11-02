@@ -1,14 +1,16 @@
 """Nachttraining (CAP-18; trainingsset-en-herkenning §12). Alleen standaardbibliotheek (plus `beelden.veilig_doel`).
 
 Een trainingsfase draait alleen tussen 22:00 en 07:30 (lokale tijd van deze Mac). `plan` legt de opdracht vast in
-`<uit>/nacht.json` en schrijft een launchd-agent die elke dag om 22:00 `draai` start. `draai` start de opdracht onder
-`caffeinate -i`, met `--hervat` het nieuwste leesbare `checkpoint_<n>.ckpt` van de eigen uitvoermap, stuurt om 07:30
-SIGTERM en na 300 s SIGKILL, ruimt oude checkpoints op en bewaakt stoppunt 1 zelf. Laden van de agent
-(`launchctl bootstrap`) doet de hoofdsessie, niet dit script.
+`<uit>/nacht.json` en schrijft een launchd-agent (label per uitvoermap) die elke dag om 22:00 `draai` start. `draai`
+start de opdracht onder `caffeinate -i`, met `--hervat` het nieuwste leesbare `checkpoint_<n>.ckpt` van de eigen
+uitvoermap, stuurt om 07:30 SIGTERM en na 300 s SIGKILL, ruimt oude checkpoints op en bewaakt stoppunt 1 zelf. Alleen
+`draai` schrijft `nacht-status.json` (en `vrijgeven` wist daar stoppunt 1). Laden van de agent (`launchctl bootstrap`)
+doet de hoofdsessie, niet dit script.
 
   python nacht.py plan --uit <map> --epochs 20 --fase echt [--plist <pad>] -- <python> train.py train ... --uit <map>
   python nacht.py draai --uit <map>        (launchd, dagelijks 22:00)
-  python nacht.py status --uit <map>
+  python nacht.py status --uit <map>       (alleen lezen)
+  python nacht.py stop --uit <map>         (handmatige pauze: SIGTERM naar het trainingsproces, uitkomst gepauzeerd)
   python nacht.py vrijgeven --uit <map>    (na een besluit van Friso over stoppunt 1)
 """
 import argparse
@@ -16,6 +18,7 @@ import json
 import os
 import plistlib
 import re
+import signal
 import subprocess
 import sys
 import time as _time
@@ -99,11 +102,19 @@ def opruimen(uit):
 
 # --- plan en launchd ------------------------------------------------------------------------------------------------
 
+def label(uit):
+    """launchd-label per uitvoermap, zodat twee fasen elk hun eigen agent krijgen."""
+    return f"{LABEL}.{Path(uit).name}"
+
+
 def plan(uit, opdracht, epochs, fase):
-    """Legt de trainingsopdracht van één fase vast in `<uit>/nacht.json`; `--hervat` zet `draai` zelf."""
+    """Legt de trainingsopdracht van één fase vast in `<uit>/nacht.json`; `--hervat` zet `draai` zelf. Weigert een
+    uitvoermap die al een plan, een status of checkpoints heeft."""
     if "--hervat" in opdracht:
         raise ValueError("--hervat hoort niet in de opdracht: draai kiest zelf het hervatpunt")
     uit = veilig_doel(Path(uit))
+    if (uit / "nacht.json").exists() or (uit / "nacht-status.json").exists() or checkpoints(uit):
+        raise ValueError(f"{uit} heeft al een plan, een status of checkpoints; kies een lege uitvoermap")
     uit.mkdir(parents=True, exist_ok=True)
     data = {"opdracht": [str(c) for c in opdracht], "epochs": int(epochs), "fase": fase,
             "venster": [BEGIN.strftime("%H:%M"), EIND.strftime("%H:%M")], "uit": str(uit)}
@@ -114,7 +125,7 @@ def plan(uit, opdracht, epochs, fase):
 def plist(python, script, uit):
     """launchd-agent: dagelijks om 22:00 `draai` voor deze uitvoermap; logs in de uitvoermap."""
     return plistlib.dumps({
-        "Label": LABEL,
+        "Label": label(uit),
         "ProgramArguments": [str(python), str(script), "draai", "--uit", str(uit)],
         "StartCalendarInterval": {"Hour": BEGIN.hour, "Minute": BEGIN.minute},
         "WorkingDirectory": str(Path(script).resolve().parent),
@@ -134,9 +145,8 @@ def _staat(uit):
     return json.loads(pad.read_text()) if pad.exists() else {}
 
 
-def status(uit, nu):
-    """Stand van de fase (bewaard in `<uit>/nacht-status.json`): epochs klaar/totaal, gemiddelde epochduur en de
-    verwachte einddatum in vensteruren; `stoppunt_1` met reden, of None."""
+def _stand(uit, nu):
+    """Stand van de fase, uit de checkpoints en de opgeslagen status. Schrijft niets."""
     uit = Path(uit)
     p = json.loads((uit / "nacht.json").read_text())
     s = _staat(uit)
@@ -150,6 +160,17 @@ def status(uit, nu):
               "verwacht_klaar": _iso(verwacht)})
     for k in ("eerste_start", "laatste_start", "laatste_stop", "uitkomst", "stoppunt_1"):
         s.setdefault(k, None)
+    return s
+
+
+def status(uit, nu):
+    """Stand van de fase (alleen lezen): epochs klaar/totaal, gemiddelde epochduur en de verwachte einddatum in
+    vensteruren; `stoppunt_1` met reden, of None. `draai` is de enige die `nacht-status.json` schrijft."""
+    return _stand(uit, nu)
+
+
+def _bijwerken(uit, nu):
+    s = _stand(uit, nu)
     _bewaar(uit, s)
     return s
 
@@ -168,7 +189,7 @@ def vrijgeven(uit):
     _bewaar(uit, s)
 
 
-# --- draai ----------------------------------------------------------------------------------------------------------
+# --- slot, pauze en draai -------------------------------------------------------------------------------------------
 
 def _levend(pid):
     try:
@@ -178,6 +199,41 @@ def _levend(pid):
     except PermissionError:
         return True
     return True
+
+
+def _ps_command(pid):
+    try:
+        return subprocess.run(["ps", "-p", str(pid), "-o", "command="], capture_output=True, text=True).stdout
+    except OSError:
+        return ""
+
+
+def _slot_pid(uit, ps=_ps_command):
+    """Het pid in `nacht.slot` als dat nog een trainingsproces is (`train.py` in de opdrachtregel). Een verouderd
+    slot (dood pid, of een hergebruikt pid dat geen trainingsproces is) wordt opgeruimd en telt niet als bezet."""
+    slot = Path(uit) / "nacht.slot"
+    if not slot.exists():
+        return None
+    try:
+        pid = int(slot.read_text().strip())
+    except ValueError:
+        pid = None
+    if pid and _levend(pid) and "train.py" in ps(pid):
+        return pid
+    slot.unlink(missing_ok=True)
+    return None
+
+
+def stop(uit, kill=os.kill, ps=_ps_command):
+    """Handmatige pauze: SIGTERM naar het trainingsproces in het slot. `draai` legt daarna de uitkomst 'gepauzeerd'
+    vast (via het stopbestand). Geeft het pid, of None als er geen draai loopt."""
+    uit = Path(uit)
+    pid = _slot_pid(uit, ps)
+    if pid is None:
+        return None
+    veilig_doel(uit / "nacht.stop").write_text(f"{datetime.now().isoformat(timespec='seconds')}\n")
+    kill(pid, signal.SIGTERM)
+    return pid
 
 
 def _nieuw(uit, voor):
@@ -190,7 +246,17 @@ def _nieuw(uit, voor):
     return sorted(uit_)
 
 
-def draai(uit, nu=datetime.now, popen=subprocess.Popen, slaap=_time.sleep, poll_s=60):
+def _stop_proces(proces):
+    """SIGTERM, na STOP_WACHT s SIGKILL; geeft de returncode."""
+    proces.terminate()
+    try:
+        return proces.wait(timeout=STOP_WACHT)
+    except subprocess.TimeoutExpired:
+        proces.kill()
+        return proces.wait(timeout=60)
+
+
+def draai(uit, nu=datetime.now, popen=subprocess.Popen, slaap=_time.sleep, poll_s=60, ps=_ps_command):
     """Eén nachtrun van de fase in `uit`; geeft de uitkomst: klaar, stoppunt_1, buiten_venster, bezet, afgerond,
     gepauzeerd of fout (trainingsset §12)."""
     uit = Path(uit)
@@ -201,19 +267,12 @@ def draai(uit, nu=datetime.now, popen=subprocess.Popen, slaap=_time.sleep, poll_
     start = nu()
     if not in_venster(start):
         return "buiten_venster"
-    slot = uit / "nacht.slot"
-    if slot.exists():
-        try:
-            pid = int(slot.read_text().strip())
-        except ValueError:
-            pid = None
-        if pid and _levend(pid):
-            return "bezet"
-    veilig_doel(slot).write_text(f"{os.getpid()}\n")  # ponytail: geen O_EXCL; launchd start hoogstens één draai per dag
+    if _slot_pid(uit, ps) is not None:
+        return "bezet"
     try:
         return _draai(uit, start, nu, popen, slaap, poll_s)
     finally:
-        slot.unlink(missing_ok=True)
+        (uit / "nacht.slot").unlink(missing_ok=True)
 
 
 def _draai(uit, start, nu, popen, slaap, poll_s):
@@ -228,12 +287,20 @@ def _draai(uit, start, nu, popen, slaap, poll_s):
     _bewaar(uit, s)
     voor = {pad: pad.stat().st_mtime for _, pad in checkpoints(uit)}
     eind = einde(start)
+    stopbestand = uit / "nacht.stop"
+    stopbestand.unlink(missing_ok=True)
+    gezien, gestopt, rc, fout = 0, False, None, None
     log = open(veilig_doel(uit / "nacht-train.log"), "a", encoding="utf-8")
     try:
         proces = popen(opdracht, stdout=log, stderr=subprocess.STDOUT, cwd=str(HIER))
-        cafe = popen(["caffeinate", "-i", "-w", str(proces.pid)])
-        gezien, gestopt, rc = 0, False, None
-        while True:
+        veilig_doel(uit / "nacht.slot").write_text(f"{proces.pid}\n")  # het slot: het trainingsproces zelf
+        cafe = None
+        try:
+            cafe = popen(["caffeinate", "-i", "-w", str(proces.pid)])
+        except OSError as e:  # het trainingsproces draait al; zonder caffeinate geen verweesde trainer laten lopen
+            fout = f"caffeinate kon niet starten: {e}"
+            rc = _stop_proces(proces)
+        while fout is None:
             rc = proces.poll()
             gezien = _registreer(uit, voor, start, gezien)
             if rc is not None:
@@ -241,21 +308,20 @@ def _draai(uit, start, nu, popen, slaap, poll_s):
             t = nu()
             if t >= eind:  # 07:30: PyTorch Lightning stopt op een batchgrens; het lopende epoch gaat verloren
                 gestopt = True
-                proces.terminate()
-                try:
-                    rc = proces.wait(timeout=STOP_WACHT)
-                except subprocess.TimeoutExpired:
-                    proces.kill()
-                    rc = proces.wait(timeout=60)
+                rc = _stop_proces(proces)
                 break
             slaap(max(0.0, min(poll_s, (eind - t).total_seconds())))
         gezien = _registreer(uit, voor, start, gezien)
-        if cafe.poll() is None:
+        if cafe is not None and cafe.poll() is None:
             cafe.terminate()
     finally:
         log.close()
     stop = nu()
-    if rc == 0 and (uit / "train-resultaat.json").exists():
+    if stopbestand.exists():  # `stop` heeft het trainingsproces weggestuurd
+        gestopt = True
+    if fout:
+        uitkomst = "fout"
+    elif rc == 0 and (uit / "train-resultaat.json").exists():
         uitkomst = "afgerond"
     elif gestopt:
         uitkomst = "gepauzeerd"
@@ -263,29 +329,28 @@ def _draai(uit, start, nu, popen, slaap, poll_s):
         uitkomst = "fout"
     opruimen(uit)
     s = _staat(uit)
-    s.update({"laatste_stop": _iso(stop), "uitkomst": uitkomst, "returncode": rc})
+    s.update({"laatste_stop": _iso(stop), "uitkomst": uitkomst, "returncode": rc, "reden_fout": fout})
     _bewaar(uit, s)
-    if uitkomst == "afgerond":
-        status(uit, stop)
-        return uitkomst
     reden = None
     duur = (stop - start).total_seconds()
     # ponytail: "volledig venster" = minstens 90% van het venster gelopen (launchd start soms iets later dan 22:00)
     if gestopt and not gezien and duur >= 0.9 * VENSTER_S:
         reden = f"een volledig venster ({duur / 3600:.1f} uur) zonder nieuw checkpoint"
+    elif not gezien and uitkomst != "afgerond":  # R10: elke run zonder nieuw checkpoint is een stoppunt
+        reden = "geen nieuw checkpoint in een run"
     elif any(d > MAX_EPOCH_S for d in (s.get("epoch_s", [])[-gezien:] if gezien else [])):
         reden = f"een epoch duurde langer dan {MAX_EPOCH_S / 3600:.1f} uur"
     else:
-        st = status(uit, stop)
+        st = _stand(uit, stop)
         if st["verwacht_klaar"] and datetime.fromisoformat(st["verwacht_klaar"]) > \
                 datetime.fromisoformat(st["eerste_start"]) + timedelta(days=MAX_NACHTEN):
             reden = f"verwachte einddatum {st['verwacht_klaar']} ligt meer dan {MAX_NACHTEN} nachten na de eerste start"
-    s = _staat(uit)
     if reden:
+        s = _staat(uit)
         s["stoppunt_1"] = reden
         _bewaar(uit, s)
-    status(uit, stop)
-    return "stoppunt_1" if reden else uitkomst
+    _bijwerken(uit, stop)
+    return uitkomst
 
 
 def _registreer(uit, voor, start, gezien):
@@ -315,8 +380,8 @@ def main(argv=None):
     pl.add_argument("--uit", required=True, type=Path)
     pl.add_argument("--epochs", required=True, type=int)
     pl.add_argument("--fase", required=True, choices=("nagemaakt", "echt"))
-    pl.add_argument("--plist", type=Path, help=f"standaard ~/Library/LaunchAgents/{LABEL}.plist")
-    for naam in ("draai", "status", "vrijgeven"):
+    pl.add_argument("--plist", type=Path, help="standaard ~/Library/LaunchAgents/<label per uitvoermap>.plist")
+    for naam in ("draai", "status", "vrijgeven", "stop"):
         sub.add_parser(naam).add_argument("--uit", required=True, type=Path)
     a = ap.parse_args(argv)
     if a.stap == "plan":
@@ -327,7 +392,7 @@ def main(argv=None):
         except ValueError as e:
             print(f"niet gepland: {e}", file=sys.stderr)
             return 2
-        doel = veilig_doel(a.plist or Path.home() / "Library" / "LaunchAgents" / f"{LABEL}.plist")
+        doel = veilig_doel(a.plist or Path.home() / "Library" / "LaunchAgents" / f"{label(a.uit)}.plist")
         doel.parent.mkdir(parents=True, exist_ok=True)
         doel.write_bytes(plist(sys.executable, Path(__file__).resolve(), a.uit.resolve()))
         print(f"gepland: {a.uit}/nacht.json; launchd-agent {doel} (laden: launchctl bootstrap gui/$(id -u) {doel})")
@@ -337,6 +402,12 @@ def main(argv=None):
         return 0 if uitkomst in ("klaar", "buiten_venster", "bezet", "afgerond", "gepauzeerd") else 1
     elif a.stap == "status":
         print(json.dumps(status(a.uit, datetime.now()), indent=1, sort_keys=True))
+    elif a.stap == "stop":
+        pid = stop(a.uit)
+        if pid is None:
+            print("geen draai actief: geen trainingsproces in het slot", file=sys.stderr)
+            return 1
+        print(f"SIGTERM naar trainingsproces {pid}; draai legt de uitkomst 'gepauzeerd' vast")
     else:
         vrijgeven(a.uit)
         print("stoppunt 1 vrijgegeven")

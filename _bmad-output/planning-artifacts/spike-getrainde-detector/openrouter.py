@@ -44,9 +44,10 @@ class RunStop(Exception):
 class EtiketFout(Exception):
     """Fout voor dit etiket; telt als geen melding (meetregels §5)."""
 
-    def __init__(self, klasse):
+    def __init__(self, klasse, kosten=0.0):
         super().__init__(klasse)
         self.klasse = klasse
+        self.kosten = kosten  # al gefactureerde kosten van een ongeldig antwoord (R26)
 
 
 def delen(groottes, vast=0, max_aantal=16):
@@ -149,7 +150,7 @@ class Client:
             antwoord = _antwoord(env, schema)
             log.info("antwoord rol=%s geldig=%s kosten=%.5f", self.rol, antwoord is not None, prijs)
             if antwoord is None:
-                raise EtiketFout("antwoord_ongeldig")
+                raise EtiketFout("antwoord_ongeldig", kosten=prijs)
             return antwoord, prijs
 
     def zdr_proef(self, beeld_png):

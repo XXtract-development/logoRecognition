@@ -222,7 +222,7 @@ def voorinvulling(client, beeld, tegels):
             letters |= {x for x in a["nutriscore"] if x in ("A", "B", "C", "D", "E")}
             gelijkend |= set(a["gelijkend"])
     except openrouter.EtiketFout as e:
-        return {**leeg, "kosten": prijs, "fout": e.klasse}
+        return {**leeg, "kosten": prijs + e.kosten, "fout": e.klasse}
     except (TypeError, AttributeError, KeyError, ValueError):  # antwoord niet in de verwachte vorm
         return {**leeg, "kosten": prijs, "fout": "antwoord_ongeldig"}
     return {**leeg, "keurmerken": keurmerken, "nutriscore": sorted(letters),
@@ -258,7 +258,7 @@ def voorinvulling_r9(client, beeld, tegels, index):
                     hint.setdefault(k["code"], set()).update(index[r.start + i] for i in k["tegels"] if 0 <= i < len(deel))
             gelijkend |= set(a["gelijkend"])
     except openrouter.EtiketFout as e:
-        return {**leeg_, "kosten": prijs, "fout": e.klasse}
+        return {**leeg_, "kosten": prijs + e.kosten, "fout": e.klasse}
     except (TypeError, AttributeError, KeyError, ValueError, IndexError):  # antwoord niet in de verwachte vorm
         return {**leeg_, "kosten": prijs, "fout": "antwoord_ongeldig"}
     return {**leeg_, "keurmerken": keurmerken, "hinttegels": {c: sorted(s) for c, s in hint.items() if s},
@@ -566,9 +566,12 @@ def main(argv=None):
 
 
 def _hints(im, vakken, doc, hinttegels, map_):
-    """Hintbeelden (PNG, hoogstens 400 px) van de eerste twee hinttegels per code; bestaande blijven staan."""
+    """Hintbeelden (PNG, hoogstens 400 px) van de eerste twee hinttegels per code; bestaande blijven staan. Alleen de
+    vier nieuwe codes van ronde 9; de oude acht krijgen geen hintbeeld."""
     uit = []
     for c, idx in sorted(hinttegels.items()):
+        if c not in NIEUW:
+            continue
         for i in idx[:2]:
             if 0 <= i < len(vakken):
                 h = map_ / "beelden" / f"{doc}-{c}-{i}.png"

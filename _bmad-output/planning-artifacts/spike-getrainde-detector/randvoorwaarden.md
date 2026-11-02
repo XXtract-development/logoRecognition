@@ -40,11 +40,11 @@ Raming (tarieven OpenRouter 30-10-2026; voorinvulling gemeten 01-11-2026; per po
 | post | aantal | per stuk | raming | grens |
 |---|---|---|---|---|
 | voorinvulling toets (`anthropic/claude-sonnet-5.5`) | ±350 etiketten | $0,12 (gemeten) | ±$42 | **$65, hard** (besluit Friso 01-11-2026 ±14:05) |
-| voorinvulling ronde 9 (vier keurmerken, zelfde post als hierboven) | 352 etiketten | kostenmodel (gemeten) | ±$29 | binnen de $65 van de post; restant $28,61 |
+| voorinvulling ronde 9 (vier keurmerken, zelfde post als hierboven) | 352 etiketten, ±660 aanroepen zonder lege tegels | kostenmodel (gemeten) | ±$28,9 | boven het restant $28,61 (stoppunt 5) |
 | voorlabels + achtergrondscreening training (`google/gemini-3.8-flash`) | ±1.100 etiketten (ronde 9: +±300 voor de vier klassen) | ±$0,012–0,019 per aanroep, ±2,6–3 aanroepen | ±$34–54 | **$50, hard** (besluit Friso 01-11-2026) |
 | beoordelaar (validatie + toets) | ±1.500 kandidaten | ±$0,002 | ±$3 | $4,50 (1,5×) |
 | K4-aa op de toets (gefilterd + informatief volledig) | 2 × ±350 etiketten | ±$0,012 | ±$8 | $12 (1,5×) |
-| **totaal** | | | **±$116–131** (INFERENCE; vóór ronde 9 ±$78–88) | |
+| **totaal** | | | **±$116–136** (INFERENCE; vóór ronde 9 ±$78–88) | |
 
 - **Grens per post:** 1,5× de raming, tenzij Friso een vaste grens besliste (voorinvulling $65, voorlabels $50). Het gereedschap past die vaste grens standaard toe; een andere grens alleen met een besluitverwijzing (`--grens` met `--besluit`, voor de voorinvulling en de voorlabels); zo kan een harde grens niet stil verhoogd worden.
 - **Voorinvulling toets: $65 hard** in plaats van 1,5 × $21 = $31,50 (besluit Friso 01-11-2026 ±14:05). Reden, gemeten op de 211 etiketten met voorinvulling: gemiddeld $0,12 per etiket (mediaan $0,08, p90 $0,30, max $0,59), omdat een etiket gemiddeld 33 tegels van 1024 px heeft (mediaan 20, p90 88, max 180) en dus 2,6 aanroepen; ≤ 4 tegels kost $0,016, > 16 tegels $0,18. Stand bij het besluit: 232 etiketten gebouwd, 211 met voorinvulling, 21 mislukt (zie §5), $25,52 uitgegeven (grootboek); ±350 gepland, dus de aanvulling kan nog ±118 etiketten toevoegen. Na de herhaalrun van de 21: $26,91.

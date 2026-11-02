@@ -179,7 +179,7 @@ def valsplit(etiketten, fractie=0.3, seed=20261031, overgeslagen=None):
 
 def voorlabels(client, beeld, tegels, maat=None):
     """Heel etiket, dan per aanroep de tegels die `openrouter.delen` toelaat (hoogstens MAX_TEGELS en MAX_BEELD_BYTES,
-    overzicht meegeteld); vakjes van de 13 klassen in etiketcoördinaten (vegetarisch V-label → V-label), opgeschoond
+    overzicht meegeteld); vakjes van de klassen uit CATEGORIEEN (17 in ronde 9) in etiketcoördinaten (vegetarisch V-label → V-label), opgeschoond
     met `schoon`. `tegels` =
     [(beeldbytes, (x0, y0, x1, y1) in het etiket)]; `maat` = (w, h) van het etiket als het hele beeld verkleind is.
     Past het overzicht plus één tegel niet: EtiketFout("te_groot") zonder aanroep. Een antwoord in een andere vorm:
@@ -392,7 +392,7 @@ def main(argv=None):
 
         ng = json.loads((a.nutrigreen / "_annotations.coco.json").read_text(encoding="utf-8"))
         if {c["id"]: c["name"] for c in ng["categories"]} != {c["id"]: c["name"] for c in CATEGORIEEN}:
-            raise SystemExit("--nutrigreen: andere categorieën dan de 13 klassen; niets gemengd")
+            raise SystemExit(f"--nutrigreen: andere categorieën dan de {len(CATEGORIEEN)} klassen; niets gemengd")
         toets_gtins = off.toets_gtins(a.proef_map)  # foto's met een toets-GTIN als naam vallen vóór het mengen af
         weg = {im["id"] for im in ng["images"] if nutrigreen._toets(im.get("ng_naam", ""), toets_gtins, ())}
         ng_toets = len(weg)

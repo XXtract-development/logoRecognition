@@ -2,15 +2,15 @@
 title: 'Proef getrainde detector ronde 9: vier extra keurmerken, nalopen op de invulpagina, nachttraining met hervatten'
 type: 'feature'
 created: '2026-11-02'
-status: 'in-progress'
+status: 'in-review'
 baseline_commit: '47edcb190b9da6b9fe4db0b7dd568cb7c4fed042'
 route: 'dispatch'
 review_loop_iteration: 0
 context:
-  - '/Users/frisovanweelden/Documents/projects/logoRecognition/.claude/worktrees/proef-ronde9/_bmad-output/test-artifacts/atdd-checklist-spike-getrainde-detector.md'
-  - '/Users/frisovanweelden/Documents/projects/logoRecognition/.claude/worktrees/proef-ronde9/_bmad-output/planning-artifacts/spike-getrainde-detector/SPEC.md'
-  - '/Users/frisovanweelden/Documents/projects/logoRecognition/.claude/worktrees/proef-ronde9/_bmad-output/planning-artifacts/spike-getrainde-detector/toetsset.md'
-  - '/Users/frisovanweelden/Documents/projects/logoRecognition/.claude/worktrees/proef-ronde9/_bmad-output/planning-artifacts/spike-getrainde-detector/trainingsset-en-herkenning.md'
+  - '{project-root}/.claude/worktrees/proef-ronde9/_bmad-output/test-artifacts/atdd-checklist-spike-getrainde-detector.md'
+  - '{project-root}/.claude/worktrees/proef-ronde9/_bmad-output/planning-artifacts/spike-getrainde-detector/SPEC.md'
+  - '{project-root}/.claude/worktrees/proef-ronde9/_bmad-output/planning-artifacts/spike-getrainde-detector/toetsset.md'
+  - '{project-root}/.claude/worktrees/proef-ronde9/_bmad-output/planning-artifacts/spike-getrainde-detector/trainingsset-en-herkenning.md'
 ---
 
 <frozen-after-approval reason="human-owned intent — do not modify unless human renegotiates">
@@ -83,9 +83,49 @@ context:
 
 Route-poort (step-02, 02-11-2026): **intent gaps 0** voor de bouw (de enige open keuze, de grens van de voorinvulling ronde 9, raakt alleen het uitvoeren, niet wat gebouwd wordt); **onomkeerbaar 0** (geen migratie, geen extern verkeer tijdens de bouw; scheiding opnieuw schrijven, OFF ophalen en de voorinvulling zijn uitvoerstappen na de keten); **omvang groot** (±15 bestanden, nieuwe module `nacht.py` die het draaiplan aanroept) → route **dispatch**. Meer-doelencheck: A (vier keurmerken), B (nachttraining) en C (correctie) zijn in één besluit van Friso als ronde 9 gebundeld; aangehouden als één spec. Tokenomvang ±1.500 (contract staat in de ATDD-checklist).
 
+Volledig venster = duur ≥ 0,9 × 9,5 u; marge van 10% bewust; met R10 maakt elke run zonder checkpoint een stoppunt, dus de marge kan geen lus veroorzaken.
+
+Categorieën 14–17 zijn vastgepind in test_r9_klassen_17; de sha van ronde 6 dekt 1–13 omdat de generatoroutput die gebruikt.
+
 ## Spec Change Log
 
+- 02-11-2026 (review-loop 0, geen loopback): de drie reviewlagen (blind-hunter, edge-case-hunter, verification-gap) op de diff `47edcb1..cc4c6e7` leverden ±45 bevindingen; ontdubbeld tot de tabel hieronder. Geen intent_gap en geen bad_spec (de code volgt de spec; de spec-tekst is op enkele punten te vaag of verouderd, dat is doc-werk). Patches worden alleen in code/tests/documenten van de worktree doorgevoerd, niet in het frozen intent.
+
 ## Review Triage Log
+
+| ID | bron | bevinding (kort) | verdict | route | bewijs / wat er gebeurt |
+|---|---|---|---|---|---|
+| R1 | blind | DRAAIPLAN stap 9 noemt voorlabels ±$25–35 en ±800 etiketten | medium | patch (doc) | SPEC/randvoorwaarden: ±$34–54 en ±1.100 etiketten; DRAAIPLAN bijwerken |
+| R2 | blind | totaal ±$116–131 is rekenfout | low | patch (doc) | 78–88 + 9–19 (voorlabels) + 29 (voorinvulling r9) = ±116–136; SPEC, randvoorwaarden §3, DRAAIPLAN |
+| R3 | blind | "voorinvulling ronde 9 binnen de grens" klopt niet (raming 28,9 > restant 28,61) | high | patch (doc) | DRAAIPLAN en randvoorwaarden: boven restant, stoppunt 5, keuze Friso |
+| R4 | blind | aantal aanroepen ±600 vs 660 | low | patch (doc) | 660 (gemeten op de 352 zonder lege tegels) |
+| R5 | blind | DRAAIPLAN stap 5/10 en testcommentaar noemen 9/13 klassen | low | patch (doc) | 13 keurmerken, 17 klassen; `tests/test_ronde5_20261101.py` commentaar |
+| R6 | blind | bouwstatus niet herleidbaar (geen Implementation Notes, geen trace) | high | patch (proces) | Implementation Notes + trace-rapport + verificatie (zie resultaatblok) |
+| R7 | blind | Triage/Change Log leeg | medium | patch (proces) | deze tabel |
+| R8 | blind | gewijzigde bestaande tests zonder reden per geval | medium | patch (doc) | Implementation Notes: lijst per testbestand met reden |
+| R9 | blind + edge | placeholder `--start <checkpoint uit $MAAT-1>`; combinatie start+hervat onbeschreven | medium | patch (doc) | DRAAIPLAN stap 10: concreet startcommando (fase 1: `checkpoint_best_total.pth`/`checkpoint` uit `train-resultaat.json`); hervatten gaat alleen via `nacht.py draai` binnen de eigen map |
+| R10 | blind + edge + verif | fout vóór eerste checkpoint elke nacht opnieuw, nooit stoppunt 1 (crash-lus) | high | patch (code) | `nacht.py draai`: een afloop zonder nieuw checkpoint zet `stoppunt_1` (ook bij `fout`); test |
+| R11 | blind | rooktest "SIGTERM midden in epoch 2 via nacht.py" niet uitvoerbaar | high | patch (code) | nieuw `nacht.py stop --uit U`: SIGTERM aan het pid in het slot, uitkomst "gepauzeerd"; rooktest gebruikt dat |
+| R12 | blind | geen code-poort voor start vóór bevestiging Friso | false | — | refutatie: de spec legt de poort bij het laden van de launchd-agent door de hoofdsessie na bevestiging (CAP-18); `plan` en `draai` starten niets zonder die agent of een handmatige `draai` |
+| R13 | blind + edge + verif | `plan` overschrijft nacht.json en plist; één gedeeld plist-label | medium | patch (code) | label per uit (`LABEL.<mapnaam>`); `plan` weigert als er al checkpoints of een status zijn; test |
+| R14 | blind | "volledig venster" 0,9-marge ongedocumenteerd | low | patch (doc) | gedocumenteerd in Implementation Notes; onschadelijk door R10 |
+| R15 | blind | `nacht.py status` schrijft nacht-status.json zonder lock | medium | patch (code) | `status` leest alleen; alleen `draai` schrijft (onder slot); test |
+| R16 | blind | open vraag: voorlabels-bovenkant $54 raakt harde grens $50; wat met restant? | medium | open vraag Friso | Open Questions in de spec; geen code-loopback: stoppunt 5 is het ontworpen gedrag |
+| R17 | edge | `_hints` maakt hintbeelden voor de oude acht codes | low | patch (code) | alleen de vier nieuwe codes; test |
+| R18 | blind | referentieplaatje-volgorde FSC-variant vs handmatig.json | medium | patch (code) | variant-fallback na de handmatig-lus; docstring; test |
+| R19 | blind | spec-frontmatter met absolute worktree-paden | low | patch (doc) | teruggezet naar `{project-root}` |
+| R20 | edge + verif | NVT-besluit na nakijken niet getest | medium | patch (test) | test in `test_ronde9_20261102.py`: FSC met 0 referenties + afwijkend oordeel → NVT blijft |
+| R21 | edge + verif | `per_klasse` producent en consument niet samen getest | medium | patch (test) | main-niveau test: k4aa `--alleen-referentieset` schrijft per_klasse; tel_proef `--referenties` gebruikt het |
+| R22 | edge + verif | rfdetr-resume alleen in zwaar testbestand | medium | patch (test) | niet-zwaar test met gestubde rfdetr-klasse: `resume` en `checkpoint_interval=1` bereiken `train` |
+| R23 | edge + verif | echt.py meldt "13 klassen" | low | patch (code) | bericht en docstring op `len(CATEGORIEEN)` |
+| R24 | edge + verif | caffeinate-start mislukt na trainer-start: verweesde trainer | medium | patch (code) | trainer stoppen bij mislukte caffeinate; test met gefaalde popen |
+| R25 | edge + verif | verouderd slot met hergebruikt pid blokkeert elke nacht | medium | patch (code) | slot telt alleen als het pid een `train.py`-proces is (ps-controle, injecteerbaar); test |
+| R26 | edge + verif | kosten van een gefactureerde maar ongeldige aanroep niet in het etiket | low | patch (code) | `EtiketFout` draagt de kosten; voorinvulling telt ze op; grootboek was al correct; test |
+| R27 | edge + verif | scheiding-archief met zelfde seconde overschreven | low | patch (code) | tijdstempel met microseconden; test |
+| R28 | edge | test_ronde6 sha_train laat categorieën 14–17 weg | low | patch (doc/test) | namen 14–17 blijven vastgepind in `test_r9_klassen_17`; in Implementation Notes vermeld |
+| R29 | blind | `nacht.py` plan/status: vergelijkbaar met R15 | — | samengevoegd met R15 | — |
+
+Verdict-samenvatting: high 4 (R3, R6, R10, R11), medium 11, low 9, false 1 (R12), open vraag 1 (R16). Alle patches zijn code, test of document binnen de worktree; geen productiewijziging, geen voorinvulling, geen training.
 
 ## Verification
 

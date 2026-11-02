@@ -17,6 +17,7 @@ import plistlib
 import re
 import signal
 import subprocess
+import sys
 import threading
 import urllib.request
 import zipfile
@@ -521,7 +522,7 @@ def test_r9_cli_voorinvulling_r9_alleen_niet_lege_tegels_items_r9_en_klare_etike
     assert items[docs[2]]["voorinvulling"]["keurmerken"] == {GD: True, FSC: True}
     assert items[docs[2]]["voorinvulling"]["ronde9"]["model"] == client.model
     hints = items[docs[2]]["hint"]
-    assert any(FSC in h for h in hints) and any(GD in h for h in hints)  # hintbeelden van beide voorinvullingen
+    assert any(FSC in h for h in hints) and not any(GD in h for h in hints)  # R17: alleen de vier nieuwe codes
     assert all((pm / "toets" / h).is_file() for h in hints)
     assert all((pm / "toets" / i["beeld"]).is_file() for i in items.values())
 
@@ -867,7 +868,7 @@ def test_r9_nacht_plist_launchd_agent_dagelijks_22_uur_met_draai(tmp_path):  # P
     n = mod("nacht")
     tekst = n.plist("/usr/bin/python3", "/pad/nacht.py", str(tmp_path))
     pl = plistlib.loads(tekst if isinstance(tekst, bytes) else tekst.encode())
-    assert pl["Label"] == "com.xxtract.proef-nachttraining"
+    assert pl["Label"] == f"com.xxtract.proef-nachttraining.{tmp_path.name}"  # label per uitvoermap (R13)
     assert pl["ProgramArguments"] == ["/usr/bin/python3", "/pad/nacht.py", "draai", "--uit", str(tmp_path)]
     assert pl["StartCalendarInterval"] == {"Hour": 22, "Minute": 0}
     assert pl["StandardOutPath"].startswith(str(tmp_path)) and pl["StandardErrorPath"].startswith(str(tmp_path))
@@ -889,7 +890,9 @@ def test_r9_nacht_draai_bezet_bij_een_slot_met_levend_pid_maar_niet_bij_een_dood
     uit = gepland(tmp_path)
     (uit / "nacht.slot").write_text(f"{os.getpid()}\n")
     w = Nacht(uit, dt(2, 22))
-    assert draai(w) == "bezet" and w.aanroepen == []
+    trainer = lambda pid: "python train.py train --uit U"  # noqa: E731
+    assert mod("nacht").draai(uit, nu=w.nu, popen=w.popen, slaap=w.slaap, poll_s=60, ps=trainer) == "bezet"
+    assert w.aanroepen == []
     dood = subprocess.Popen(["true"])
     dood.wait()
     (uit / "nacht.slot").write_text(f"{dood.pid}\n")
@@ -1009,10 +1012,10 @@ def test_r9_nacht_opdrachtregel_plan_status_vrijgeven(tmp_path, capsys):  # P1, 
     plan = json.loads((uit / "nacht.json").read_text())
     assert (plan["opdracht"], plan["epochs"], plan["fase"]) == (OPDRACHT, 20, "nagemaakt")
     pl = plistlib.loads(agent.read_bytes())
-    assert pl["Label"] == n.LABEL and pl["ProgramArguments"][-3:] == ["draai", "--uit", str(uit)]
+    assert pl["Label"] == n.label(uit) and pl["ProgramArguments"][-3:] == ["draai", "--uit", str(uit)]
     capsys.readouterr()
     assert code_van(lambda: n.main(["status", "--uit", str(uit)])) in (0, None)
-    assert capsys.readouterr().out.strip() and (uit / "nacht-status.json").exists()
+    assert capsys.readouterr().out.strip() and not (uit / "nacht-status.json").exists()  # status schrijft niets
     assert code_van(lambda: n.main(["vrijgeven", "--uit", str(uit)])) in (0, None)
     ander = tmp_path / "fase2"
     ander.mkdir()
@@ -1098,6 +1101,237 @@ def test_r9_off_zoek_vier_klassen_exact():  # P1, CAP-17 (trainingsset §11)
     assert z[SPI] == tuple(("packaging", w) for w in SPI_WAARDEN)
     assert z[PP] == (("label", "en:planet-proof"),)
     assert RC not in z and not {FSC_MIX, FSC_REC, FSC_100} & set(z)
+
+
+# --- ronde 9 review (R10–R27): nacht, toets, generator, scheiding, echt, openrouter -------------------------------------
+
+NVT = "n.v.t. (geen referenties)"
+
+
+def test_r10_run_zonder_nieuw_checkpoint_zet_stoppunt_1_en_start_daarna_niets(tmp_path):  # R10
+    uit = gepland(tmp_path)
+    assert draai(Nacht(uit, dt(2, 22), [(dt(2, 22, 30), "einde", 1)])) == "fout"  # exit 1, geen checkpoint
+    assert mod("nacht").status(uit, dt(2, 23))["stoppunt_1"] == "geen nieuw checkpoint in een run"
+    w = Nacht(uit, dt(3, 22), [(dt(3, 23), "einde", 0)])
+    assert draai(w) == "stoppunt_1" and w.aanroepen == []
+
+
+def test_r11_stop_stuurt_sigterm_naar_het_trainingsproces_en_draai_legt_gepauzeerd_vast(tmp_path, monkeypatch):  # R11
+    n = mod("nacht")
+    uit = gepland(tmp_path)
+    monkeypatch.setattr(n, "_levend", lambda pid: True)
+    gestuurd = []
+
+    class Pauze(Nacht):
+        def slaap(self, s):
+            super().slaap(s)
+            if self.n_slaap == 2:  # de pauze komt tijdens de run, vóór het eerste checkpoint
+                gestuurd.append(n.stop(self.uit, kill=lambda pid, sig: setattr(self.proces, "returncode", -sig),
+                                       ps=lambda pid: "python train.py train"))
+
+    w = Pauze(uit, dt(2, 22))
+    assert draai(w) == "gepauzeerd"
+    assert gestuurd == [4242] and w.proces.returncode == -signal.SIGTERM
+    assert n.status(uit, dt(2, 23))["uitkomst"] == "gepauzeerd"
+
+
+def test_r11_stop_zonder_draai_meldt_en_geeft_1(tmp_path, capsys):  # R11
+    n = mod("nacht")
+    uit = gepland(tmp_path)
+    assert code_van(lambda: n.main(["stop", "--uit", str(uit)])) == 1
+    assert not (uit / "nacht.stop").exists() and "geen draai actief" in capsys.readouterr().err
+
+
+def test_r13_plan_weigert_een_bezette_map_en_geeft_elke_map_een_eigen_label(tmp_path, monkeypatch):  # R13
+    n = mod("nacht")
+    monkeypatch.setenv("HOME", str(tmp_path / "thuis"))
+    a = gepland(tmp_path, naam="fase1")
+    assert code_van(lambda: n.main(["plan", "--uit", str(a), "--epochs", "12", "--fase", "echt", "--", *OPDRACHT])) == 2
+    c = tmp_path / "fase2b"
+    c.mkdir()
+    assert code_van(lambda: n.main(["plan", "--uit", str(c), "--epochs", "12", "--fase", "echt", "--", *OPDRACHT])) in (0, None)
+    assert n.label(a) == f"{n.LABEL}.fase1" and n.label(c) == f"{n.LABEL}.fase2b" and n.label(a) != n.label(c)
+    assert (tmp_path / "thuis" / "Library" / "LaunchAgents" / f"{n.label(c)}.plist").exists()
+    assert plistlib.loads(n.plist("/p/python", "/p/nacht.py", c))["Label"] == n.label(c)
+    d = tmp_path / "fase3"
+    d.mkdir()
+    ckpt(d / "checkpoint_0.ckpt")
+    with pytest.raises(ValueError):
+        n.plan(d, OPDRACHT, 12, "echt")
+    assert not (d / "nacht.json").exists()
+
+
+def test_r15_status_leest_alleen_en_schrijft_nacht_status_niet(tmp_path, capsys):  # R15
+    n = mod("nacht")
+    uit = gepland(tmp_path)
+    assert draai(Nacht(uit, dt(2, 22), uurlijks(dt(2, 22), 2))) == "gepauzeerd"
+    pad = uit / "nacht-status.json"
+    voor = (pad.read_bytes(), pad.stat().st_mtime_ns)
+    n.status(uit, dt(3, 8))
+    assert n.main(["status", "--uit", str(uit)]) in (0, None)
+    assert capsys.readouterr().out.strip()
+    assert (pad.read_bytes(), pad.stat().st_mtime_ns) == voor
+
+
+def test_r17_hintbeelden_alleen_voor_de_vier_nieuwe_codes(tmp_path):  # R17
+    t = mod("toets")
+    (tmp_path / "beelden").mkdir()
+    im = Image.new("RGB", (100, 100), (200, 200, 200))
+    vakken = [(0, 0, 50, 50), (50, 50, 100, 100)]
+    uit = t._hints(im, vakken, "doc1", {FSC: [0, 1], GD: [0], TRI: [1]}, tmp_path)
+    assert uit == ["beelden/doc1-FOREST_STEWARDSHIP_COUNCIL_LABEL-0.png", "beelden/doc1-FOREST_STEWARDSHIP_COUNCIL_LABEL-1.png",
+                   "beelden/doc1-TRIMAN-1.png"]
+    assert not (tmp_path / "beelden" / f"doc1-{GD}-0.png").exists()
+
+
+def test_r18_handmatig_publiek_fsc_bestand_wint_van_de_variant(tmp_path, monkeypatch):  # R18
+    pm = logos_pm(tmp_path, monkeypatch, [REFS9[0]])  # alleen de FSC Mix-variant op de server
+    eigen = tmp_path / "publiek" / "fsc-handmatig.png"
+    eigen.parent.mkdir()
+    eigen.write_bytes(png((48, 48), ruis=5))
+    schrijf(pm / "logos" / "handmatig.json", [{"klasse": FSC, "pad": str(eigen), "herkomst": "handmatig publiek",
+                                              "licentie": "publiek domein"}])
+    _, _, referenties, _ = mod("generator")._logos(pm)
+    assert referenties[FSC]["pad"] == str(eigen)
+
+
+def test_r20_na_nakijken_fsc_zonder_referenties_blijft_nvt_na_een_afwijkend_oordeel(tmp_path):  # R20
+    tp = mod("tel_proef")
+    u, meld = bevestigd_wereld()
+    routes = {"r1": meld}
+    lijst, _ = tp.nakijklijst(u, routes)
+
+    def oordeel(r):  # steekproef: het nakijkoordeel wijkt op FSC af van de waarheid
+        w = r["waarheid"]
+        return {"aanwezig": "afwezig", "afwezig": "aanwezig"}.get(w, w) if r["keurmerk"] == FSC else w
+
+    pad = schrijf(tmp_path / "nakijken.json", {str(r["nr"]): oordeel(r) for r in lijst})
+    referenties = {"r1": {**dict.fromkeys(KLASSEN17, 1), FSC: 0}}
+    na, tweede = tp.na_nakijken(u, routes, {}, pad, referenties=referenties)
+    assert FSC in tweede  # het afwijkende oordeel is een fout...
+    assert na["r1"][FSC]["besluit"] == NVT  # ...maar het besluit blijft n.v.t.
+
+
+def test_r21_k4aa_alleen_referentieset_en_tel_proef_lezen_dezelfde_per_klasse(tmp_path, monkeypatch):  # R21
+    k4 = mod("k4aa_lokaal")
+    codes = [k for k in KLASSEN17 if k != SPI]  # één keurmerk zonder referenties
+    monkeypatch.setattr(k4, "_matrix", lambda pm, alle, mo=None: (np.zeros((len(codes), 4), np.float32), codes,
+                                                                  [f"r{i}" for i in range(len(codes))]))
+    monkeypatch.setattr(k4, "refset_sha", lambda ids: "f" * 64)
+    argv = ["--ml-service", str(tmp_path), "--proef-map", str(tmp_path), "--lijst", str(tmp_path / "lijst.json"),
+            "--meta", str(tmp_path / "meta.json"), "--uit", str(tmp_path / "k4aa.json"), "--alleen-referentieset"]
+    assert k4.main(argv) == 0
+    per = json.loads((tmp_path / "k4aa-referentieset.json").read_text())["per_klasse"]
+    assert per[SPI] == 0 and per[FSC] == 1 and per[NSA] == 1
+    u, meld = bevestigd_wereld()
+    r = mod("tel_proef").tel(u, meld, referenties=per)
+    assert [k for k, v in r.items() if isinstance(v, dict) and v.get("besluit") == NVT] == [SPI]
+
+
+def test_r22_train_geeft_resume_en_checkpoint_interval_1_aan_model_train(tmp_path, monkeypatch):  # R22
+    tr = mod("train")
+    ontvangen = {}
+
+    class Model:
+        model_config = SimpleNamespace(resolution=384, patch_size=16, num_windows=2)
+
+        def __init__(self, pretrain_weights=None):
+            pass
+
+        def train(self, **kw):
+            ontvangen.update(kw)
+
+    monkeypatch.setattr(tr, "_rfdetr_klasse", lambda maat: Model)
+    monkeypatch.setattr(tr, "_apparaat", lambda: "cpu")
+    monkeypatch.setattr(tr, "_op_schaal", lambda dataset, doel, zijde: tmp_path / "dataset")
+    monkeypatch.setitem(sys.modules, "rfdetr.datasets.coco", SimpleNamespace(compute_multi_scale_scales=lambda r, *a: [r]))
+    cfg = {"uit": str(tmp_path / "fase2"), "maat": "N", "start": None, "dataset": str(tmp_path / "ds"), "epochs": 12,
+           "batch_size": 4, "seed": 42, "hervat": str(tmp_path / "fase2" / "checkpoint_8.ckpt")}
+    tr._train(cfg, tmp_path / "train.log")
+    assert ontvangen["resume"] == cfg["hervat"] and ontvangen["checkpoint_interval"] == 1
+    assert ontvangen["device"] == "cpu" and ontvangen["epochs"] == 12
+    ontvangen.clear()
+    tr._train({**cfg, "hervat": None}, tmp_path / "train2.log")
+    assert "resume" not in ontvangen and ontvangen["checkpoint_interval"] == 1
+
+
+def test_r23_echt_nutrigreen_melding_noemt_het_aantal_klassen_uit_de_code(tmp_path):  # R23
+    ec = mod("echt")
+    pm = tmp_path / "pm"
+    pm.mkdir()
+    schrijf(pm / "scheiding.json", {"trainingsleveranciers": []})
+    lijst = schrijf(tmp_path / "lijst.json", [])
+    ng = tmp_path / "ng"
+    ng.mkdir()
+    schrijf(ng / "_annotations.coco.json", {"images": [], "annotations": [], "categories": [{"id": 1, "name": "ANDERS"}]})
+    argv = ["dataset", "--lijst", str(lijst), "--voorlabels", str(tmp_path / "vl.json"), "--proef-map", str(pm),
+            "--uit", str(tmp_path / "ds"), "--nutrigreen", str(ng)]
+    with pytest.raises(SystemExit) as e:
+        ec.main(argv)
+    assert f"{len(mod('train').CATEGORIEEN)} klassen" in str(e.value.code) and "17 klassen" in str(e.value.code)
+
+
+def test_r24_caffeinate_mislukt_na_trainerstart_stopt_de_trainer_en_geeft_fout(tmp_path):  # R24
+    class ZonderCafe(Nacht):
+        def popen(self, cmd, *a, **kw):
+            if Path(cmd[0]).name == "caffeinate":
+                raise OSError("caffeinate ontbreekt")
+            return super().popen(cmd, *a, **kw)
+
+    uit = gepland(tmp_path)
+    w = ZonderCafe(uit, dt(2, 22), [(dt(2, 23), "ckpt", 0)])
+    assert draai(w) == "fout"
+    assert w.term is not None and w.kill is None and w.proces.returncode == -signal.SIGTERM
+    s = mod("nacht").status(uit, dt(2, 23))
+    assert s["uitkomst"] == "fout" and "caffeinate" in s["reden_fout"]
+
+
+def test_r25_slot_met_levend_pid_zonder_train_py_is_geen_bezet(tmp_path):  # R25
+    uit = gepland(tmp_path)
+    (uit / "nacht.slot").write_text(f"{os.getpid()}\n")  # levend, maar geen trainingsproces
+    w = Nacht(uit, dt(2, 22), [(dt(2, 23), "einde", 0)])
+    assert mod("nacht").draai(uit, nu=w.nu, popen=w.popen, slaap=w.slaap, poll_s=60,
+                              ps=lambda pid: "/usr/bin/python3 -m pytest") != "bezet"
+    assert len(w.training()) == 1 and not (uit / "nacht.slot").exists()
+
+
+def test_r26_ongeldig_maar_gefactureerd_antwoord_draagt_zijn_kosten_in_het_etiket(tmp_path):  # R26
+    ork = mod("openrouter")
+    env = {"choices": [{"message": {"content": "geen json"}}], "usage": {"cost": 0.02}}
+    model = "anthropic/claude-sonnet-5.5"  # niet het K4-aa-model (gemini), dat de voorinvulling niet mag gebruiken
+    c = ork.Client(model, "voorinvulling", sleutel="x", transport=lambda *a: (200, env), slaap=lambda s: None)
+    with pytest.raises(ork.EtiketFout) as f:
+        c._verstuur({}, {"type": "object"})
+    assert f.value.klasse == "antwoord_ongeldig" and f.value.kosten == pytest.approx(0.02)
+
+    class Fake:
+        model = "anthropic/claude-sonnet-5.5"
+
+        def vraag(self, *a, **k):
+            raise ork.EtiketFout("antwoord_ongeldig", kosten=0.02)
+
+    toets = mod("toets")
+    assert toets.voorinvulling(Fake(), b"beeld", [b"tegel"])["kosten"] == pytest.approx(0.02)
+    r9 = toets.voorinvulling_r9(Fake(), b"beeld", [b"tegel"], [0])
+    assert r9["kosten"] == pytest.approx(0.02) and r9["fout"] == "antwoord_ongeldig"
+
+
+def test_r27_kies_met_reden_weigert_een_bestaand_archief_met_dezelfde_stempel(tmp_path, monkeypatch):  # R27
+    sch = mod("scheiding")
+    pm = kies_pm(tmp_path)
+    assert kies(pm) in (0, None)
+
+    class Vast(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return datetime(2026, 11, 2, 12, 0, 0, 123456)
+
+    monkeypatch.setattr(sch, "datetime", Vast)
+    archief = pm / "scheiding.20261102T120000123456.json"  # met microseconden: uniek per aanroep
+    assert kies(pm, "--reden", "eerste") in (0, None) and archief.exists()
+    voor = (pm / "scheiding.json").read_bytes()
+    assert kies(pm, "--reden", "tweede") == 2  # zelfde stempel: niets overschreven
+    assert (pm / "scheiding.json").read_bytes() == voor and archief.exists()
 
 
 def test_r9_k4aa_per_klasse_telt_referenties_voor_alle_17_varianten_naar_hun_klasse():  # P1, CAP-12

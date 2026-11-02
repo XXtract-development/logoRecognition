@@ -238,8 +238,11 @@ def main(argv=None):
                 print("de nieuwe versie zou andere trainingsleveranciers kiezen; niets geschreven (besluit van Friso nodig)",
                       file=sys.stderr)
                 return 2
-            stempel = datetime.now().strftime("%Y%m%dT%H%M%S")
-            shutil.copy2(doel, doel.with_name(f"scheiding.{stempel}.json"))
+            archief = doel.with_name(f"scheiding.{datetime.now().strftime('%Y%m%dT%H%M%S%f')}.json")
+            if archief.exists():  # nooit een bestaand archief overschrijven
+                print(f"{archief} bestaat al; niets geschreven", file=sys.stderr)
+                return 2
+            shutil.copy2(doel, archief)
         pad = schrijf(k, doel, {n: _sha(inv / n) for n in namen}, versie_reden=reden if doel.exists() else None)
         print(pad, "trainingsleveranciers:", len(k["trainingsleveranciers"]), "zwakste:", k["score"][0])
     else:

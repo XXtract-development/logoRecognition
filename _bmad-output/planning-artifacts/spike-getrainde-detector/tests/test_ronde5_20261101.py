@@ -537,7 +537,7 @@ def test_r5_logos_zonder_vegan_referentie_ontbreekt_het_v_label(tmp_path, monkey
     assert V not in referenties and V in ontbreekt and NSD in ontbreekt and NSE in ontbreekt and len(ontbreekt) == 16
 
 
-# --- echt: 13 klassen, vegetarisch → V-label, validatie-uitslag (CAP-5) ---------------------------------------------------
+# --- echt: 17 klassen, vegetarisch → V-label, validatie-uitslag (CAP-5) ---------------------------------------------------
 
 def test_r5_echt_gelijkend_schema_en_prompt_met_13_klassen():  # P1, CAP-5
     ec = mod("echt")

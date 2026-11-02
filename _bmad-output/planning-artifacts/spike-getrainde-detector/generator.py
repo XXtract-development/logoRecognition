@@ -240,7 +240,8 @@ def _gtin_gln(inv):
 def _logos(pm):
     """Logobronnen per klasse (trainingsset §2): publiek/GS1/synthetisch, plus schone uitsneden van trainingsleveranciers.
     Een variant (vegetarisch V-label, FSC Mix/Recycled/100%) is een bron van zijn klasse. Referentieplaatje: eigen code
-    vóór variant, binnen elk http vóór GS1; een variant alleen voor FSC, dat geen eigen publiek bestand heeft (ronde 9)."""
+    vóór variant, binnen elk http vóór GS1; daarna `handmatig.json` (die wint van een variant); een variant alleen als
+    laatste terugval, en alleen voor FSC, dat geen eigen publiek bestand heeft (ronde 9)."""
     import scheiding
     import toets
 
@@ -271,13 +272,13 @@ def _logos(pm):
             oud = doel.get(klasse)
             if oud is None or (bron.startswith("http") and not oud["herkomst"].startswith("http")):
                 doel[klasse] = {"pad": str(pad), "herkomst": item["herkomst"], "sha256": item["sha256"]}
-    if "FOREST_STEWARDSHIP_COUNCIL_LABEL" in varianten:  # alleen FSC: geen eigen publiek of GS1-bestand (trainingsset §2)
-        referenties.setdefault("FOREST_STEWARDSHIP_COUNCIL_LABEL", varianten["FOREST_STEWARDSHIP_COUNCIL_LABEL"])
     handmatig = pm / "logos" / "handmatig.json"  # [{klasse, pad, herkomst, licentie}] — publieke bestanden, geen uitsneden
     for h in json.loads(handmatig.read_text()) if handmatig.exists() else []:
         item = {**h, "gtin": None, "sha256": hashlib.sha256(Path(h["pad"]).read_bytes()).hexdigest()}
         bronnen.append(item)
         referenties.setdefault(h["klasse"], {"pad": h["pad"], "herkomst": h["herkomst"], "sha256": item["sha256"]})
+    if "FOREST_STEWARDSHIP_COUNCIL_LABEL" in varianten:  # alleen FSC: geen eigen publiek of GS1-bestand (trainingsset §2)
+        referenties.setdefault("FOREST_STEWARDSHIP_COUNCIL_LABEL", varianten["FOREST_STEWARDSHIP_COUNCIL_LABEL"])
     ontbreekt = [k for k in KLASSEN if k not in referenties]
     return bronnen, gelijkend, referenties, ontbreekt
 
