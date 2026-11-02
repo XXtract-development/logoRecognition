@@ -133,3 +133,37 @@ Beide werkers `success`. Geschreven in `tests/test_ronde6_20261102.py`: `test_r6
 - **Kwaliteit:** geen vaste wachttijd, geen netwerk, alles in `tmp_path`, deterministisch (vaste seeds), < 4 s.
 - **Aanname en risico:** de vastgelegde sha256 hangt af van Pillow/libjpeg uit `uv.lock`; na een upgrade opnieuw meten op 953ca95 (staat bij de constante).
 - **Volgende stap:** `bmad-testarch-trace` (run 8).
+
+# Run 3 — ronde 7 (invulpagina op één scherm), gaten trace run 9
+
+## Stap 1 — Voorbereiding en context
+
+- **Werkboom:** `.claude/worktrees/proef-invulpagina`, tak `spike/proef-invulpagina-ux`, HEAD `8bc97a7` + ronde 7 (ongecommit: spec-update, spines, ATDD, bouw).
+- **Stack:** `fullstack` (Python-server + één HTML-pagina; Playwright voor Python in de dev-groep). Modus BMad-geïntegreerd: trace run 9 (gaten R7-6b, R7-17b, R7-24 t/m R7-29), contract "Ronde 7" in de ATDD-checklist, buildspec `spec-spike-getrainde-detector-invulpagina-ux.md` (Reviewronde 1).
+- **Headless besluiten:** Create; reikwijdte beperkt tot de gaten van trace run 9; paginacode niet wijzigen; niet committen; geen klantdata.
+
+## Stap 2 — Doelen
+
+| gat | prio | gedrag (uit de reviewpatches) |
+|---|---|---|
+| R7-6b | P1 | breedte-beginstand scrollt naar het bovenste kader, ook als dat niet het eerste in `hint` is |
+| R7-17b | P1 | opslagfout van een ander etiket blijft staan na verdere wissels, tot dat etiket opslaat |
+| R7-24 | P1 | stand altijd volledig zichtbaar naast "gewijzigd"/"AI: …" |
+| R7-25 | P2 | uitsnedenamen vóór het laden van het beeld |
+| R7-26 | P2 | Enter op de beeldlink zoomt op het midden |
+| R7-27 | P2 | resize in breedte houdt de scrollpositie |
+| R7-28 | P2 | paneel scrollt in een laag venster; titel krimpt vóór de etiketcode |
+| R7-29 | P2 | letters gedempt zolang "letter onleesbaar" aan staat |
+
+## Stap 3 — Tests (worker E2E, subagent)
+
+Toegevoegd aan `tests/test_ronde7_browser_20261102.py` (kop "automate (trace run 9)", nieuw item `OMGEKEERD`): `breedte_scrollt_naar_bovenste_kader_niet_eerste_in_hint` (R7-6b), `opslagfout_blijft_staan_tot_dat_etiket_opslaat` (R7-17b), `stand_volledig_zichtbaar_naast_gewijzigd_en_ai_tekst` (R7-24), `uitsnedenamen_voor_het_laden_van_het_beeld` (R7-25), `enter_op_beeldlink_zoomt_op_het_midden` (R7-26), `resize_in_breedte_houdt_de_scrollpositie` (R7-27), `paneel_scrollt_in_laag_venster` en `titel_krimpt_voor_de_etiketcode` (R7-28), `letters_gedempt_zolang_onleesbaar_aan_staat` (R7-29). 9 functies, 9 gevallen.
+
+**Mutatiecontrole (elke test rood onder een gerichte breuk):** `.sort(y0)` weg; `fout` niet tonen / niet wissen (2 breuken); "gewijzigd"/AI-tekst terug op regel 2 (209 > 190 px); namen pas na laden; `e.detail === 0`-tak weg; resize herberekent altijd (sprong 7280 px); `overflow-y: auto` weg; titel krimpt gelijk met de code (250 > 192 px); dempregel weg. Breuken in kopieën buiten de repo, geserveerd via `invul.server.PAGINA`; controle met een onveranderde kopie: 9 passed. `invul/index.html` sha256 vóór en na: `a95a9830a376305ec9ffcca2b2e76efbf41d0972c9264b9d1a05dae4d7dabc28`.
+
+## Stap 4 — Validatie
+
+- Ronde-7-bestand 2× na elkaar: 40 passed.
+- Volledige suite (VERIFIED door de orchestrator, 02-11-2026): `uv run --group dev pytest -q -p no:cacheprovider` → **809 passed, 2 skipped, 0 failed**.
+- Geen vaste wachttijden, geen netwerk buiten 127.0.0.1, alles in `tmp_path`.
+- **Volgende stap:** `bmad-testarch-trace` run 10.

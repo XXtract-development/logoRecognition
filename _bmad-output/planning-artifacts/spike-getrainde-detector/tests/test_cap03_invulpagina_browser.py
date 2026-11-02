@@ -371,8 +371,11 @@ def test_p0_gewijzigde_keuze_gaat_mee_met_opslaan(page, basis_url, invulmap):
     openen(page, basis_url)
     expect(page.get_by_test_id("etiket-id")).to_have_text(E1)
 
-    radio(page, "GREEN_DOT", "onzeker").check()
-    page.get_by_test_id("ns-C").check()
+    # Elke tussenstand afwachten: de opslagketen stuurt de tweede pas na de eerste (anders vangt expect_request hem).
+    with page.expect_response(is_pad("/opslaan")):
+        radio(page, "GREEN_DOT", "onzeker").check()
+    with page.expect_response(is_pad("/opslaan")):
+        page.get_by_test_id("ns-C").check()
     wacht_op_lopende_opslagen(posts)
     with page.expect_request(is_pad("/opslaan")) as verzoek:
         page.locator("#opslaan").click()

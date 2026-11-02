@@ -2,7 +2,7 @@
 titel: Toetsset, scheiding training/toets en beelden
 hoort-bij: SPEC.md (CAP-1, CAP-2, CAP-3, CAP-15)
 datum: 2026-10-31
-bijgewerkt: 2026-11-02 (ronde 3: verzoekgrootte voorinvulling, klaar-teken invulpagina; ronde 4: aanvulling vóór bevestiging, besluiten Friso; ronde 5: Nutri-Score A–E, V-label als 9e keurmerk; ronde 6: OFF-lekfilter vóór de training)
+bijgewerkt: 2026-11-02 (ronde 3: verzoekgrootte voorinvulling, klaar-teken invulpagina; ronde 4: aanvulling vóór bevestiging, besluiten Friso; ronde 5: Nutri-Score A–E, V-label als 9e keurmerk; ronde 6: OFF-lekfilter vóór de training; ronde 7: invulpagina op één scherm)
 gemeten-op: declaraties-prod-basiseenheden-20261008.tsv, alcohol-kandidaten.tsv, referentiemomentopname 2026-10-30, voorlopige-selectie.json
 ---
 
@@ -122,11 +122,13 @@ Alle extra voorinvullingen vallen onder de post voorinvulling toets en haar gren
 
 Lokale server op `127.0.0.1` (patroon `~/logo-meetset-20261018/ontwikkelmeting-20261028/fase-b/nakijken/server.py` + `index.html`), alleen de standaardbibliotheek van Python.
 
-- **Per etiket:** overzichtsbeeld (klik = volledige resolutie), hinttegels, en per keurmerk een keuze voorgevuld met het AI-oordeel: **aanwezig / afwezig / onzeker**. Nutri-Score: de verzameling zichtbare letters (A–E) of "letter onleesbaar". V-label: één keuze voor vegan of vegetarisch (meetregels §2); een ouder concept zonder V-label houdt zijn keuzes en toont voor V-label de voorinvulling. Daarnaast per etiket: **onleesbaar** (hele etiket onbruikbaar) en een opmerkingveld.
+- **Per etiket:** overzichtsbeeld (klik = inzoomen, Cmd/Ctrl-klik = volledige resolutie; ronde 7), hinttegels, en per keurmerk een keuze voorgevuld met het AI-oordeel: **aanwezig / afwezig / onzeker**. Nutri-Score: de verzameling zichtbare letters (A–E) of "letter onleesbaar". V-label: één keuze voor vegan of vegetarisch (meetregels §2); een ouder concept zonder V-label houdt zijn keuzes en toont voor V-label de voorinvulling. Daarnaast per etiket: **onleesbaar** (hele etiket onbruikbaar) en een opmerkingveld.
 - **Snel:** sneltoetsen voor vorige/volgende en "bevestigd zoals voorgevuld"; voortgang, en per keurmerk de stand ten opzichte van het doel (≥ 16 mét, ≥ 50 zonder).
+- **Eén scherm (ronde 7, verzoek Friso 02-11-2026):** indeling, sneltoetsen, AI-merkje, tegelkaders, inzoomen en de knop "Bevestigen en volgende" volgen [invul-ux/EXPERIENCE.md](invul-ux/EXPERIENCE.md) en [invul-ux/DESIGN.md](invul-ux/DESIGN.md). Die winnen bij strijd over bediening en indeling; §6 wint over antwoordmodel, opslag en de regels hieronder.
 - **Wat iemand typt raak je nooit kwijt:**
   - sneltoetsen doen niets zolang de cursor in een tekstveld staat;
   - geen `focus()` of `select()` op een ander veld dan waar de invuller staat;
+  - bij het wisselen van etiket (nooit vanuit een tekstveld) mag de pagina `blur()` doen op een eigen knop of keuze met focus, zodat Spatie of Enter niet ongezien op het volgende etiket werkt (ronde 7); nooit op een tekstveld;
   - geen stuk pagina vervangen zolang er getypt wordt (tellers bijwerken met `textContent` op het tellerelement zelf; geen `innerHTML`, `outerHTML`, `replaceChildren` of `insertAdjacentHTML` op een ouder van een invoerveld);
   - elke toetsaanslag als concept in `sessionStorage`; bij het laden gaat het concept vóór op de opgeslagen stand; een concept verdwijnt pas als de server de opslag heeft bevestigd;
   - herbouwen alleen na een klik op opslaan;
