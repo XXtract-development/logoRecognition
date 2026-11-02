@@ -7,6 +7,7 @@ voorgetrainde gewichten komen in de cache van rfdetr (`RF_HOME`, standaard ~/.ro
 
   python train.py snelheid --maat N --dataset <coco-map> --uit <map> [--iteraties 50 --tegels-per-epoch 5000 --epochs 20]
   python train.py train --fase nagemaakt --maat N --dataset <coco-map> --uit <map> --epochs 20 --seed 20261031 [--start <ckpt>]
+      [--hervat <uit>/checkpoint_<n>.ckpt]   (gaat verder bij het volgende epoch; nacht.py zet dit zelf)
   ... --maat S --besluit "<verwijzing naar het besluit van Friso>"     (S/M/L; zonder besluit start er niets)
 """
 import argparse
@@ -22,11 +23,15 @@ from beelden import veilig_doel
 MATEN = {"N": "RFDETRNano", "S": "RFDETRSmall", "M": "RFDETRMedium", "L": "RFDETRLarge"}
 FASEN = ("nagemaakt", "echt")
 # De enige klassenlijst (trainingsset §1): COCO-categorie-id = index + 1. De drie van ronde 5 (besluit Friso 01-11-2026)
-# staan achteraan, zodat id 1–10 gelijk blijven.
+# staan achteraan, zodat id 1–10 gelijk blijven; de vier van ronde 9 (besluit Friso 02-11-2026) daarachter (id 1–13 gelijk).
 KLASSEN = ("EU_ORGANIC_FARMING", "GREEN_DOT", "RECYCLABLE_GENERAL_CLAIM", "NUTRISCORE_A", "NUTRISCORE_B", "NUTRISCORE_C",
            "PREGNANCY_WARNING", "MARINE_STEWARDSHIP_COUNCIL_LABEL", "WEIDEMELK", "VEGAN_SOCIETY_VEGAN_LOGO",
-           "NUTRISCORE_D", "NUTRISCORE_E", "EUROPEAN_V_LABEL_VEGAN")
-VARIANTEN = {"EUROPEAN_V_LABEL_VEGETARIAN": "EUROPEAN_V_LABEL_VEGAN"}  # variant → klasse (meetregels §2)
+           "NUTRISCORE_D", "NUTRISCORE_E", "EUROPEAN_V_LABEL_VEGAN",
+           "FOREST_STEWARDSHIP_COUNCIL_LABEL", "TRIMAN", "SOCIETY_PLASTICS_INDUSTRY", "ON_THE_WAY_TO_PLANETPROOF")
+_FSC = "FOREST_STEWARDSHIP_COUNCIL_LABEL"
+VARIANTEN = {"EUROPEAN_V_LABEL_VEGETARIAN": "EUROPEAN_V_LABEL_VEGAN",  # variant → klasse (meetregels §2)
+             "FOREST_STEWARDSHIP_COUNCIL_MIX": _FSC, "FOREST_STEWARDSHIP_COUNCIL_RECYCLED": _FSC,
+             "FOREST_STEWARDSHIP_COUNCIL_100_PERCENT": _FSC}
 CATEGORIEEN = [{"id": i + 1, "name": k, "supercategory": "keurmerk"} for i, k in enumerate(KLASSEN)]  # COCO van echt en nutrigreen
 RESOLUTIE = {"N": 384, "S": 512, "M": 576, "L": 704}
 GEWICHTEN = {  # rfdetr 1.11.2, rfdetr/assets/model_weights.py
@@ -48,16 +53,20 @@ def _maat(maat, besluit):
     return besluit
 
 
-def config(fase, maat, dataset, uit, epochs, seed, start=None, besluit=None):
-    """Vaste trainingsconfiguratie; ValueError bij een andere fase of maat, of S/M/L zonder besluit; `uit` via
-    veilig_doel. `besluit` (de verwijzing, of None bij N) komt zo ook in train-resultaat.json."""
+def config(fase, maat, dataset, uit, epochs, seed, start=None, besluit=None, hervat=None):
+    """Vaste trainingsconfiguratie; ValueError bij een andere fase of maat, of S/M/L zonder besluit, of een `hervat`
+    (checkpoint om verder te gaan, CAP-18) dat niet bestaat; `uit` via veilig_doel. `besluit` (de verwijzing, of None
+    bij N) en `hervat` komen zo ook in train-resultaat.json."""
     if fase not in FASEN:
         raise ValueError(f"fase {fase!r} niet in {FASEN}")
     besluit = _maat(maat, besluit)
+    if hervat is not None and not Path(hervat).is_file():
+        raise ValueError(f"hervatpunt {hervat} bestaat niet")
     uit = veilig_doel(uit)
     return {"fase": fase, "maat": maat, "besluit": besluit, "model": MATEN[maat], "resolutie": RESOLUTIE[maat],
             "dataset": str(dataset), "uit": str(uit), "epochs": int(epochs), "seed": int(seed), "batch_size": BATCH,
-            "start": str(start) if start else None, "gewichten": {"bestand": GEWICHTEN[maat][0], "url": GEWICHTEN[maat][1],
+            "start": str(start) if start else None,
+            "hervat": str(hervat) if hervat is not None else None, "gewichten": {"bestand": GEWICHTEN[maat][0], "url": GEWICHTEN[maat][1],
                                                                  "licentie": "Apache-2.0"}}
 
 
@@ -111,6 +120,16 @@ def _op_schaal(dataset, doel, zijde):
     return doel
 
 
+def train_argumenten(cfg, dataset_dir):
+    """Argumenten voor `model.train` (zonder `device`/`progress_bar`): elk epoch een volledig checkpoint
+    (`checkpoint_interval=1`), en `resume` alleen met een hervatpunt (trainingsset §12)."""
+    a = {"dataset_dir": dataset_dir, "epochs": cfg["epochs"], "batch_size": cfg["batch_size"], "output_dir": cfg["uit"],
+         "seed": cfg["seed"], "tensorboard": False, "num_workers": 0, "checkpoint_interval": 1}
+    if cfg.get("hervat"):
+        a["resume"] = cfg["hervat"]
+    return a
+
+
 def _train(cfg, log, voortgang=None):
     """Draait rfdetr.train met uitvoer onder cfg["uit"]; geeft (model, apparaat, seconden)."""
     uit = Path(cfg["uit"])
@@ -129,8 +148,7 @@ def _train(cfg, log, voortgang=None):
         logging.getLogger("proef.train").info("config %s apparaat %s schaal %d", json.dumps(cfg, sort_keys=True), apparaat,
                                               zijde)
         t0 = time.perf_counter()
-        model.train(dataset_dir=str(dataset), epochs=cfg["epochs"], batch_size=cfg["batch_size"], output_dir=str(uit),
-                    device=apparaat, seed=cfg["seed"], tensorboard=False, num_workers=0, progress_bar=voortgang)
+        model.train(**train_argumenten(cfg, str(dataset)), device=apparaat, progress_bar=voortgang)
         duur = time.perf_counter() - t0
         logging.getLogger("proef.train").info("klaar in %.1f s", duur)
         return model, apparaat, duur
@@ -177,12 +195,12 @@ def _data_herkomst(cfg):
 
 
 def controleer_klassen(cfg):
-    """ValueError als de COCO-set (`<dataset>/train`) andere categorieën heeft dan de 13 klassen, of het startcheckpoint
+    """ValueError als de COCO-set (`<dataset>/train`) andere categorieën heeft dan de klassen van `KLASSEN`, of het startcheckpoint
     (train-resultaat.json ernaast) andere `klassen`: rfdetr zou de kop dan stil opnieuw opbouwen (CAP-6)."""
     coco = Path(cfg["dataset"]) / "train" / "_annotations.coco.json"
     cat = {c["id"]: c["name"] for c in json.loads(coco.read_text())["categories"]} if coco.exists() else None
     if cat != {c["id"]: c["name"] for c in CATEGORIEEN}:
-        raise ValueError(f"{coco} ontbreekt of heeft andere categorieën dan de 13 klassen van train.KLASSEN")
+        raise ValueError(f"{coco} ontbreekt of heeft andere categorieën dan de {len(KLASSEN)} klassen van train.KLASSEN")
     if cfg["start"]:
         vorige = Path(cfg["start"]).parent / "train-resultaat.json"
         klassen = json.loads(vorige.read_text()).get("klassen") if vorige.exists() else None
@@ -267,12 +285,14 @@ def main(argv=None):
     t.add_argument("--seed", type=int, default=20261031)
     t.add_argument("--start", help="checkpoint van fase 1 (bijtrainen op echte voorbeelden)")
     t.add_argument("--besluit", help="verwijzing naar het besluit van Friso; verplicht voor S/M/L")
+    t.add_argument("--hervat", help="checkpoint_<n>.ckpt van deze fase: verder bij het volgende epoch (nacht.py)")
     a = ap.parse_args(argv)
     try:  # alleen de controle vooraf; een fout tijdens het werk houdt zijn traceback
         if a.stap == "snelheid":
             _maat(a.maat, a.besluit)
         else:
-            cfg = config(a.fase, a.maat, a.dataset, a.uit, a.epochs, a.seed, a.start, besluit=a.besluit)
+            cfg = config(a.fase, a.maat, a.dataset, a.uit, a.epochs, a.seed, a.start, besluit=a.besluit,
+                         hervat=a.hervat)
             controleer_klassen(cfg)
     except ValueError as e:
         print(f"niet gestart: {e}", file=sys.stderr)

@@ -1,16 +1,21 @@
 """Gedeelde lezer van `toets/uitslag.json` (toetsset §6, meetregels §3 en §5). Invulpagina, voortgangsteller en
 telcode gebruiken alleen deze functies, zodat ze nooit verschillend tellen. Alleen standaardbibliotheek."""
 
-KEURMERKEN_LOS = ("EU_ORGANIC_FARMING", "GREEN_DOT", "RECYCLABLE_GENERAL_CLAIM", "PREGNANCY_WARNING",
-                  "MARINE_STEWARDSHIP_COUNCIL_LABEL", "WEIDEMELK", "VEGAN_SOCIETY_VEGAN_LOGO", "EUROPEAN_V_LABEL_VEGAN")
-KEURMERKEN = KEURMERKEN_LOS + ("NUTRISCORE",)  # de 9 (meetregels §2; V-label en NS A–E: besluit Friso 01-11-2026)
+KEURMERKEN_R5 = ("EU_ORGANIC_FARMING", "GREEN_DOT", "RECYCLABLE_GENERAL_CLAIM", "PREGNANCY_WARNING",
+                 "MARINE_STEWARDSHIP_COUNCIL_LABEL", "WEIDEMELK", "VEGAN_SOCIETY_VEGAN_LOGO", "EUROPEAN_V_LABEL_VEGAN")
+NIEUW_R9 = ("FOREST_STEWARDSHIP_COUNCIL_LABEL", "TRIMAN", "SOCIETY_PLASTICS_INDUSTRY", "ON_THE_WAY_TO_PLANETPROOF")
+KEURMERKEN_LOS = KEURMERKEN_R5 + NIEUW_R9  # 12 (ronde 9: besluit Friso 02-11-2026)
+KEURMERKEN = KEURMERKEN_LOS + ("NUTRISCORE",)  # de 13 (meetregels §2; V-label en NS A–E: besluit Friso 01-11-2026)
 LETTERS = ("A", "B", "C", "D", "E")
 KEUZES = ("aanwezig", "afwezig", "onzeker")
 STATUSSEN = ("bevestigd", "onleesbaar")
 
 
-def valideer(invoer, bekend):
-    """Controleert één opslag {"id", "waarde"} tegen het schema; geeft de waarde terug of gooit ValueError."""
+def valideer(invoer, bekend, vereist=None):
+    """Controleert één opslag {"id", "waarde"} tegen het schema; geeft de waarde terug of gooit ValueError.
+    `bevestigd` vraagt een keuze voor elke code in `vereist` (standaard alle 12 losse) en Nutri-Score. Het veld
+    `bevestigde_codes` zet alleen de server; van de invuller wordt het geweigerd (toetsset §6)."""
+    vereist = KEURMERKEN_LOS if vereist is None else vereist
     if not isinstance(invoer, dict) or invoer.get("id") not in bekend:
         raise ValueError("onbekend etiket")
     w = invoer.get("waarde")
@@ -33,9 +38,24 @@ def valideer(invoer, bekend):
     for veld in ("opmerking", "tijd"):
         if not isinstance(w.get(veld, ""), str):
             raise ValueError(f"ongeldig veld {veld}")
-    if w.get("status") == "bevestigd" and (set(k) != set(KEURMERKEN_LOS) or "nutriscore" not in w):
-        raise ValueError("bevestigd vraagt een keuze voor alle 9 keurmerken")
+    if w.get("status") == "bevestigd" and (not set(k) >= set(vereist) or "nutriscore" not in w):
+        raise ValueError("bevestigd vraagt een keuze voor alle keurmerken en Nutri-Score")
     return w
+
+
+def bevestigde_codes(record):
+    """Codes waarvoor een bevestigd etiket telt: `bevestigde_codes` van de server, of (bevestigd van vóór ronde 9,
+    zonder lijst) de gekozen codes van ronde 5. Leeg als het etiket niet bevestigd is."""
+    if record.get("status") != "bevestigd":
+        return set()
+    if "bevestigde_codes" in record:
+        return set(record["bevestigde_codes"])
+    return set(record.get("keurmerken", {})) & set(KEURMERKEN_R5)
+
+
+def na_te_lopen(record):
+    """Bevestigd, maar minstens één van de vier van ronde 9 nog niet bevestigd (toetsset §6, Nalopen)."""
+    return record.get("status") == "bevestigd" and bool(set(NIEUW_R9) - bevestigde_codes(record))
 
 
 def per_keurmerk(uitslag):
@@ -46,8 +66,9 @@ def per_keurmerk(uitslag):
     for doc, r in uitslag.items():
         if r.get("status") != "bevestigd":
             continue
+        telt = bevestigde_codes(r)  # een losse keuze op een nieuwe rij telt pas na Bevestigen
         for code, keuze in r.get("keurmerken", {}).items():
-            if keuze in ("aanwezig", "afwezig") and code in KEURMERKEN_LOS:
+            if keuze in ("aanwezig", "afwezig") and code in KEURMERKEN_LOS and code in telt:
                 uit[code]["met" if keuze == "aanwezig" else "zonder"].add(doc)
         ns = r.get("nutriscore")
         if not isinstance(ns, list):
@@ -59,6 +80,6 @@ def per_keurmerk(uitslag):
 
 
 def stand(uitslag):
-    """Aantallen per keurmerk (9) tegen het doel; dezelfde telling als `per_keurmerk`."""
+    """Aantallen per keurmerk (13) tegen het doel; dezelfde telling als `per_keurmerk`."""
     pk = per_keurmerk(uitslag)
     return {k: {"met": len(pk[k]["met"]), "zonder": len(pk[k]["zonder"])} for k in KEURMERKEN}

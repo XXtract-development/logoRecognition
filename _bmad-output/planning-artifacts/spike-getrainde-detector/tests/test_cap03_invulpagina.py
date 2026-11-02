@@ -17,13 +17,15 @@ K7 = ("EU_ORGANIC_FARMING", "GREEN_DOT", "RECYCLABLE_GENERAL_CLAIM", "PREGNANCY_
       "MARINE_STEWARDSHIP_COUNCIL_LABEL", "WEIDEMELK", "VEGAN_SOCIETY_VEGAN_LOGO")
 K8 = K7 + ("NUTRISCORE",)
 KL = K7 + ("EUROPEAN_V_LABEL_VEGAN",)  # ronde 5: V-label als 8e losse keuze
+NIEUW_R9 = ("FOREST_STEWARDSHIP_COUNCIL_LABEL", "TRIMAN", "SOCIETY_PLASTICS_INDUSTRY", "ON_THE_WAY_TO_PLANETPROOF")
+KL12 = KL + NIEUW_R9  # ronde 9: bevestigd vraagt alle 12 losse keurmerken
 EU, GD, WM = "EU_ORGANIC_FARMING", "GREEN_DOT", "WEIDEMELK"
 DOCS = [f"1000000000001-{20000000000000 + i}-528" for i in range(8)]
 ITEMS = [{"id": d, "beeld": f"beelden/{d}.png", "hint": [], "voorinvulling": {"keurmerken": {GD: True}, "nutriscore": []}} for d in DOCS]
 
 
 def volledig(**over):
-    w = {"status": "bevestigd", "keurmerken": {c: "afwezig" for c in KL}, "nutriscore": [], "veranderd": [],
+    w = {"status": "bevestigd", "keurmerken": {c: "afwezig" for c in KL12}, "nutriscore": [], "veranderd": [],
          "opmerking": "", "tijd": "2026-10-31T21:00:00+01:00"}
     w.update(over)
     return w
@@ -63,7 +65,7 @@ def get(url, pad):
 # --- gedeelde uitslagfunctie ---------------------------------------------------------------------------------------
 
 def test_cap03_keurmerklijsten(us):
-    assert tuple(us.KEURMERKEN_LOS) == KL and tuple(us.KEURMERKEN) == KL + ("NUTRISCORE",)
+    assert tuple(us.KEURMERKEN_LOS) == KL12 and tuple(us.KEURMERKEN) == KL12 + ("NUTRISCORE",)  # ronde 9: 12 + Nutri-Score
 
 
 def test_cap03_valideer_accepteert_volledig_bevestigd_en_onleesbaar(us):

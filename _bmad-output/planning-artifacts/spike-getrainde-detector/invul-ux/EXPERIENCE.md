@@ -1,7 +1,7 @@
 ---
 name: Invulpagina toetsset (proef getrainde detector)
 status: final
-updated: 2026-11-02
+updated: 2026-11-02 (ronde 9: 13 rijen, nalopen)
 sources:
   - ../SPEC.md
   - ../toetsset.md
@@ -15,7 +15,7 @@ Vormgeving en tokens staan in [DESIGN.md](DESIGN.md). Eisen en antwoordmodel kom
 
 Eén lokale webpagina (`invul/index.html`) geserveerd door `invul/server.py` op 127.0.0.1, voor desktop en laptop (schermen 1440×900 en 1920×1080), muis en toetsenbord. Eén gebruiker: Friso. Geen externe bibliotheken, lettertypen of CDN's: de pagina werkt offline.
 
-**AI-voorinvulling** = het oordeel van het taalmodel per keurmerk dat vooraf in de keuzes staat (veld `voorinvulling` in `items.json`). **9 keurmerken** = 8 met aanwezig/afwezig/onzeker plus Nutri-Score. **Uitsnede** = een hinttegel uit `items.json` (`hint`); de bestandsnaam eindigt op `-<CODE>-<tegelnummer>.png` en wordt van rechts gelezen (de etiketcode bevat zelf streepjes). **Tegelvlak** = `herken.tegels(breedte, hoogte)` (1024 px, overlap 256) op de ware maat van het etiketbeeld, tegelnummer = index in die lijst.
+**AI-voorinvulling** = het oordeel van het taalmodel per keurmerk dat vooraf in de keuzes staat (veld `voorinvulling` in `items.json`). **13 keurmerken** = 12 met aanwezig/afwezig/onzeker (ronde 9: na V-label FSC, Triman, kunststofcode, PlanetProof) plus Nutri-Score. **Na te lopen** = een etiket dat al bevestigd is maar waarvan minstens één van de vier nieuwe keurmerken nog niet bevestigd is (toetsset §6). **Uitsnede** = een hinttegel uit `items.json` (`hint`); de bestandsnaam eindigt op `-<CODE>-<tegelnummer>.png` en wordt van rechts gelezen (de etiketcode bevat zelf streepjes). **Tegelvlak** = `herken.tegels(breedte, hoogte)` (1024 px, overlap 256) op de ware maat van het etiketbeeld, tegelnummer = index in die lijst.
 
 Ongewijzigd:
 
@@ -23,7 +23,7 @@ Ongewijzigd:
 - het schema van `uitslag.json`;
 - de server-API: `/`, `items.json`, `/stand`, `/opslaan`, beelden;
 - de conceptsleutel `concept:<id>` in `sessionStorage`; een concept in een open tabblad overleeft daardoor de wissel naar de nieuwe pagina;
-- bestaande selectors: `keuze-<CODE>` (radiogroepen, vaste volgorde), `ns-A`…`ns-E`, `ns-onleesbaar`, `stand-<CODE>` met `data-met`/`data-zonder` en zichtbare tekst met 16 en 50, alle 9 binnen een element `#standen`; `etiket-id`; `overzicht` binnen de link `volledig`; `#opmerking`, `#voortgang`, `#opslaan`, `#onleesbaar`, `#melding`, `#notitie`; `#keuzes` `inert` tot klaar.
+- bestaande selectors: `keuze-<CODE>` (radiogroepen, vaste volgorde), `ns-A`…`ns-E`, `ns-onleesbaar`, `stand-<CODE>` met `data-met`/`data-zonder` en zichtbare tekst met 16 en 50, alle 13 binnen een element `#standen`; `etiket-id`; `overzicht` binnen de link `volledig`; `#opmerking`, `#voortgang`, `#opslaan`, `#onleesbaar`, `#melding`, `#notitie`; `#keuzes` `inert` tot klaar.
 
 ### Wat iemand typt of kiest raakt nooit kwijt
 
@@ -40,7 +40,7 @@ Eén scherm, drie kolommen onder één kopregel:
 | Kopregel | titel, voortgang, positie, status van het etiket, etiketcode | waar ben ik, hoe ver ben ik |
 | Etiketbeeld | het etiket, kaders op de AI-plekken, inzoomen | het etiket zelf beoordelen |
 | AI-uitsneden | de uitsneden waarin de AI een keurmerk zag, met naam | snel zien wat de AI bedoelt |
-| Beoordelingspaneel (`#keuzes`) | melding geen voorinvulling; 9 keurmerkrijen (binnen `#standen`) met keuze, AI-merkje, "gewijzigd" en stand; opmerking; knoppen; melding; sneltoetsenregel | kiezen en bevestigen |
+| Beoordelingspaneel (`#keuzes`) | melding geen voorinvulling of 'na te lopen'; 13 keurmerkrijen (binnen `#standen`) met keuze, AI-merkje, "gewijzigd" en stand; opmerking; knoppen; melding; sneltoetsenregel | kiezen en bevestigen |
 
 De oude losse standenbalk vervalt: de stand per keurmerk staat in de eigen rij.
 
@@ -54,7 +54,7 @@ Kort, Nederlands, zonder vakjargon.
 | "gewijzigd" | "override" |
 | "AI: geen letter" | "AI: []" |
 
-Bestaande meldingsteksten blijven letterlijk staan, bijvoorbeeld "Kies eerst bij alle 8 keurmerken (ook het V-label) en bij Nutri-Score; niets opgeslagen." (tests en Friso's gewenning). Een melding over opslaan noemt daarnaast de etiketcode als het verzoek bij een ander etiket hoort dan het getoonde.
+Bestaande meldingsteksten blijven letterlijk staan, bijvoorbeeld "Opgeslagen (bevestigd)." (tests en Friso's gewenning); alleen de weigermelding bij bevestigen noemt sinds ronde 9 de 12 keurmerken (zie Nalopen); geen bestaande test controleert de oude tekst letterlijk (gezocht in `tests/`, 02-11-2026). Een melding over opslaan noemt daarnaast de etiketcode als het verzoek bij een ander etiket hoort dan het getoonde.
 
 ## Component Patterns
 
@@ -111,7 +111,7 @@ Sneltoetsen werken niet zolang de cursor in een tekstveld staat, niet in combina
 |---|---|
 | ← / → | vorig / volgend etiket (ook als een segmentknop of letter de focus heeft) |
 | ↑ / ↓ | vorige / volgende keurmerkrij actief maken; de markering gaat naar de AI-kaders van die rij (het beeld zelf zoomt of verschuift niet) |
-| 1 / 2 / 3 (een van de 8 rijen actief) | aanwezig / afwezig / onzeker; daarna wordt de volgende rij actief, maar nooit automatisch de Nutri-Score-rij (na de laatste van de 8 blijft die actief) |
+| 1 / 2 / 3 (een van de 12 rijen actief) | aanwezig / afwezig / onzeker; daarna wordt de volgende rij actief, maar nooit automatisch de Nutri-Score-rij (na de laatste van de 12 blijft die actief) |
 | 1–5 en 0 (Nutri-Score-rij actief) | letter A–E aan/uit; 0 = letter onleesbaar aan/uit; geen automatische rijwissel |
 | 4 / 5 / 0 buiten de Nutri-Score-rij | niets |
 | b | bevestigen zoals ingevuld en door naar het volgende etiket |
@@ -162,3 +162,12 @@ Fout: opslaan mislukt → rode melding met de etiketcode, concept blijft; met �
 5. **Hoogtepunt:** "Bevestigen en volgende"; `veranderd` bevat GREEN_DOT, het volgende etiket staat klaar.
 
 Fout: hij drukt `b` terwijl hij nog een opmerking typt → er gebeurt niets in het veld behalve de letter b; om te bevestigen klikt hij eerst buiten het veld.
+
+## Nalopen (ronde 9)
+
+- De kopregel toont naast "X van 352 etiketten afgehandeld" het aantal na te lopen etiketten ("· N na te lopen"), alleen als dat er is. Afgehandeld = bevestigd met alle 13 keuzes, of onleesbaar.
+- Bij openen staat de pagina op het eerste etiket dat niet afgehandeld of na te lopen is.
+- Op een na te lopen etiket: de keuzes van de server staan in de 9 oude rijen, de vier nieuwe tonen de voorinvulling; de eerste nieuwe rij zonder bevestigde keuze is actief; de notitie zegt "Al bevestigd: controleer alleen de vier nieuwe keurmerken (FSC, Triman, kunststofcode, PlanetProof)." "Bevestigen en volgende" (of `b`) slaat alles op, de oude antwoorden ongewijzigd.
+- Zonder voorinvulling voor de vier (mislukt of nog niet gedraaid): de vier rijen zonder keuze en met "AI: —"; bevestigen vraagt eerst een keuze.
+- De weigermelding bij bevestigen zonder alle keuzes wordt: "Kies eerst bij alle 12 keurmerken (ook het V-label en de vier nieuwe) en bij Nutri-Score; niets opgeslagen."
+

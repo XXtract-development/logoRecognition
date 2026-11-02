@@ -2,7 +2,8 @@
 
 Serveert de pagina, `items.json`, de beelden onder de map en `/stand`; elke opslag gaat via `uitslag.valideer` en
 landt atomisch (tijdelijk bestand + os.replace) in `<map>/uitslag.json`, één opslag tegelijk. Een opslag zonder
-`status` (een tussenstand) houdt de status die het etiket al had. Alleen aanvragen voor 127.0.0.1/localhost op de eigen
+`status` (een tussenstand) houdt de status die het etiket al had, en de lijst `bevestigde_codes` (ronde 9: een keuze
+op een nieuwe rij telt pas na Bevestigen); een opslag met status `bevestigd` zet `bevestigde_codes` op alle gekozen codes. Alleen aanvragen voor 127.0.0.1/localhost op de eigen
 poort, en POST alleen vanaf de eigen pagina (Origin): andere pagina's in dezelfde browser krijgen 403.
 
   python invul/server.py --map ~/logo-meetset-20261018/proef-detector/toets [--poort 8765]
@@ -73,7 +74,8 @@ class Handler(BaseHTTPRequestHandler):
         if pad == "/stand":
             with srv.lock:
                 u = _lees(srv.bestand)
-            return self._stuur(200, {"uitslag": u, "stand": uitslag.stand(u)})
+            return self._stuur(200, {"uitslag": u, "stand": uitslag.stand(u),
+                                     "na_te_lopen": sum(map(uitslag.na_te_lopen, u.values()))})
         doel = (srv.map / pad.lstrip("/")).resolve()
         if not doel.is_relative_to(srv.map.resolve()) or not doel.is_file():
             return self._stuur(404, {"fout": "niet gevonden"})
@@ -94,11 +96,16 @@ class Handler(BaseHTTPRequestHandler):
         with srv.lock:  # ponytail: één lock voor alle opslagen; genoeg voor één invuller
             u = _lees(srv.bestand)
             oud = u.get(body["id"], {})
-            if "status" not in waarde and "status" in oud:  # tussenstand: "bevestigd" blijft, mits nog volledig
+            if "status" not in waarde and "status" in oud:  # tussenstand: "bevestigd" blijft, mits de 8 oude volledig
                 try:
-                    waarde = dict(uitslag.valideer({"id": body["id"], "waarde": {**waarde, "status": oud["status"]}}, srv.ids))
+                    waarde = dict(uitslag.valideer({"id": body["id"], "waarde": {**waarde, "status": oud["status"]}},
+                                                   srv.ids, vereist=uitslag.KEURMERKEN_R5))
                 except ValueError:
                     waarde = None
+                if waarde is not None and oud["status"] == "bevestigd":
+                    waarde["bevestigde_codes"] = sorted(uitslag.bevestigde_codes(oud))
+            elif waarde.get("status") == "bevestigd":
+                waarde["bevestigde_codes"] = sorted(waarde["keurmerken"])
             if waarde is not None:
                 u[body["id"]] = waarde
                 _schrijf_atomisch(srv.bestand, u)

@@ -13,7 +13,11 @@ gedeelde zdr-client.
                   (ontdubbelt ook tegen een bestaande toets-docs.json en voegt de nieuwe docs daaraan toe)
   python toets.py voorinvulling --proef-map <PM> --manifest <gecombineerd/manifest.json> --zdr-logo <png>
                   [--grens <dollar> --besluit "<verwijzing>"]   (standaard de grens $65, besluit Friso 01-11-2026)
-  python toets.py rapport --proef-map <PM>
+  python toets.py voorinvulling-r9 --proef-map <PM> --manifest <gecombineerd/manifest.json> --zdr-logo <png>
+                  [--docs <json>] [--grens <dollar> --besluit "<verwijzing>"] [--items <pad>]
+                  (ronde 9: alleen FSC, Triman, kunststofcode, PlanetProof; lege tegels niet verstuurd; schrijft
+                   <toets>/voorinvulling-r9.json en <toets>/items-r9.json; items.json blijft staan tot de wissel)
+  python toets.py rapport --proef-map <PM>   (leest ook <toets>/voorinvulling-r9.json als die bestaat)
   python toets.py lijst --proef-map <PM> --manifest <gecombineerd/manifest.json>   (bevestigde toetsetiketten voor de runs)
 """
 import argparse
@@ -34,9 +38,11 @@ import openrouter
 import scheiding
 import uitslag
 
-LOS = uitslag.KEURMERKEN_LOS  # de 8 losse keurmerken (V-label inbegrepen, besluit Friso 01-11-2026)
+LOS = uitslag.KEURMERKEN_LOS  # de 12 losse keurmerken (V-label: besluit Friso 01-11-2026; de vier van ronde 9: 02-11-2026)
+NIEUW = uitslag.NIEUW_R9  # FSC, Triman, kunststofcode, PlanetProof
 NS = tuple(f"NUTRISCORE_{x}" for x in uitslag.LETTERS)  # A–E
 V, VV = "EUROPEAN_V_LABEL_VEGAN", "EUROPEAN_V_LABEL_VEGETARIAN"
+FSC, TRI, SPI, PP = NIEUW
 CODES = LOS + ("NUTRISCORE",)  # sleutels per keurmerk (rapport, melding)
 AANVUL_CODES = CODES + NS  # --alleen/--alle: ook één Nutri-Score-letter (toetsset §4)
 POOL = "pool-met-converted-laag-20261008.txt"  # docs met print-laag, in <PM>/invoer/
@@ -50,8 +56,14 @@ GELIJKEND = {  # meetregels §2 (codes; "nationale bio-logo's" en "andere gekleu
     "WEIDEMELK": ("BETER_LEVEN_1_STER", "BETER_LEVEN_2_STER"),
     "VEGAN_SOCIETY_VEGAN_LOGO": ("VEGAN",),  # het V-label is sinds ronde 5 een eigen keurmerk
     V: ("VEGAN",),
+    FSC: ("PEFC", "PEFC_CERTIFIED"),
+    TRI: ("GREEN_DOT", "RECYCLABLE_GENERAL_CLAIM", "SEPARATE_COLLECTION", "SOCIETY_PLASTICS_INDUSTRY", "RETURNABLE_CAN_NL"),
+    SPI: ("RECYCLABLE_GENERAL_CLAIM", "GREEN_DOT", "TRIMAN", "SEPARATE_COLLECTION", "RETURNABLE_CAN_NL"),
+    PP: ("RAINFOREST_ALLIANCE", "RAINFOREST_ALLIANCE_PEOPLE_NATURE", "FAIR_TRADE_MARK", "FAIRTRADE_COCOA",
+         "CERTIFIED_B_CORPORATION"),
 }
 GELIJKEND_CODES = sorted({c for v in GELIJKEND.values() for c in v} - set(LOS) - set(NS))
+GELIJKEND_R9 = sorted({c for k in NIEUW for c in GELIJKEND[k]} - set(LOS) - {"NUTRISCORE"})
 OMSCHRIJVING = {
     "EU_ORGANIC_FARMING": "EU organic logo: a leaf outline made of white stars on a green rectangle",
     "GREEN_DOT": "Der Grüne Punkt / Green Dot: a circle with two interlocking arrows",
@@ -62,6 +74,11 @@ OMSCHRIJVING = {
     "VEGAN_SOCIETY_VEGAN_LOGO": "The Vegan Society trademark: a sunflower with the word 'Vegan'",
     V: "European V-Label: a stylised V with a leaf, with the word 'vegan' or 'vegetarian' under it (both count as this "
        "mark)",
+    FSC: "FSC (Forest Stewardship Council) logo: a tree with a check mark, with 'FSC' and the word Mix, Recycled or 100%",
+    TRI: "French Triman logo: a figure with arrows pointing towards it (sorting instruction)",
+    SPI: "plastic resin identification code: a triangle of chasing arrows with a number 1-7 inside, often with letters "
+         "such as PET, PP or HDPE",
+    PP: "'On the way to PlanetProof' logo: a green-blue circular label with the words 'on the way to PlanetProof'",
 }
 SCHEMA_VOORINVULLING = {
     "type": "object",
@@ -84,6 +101,28 @@ PROMPT = (
     + "\n".join(f"- {c}: {o}" for c, o in OMSCHRIJVING.items())
     + "\nNutri-Score: list every letter (A-E) that is highlighted on a printed Nutri-Score scale; empty if there is none."
     "\nAlso list look-alike marks you see from: " + ", ".join(GELIJKEND_CODES) + "."
+)
+SCHEMA_R9 = {  # ronde 9: alleen de vier, met hun gelijkende codes; geen Nutri-Score (toetsset §5)
+    "type": "object",
+    "properties": {
+        "keurmerken": {"type": "array", "items": {
+            "type": "object",
+            "properties": {"code": {"type": "string", "enum": list(NIEUW)}, "aanwezig": {"type": "boolean"},
+                           "tegels": {"type": "array", "items": {"type": "integer"}}},
+            "required": ["code", "aanwezig", "tegels"], "additionalProperties": False}},
+        "gelijkend": {"type": "array", "items": {"type": "string", "enum": GELIJKEND_R9}},
+    },
+    "required": ["keurmerken", "gelijkend"],
+    "additionalProperties": False,
+}
+PROMPT_R9 = (
+    "You check a product label for printed marks. Image 1 is the whole label; the next images are tiles of the same "
+    "label at full resolution, numbered 0, 1, 2, ... in the order given. For each of these marks say whether it is "
+    "printed on the label as a logo or pictogram (text alone does not count) and list the tile numbers where you see it:\n"
+    + "\n".join(f"- {c}: {OMSCHRIJVING[c]}" for c in NIEUW)
+    + f"\nFSC Mix, FSC Recycled and FSC 100% all count as {FSC}."
+    "\nFor the plastic resin code the number inside the triangle does not matter: any number 1-7 counts."
+    "\nAlso list look-alike marks you see from: " + ", ".join(GELIJKEND_R9) + "."
 )
 
 
@@ -191,6 +230,47 @@ def voorinvulling(client, beeld, tegels):
             "ruw": ruw[0] if len(ruw) == 1 else ruw}
 
 
+def leeg(im):
+    """Vrijwel lege tegel: standaardafwijking van de grijswaarden < 3 (dezelfde regel als de herkenning)."""
+    import numpy as np
+
+    return float(np.asarray(im.convert("L"), dtype=np.float64).std()) < 3
+
+
+def voorinvulling_r9(client, beeld, tegels, index):
+    """Ronde 9 (toetsset §5): alleen de vier nieuwe keurmerken. `tegels` = de niet-lege tegels, `index` = hun
+    etiketindex; verdeling en samenvoegen zoals `voorinvulling`, hinttegels op etiketindex. Mislukt → lege velden met
+    `fout`; RunStop gaat door."""
+    leeg_ = {"keurmerken": {}, "hinttegels": {}, "gelijkend": [], "model": client.model, "kosten": 0.0,
+             "tijd": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "ronde": 9}
+    keurmerken, hint, gelijkend, prijs, ruw = {}, {}, set(), 0.0, []
+    try:
+        for r in openrouter.delen([len(t) for t in tegels], vast=len(beeld), max_aantal=MAX_TEGELS):
+            deel = tegels[r.start:r.stop]
+            a, p = client.vraag(PROMPT_R9, [beeld, *deel], SCHEMA_R9, verwacht=PER_AANROEP)
+            prijs += p
+            ruw.append(a)
+            for k in a["keurmerken"]:
+                if k["code"] not in NIEUW:
+                    continue
+                keurmerken[k["code"]] = keurmerken.get(k["code"], False) or bool(k["aanwezig"])
+                if k["aanwezig"]:
+                    hint.setdefault(k["code"], set()).update(index[r.start + i] for i in k["tegels"] if 0 <= i < len(deel))
+            gelijkend |= set(a["gelijkend"])
+    except openrouter.EtiketFout as e:
+        return {**leeg_, "kosten": prijs, "fout": e.klasse}
+    except (TypeError, AttributeError, KeyError, ValueError, IndexError):  # antwoord niet in de verwachte vorm
+        return {**leeg_, "kosten": prijs, "fout": "antwoord_ongeldig"}
+    return {**leeg_, "keurmerken": keurmerken, "hinttegels": {c: sorted(s) for c, s in hint.items() if s},
+            "gelijkend": sorted(gelijkend), "kosten": prijs, "ruw": ruw[0] if len(ruw) == 1 else ruw}
+
+
+def raming_r9(megapixels, aanroepen):
+    """Kostenmodel ronde 9 (gemeten op 352 etiketten, R² 0,994): $0,0022 per megapixel tegel + $0,0164 per aanroep
+    (het overzicht zit in de kosten per aanroep)."""
+    return 0.0022 * megapixels + 0.0164 * aanroepen
+
+
 def met_v_label(v):
     """Kopie van één voorinvulling met een V-label-oordeel (toetsset §5): alleen bij een geslaagde voorinvulling van
     vóór ronde 5 (geen `ronde`, geen `fout`, niet-lege `keurmerken`) zonder V-label-oordeel geldt V-label vegan of
@@ -203,11 +283,31 @@ def met_v_label(v):
     return uit
 
 
-def rapport(voorinvullingen):
-    """Per keurmerk (9) het aantal etiketten waarop het volgens de voorinvulling waarschijnlijk staat; Nutri-Score als
-    groep (minstens één letter A–E), V-label via `met_v_label`."""
+def samenvoegen(v, v9):
+    """Kopie van `met_v_label(v)` aangevuld met de vier van ronde 9 uit `v9` (alleen zonder `fout`): keurmerken en
+    hinttegels van de vier, gelijkend als vereniging; een oordeel over keurmerk 1–9 wordt nooit overschreven. `ronde9`
+    = model, kosten en tijd (en fout) van `v9`; zonder `v9` alleen `met_v_label(v)`."""
+    uit = met_v_label(v)
+    if v9 is None:
+        return uit
+    if "fout" not in v9:
+        k, h = uit.setdefault("keurmerken", {}), uit.setdefault("hinttegels", {})
+        for c in NIEUW:
+            if c in v9.get("keurmerken", {}) and c not in k:
+                k[c] = v9["keurmerken"][c]
+            if c in v9.get("hinttegels", {}) and c not in h:
+                h[c] = list(v9["hinttegels"][c])
+        uit["gelijkend"] = sorted(set(uit.get("gelijkend", [])) | set(v9.get("gelijkend", [])))
+    uit["ronde9"] = {x: v9[x] for x in ("model", "kosten", "tijd", "fout") if x in v9}
+    return uit
+
+
+def rapport(voorinvullingen, r9=None):
+    """Per keurmerk (13) het aantal etiketten waarop het volgens de voorinvulling waarschijnlijk staat; Nutri-Score als
+    groep (minstens één letter A–E), V-label via `met_v_label`, de vier van ronde 9 uit `r9` via `samenvoegen`."""
     r = dict.fromkeys(CODES, 0)
-    for v in map(met_v_label, voorinvullingen.values()):
+    r9 = r9 or {}
+    for v in (samenvoegen(v, r9.get(d)) for d, v in voorinvullingen.items()):
         for c in LOS:
             r[c] += bool(v.get("keurmerken", {}).get(c))
         r["NUTRISCORE"] += bool(set(v.get("nutriscore", [])) & set(uitslag.LETTERS))
@@ -316,6 +416,15 @@ def main(argv=None):
     v.add_argument("--docs", type=Path, help="json-lijst doc_id's (uitvoer van ontdubbel); standaard alle in het manifest")
     v.add_argument("--grens", type=float, help=f"andere uitgavengrens dan ${GRENS_VOORINVULLING:.0f}; alleen met --besluit")
     v.add_argument("--besluit", help="verwijzing naar het besluit van Friso over --grens")
+    v9 = sub.add_parser("voorinvulling-r9")
+    v9.add_argument("--proef-map", required=True, type=Path)
+    v9.add_argument("--manifest", required=True, type=Path, help="manifest.json van beelden.py bouwen")
+    v9.add_argument("--model", default="anthropic/claude-sonnet-5.5")
+    v9.add_argument("--zdr-logo", type=Path, required=True, help="niet-klantbeeld (officieel logo) voor de zdr-proef")
+    v9.add_argument("--docs", type=Path, help="json-lijst doc_id's; standaard alle in het manifest")
+    v9.add_argument("--grens", type=float, help=f"andere uitgavengrens dan ${GRENS_VOORINVULLING:.0f}; alleen met --besluit")
+    v9.add_argument("--besluit", help="verwijzing naar het besluit van Friso over --grens")
+    v9.add_argument("--items", type=Path, help="nieuwe itemlijst (standaard <toets>/items-r9.json; nooit items.json)")
     r = sub.add_parser("rapport")
     r.add_argument("--proef-map", required=True, type=Path)
     a = ap.parse_args(argv)
@@ -330,7 +439,7 @@ def main(argv=None):
             ap.error("Nutri-Score (groep of letter) bij --alleen en --alle samen: de groep heeft één maximum")
         if a.naam is not None and (Path(a.naam).name != a.naam or a.naam in ("", ".", "..")):
             ap.error("--naam is een bestandsnaam zonder map (geen /, . of ..)")
-    if a.stap == "voorinvulling":
+    if a.stap in ("voorinvulling", "voorinvulling-r9"):
         grens, besluit = grens_uit(ap, a, GRENS_VOORINVULLING)
     toets_map = beelden.veilig_doel(a.proef_map / "toets")
     toets_map.mkdir(parents=True, exist_ok=True)
@@ -418,6 +527,8 @@ def main(argv=None):
         (toets_map / "zdr-proef.json").write_text(json.dumps({**proef, "grens": grens, "besluit": besluit}) + "\n")
         (toets_map / "items.json").write_text(json.dumps(items, indent=1) + "\n")
         print(len(items), "etiketten, uitgegeven $%.2f" % bewaker.uitgegeven)
+    elif a.stap == "voorinvulling-r9":
+        return _voorinvulling_r9(a, toets_map, grens, besluit)
     elif a.stap == "ontdubbel":
         from PIL import Image
 
@@ -446,10 +557,97 @@ def main(argv=None):
         print(len(lijst), "bevestigde toetsetiketten →", toets_map / "toets-lijst.json")
     else:
         vi = json.loads((toets_map / "voorinvulling.json").read_text())
-        rp = rapport(vi)
-        stop = stoppunt2(rp)  # alleen over de 9; per letter is informatief
+        r9_pad = toets_map / "voorinvulling-r9.json"
+        rp = rapport(vi, json.loads(r9_pad.read_text()) if r9_pad.exists() else None)
+        stop = stoppunt2(rp)  # over de 13; per letter is informatief
         print(json.dumps({"rapport": rp, "nutriscore_per_letter": letters(vi), "stoppunt_2": stop}, indent=1))
         return 2 if stop else 0
+    return 0
+
+
+def _hints(im, vakken, doc, hinttegels, map_):
+    """Hintbeelden (PNG, hoogstens 400 px) van de eerste twee hinttegels per code; bestaande blijven staan."""
+    uit = []
+    for c, idx in sorted(hinttegels.items()):
+        for i in idx[:2]:
+            if 0 <= i < len(vakken):
+                h = map_ / "beelden" / f"{doc}-{c}-{i}.png"
+                if not h.exists():
+                    t = im.crop(vakken[i])
+                    t.thumbnail((400, 400))
+                    t.save(h)
+                uit.append(f"beelden/{h.name}")
+    return uit
+
+
+def _voorinvulling_r9(a, toets_map, grens, besluit):
+    """Opdrachtregel `voorinvulling-r9` (toetsset §5, randvoorwaarden §3): startprojectie met het kostenmodel over de
+    open etiketten (niet in voorinvulling-r9.json of met fout) vóór de client; daarna per etiket opslaan, en een nieuwe
+    itemlijst naast de live `items.json`."""
+    from PIL import Image
+
+    import herken
+    import kosten
+
+    items_pad = a.items or toets_map / "items-r9.json"
+    if items_pad.resolve() == (toets_map / "items.json").resolve():
+        raise SystemExit("--items mag niet de live items.json zijn: die wisselt pas volgens het wisselplan")
+    items_pad = beelden.veilig_doel(items_pad)
+    manifest = json.loads(a.manifest.read_text())
+    docs = sorted(d for d, m in manifest.items() if "sha256" in m)
+    if a.docs:
+        docs = [d for d in json.loads(a.docs.read_text()) if d in set(docs)]
+    uitvoer = toets_map / "voorinvulling-r9.json"
+    r9 = json.loads(uitvoer.read_text()) if uitvoer.exists() else {}
+    open_ = [d for d in docs if d not in r9 or "fout" in r9[d]]  # klare etiketten worden niet opnieuw betaald
+
+    def niet_leeg(im):
+        vakken = herken.tegels(*im.size)
+        return vakken, [i for i, t in enumerate(vakken) if not leeg(im.crop(t))]
+
+    projectie = 0.0
+    for d in open_:
+        with Image.open(a.manifest.parent / f"{d}.png") as im:
+            vakken, idx = niet_leeg(im.convert("L"))
+        mp = sum((vakken[i][2] - vakken[i][0]) * (vakken[i][3] - vakken[i][1]) for i in idx) / 1e6
+        projectie += raming_r9(mp, max(1, math.ceil(len(idx) / MAX_TEGELS)))
+    bewaker = kosten.Bewaker("voorinvulling toets", projectie, grootboek=a.proef_map / "uitgaven.json", grens=grens)
+    print(f"grens voorinvulling ${grens:.2f}", f"(besluit: {besluit})" if besluit else "(standaard)",
+          f"; startprojectie ${bewaker.uitgegeven:.2f} uitgegeven + ${projectie:.2f} voor {len(open_)} etiketten")
+    try:
+        bewaker.controleer_start(projectie)  # vóór de client en de zdr-proef
+    except kosten.BudgetOverschreden as e:
+        print(f"stoppunt 5, niets gestart: {e}", file=sys.stderr)
+        return 2
+    client = openrouter.Client(a.model, "voorinvulling", bewaker=bewaker)
+    proef = client.zdr_proef(a.zdr_logo.read_bytes())
+    (toets_map / "beelden").mkdir(exist_ok=True)
+    vi_pad = toets_map / "voorinvulling.json"
+    vi = json.loads(vi_pad.read_text()) if vi_pad.exists() else {}
+    items, geweigerd = [], 0
+    for doc in docs:
+        pad = a.manifest.parent / f"{doc}.png"
+        im = Image.open(pad).convert("RGB")
+        vakken, idx = niet_leeg(im)
+        if doc in open_:
+            overzicht = im.copy()
+            overzicht.thumbnail((1500, 1500))
+            r9[doc] = {**voorinvulling_r9(client, jpeg(overzicht), [jpeg(im.crop(vakken[i])) for i in idx], idx),
+                       "beeldtype": "jpeg"}
+            uitvoer.write_text(json.dumps(r9, indent=1) + "\n")  # na elk etiket: een onderbreking verliest niets
+            geweigerd = geweigerd + 1 if r9[doc].get("fout") == "geweigerd" else 0
+            if geweigerd >= 5:
+                raise SystemExit("5 etiketten op rij geweigerd door de aanbieder: run gestopt (zie randvoorwaarden §2)")
+        samen = samenvoegen(vi.get(doc, {}), r9.get(doc))
+        volledig = toets_map / "beelden" / f"{doc}.png"
+        if not volledig.exists():
+            shutil.copyfile(pad, volledig)
+        items.append({"id": doc, "beeld": f"beelden/{doc}.png", "hint": _hints(im, vakken, doc, samen.get("hinttegels", {}),
+                                                                               toets_map),
+                      "voorinvulling": samen})
+    (toets_map / "zdr-proef-r9.json").write_text(json.dumps({**proef, "grens": grens, "besluit": besluit}) + "\n")
+    items_pad.write_text(json.dumps(items, indent=1) + "\n")
+    print(len(items), "etiketten →", items_pad, "; uitgegeven $%.2f" % bewaker.uitgegeven)
     return 0
 
 

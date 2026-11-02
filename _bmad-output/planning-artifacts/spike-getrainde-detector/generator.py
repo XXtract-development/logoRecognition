@@ -239,7 +239,8 @@ def _gtin_gln(inv):
 
 def _logos(pm):
     """Logobronnen per klasse (trainingsset §2): publiek/GS1/synthetisch, plus schone uitsneden van trainingsleveranciers.
-    Een variant (vegetarisch V-label) is een bron van zijn klasse, maar nooit het verplichte referentieplaatje."""
+    Een variant (vegetarisch V-label, FSC Mix/Recycled/100%) is een bron van zijn klasse. Referentieplaatje: eigen code
+    vóór variant, binnen elk http vóór GS1; een variant alleen voor FSC, dat geen eigen publiek bestand heeft (ronde 9)."""
     import scheiding
     import toets
 
@@ -248,7 +249,7 @@ def _logos(pm):
     train = set(json.loads((pm / "scheiding.json").read_text())["trainingsleveranciers"])
     gtin_gln = _gtin_gln(inv)
     publiek = {"gs1-packaging-label-guide", "synthetic-nutriscore-bootstrap"}
-    bronnen, gelijkend, referenties = [], [], {}
+    bronnen, gelijkend, referenties, varianten = [], [], {}, {}
     for r in json.loads((inv / "momentopname/actieve-refs.json").read_text()):
         pad, bron, klasse = mo / r["path"], r.get("source") or "", KLASSE_VAN_VARIANT.get(r["code"], r["code"])
         if klasse not in CATEGORIE and klasse not in toets.GELIJKEND_CODES or not pad.exists():
@@ -265,10 +266,13 @@ def _logos(pm):
         item = {"klasse": klasse, "pad": str(pad), "gtin": gtin, "herkomst": f"{bron} {r['id']}",
                 "sha256": hashlib.sha256(pad.read_bytes()).hexdigest(), "licentie": "alleen intern"}
         (bronnen if klasse in CATEGORIE else gelijkend).append(item)
-        if r["code"] in CATEGORIE and gtin is None:  # verplicht referentieplaatje (eigen code): bron 1 (http) vóór bron 2
-            oud = referenties.get(r["code"])
+        if klasse in CATEGORIE and gtin is None:  # verplicht referentieplaatje: bron 1 (http) vóór bron 2
+            doel = referenties if r["code"] == klasse else varianten
+            oud = doel.get(klasse)
             if oud is None or (bron.startswith("http") and not oud["herkomst"].startswith("http")):
-                referenties[r["code"]] = {"pad": str(pad), "herkomst": item["herkomst"], "sha256": item["sha256"]}
+                doel[klasse] = {"pad": str(pad), "herkomst": item["herkomst"], "sha256": item["sha256"]}
+    if "FOREST_STEWARDSHIP_COUNCIL_LABEL" in varianten:  # alleen FSC: geen eigen publiek of GS1-bestand (trainingsset §2)
+        referenties.setdefault("FOREST_STEWARDSHIP_COUNCIL_LABEL", varianten["FOREST_STEWARDSHIP_COUNCIL_LABEL"])
     handmatig = pm / "logos" / "handmatig.json"  # [{klasse, pad, herkomst, licentie}] — publieke bestanden, geen uitsneden
     for h in json.loads(handmatig.read_text()) if handmatig.exists() else []:
         item = {**h, "gtin": None, "sha256": hashlib.sha256(Path(h["pad"]).read_bytes()).hexdigest()}

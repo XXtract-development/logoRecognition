@@ -38,7 +38,10 @@ KLASSEN10 = (EU, GD, RC, NSA, NSB, NSC, PW, MSC, WM, VG)
 KLASSEN13 = KLASSEN10 + (NSD, NSE, V)
 LOS = (EU, GD, RC, PW, MSC, WM, VG, V)
 NEGEN = LOS + ("NUTRISCORE",)
-CATEGORIEEN = [{"id": i + 1, "name": k, "supercategory": "keurmerk"} for i, k in enumerate(KLASSEN13)]  # zoals echt._coco
+NIEUW = ("FOREST_STEWARDSHIP_COUNCIL_LABEL", "TRIMAN", "SOCIETY_PLASTICS_INDUSTRY", "ON_THE_WAY_TO_PLANETPROOF")  # ronde 9
+KLASSEN17 = KLASSEN13 + NIEUW  # ronde 9: id 1–13 gelijk, de vier achteraan
+DERTIEN = LOS + NIEUW + ("NUTRISCORE",)  # ronde 9: 13 keurmerken
+CATEGORIEEN = [{"id": i + 1, "name": k, "supercategory": "keurmerk"} for i, k in enumerate(KLASSEN17)]  # zoals echt._coco
 G = {k: f"100000000000{i}" for i, k in enumerate("ABCDE", 1)}  # verzonnen leveranciers
 MD5_ECHT = "6836b94d5c065aee397fad8415396e5a"
 BESLUITEN = {"automatisch", "mens bevestigt", "te weinig voorbeelden"}
@@ -51,8 +54,9 @@ def attributie():
 
 
 def et5(aanwezig=(), nutriscore=(), onzeker=(), status="bevestigd"):
-    """Bevestigd etiket in het schema van ronde 5: een keuze voor alle 8 losse keurmerken (V-label inbegrepen)."""
-    k = {c: "aanwezig" if c in aanwezig else "onzeker" if c in onzeker else "afwezig" for c in LOS}
+    """Bevestigd etiket in het schema van ronde 5: een keuze voor alle 8 losse keurmerken (V-label inbegrepen);
+    sinds ronde 9 ook voor de vier nieuwe, zodat het als bevestigd opgeslagen mag worden."""
+    k = {c: "aanwezig" if c in aanwezig else "onzeker" if c in onzeker else "afwezig" for c in LOS + NIEUW}  # ronde 9: 12
     ns = nutriscore if isinstance(nutriscore, str) else list(nutriscore)
     return {"status": status, "keurmerken": k, "nutriscore": ns, "veranderd": [], "opmerking": "",
             "tijd": "2026-11-01T22:00:00+01:00"}
@@ -83,10 +87,10 @@ def waarden(x):
 
 def test_r5_klassen_13_de_tien_bestaande_eerst_coco_ids_ongewijzigd():  # P1, CAP-6
     tr, gen = mod("train"), mod("generator")
-    assert tuple(tr.KLASSEN) == KLASSEN13
-    assert gen.CATEGORIE == {k: i + 1 for i, k in enumerate(KLASSEN13)}
+    assert tuple(tr.KLASSEN)[:13] == KLASSEN13  # ronde 9: de vier nieuwe komen erachter
+    assert {k: gen.CATEGORIE[k] for k in KLASSEN13} == {k: i + 1 for i, k in enumerate(KLASSEN13)}
     assert {k: gen.CATEGORIE[k] for k in KLASSEN10} == {k: i + 1 for i, k in enumerate(KLASSEN10)}  # id 1–10 gelijk
-    assert tr.VARIANTEN == {VV: V}
+    assert tr.VARIANTEN[VV] == V  # ronde 9: plus de FSC-varianten
 
 
 def test_r5_een_klassenlijst_voor_alle_gereedschappen():  # P1, CAP-6
@@ -97,7 +101,7 @@ def test_r5_een_klassenlijst_voor_alle_gereedschappen():  # P1, CAP-6
 
 def test_r5_keurmerklijsten_los_en_negen_op_een_plek():  # P0, CAP-3/CAP-9
     us, ts = mod("uitslag"), mod("toets")
-    assert tuple(us.KEURMERKEN_LOS) == LOS and tuple(us.KEURMERKEN) == NEGEN
+    assert tuple(us.KEURMERKEN_LOS)[:8] == LOS and tuple(us.KEURMERKEN) == DERTIEN  # ronde 9: de vier na de 8
     assert not hasattr(us, "KEURMERKEN7") and not hasattr(us, "KEURMERKEN8")  # de oude namen verdwijnen
     assert ts.LOS is us.KEURMERKEN_LOS
     assert tuple(ts.NS) == NS5 and tuple(mod("herken").NS) == NS5
@@ -111,7 +115,7 @@ def test_r5_valideer_bevestigd_vraagt_het_v_label_en_weigert_vegetarisch():  # P
     assert us.valideer({"id": "d", "waarde": et5(nutriscore=["D", "E"])}, ids)["nutriscore"] == ["D", "E"]
     assert us.valideer({"id": "d", "waarde": {"keurmerken": {V: "onzeker"}}}, ids)  # tussenstand met alleen V-label
     assert us.valideer({"id": "d", "waarde": {**et5(), "veranderd": [V, "NUTRISCORE"]}}, ids)
-    zonder_v = {**et5(), "keurmerken": {c: "afwezig" for c in LOS if c != V}}
+    zonder_v = {**et5(), "keurmerken": {c: "afwezig" for c in LOS + NIEUW if c != V}}
     for fout in (zonder_v, {**et5(), "keurmerken": {**et5()["keurmerken"], VV: "afwezig"}},
                  {"keurmerken": {VV: "aanwezig"}}, {**et5(), "veranderd": [VV]}):
         with pytest.raises(ValueError):
@@ -122,7 +126,7 @@ def test_r5_per_keurmerk_nutriscore_groep_a_tot_e_en_per_letter():  # P0, CAP-9 
     pk = mod("uitslag").per_keurmerk({
         "d": et5(nutriscore=["D"]), "e": et5(nutriscore=["E"]), "ab": et5(nutriscore=["A", "B"]),
         "leeg": et5(nutriscore=[]), "onl": et5(nutriscore="onleesbaar"), "x": et5(nutriscore=["D"], status="onleesbaar")})
-    assert set(pk) == set(NEGEN) | set(NS5)
+    assert set(pk) == set(DERTIEN) | set(NS5)
     assert (pk["NUTRISCORE"]["met"], pk["NUTRISCORE"]["zonder"]) == ({"d", "e", "ab"}, {"leeg"})  # D en E zijn mét
     assert (pk[NSD]["met"], pk[NSD]["zonder"]) == ({"d"}, {"e", "ab", "leeg"})
     assert (pk[NSE]["met"], pk[NSE]["zonder"]) == ({"e"}, {"d", "ab", "leeg"})
@@ -137,7 +141,7 @@ def test_r5_per_keurmerk_en_stand_tellen_het_v_label_als_negende():  # P0, CAP-3
     pk = us.per_keurmerk(u)
     assert (pk[V]["met"], pk[V]["zonder"]) == ({"v"}, {"n"})
     st = us.stand(u)
-    assert set(st) == set(NEGEN)
+    assert set(st) == set(DERTIEN)
     assert st[V] == {"met": 1, "zonder": 1} and st["NUTRISCORE"] == {"met": 0, "zonder": 3}
 
 
@@ -156,7 +160,7 @@ def test_r5_server_bevestigd_met_v_label_landt_zonder_of_vegetarisch_geweigerd(s
     p, (d0, d1, _) = server5.poort, server5.docs
     assert aanvraag(p, body={"id": d0, "waarde": et5(aanwezig={V}, nutriscore=["E"])}) == 200
     voor = server5.bestand.read_bytes()
-    zonder_v = {**et5(), "keurmerken": {c: "afwezig" for c in LOS if c != V}}
+    zonder_v = {**et5(), "keurmerken": {c: "afwezig" for c in LOS + NIEUW if c != V}}
     assert aanvraag(p, body={"id": d1, "waarde": zonder_v}) == 400
     assert aanvraag(p, body={"id": d1, "waarde": {"keurmerken": {VV: "aanwezig"}}}) == 400
     tussen = {"keurmerken": {c: "afwezig" for c in LOS if c != V}, "nutriscore": ["E"]}  # maakt d0 onvolledig
@@ -164,7 +168,7 @@ def test_r5_server_bevestigd_met_v_label_landt_zonder_of_vegetarisch_geweigerd(s
     assert server5.bestand.read_bytes() == voor
     with urllib.request.urlopen(f"http://127.0.0.1:{p}/stand", timeout=10) as r:
         st = json.loads(r.read())["stand"]
-    assert set(st) == set(NEGEN) and st[V] == {"met": 1, "zonder": 0} and st["NUTRISCORE"] == {"met": 1, "zonder": 0}
+    assert set(st) == set(DERTIEN) and st[V] == {"met": 1, "zonder": 0} and st["NUTRISCORE"] == {"met": 1, "zonder": 0}
 
 
 # --- tel_proef: groep A–E, per letter, V-label, nakijklijst over de 9 (CAP-9) -------------------------------------------
@@ -217,21 +221,21 @@ def test_r5_nakijklijst_en_besluit_lopen_over_de_negen(tmp_path):  # P0, CAP-9 (
     na, tweede = tp.na_nakijken(u, routes, {}, pad)
     assert tweede == {} and set(NEGEN) <= set(na["r1"]) and "steekproef" in na["r1"][V]
     assert (na["r1"][V]["met"], na["r1"][V]["gevonden"], na["r1"][V]["vals"]) == (12, 11, 1)
-    assert set(tp.verschil(na["r1"], na["r2"])) == set(NEGEN)
+    assert set(tp.verschil(na["r1"], na["r2"])) == set(DERTIEN)
 
 
 # --- scheiding: 10 keuzerijen, 3 extra rijen buiten de keuze (CAP-1, toetsset §2) ----------------------------------------
 
 def test_r5_scheiding_tien_keuzerijen_en_drie_extra():  # P0, CAP-1
     sch = mod("scheiding")
-    assert tuple(sch.RIJEN) == KLASSEN10 and tuple(sch.RIJEN_EXTRA) == (NSD, NSE, V)
+    assert tuple(sch.RIJEN) == KLASSEN10 and tuple(sch.RIJEN_EXTRA)[:3] == (NSD, NSE, V)  # ronde 9: plus vier
 
 
 def test_r5_bouw_rijen_13_vegetarisch_telt_in_de_v_label_rij():  # P0, CAP-1
     decl = [(f"{G['A']}-{g}-528", G["A"], g, frozenset(c)) for g, c in (
         ("10000000000017", {V}), ("10000000000024", {VV}), ("10000000000031", {NSD, NSE}), ("10000000000048", {VG}))]
     rijen = mod("scheiding").bouw_rijen(decl, [])
-    assert set(rijen) == set(KLASSEN13)
+    assert set(rijen) == set(KLASSEN17)
     assert dict(rijen[V]) == {G["A"]: {"10000000000017", "10000000000024"}}
     assert dict(rijen[NSD]) == dict(rijen[NSE]) == {G["A"]: {"10000000000031"}}
     assert dict(rijen[VG]) == {G["A"]: {"10000000000048"}}
@@ -269,7 +273,7 @@ def test_r5_schrijf_zet_de_rijen_buiten_de_keuze_met_reden(tmp_path):  # P0, CAP
     rijen, uit = scheiding_wereld()
     data = json.loads(Path(sch.schrijf(sch.kies(rijen, uit), tmp_path / "scheiding.json", {"x.tsv": "a" * 64})).read_text())
     rbk = data["rijen_buiten_keuze"]
-    assert sorted(rbk["rijen"]) == sorted([NSD, NSE, V]) and isinstance(rbk["reden"], str) and rbk["reden"].strip()
+    assert sorted(rbk["rijen"]) == sorted([NSD, NSE, V, *NIEUW]) and isinstance(rbk["reden"], str) and rbk["reden"].strip()
     assert data["per_rij"][V]["buiten_keuze"] is True and data["trainingsleveranciers"] == [G["A"]]
 
 
@@ -286,7 +290,7 @@ def test_r5_toets_gelijkende_keurmerken_zonder_v_label_en_nutriscore_codes():  #
 def test_r5_toets_schema_en_prompt_vragen_het_v_label():  # P0, CAP-2
     ts = mod("toets")
     s = ts.SCHEMA_VOORINVULLING["properties"]
-    assert s["keurmerken"]["items"]["properties"]["code"]["enum"] == list(LOS)
+    assert s["keurmerken"]["items"]["properties"]["code"]["enum"] == list(ts.LOS) and V in ts.LOS  # ronde 9: de 12
     assert s["gelijkend"]["items"]["enum"] == list(ts.GELIJKEND_CODES)
     assert V in ts.OMSCHRIJVING and re.search(r"vegetari", ts.OMSCHRIJVING[V], re.I)
     assert V in ts.PROMPT and re.search(r"v-label", ts.PROMPT, re.I) and re.search(r"vegetari", ts.PROMPT, re.I)
@@ -341,7 +345,7 @@ def rapport_wereld():
 def test_r5_rapport_negen_keurmerken_nutriscore_elke_letter_v_label_afgeleid():  # P0, CAP-2 (stoppunt 2)
     ts = mod("toets")
     r = ts.rapport(rapport_wereld())
-    assert set(r) == set(NEGEN)
+    assert set(r) == set(DERTIEN)
     assert (r["NUTRISCORE"], r[V], r[GD], r[VG]) == (3, 2, 1, 0)  # D en E tellen; V-label uit gelijkend; fout telt niet
     assert ts.letters(rapport_wereld()) == {"A": 1, "B": 0, "C": 1, "D": 1, "E": 1}
 
@@ -353,9 +357,9 @@ def test_r5_cli_rapport_per_letter_en_stoppunt_2_alleen_over_de_negen(tmp_path, 
     code = rc(lambda: mod("toets").main(["rapport", "--proef-map", str(pm)]))
     uit = json.loads(capsys.readouterr().out)
     assert set(uit) == {"rapport", "nutriscore_per_letter", "stoppunt_2"}
-    assert set(uit["rapport"]) == set(NEGEN) and (uit["rapport"]["NUTRISCORE"], uit["rapport"][V]) == (16, 15)
+    assert set(uit["rapport"]) == set(DERTIEN) and (uit["rapport"]["NUTRISCORE"], uit["rapport"][V]) == (16, 15)
     assert uit["nutriscore_per_letter"] == {"A": 0, "B": 0, "C": 0, "D": 0, "E": 16}
-    assert uit["stoppunt_2"] == [V] and code == 2  # letters A–D op 0 zijn geen stoppunt
+    assert uit["stoppunt_2"] == [V, *NIEUW] and code == 2  # ronde 9: zonder voorinvulling-r9 staan de vier op 0  # letters A–D op 0 zijn geen stoppunt
 
 
 def test_r5_items_dragen_het_afgeleide_v_label_voorinvulling_json_blijft_ongewijzigd(tmp_path, monkeypatch):  # P0, CAP-2
@@ -518,18 +522,19 @@ REFS = [  # het vegetarische V-label eerst en ook als http-bron: het mag toch no
 def test_r5_logos_vegetarisch_is_v_label_bron_maar_nooit_het_referentieplaatje(tmp_path, monkeypatch):  # P1, CAP-4
     bronnen, gelijkend, referenties, ontbreekt = mod("generator")._logos(logos_pm(tmp_path, monkeypatch, REFS))
     assert {Path(b["pad"]).name: b["klasse"] for b in bronnen} == {
-        "v-label-vegetarisch.png": V, "v-label-vegan.png": V, "d.png": NSD, "e.png": NSE, "gd.png": GD}
-    assert {Path(g["pad"]).name for g in gelijkend} == {"vegan.png", "triman.png"}
+        "v-label-vegetarisch.png": V, "v-label-vegan.png": V, "d.png": NSD, "e.png": NSE, "gd.png": GD,
+        "triman.png": "TRIMAN"}  # ronde 9: Triman is een klasse
+    assert {Path(g["pad"]).name for g in gelijkend} == {"vegan.png"}
     assert not [g for g in gelijkend if g["klasse"].startswith(("NUTRISCORE_", "EUROPEAN_V_LABEL_"))]
     assert Path(referenties[V]["pad"]).name == "v-label-vegan.png"
-    assert set(referenties) == {V, NSD, NSE, GD}
-    assert ontbreekt == [k for k in KLASSEN13 if k not in referenties]  # over de 13
+    assert set(referenties) == {V, NSD, NSE, GD, "TRIMAN"}
+    assert ontbreekt == [k for k in KLASSEN17 if k not in referenties]  # over de 17
 
 
 def test_r5_logos_zonder_vegan_referentie_ontbreekt_het_v_label(tmp_path, monkeypatch):  # P1, CAP-4 (stoppunt 7)
     bronnen, _, referenties, ontbreekt = mod("generator")._logos(logos_pm(tmp_path, monkeypatch, [REFS[0], REFS[-1]]))
     assert [b["klasse"] for b in bronnen if Path(b["pad"]).name == "v-label-vegetarisch.png"] == [V]
-    assert V not in referenties and V in ontbreekt and NSD in ontbreekt and NSE in ontbreekt and len(ontbreekt) == 12
+    assert V not in referenties and V in ontbreekt and NSD in ontbreekt and NSE in ontbreekt and len(ontbreekt) == 16
 
 
 # --- echt: 13 klassen, vegetarisch → V-label, validatie-uitslag (CAP-5) ---------------------------------------------------
@@ -553,7 +558,7 @@ def test_r5_voorlabels_vegetarisch_wordt_v_label_d_en_e_blijven_klassen():  # P1
 
 def test_r5_echt_rapport_over_13_klassen():  # P1, CAP-5
     r = mod("echt").rapport([{"vakjes": [vak(V, (0, 0, 9, 9)), vak(NSE, (20, 0, 29, 9))]}], [])
-    assert set(r) == set(KLASSEN13)
+    assert set(r) == set(KLASSEN17)
     assert r[V] == {"train_etiketten": 1, "train_vakjes": 1, "valid_etiketten": 0, "valid_vakjes": 0}
     assert r[NSE]["train_vakjes"] == 1
 
@@ -565,7 +570,7 @@ def test_r5_validatie_uitslag_met_v_label_en_letters_d_e(tmp_path):  # P1, CAP-5
     u = json.loads((tmp_path / "u.json").read_text())
     assert [(u[d]["keurmerken"][V], u[d]["nutriscore"]) for d in ("d1", "d2", "d3")] == \
         [("aanwezig", ["D"]), ("onzeker", ["A", "E"]), ("afwezig", [])]
-    assert all(set(r["keurmerken"]) == set(LOS) for r in u.values())
+    assert all(set(r["keurmerken"]) == set(LOS + NIEUW) for r in u.values())  # ronde 9: de 12 losse
     for d, r in u.items():
         mod("uitslag").valideer({"id": d, "waarde": r}, set(u))  # past in het schema van uitslag.json
 
@@ -765,7 +770,7 @@ def train_resultaat(tmp_path, monkeypatch, dataset, start=None):
 def test_r5_train_resultaat_klassen_en_lege_data_herkomst(tmp_path, monkeypatch):  # P1, CAP-6
     (tmp_path / "ds").mkdir()
     r = train_resultaat(tmp_path, monkeypatch, tmp_path / "ds")
-    assert r["klassen"] == list(KLASSEN13) and r["data_herkomst"] == []
+    assert r["klassen"] == list(KLASSEN17) and r["data_herkomst"] == []
 
 
 def test_r5_train_resultaat_neemt_herkomst_van_dataset_en_vorige_fase_over(tmp_path, monkeypatch):  # P0, CAP-16
@@ -775,9 +780,9 @@ def test_r5_train_resultaat_neemt_herkomst_van_dataset_en_vorige_fase_over(tmp_p
     vorige = {"bron": "eerdere fase (verzonnen)", "licentie": "CC-BY-SA-4.0"}
     (tmp_path / "f1").mkdir()
     (tmp_path / "f1" / "ckpt.pth").write_bytes(b"fase 1")
-    schrijf(tmp_path / "f1" / "train-resultaat.json", {"gewichten": {}, "data_herkomst": [vorige], "klassen": list(KLASSEN13)})
+    schrijf(tmp_path / "f1" / "train-resultaat.json", {"gewichten": {}, "data_herkomst": [vorige], "klassen": list(KLASSEN17)})
     r = train_resultaat(tmp_path, monkeypatch, tmp_path / "ds", start=tmp_path / "f1" / "ckpt.pth")
-    assert r["data_herkomst"] == [vorige, h] and r["klassen"] == list(KLASSEN13)
+    assert r["data_herkomst"] == [vorige, h] and r["klassen"] == list(KLASSEN17)
 
 
 @pytest.mark.parametrize("geval", ["geen-coco", "tien-categorieen", "start-zonder-klassen", "start-tien-klassen"])
@@ -832,7 +837,7 @@ def test_r5_detecteer_weigert_checkpoint_met_andere_klassen_voor_torch(tmp_path,
 
 
 def test_r5_detecteer_met_de_13_klassen_gaat_door_tot_torch(tmp_path, monkeypatch):  # P1, controle (vooraf groen)
-    argv = detecteer_argv(tmp_path, {"klassen": list(KLASSEN13)})
+    argv = detecteer_argv(tmp_path, {"klassen": list(KLASSEN17)})
     monkeypatch.setitem(sys.modules, "torch", None)
     with pytest.raises(ImportError):
         mod("herken").main(argv)
@@ -849,7 +854,7 @@ def test_r5_beoordelaar_v_label_vegan_en_vegetarisch_hetzelfde_d_en_e_lettervraa
 
 def test_r5_k4aa_vegetarisch_telt_als_v_label_en_d_e_blijven():  # P1, CAP-12
     kl = mod("k4aa_lokaal")
-    res = {"detections": [det(GD), det(VV, review=True), det(NSD), det(NSE), det("FOREST_STEWARDSHIP_COUNCIL_MIX")],
+    res = {"detections": [det(GD), det(VV, review=True), det(NSD), det(NSE), det("PEFC")],  # ronde 9: FSC Mix is een klasse
            "stats": {"cost_usd": 0.01}}
     assert kl.meldingen_uit(res) == {GD, V, NSD, NSE}
     uit = kl.draai_etiket(nep_k4aa(res), b"x")

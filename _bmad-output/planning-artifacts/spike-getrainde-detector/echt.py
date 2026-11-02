@@ -43,9 +43,11 @@ import scheiding
 from toets import aanroepen, grens_uit, jpeg
 from train import CATEGORIEEN, KLASSEN, VARIANTEN
 
-GELIJKEND = ("AGRICULTURE_BIOLOGIQUE", "BDIH_LOGO", "TRIMAN", "SEPARATE_COLLECTION", "SOCIETY_PLASTICS_INDUSTRY",
-             "RETURNABLE_CAN_NL", "MINIMUM_DRINKING_AGE_18_WARNING", "DO_NOT_DRINK_AND_DRIVE_WARNING",
-             "AQUACULTURE_STEWARDSHIP_COUNCIL", "BETER_LEVEN_1_STER", "BETER_LEVEN_2_STER", "VEGAN")
+# meetregels §2; Triman en kunststofcode zijn sinds ronde 9 een eigen klasse, PEFC en de PlanetProof-groep erbij
+GELIJKEND = ("AGRICULTURE_BIOLOGIQUE", "BDIH_LOGO", "SEPARATE_COLLECTION", "RETURNABLE_CAN_NL",
+             "MINIMUM_DRINKING_AGE_18_WARNING", "DO_NOT_DRINK_AND_DRIVE_WARNING", "AQUACULTURE_STEWARDSHIP_COUNCIL",
+             "BETER_LEVEN_1_STER", "BETER_LEVEN_2_STER", "VEGAN", "PEFC", "PEFC_CERTIFIED", "RAINFOREST_ALLIANCE",
+             "RAINFOREST_ALLIANCE_PEOPLE_NATURE", "FAIR_TRADE_MARK", "FAIRTRADE_COCOA", "CERTIFIED_B_CORPORATION")
 SCHEMA_VOORLABELS = {
     "type": "object",
     "properties": {"vakjes": {"type": "array", "items": {
@@ -63,7 +65,8 @@ PROMPT = (
     "quality mark, logo or pictogram you see. For each box give the image number it is drawn in, the code, the box as "
     "[x0, y0, x1, y1] in pixels of that image as you received it, and onzeker=true if you are not sure of the code or "
     "the box. Use these codes: " + ", ".join(KLASSEN) + " (Nutri-Score: the highlighted letter; European V-Label: "
-    "EUROPEAN_V_LABEL_VEGAN for the vegan and the vegetarian V-Label alike); look-alike marks: "
+    "EUROPEAN_V_LABEL_VEGAN for the vegan and the vegetarian V-Label alike; FSC Mix, FSC Recycled and FSC 100%: "
+    "FOREST_STEWARDSHIP_COUNCIL_LABEL; plastic resin code: SOCIETY_PLASTICS_INDUSTRY whatever the number); look-alike marks: "
     + ", ".join(GELIJKEND) + "; anything else: ander. Text without a logo is not a mark."
 )
 MIN_ZICHTBAAR = 0.6

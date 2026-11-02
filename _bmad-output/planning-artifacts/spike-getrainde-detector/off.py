@@ -69,6 +69,13 @@ ZOEK = {  # trainingsset §11; geen RECYCLABLE_GENERAL_CLAIM (steekproef afgewez
     "VEGAN_SOCIETY_VEGAN_LOGO": (("label", "en:the-vegan-society"),),
     "PREGNANCY_WARNING": (("label", "en:not-advised-for-pregnant-women"),),
     "WEIDEMELK": (("label", "fr:lait-de-paturage"),),
+    # ronde 9 (besluit Friso 02-11-2026); en:fsc-recycled en en:fsc-100 bestaan niet (gemeten 02-11-2026)
+    "FOREST_STEWARDSHIP_COUNCIL_LABEL": (("label", "en:fsc-mix"), ("label", "en:fsc")),
+    "TRIMAN": (("label", "fr:triman"),),
+    "SOCIETY_PLASTICS_INDUSTRY": tuple(  # de 16 verpakkingswaarden met treffers (trainingsset §11)
+        ("packaging", w) for w in ("01-pet", "1-pet", "02-hdpe", "2-hdpe", "02-pe-hd", "03-pvc", "04-ldpe", "4-ldpe",
+                                   "04-pe-ld", "05-pp", "5-pp", "06-ps", "07-other", "7-other", "07-o", "7-o")),
+    "ON_THE_WAY_TO_PLANETPROOF": (("label", "en:planet-proof"),),
 }
 assert set(ZOEK) <= set(KLASSEN)
 

@@ -4,10 +4,13 @@ Regel: kandidaten = per rij de 2 leveranciers met de meeste unieke GTIN's; kies 
 trainingsleveranciers waarvoor de oplopend gesorteerde rij `min(toets/2, train)` lexicografisch het grootst is;
 gelijkspel: kleinste verzameling, dan laagste gesorteerde rij GLN's. Toets-GTIN's zonder GTIN's uit referenties,
 `training_data` en de fase-B-meetset. De extra rijen (ronde 5: Nutri-Score D, E en V-label, vegan of vegetarisch) worden
-met de gekozen leveranciers geteld, maar tellen niet mee in de keuze (toetsset §2). Alleen standaardbibliotheek + Pillow.
+met de gekozen leveranciers geteld, maar tellen niet mee in de keuze (toetsset §2); ronde 9 voegt er vier aan toe (FSC met
+varianten, Triman, kunststofcode, PlanetProof). Alleen standaardbibliotheek + Pillow.
 
   python scheiding.py invoer --proef-map <PROEF_MAP>              kopieert de invoer eenmalig naar PROEF_MAP/invoer (+ sha256)
   python scheiding.py kies --proef-map <PROEF_MAP>                schrijft PROEF_MAP/scheiding.json
+  python scheiding.py kies --proef-map <PROEF_MAP> --reden "<…>"  nieuwe versie (alleen met dezelfde trainingsleveranciers;
+                                                                  de vorige blijft als scheiding.<tijdstempel>.json)
   python scheiding.py dhash --toets <map> --train <map> [--valid <map>] --uit <json>
 """
 import argparse
@@ -18,6 +21,7 @@ import json
 import re
 import shutil
 import sys
+from datetime import datetime
 from pathlib import Path
 
 from PIL import Image
@@ -27,10 +31,11 @@ from train import VARIANTEN
 
 RIJEN = ("EU_ORGANIC_FARMING", "GREEN_DOT", "RECYCLABLE_GENERAL_CLAIM", "NUTRISCORE_A", "NUTRISCORE_B", "NUTRISCORE_C",
          "PREGNANCY_WARNING", "MARINE_STEWARDSHIP_COUNCIL_LABEL", "WEIDEMELK", "VEGAN_SOCIETY_VEGAN_LOGO")
-RIJEN_EXTRA = ("NUTRISCORE_D", "NUTRISCORE_E", "EUROPEAN_V_LABEL_VEGAN")  # ronde 5: geteld, niet in de keuze
-REDEN_EXTRA = ("ronde 5 (besluit Friso 01-11-2026): de toetsset is op de 5 trainingsleveranciers van 31-10 gebouwd en "
-               "voorgevuld en wordt niet opnieuw gebouwd; de keuze gebruikt alleen de 10 oorspronkelijke rijen, de extra "
-               "rijen worden met de gekozen leveranciers geteld (toetsset §2)")
+RIJEN_EXTRA = ("NUTRISCORE_D", "NUTRISCORE_E", "EUROPEAN_V_LABEL_VEGAN",  # ronde 5: geteld, niet in de keuze
+               "FOREST_STEWARDSHIP_COUNCIL_LABEL", "TRIMAN", "SOCIETY_PLASTICS_INDUSTRY", "ON_THE_WAY_TO_PLANETPROOF")  # ronde 9
+REDEN_EXTRA = ("ronde 5 (besluit Friso 01-11-2026) en ronde 9 (besluit Friso 02-11-2026): de toetsset is op de 5 "
+               "trainingsleveranciers van 31-10 gebouwd en voorgevuld en wordt niet opnieuw gebouwd; de keuze gebruikt "
+               "alleen de 10 oorspronkelijke rijen, de extra rijen worden met de gekozen leveranciers geteld (toetsset §2)")
 REGEL = ("leverancier (GLN) aan precies één kant; kandidaten = per rij de 2 leveranciers met de meeste unieke GTIN's; "
          "uitputtend de verzameling met lexicografisch grootste oplopende rij min(toets/2, train); gelijkspel: kleinste "
          "verzameling, dan laagste gesorteerde GLN-rij; toets zonder GTIN's uit referenties, training_data en fase-B-meetset")
@@ -166,11 +171,13 @@ def bijna_gelijk(train, toets, max_afstand=6):
     return {i for i, h in train.items() if any(hamming(h, t) <= max_afstand for t in toets.values())}
 
 
-def schrijf(uitkomst, pad, invoerhashes):
+def schrijf(uitkomst, pad, invoerhashes, versie_reden=None):
     pad = beelden.veilig_doel(pad)
     data = {"regel": REGEL, **{k: uitkomst[k] for k in ("trainingsleveranciers", "per_rij", "score", "uitgesloten_gtins")},
             "kandidaten": uitkomst.get("kandidaten", []), "invoer": dict(invoerhashes),
             "rijen_buiten_keuze": {"rijen": list(RIJEN_EXTRA), "reden": REDEN_EXTRA}}
+    if versie_reden:
+        data["versie_reden"] = versie_reden
     pad.write_text(json.dumps(data, indent=1, sort_keys=True, ensure_ascii=False) + "\n", encoding="utf-8")
     return pad
 
@@ -190,6 +197,9 @@ def main(argv=None):
     for naam in ("invoer", "kies"):
         s = sub.add_parser(naam)
         s.add_argument("--proef-map", required=True, type=Path)
+        if naam == "kies":
+            s.add_argument("--reden", help="nieuwe versie van een bestaande scheiding.json (toetsset §7); alleen met "
+                                           "dezelfde trainingsleveranciers")
     d = sub.add_parser("dhash")
     d.add_argument("--toets", required=True, type=Path)
     d.add_argument("--train", required=True, type=Path)
@@ -217,7 +227,20 @@ def main(argv=None):
         k = kies(rijen, gtins_uit_paden(regels) | {e["doc_id"].split("-")[1] for e in fase_b})
         namen = ("declaraties-prod-basiseenheden-20261008.tsv", "alcohol-kandidaten.tsv", "voorlopige-selectie.json",
                  "momentopname/actieve-refs.json", "momentopname/training-data-actief.tsv")
-        pad = schrijf(k, a.proef_map / "scheiding.json", {n: _sha(inv / n) for n in namen})
+        doel = beelden.veilig_doel(a.proef_map / "scheiding.json")
+        reden = (a.reden or "").strip() or None
+        if doel.exists():  # nieuwe versie: alleen met reden en dezelfde leveranciers (toetsset §2 en §7)
+            oud = json.loads(doel.read_text(encoding="utf-8"))
+            if reden is None:
+                print(f"{doel} bestaat al: een nieuwe versie vraagt --reden; niets geschreven", file=sys.stderr)
+                return 2
+            if sorted(oud["trainingsleveranciers"]) != sorted(k["trainingsleveranciers"]):
+                print("de nieuwe versie zou andere trainingsleveranciers kiezen; niets geschreven (besluit van Friso nodig)",
+                      file=sys.stderr)
+                return 2
+            stempel = datetime.now().strftime("%Y%m%dT%H%M%S")
+            shutil.copy2(doel, doel.with_name(f"scheiding.{stempel}.json"))
+        pad = schrijf(k, doel, {n: _sha(inv / n) for n in namen}, versie_reden=reden if doel.exists() else None)
         print(pad, "trainingsleveranciers:", len(k["trainingsleveranciers"]), "zwakste:", k["score"][0])
     else:
         toets, train = _hashes(a.toets), _hashes(a.train)

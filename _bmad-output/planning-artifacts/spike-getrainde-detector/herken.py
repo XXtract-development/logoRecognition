@@ -26,8 +26,9 @@ import numpy as np
 from train import KLASSEN, MATEN
 
 NS = tuple(f"NUTRISCORE_{x}" for x in "ABCDE")  # één groep bij NMS (besluit Friso 01-11-2026: D en E eigen klassen)
-MSC, EU = "MARINE_STEWARDSHIP_COUNCIL_LABEL", "EU_ORGANIC_FARMING"
+MSC, EU, FSC = "MARINE_STEWARDSHIP_COUNCIL_LABEL", "EU_ORGANIC_FARMING", "FOREST_STEWARDSHIP_COUNCIL_LABEL"
 CERTIFICAAT = {
+    FSC: re.compile(r"FSC[®\s]*[-–]?\s*C\s?\d{6}"),  # ronde 9 (trainingsset §8)
     MSC: re.compile(r"MSC[-–\s]*C[-–\s]*\d{5}"),
     EU: re.compile(r"\b[A-Z]{2}[-–\s]*(?:BIO|ÖKO|OKO|ORG|ECO|EKO|ØKO|OEKO)[-–\s]*\d{2,3}\b"),
 }

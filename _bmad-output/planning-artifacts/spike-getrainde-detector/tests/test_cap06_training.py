@@ -92,3 +92,52 @@ def test_cap06_snelheidsmeting_geeft_seconden_per_iteratie_en_verwachte_duur(tr,
     mini_coco(tmp_path / "dataset")
     meting = tr.snelheid("N", tmp_path / "dataset", tmp_path / "snelheid", iteraties=2)
     assert meting["s_per_iteratie"] > 0 and meting["verwacht_uur"] > 0
+
+
+@pytest.mark.zwaar
+def test_cap06_rooktest_hervatten_sigterm_midden_in_epoch_2_via_nacht(tr, tmp_path):
+    """CAP-6/CAP-18 (bouw ronde 9): drie epochs; `nacht.draai` stuurt om "07:30" SIGTERM midden in epoch 2, de volgende
+    nacht hervat hij vanaf `checkpoint_0.ckpt` (het eerste epoch) tot `train-resultaat.json`. Echte rfdetr op MPS/CPU,
+    echt proces; alleen de klok is nagebootst (het venster loopt op de echte tijd vanaf 22:00)."""
+    import sys
+    import time as _t
+    import zipfile
+    from datetime import datetime, timedelta
+
+    pytest.importorskip("rfdetr")
+    nacht = importlib.import_module("nacht")
+    mini_coco(tmp_path / "dataset", n=40)  # ±10 iteraties per epoch: lang genoeg om midden in een epoch te stoppen
+    uit = tmp_path / "modellen" / "N-1"
+    opdracht = [sys.executable, "train.py", "train", "--fase", "nagemaakt", "--maat", "N", "--dataset",
+                str(tmp_path / "dataset"), "--uit", str(uit), "--epochs", "3", "--seed", "7"]
+    nacht.plan(uit, opdracht, 3, "nagemaakt")
+    eerste = uit / "checkpoint_0.ckpt"
+
+    t0, stop = _t.monotonic(), {}
+
+    def nacht1():  # 07:30 valt 2 s nadat het eerste epoch zijn checkpoint schreef, dus midden in epoch 2
+        if "t" not in stop and eerste.exists() and zipfile.is_zipfile(eerste):
+            stop["t"] = _t.monotonic() + 2
+        if "t" in stop and _t.monotonic() >= stop["t"]:
+            return datetime(2026, 11, 3, 7, 30)
+        return datetime(2026, 11, 2, 22, 0) + timedelta(seconds=_t.monotonic() - t0)
+
+    assert nacht.draai(uit, nu=nacht1, poll_s=0.5) == "gepauzeerd"
+    assert zipfile.is_zipfile(eerste) and not (uit / "checkpoint_1.ckpt").exists()  # epoch 2 ging verloren, niet meer
+    assert not (uit / "train-resultaat.json").exists()
+    s = nacht.status(uit, datetime(2026, 11, 3, 8, 0))
+    assert (s["uitkomst"], s["epochs_klaar"], s["stoppunt_1"]) == ("gepauzeerd", 1, None)
+
+    gestart, t1 = [], _t.monotonic()
+
+    def popen(cmd, *a, **kw):
+        gestart.append([str(c) for c in cmd])
+        return subprocess.Popen(cmd, *a, **kw)
+
+    nacht2 = lambda: datetime(2026, 11, 3, 22, 0) + timedelta(seconds=_t.monotonic() - t1)  # noqa: E731
+    assert nacht.draai(uit, nu=nacht2, popen=popen, poll_s=0.5) == "afgerond"
+    assert gestart[0] == opdracht + ["--hervat", str(eerste)]
+    resultaat = json.loads((uit / "train-resultaat.json").read_text())
+    assert resultaat["config"]["hervat"] == str(eerste) and Path(resultaat["checkpoint"]).exists()
+    assert sorted(p.name for p in uit.glob("checkpoint_*.ckpt")) == ["checkpoint_1.ckpt", "checkpoint_2.ckpt"]
+    assert nacht.status(uit, datetime(2026, 11, 4, 8, 0))["epochs_klaar"] == 3

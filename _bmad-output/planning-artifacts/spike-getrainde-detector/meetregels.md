@@ -2,7 +2,7 @@
 titel: Meetregels proef getrainde detector
 hoort-bij: SPEC.md (CAP-9, CAP-11, stopregel)
 datum: 2026-10-31
-bijgewerkt: 2026-11-01 (besluiten Friso: steekproef bij nakijken, akkoord ≥ 50 zonder; ronde 5: Nutri-Score A–E, V-label als 9e keurmerk)
+bijgewerkt: 2026-11-02 (besluiten Friso: steekproef bij nakijken, akkoord ≥ 50 zonder; ronde 5: Nutri-Score A–E, V-label als 9e keurmerk; ronde 9 (02-11-2026): FSC, Triman, kunststofcode, PlanetProof)
 ---
 
 # Meetregels
@@ -20,9 +20,9 @@ Alles telt **per etiket**, op aanwezigheid. Een vakje of positie telt niet mee. 
 - De Wilson-ondergrens is het percentage dat je met 95% zekerheid minstens haalt, gegeven hoeveel etiketten zijn geteld; de bovengrens is wat je met 95% zekerheid hooguit haalt. Met weinig etiketten liggen ze ver van het gemeten percentage.
 - Berekening: `wilson` uit `_bmad-output/planning-artifacts/spike-architectuurkeuze-logoherkenning/fase-b/tel.py` (z = 1,96), hergebruikt.
 
-## 2. De 9 keurmerken en hun gelijkende keurmerken
+## 2. De keurmerken en hun gelijkende keurmerken
 
-Een **gelijkend keurmerk** lijkt op een van de 9, maar is het niet. In de training worden ze bewust ongelabeld toegevoegd (**harde negatieven**), zodat de detector ze leert negeren. In de toets maken ze de zonder-kant moeilijker.
+Een **gelijkend keurmerk** lijkt op een van de keurmerken, maar is het niet. In de training worden ze bewust ongelabeld toegevoegd (**harde negatieven**), zodat de detector ze leert negeren. In de toets maken ze de zonder-kant moeilijker.
 
 | # | Keurmerk | Codes | Rol | Gelijkende keurmerken |
 |---|---|---|---|---|
@@ -35,10 +35,16 @@ Een **gelijkend keurmerk** lijkt op een van de 9, maar is het niet. In de traini
 | 7 | Weidemelk | `WEIDEMELK` | ijkpunt | `BETER_LEVEN_1_STER`, `BETER_LEVEN_2_STER` |
 | 8 | Vegan Society | `VEGAN_SOCIETY_VEGAN_LOGO` | ijkpunt | `VEGAN` |
 | 9 | V-label | `EUROPEAN_V_LABEL_VEGAN`, met `EUROPEAN_V_LABEL_VEGETARIAN` als variant | kern (besluit Friso 01-11-2026) | `VEGAN` |
+| 10 | FSC | `FOREST_STEWARDSHIP_COUNCIL_LABEL`, met `FOREST_STEWARDSHIP_COUNCIL_MIX`, `_RECYCLED` en `_100_PERCENT` als variant | kern (besluit Friso 02-11-2026) | `PEFC`, `PEFC_CERTIFIED` |
+| 11 | Triman | `TRIMAN` | kern (besluit Friso 02-11-2026) | `GREEN_DOT`, `RECYCLABLE_GENERAL_CLAIM`, `SEPARATE_COLLECTION`, `SOCIETY_PLASTICS_INDUSTRY`, `RETURNABLE_CAN_NL` |
+| 12 | Kunststofcode (harscode 1–7) | `SOCIETY_PLASTICS_INDUSTRY` | kern (besluit Friso 02-11-2026) | `RECYCLABLE_GENERAL_CLAIM`, `GREEN_DOT`, `TRIMAN`, `SEPARATE_COLLECTION`, `RETURNABLE_CAN_NL` |
+| 13 | On the way to PlanetProof | `ON_THE_WAY_TO_PLANETPROOF` | kern (besluit Friso 02-11-2026) | `RAINFOREST_ALLIANCE`, `RAINFOREST_ALLIANCE_PEOPLE_NATURE`, `FAIR_TRADE_MARK`, `FAIRTRADE_COCOA`, `CERTIFIED_B_CORPORATION` |
 
 IJkpunten zijn de drie keurmerken die ook in de vorige proef (fase B) gemeten zijn; ze maken de uitkomst vergelijkbaar met die proef. Ze krijgen dezelfde telling en hetzelfde besluit als de kern.
 
-**V-label** (besluit Friso 01-11-2026): eigen klasse en 9e keurmerk, niet langer gelijkend van Vegan Society; `VEGAN` (algemeen woord of logo) blijft gelijkend. Vegan en vegetarisch zijn hetzelfde V-label-ontwerp, alleen het woord eronder verschilt; ze tellen samen als één keurmerk **V-label aanwezig**. Overal (declaraties, referenties, AI-codes, K4-aa-detecties) telt `EUROPEAN_V_LABEL_VEGETARIAN` als `EUROPEAN_V_LABEL_VEGAN`. Reden: op de detectorschaal is het woord niet leesbaar, NutriGreen kent één klasse V-label voor beide, een ongelabelde vegetarische variant zou de detector een vrijwel gelijk logo leren negeren, en de vegetarische variant heeft 4 declaraties zonder één aan de trainingskant (gemeten 01-11-2026). Bron van de groepen: `_bmad-output/planning-artifacts/eindtest-logo-pijplijn/lookalike-groepen.md` in de hoofdmap.
+**V-label** (besluit Friso 01-11-2026): eigen klasse en 9e keurmerk, niet langer gelijkend van Vegan Society; `VEGAN` (algemeen woord of logo) blijft gelijkend. Vegan en vegetarisch zijn hetzelfde V-label-ontwerp, alleen het woord eronder verschilt; ze tellen samen als één keurmerk **V-label aanwezig**. Overal (declaraties, referenties, AI-codes, K4-aa-detecties) telt `EUROPEAN_V_LABEL_VEGETARIAN` als `EUROPEAN_V_LABEL_VEGAN`. Reden: op de detectorschaal is het woord niet leesbaar, NutriGreen kent één klasse V-label voor beide, een ongelabelde vegetarische variant zou de detector een vrijwel gelijk logo leren negeren, en de vegetarische variant heeft 4 declaraties zonder één aan de trainingskant (gemeten 01-11-2026). Bron van de groepen: `_bmad-output/planning-artifacts/eindtest-logo-pijplijn/lookalike-groepen.md` in de hoofdmap (G2, G4, G6 voor de vier van ronde 9).
+
+**Ronde 9** (besluit Friso 02-11-2026): FSC, Triman, kunststofcode en PlanetProof zijn het 10e t/m 13e keurmerk, met dezelfde telling en hetzelfde besluit. **FSC** is één keurmerk: Mix, Recycled en 100% zijn hetzelfde ontwerp (boom met vinkje), alleen het woord eronder verschilt; overal telt een variantcode als `FOREST_STEWARDSHIP_COUNCIL_LABEL` (54 van de 56 toets-declaraties zijn Mix). **Kunststofcode** is één keurmerk zonder cijfer: aanwezig = de driehoek van pijlen met een cijfer 1–7; de GS1-declaratie kent geen cijfer en per cijfer zouden er ±3 toetsetiketten zijn. Triman en kunststofcode zijn sindsdien geen gelijkend keurmerk van een ander meer in de training (eigen klasse). In de rijen van Groene Punt, Recyclebaar, Triman en kunststofcode hierboven staan ze alleen nog voor de kandidaatkeuze; ze tellen niet als "met gelijkend keurmerk" (§4).
 
 ## 3. Nutri-Score als groep (A–E, besluit Friso 01-11-2026)
 
@@ -65,7 +71,7 @@ IJkpunten zijn de drie keurmerken die ook in de vorige proef (fase B) gemeten zi
 > [!warning] Correctie op het doel "30–50 zonder" (akkoord Friso 01-11-2026)
 > Met 30 tot 34 etiketten zonder keurmerk is "< 10% vals" nooit te bewijzen, ook niet met nul fouten. Doel daarom: **≥ 50 zonder per keurmerk**. Dat kost geen extra etiketten: elk etiket waarop Friso een keurmerk afwezig verklaart, telt als "zonder" voor dat keurmerk (**gedeelde negatieven**).
 
-**Doel per keurmerk (9):** ≥ 16 bevestigde etiketten mét het keurmerk (liefst ≥ 25) en ≥ 50 zonder, waarvan liefst ≥ 10 met een gelijkend keurmerk (§2; n.v.t. voor Nutri-Score, dat geen gelijkend met code meer heeft). Het aantal met een gelijkend keurmerk komt uit de voorinvulling en is niet door Friso bevestigd. Codes van V-label en Nutri-Score D/E tellen niet meer als gelijkend; eerder als gelijkend gekozen etiketten blijven in de toetsset en tellen aan de mét-kant van hun eigen keurmerk.
+**Doel per keurmerk (13):** ≥ 16 bevestigde etiketten mét het keurmerk (liefst ≥ 25) en ≥ 50 zonder, waarvan liefst ≥ 10 met een gelijkend keurmerk (§2; n.v.t. voor Nutri-Score, dat geen gelijkend met code meer heeft). Het aantal met een gelijkend keurmerk komt uit de voorinvulling en is niet door Friso bevestigd. Codes van V-label, Nutri-Score D/E, Triman en kunststofcode tellen niet meer als gelijkend; eerder als gelijkend gekozen etiketten blijven in de toetsset en tellen aan de mét-kant van hun eigen keurmerk.
 **Te weinig voorbeelden:** minder dan 16 mét of minder dan 35 zonder → besluit "te weinig voorbeelden", niet "mens bevestigt".
 
 ## 5. Welke etiketten tellen
@@ -97,8 +103,8 @@ Vóór de eerste toetsrun liggen vast in `bevroren.json`, elk met sha256:
   - **Fout in de waarheid:** elk oordeel dat afwijkt van Friso's eerdere oordeel, ook een wijziging naar "onzeker" of "onleesbaar" en elke wijziging van de Nutri-Score-letters.
 - **Steekproef apart gerapporteerd:** per keurmerk en per kant het aantal nagekeken overeenkomende paren, het aantal fouten en de Wilson-bovengrens van die foutkans ("–" bij 0 paren). Ter informatie ook het besluit dat zou volgen als die bovengrens in het nadeel van de route op de overeenkomende paren werd toegepast (gevoeligheid; het besluit zelf volgt de regel hieronder).
 - **Besluitregel bij fouten in de steekproef:** vindt de steekproef bij een keurmerk minstens één fout, dan volgt een **tweede ronde** met alle overige overeenkomende paren van dat keurmerk, in een eigen bestand (`nakijklijst-ronde2-<KEURMERK>.json`); die ronde is alleen blind voor de route, want alle regels zijn overeenkomende paren. Tot de tweede ronde is nagekeken, is het besluit voor dat keurmerk **"mens bevestigt (voorlopig)"**; wordt hij niet nagekeken, dan **"mens bevestigt"** (definitief).
-- **Tijd voor Friso (INFERENCE):** de steekproef voegt ±260 regels toe voor 9 keurmerken (±45 minuten); een tweede ronde ±290 regels per keurmerk (±50 minuten).
-- Per keurmerk wordt gelogd hoe vaak Friso de voorinvulling veranderde (correctiepercentage); bij V-label gemarkeerd als gemeten tegen een afgeleide voorinvulling voor de etiketten van vóór ronde 5 (toetsset §5).
+- **Tijd voor Friso (INFERENCE):** de steekproef voegt ±260 regels toe voor 9 keurmerken (±45 minuten), voor 13 ±375 regels (±65 minuten); een tweede ronde ±290 regels per keurmerk (±50 minuten).
+- Per keurmerk wordt gelogd hoe vaak Friso de voorinvulling veranderde (correctiepercentage); bij V-label gemarkeerd als gemeten tegen een afgeleide voorinvulling voor de etiketten van vóór ronde 5 (toetsset §5); bij de vier van ronde 9 tegen de voorinvulling van ronde 9.
 
 ## 7. Uitvoer per route en keurmerk
 

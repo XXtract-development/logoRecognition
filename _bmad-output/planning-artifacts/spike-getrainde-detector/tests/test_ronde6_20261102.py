@@ -188,7 +188,9 @@ def test_r6_off_constanten_attributie_en_licentie():  # P1, CAP-17 (randvoorwaar
 
 def test_r6_off_klassetabel_alleen_trainklassen_v_label_drie_ids_geen_recyclebaar():  # P1, CAP-17 (trainingsset §11)
     off, klassen = mod("off"), mod("train").KLASSEN
-    assert {k: tuple(tuple(p) for p in v) for k, v in off.ZOEK.items()} == ZOEK
+    assert {k: tuple(tuple(p) for p in v) for k, v in off.ZOEK.items() if k in ZOEK} == ZOEK
+    assert set(off.ZOEK) - set(ZOEK) == {"FOREST_STEWARDSHIP_COUNCIL_LABEL", "TRIMAN", "SOCIETY_PLASTICS_INDUSTRY",
+                                         "ON_THE_WAY_TO_PLANETPROOF"}  # ronde 9 (de vier staan in test_ronde9)
     assert set(off.ZOEK) <= set(klassen) and RC not in off.ZOEK and VV not in off.ZOEK
     assert [w for _, w in off.ZOEK[V]] == ["en:european-vegetarian-union-vegan", "en:european-vegetarian-union-vegetarian",
                                           "en:european-vegetarian-union"]
@@ -778,10 +780,16 @@ TRAIN_VOOR_RONDE_6 = "d5f84b86730b3147382b3bab64c857689ebc6cd7c069f882d27825d2d1
 
 
 def sha_train(map_):
+    """sha256 over train/; in de COCO-set alleen categorie-id 1–13 (ronde 9 voegt 14–17 toe, de rest blijft byte-gelijk)."""
     h = hashlib.sha256()
     for p in sorted(map_.rglob("*")):
         h.update(p.name.encode())
-        h.update(p.read_bytes())
+        b = p.read_bytes()
+        if p.name == "_annotations.coco.json":
+            coco = json.loads(b)
+            coco["categories"] = [c for c in coco["categories"] if c["id"] <= 13]
+            b = json.dumps(coco, indent=1, sort_keys=True).encode()  # zoals generator.py schrijft
+        h.update(b)
     return h.hexdigest()
 
 

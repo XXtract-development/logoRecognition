@@ -25,6 +25,7 @@ GD, EU, WM = "GREEN_DOT", "EU_ORGANIC_FARMING", "WEIDEMELK"
 NSA, NSB, NSC = "NUTRISCORE_A", "NUTRISCORE_B", "NUTRISCORE_C"
 TRAIN_GLN, TOETS_GLN = "1000000000001", "1000000000002"
 V_LABEL = "EUROPEAN_V_LABEL_VEGAN"  # ronde 5: 8e losse keuze van een bevestigd etiket
+NIEUW_R9 = ("FOREST_STEWARDSHIP_COUNCIL_LABEL", "TRIMAN", "SOCIETY_PLASTICS_INDUSTRY", "ON_THE_WAY_TO_PLANETPROOF")  # ronde 9
 
 
 def mod(naam):
@@ -41,7 +42,7 @@ def png(maat=(32, 32), kleur=(200, 200, 200), ruis=None):
 
 
 def et(aanwezig=(), nutriscore=(), status="bevestigd"):
-    return {"status": status, "keurmerken": {c: "aanwezig" if c in aanwezig else "afwezig" for c in K7 + (V_LABEL,)},
+    return {"status": status, "keurmerken": {c: "aanwezig" if c in aanwezig else "afwezig" for c in K7 + (V_LABEL,) + NIEUW_R9},
             "nutriscore": list(nutriscore), "veranderd": [], "opmerking": "", "tijd": "2026-11-01T10:00:00+01:00"}
 
 
@@ -115,7 +116,8 @@ def pagina(tmp_path):
     playwright = pytest.importorskip("playwright.sync_api")
     (tmp_path / "beelden").mkdir()
     Image.new("RGB", (40, 30), "white").save(tmp_path / "beelden/0.png")
-    volledig = {"keurmerken": {c: c == GD for c in K7 + (V_LABEL,)}, "nutriscore": [], "hinttegels": {}, "gelijkend": []}
+    volledig = {"keurmerken": {c: c == GD for c in K7 + (V_LABEL,) + NIEUW_R9}, "nutriscore": [], "hinttegels": {},
+                "gelijkend": []}  # ronde 9: ook de vier nieuwe voorgevuld
     zonder_wm = {**volledig, "keurmerken": {c: v for c, v in volledig["keurmerken"].items() if c != WM}}  # WM niet beoordeeld
     schrijf(tmp_path / "items.json", [{"id": E1, "beeld": "beelden/0.png", "hint": [], "voorinvulling": zonder_wm},
                                       {"id": E2, "beeld": "beelden/0.png", "hint": [], "voorinvulling": volledig}])

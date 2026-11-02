@@ -14,6 +14,7 @@ import pytest
 K7 = ("EU_ORGANIC_FARMING", "GREEN_DOT", "RECYCLABLE_GENERAL_CLAIM", "PREGNANCY_WARNING",
       "MARINE_STEWARDSHIP_COUNCIL_LABEL", "WEIDEMELK", "VEGAN_SOCIETY_VEGAN_LOGO")
 K8 = K7 + ("NUTRISCORE",)
+NIEUW_R9 = ("FOREST_STEWARDSHIP_COUNCIL_LABEL", "TRIMAN", "SOCIETY_PLASTICS_INDUSTRY", "ON_THE_WAY_TO_PLANETPROOF")  # ronde 9: ook gekozen
 EU, GD = "EU_ORGANIC_FARMING", "GREEN_DOT"
 NSA, NSB, NSC = "NUTRISCORE_A", "NUTRISCORE_B", "NUTRISCORE_C"
 
@@ -26,7 +27,7 @@ def wilson(k, n, z=1.959963984540054):  # z zoals fase-b/tel.py (Z), die meetreg
 
 
 def et(aanwezig=(), onzeker=(), nutriscore=(), status="bevestigd"):
-    k = {c: ("aanwezig" if c in aanwezig else "onzeker" if c in onzeker else "afwezig") for c in K7 + ("EUROPEAN_V_LABEL_VEGAN",)}
+    k = {c: ("aanwezig" if c in aanwezig else "onzeker" if c in onzeker else "afwezig") for c in K7 + ("EUROPEAN_V_LABEL_VEGAN",) + NIEUW_R9}
     ns = nutriscore if isinstance(nutriscore, str) else list(nutriscore)
     return {"status": status, "keurmerken": k, "nutriscore": ns, "veranderd": [], "opmerking": "", "tijd": "2026-10-31T21:00:00+01:00"}
 

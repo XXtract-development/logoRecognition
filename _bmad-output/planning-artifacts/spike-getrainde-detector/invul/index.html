@@ -57,16 +57,16 @@
   #notitie { color: var(--rood); font-weight: 600; min-height: 1.4em; }
   #notitie:empty { min-height: 0; }
   #standen { display: flex; flex-direction: column; gap: 2px; }
-  .rij { height: 40px; display: flex; align-items: center; gap: 6px; padding: 0 6px; border-radius: 4px;
+  .rij { height: 32px; display: flex; align-items: center; gap: 6px; padding: 0 6px; border-radius: 4px;
          border-left: 3px solid transparent; cursor: default; }
   .rij[data-ai-aanwezig="true"] { border-left-color: var(--teal); background: var(--teal-licht); }
   .rij[data-actief="true"] { outline: 2px solid var(--navy); outline-offset: -2px; }
   .naam { width: 190px; flex: none; min-width: 0; }
-  .regel1 { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+  .regel1 { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; font-size: 13px; line-height: 16px; }
   .regel1 b { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   .regel1 [data-testid^="gewijzigd-"] { flex: none; font-size: 12px; color: var(--navy); font-weight: 600; }
   .regel1 [data-testid^="ai-"] { flex: none; font-size: 12px; color: var(--gedempt); }
-  .regel2 { display: block; white-space: nowrap; font-size: 12px; line-height: 1.3; color: var(--gedempt); }
+  .regel2 { display: block; white-space: nowrap; font-size: 12px; line-height: 14px; color: var(--gedempt); }
   .regel2 [data-testid^="stand-"].gehaald::before { content: "●"; color: var(--groen); margin-right: 3px; }
   .seg { flex: 1; min-width: 0; display: flex; }
   .seg label { position: relative; flex: 1 1 0; min-width: 0; height: 28px; display: flex; align-items: center;
@@ -134,14 +134,19 @@
 </main>
 <script>
 "use strict";
-// Zelfde lijsten als uitslag.KEURMERKEN_LOS en uitslag.KEURMERKEN (ronde 5: V-label als 9e keurmerk).
-const LOS = ["EU_ORGANIC_FARMING", "GREEN_DOT", "RECYCLABLE_GENERAL_CLAIM", "PREGNANCY_WARNING",
-             "MARINE_STEWARDSHIP_COUNCIL_LABEL", "WEIDEMELK", "VEGAN_SOCIETY_VEGAN_LOGO", "EUROPEAN_V_LABEL_VEGAN"];
+// Zelfde lijsten als uitslag.KEURMERKEN_R5, NIEUW_R9, KEURMERKEN_LOS en KEURMERKEN (ronde 9: 13 keurmerken).
+const R5 = ["EU_ORGANIC_FARMING", "GREEN_DOT", "RECYCLABLE_GENERAL_CLAIM", "PREGNANCY_WARNING",
+            "MARINE_STEWARDSHIP_COUNCIL_LABEL", "WEIDEMELK", "VEGAN_SOCIETY_VEGAN_LOGO", "EUROPEAN_V_LABEL_VEGAN"];
+const NIEUW = ["FOREST_STEWARDSHIP_COUNCIL_LABEL", "TRIMAN", "SOCIETY_PLASTICS_INDUSTRY", "ON_THE_WAY_TO_PLANETPROOF"];
+const LOS = R5.concat(NIEUW);
 const KEURMERKEN = LOS.concat(["NUTRISCORE"]);
 const NAAM = {EU_ORGANIC_FARMING: "EU-biologisch", GREEN_DOT: "Groene Punt", RECYCLABLE_GENERAL_CLAIM: "Recyclebaar",
               PREGNANCY_WARNING: "Zwangerschapswaarschuwing", MARINE_STEWARDSHIP_COUNCIL_LABEL: "MSC",
               WEIDEMELK: "Weidemelk", VEGAN_SOCIETY_VEGAN_LOGO: "Vegan Society",
-              EUROPEAN_V_LABEL_VEGAN: "V-label (vegan of vegetarisch)", NUTRISCORE: "Nutri-Score"};
+              EUROPEAN_V_LABEL_VEGAN: "V-label (vegan of vegetarisch)", FOREST_STEWARDSHIP_COUNCIL_LABEL: "FSC",
+              TRIMAN: "Triman", SOCIETY_PLASTICS_INDUSTRY: "Kunststofcode (1–7)", ON_THE_WAY_TO_PLANETPROOF: "PlanetProof",
+              NUTRISCORE: "Nutri-Score"};
+const NOTITIE_NA = "Al bevestigd: controleer alleen de vier nieuwe keurmerken (FSC, Triman, kunststofcode, PlanetProof).";
 const KEUZES = ["aanwezig", "afwezig", "onzeker"];
 const LETTERS = ["A", "B", "C", "D", "E"];
 const DOEL_MET = 16, DOEL_ZONDER = 50;
@@ -290,6 +295,21 @@ function beeldFout() {
 }
 
 // --- toestand ------------------------------------------------------------------------------------------------------
+function bevestigdeCodes(r) {  // zelfde regel als uitslag.bevestigde_codes
+  if (!r || r.status !== "bevestigd") return [];
+  if (Array.isArray(r.bevestigde_codes)) return r.bevestigde_codes;
+  return Object.keys(r.keurmerken || {}).filter((c) => R5.includes(c));
+}
+
+function naTeLopen(r) {  // zelfde regel als uitslag.na_te_lopen
+  const b = bevestigdeCodes(r);
+  return !!r && r.status === "bevestigd" && NIEUW.some((c) => !b.includes(c));
+}
+
+function afgehandeld(r) {
+  return !!r && (r.status === "onleesbaar" || (r.status === "bevestigd" && !naTeLopen(r)));
+}
+
 function heeftVoorinvulling(it) {
   const vi = it.voorinvulling || {};
   return Object.keys(vi.keurmerken || {}).length > 0;
@@ -337,11 +357,18 @@ function volledig(s) {
 }
 
 function veranderd(it, s) {
-  const vi = uitVoorinvulling(it), uit = LOS.filter((c) => s.keurmerken[c] !== vi.keurmerken[c]);
+  // Een al bevestigde keuze die ongewijzigd blijft, houdt zijn "veranderd" van de server (nalopen, ronde 9).
+  const vi = uitVoorinvulling(it), r = records[it.id], b = bevestigdeCodes(r);
+  const houd = (c, gelijk, anders) => (b.includes(c) && gelijk ? (r.veranderd || []).includes(c) : anders);
+  const uit = LOS.filter((c) => houd(c, b.includes(c) && s.keurmerken[c] === (r.keurmerken || {})[c],
+                                     s.keurmerken[c] !== vi.keurmerken[c]));
   if (s.nutriscore === undefined) return uit;
-  const ns = JSON.stringify(s.nutriscore === "onleesbaar" ? s.nutriscore : [...s.nutriscore].sort());
+  const norm = (x) => JSON.stringify(x === "onleesbaar" ? x : [...x].sort());
+  const ns = norm(s.nutriscore);
   const gekozen = s.nutriscore === "onleesbaar" || s.nutriscore.length > 0;
-  if (vi.nutriscore === undefined ? gekozen : ns !== JSON.stringify(vi.nutriscore)) uit.push("NUTRISCORE");
+  const tovVi = vi.nutriscore === undefined ? gekozen : ns !== JSON.stringify(vi.nutriscore);
+  const nsBevestigd = b.length > 0 && r.nutriscore !== undefined;
+  if (nsBevestigd && ns === norm(r.nutriscore) ? (r.veranderd || []).includes("NUTRISCORE") : tovVi) uit.push("NUTRISCORE");
   return uit;
 }
 
@@ -391,7 +418,9 @@ function toon() {
   tid("uitsneden").replaceChildren(...uitsneden.map((u) => u.fig));  // geen invoervelden in deze kolom
   tid("uitsneden").hidden = !uitsneden.length;
 
-  $("#notitie").textContent = heeftVoorinvulling(it) ? "" : "AI-voorinvulling ontbreekt of is mislukt: vul alles zelf in.";
+  const r = records[it.id], na = naTeLopen(r);
+  $("#notitie").textContent = !heeftVoorinvulling(it) ? "AI-voorinvulling ontbreekt of is mislukt: vul alles zelf in."
+    : na ? NOTITIE_NA : "";
   for (const code of LOS) {
     for (const r of document.querySelectorAll(`input[name="k-${code}"]`)) {
       r.checked = s.keurmerken[code] === r.value;
@@ -416,7 +445,8 @@ function toon() {
   $("#melding").className = fout ? "fout" : "";  // een mislukte opslag van een ander etiket blijft zichtbaar
   $("#melding").textContent = fout ? fout.tekst : "";
   toonGewijzigd();
-  zetActief(0);
+  // na te lopen: de eerste nieuwe rij zonder bevestigde keuze is actief
+  zetActief(na ? KEURMERKEN.indexOf(NIEUW.find((c) => !bevestigdeCodes(r).includes(c))) : 0);
 }
 
 function ga(stap) {
@@ -432,8 +462,9 @@ function ga(stap) {
 // --- stand van de server: alleen textContent/attributen op de tellers ----------------------------------------------
 function zetStand(antwoord) {
   records = antwoord.uitslag || {};
-  const klaar = items.filter((it) => records[it.id] && ["bevestigd", "onleesbaar"].includes(records[it.id].status)).length;
-  $("#voortgang").textContent = `${klaar} van ${items.length} etiketten afgehandeld`;
+  const klaar = items.filter((it) => afgehandeld(records[it.id])).length;
+  const na = items.filter((it) => naTeLopen(records[it.id])).length;
+  $("#voortgang").textContent = `${klaar} van ${items.length} etiketten afgehandeld` + (na ? ` · ${na} na te lopen` : "");
   for (const k of KEURMERKEN) {
     const st = (antwoord.stand || {})[k] || {met: 0, zonder: 0}, e = tid("stand-" + k);
     const gehaald = st.met >= DOEL_MET && st.zonder >= DOEL_ZONDER;
@@ -466,10 +497,12 @@ async function slaNu(it, waarde, momentopname) {
   try {
     const r = await fetch("opslaan", {method: "POST", headers: {"Content-Type": "application/json"},
                                       body: JSON.stringify({id: it.id, waarde})});
-    if (!r.ok) throw new Error(r.status === 400 ? "geweigerd: kies eerst bij alle 9 keurmerken" : "server " + r.status);
+    if (!r.ok) throw new Error(r.status === 400 ? "geweigerd: kies eerst bij alle 13 keurmerken" : "server " + r.status);
     if (sessionStorage.getItem(sleutel) === momentopname) sessionStorage.removeItem(sleutel);
-    const oud = records[it.id];  // een tussenstand houdt de status (zoals de server)
-    records[it.id] = !waarde.status && oud && oud.status ? {...waarde, status: oud.status} : waarde;
+    const oud = records[it.id];  // een tussenstand houdt de status en de bevestigde codes (zoals de server)
+    records[it.id] = !waarde.status && oud && oud.status ? {...waarde, status: oud.status} : {...waarde};
+    if (waarde.status === "bevestigd") records[it.id].bevestigde_codes = Object.keys(waarde.keurmerken).sort();
+    else if (!waarde.status && oud && oud.status === "bevestigd") records[it.id].bevestigde_codes = bevestigdeCodes(oud);
     if (fout && fout.id === it.id) fout = null;
     melding.className = "";
     melding.textContent = (waarde.status ? `Opgeslagen (${waarde.status}).` : "Keuze opgeslagen.") + ander();
@@ -487,7 +520,7 @@ function slaHuidigeOp(status) {
   const it = items[idx], s = formulier();
   if (status === "bevestigd" && !volledig(s)) {  // niet opslaan en niet doorgaan: eerst overal een keuze
     $("#melding").className = "fout";
-    $("#melding").textContent = "Kies eerst bij alle 8 keurmerken (ook het V-label) en bij Nutri-Score; niets opgeslagen.";
+    $("#melding").textContent = "Kies eerst bij alle 12 keurmerken (ook het V-label en de vier nieuwe) en bij Nutri-Score; niets opgeslagen.";
     return false;
   }
   const waarde = {keurmerken: s.keurmerken, veranderd: veranderd(it, s), opmerking: s.opmerking};
@@ -505,7 +538,7 @@ function isTekstveld(t) {
   return t instanceof HTMLTextAreaElement || (t instanceof HTMLInputElement && !["radio", "checkbox"].includes(t.type)) || t.isContentEditable;
 }
 
-function cijfer(toets) {  // 1/2/3 in een van de 8 rijen, 1–5/0 in de Nutri-Score-rij; zelfde weg als een klik
+function cijfer(toets) {  // 1/2/3 in een van de 12 rijen, 1–5/0 in de Nutri-Score-rij; zelfde weg als een klik
   let input;
   if (actief < LOS.length) {
     const w = KEUZES["123".indexOf(toets)];
@@ -584,7 +617,7 @@ async function start() {
     if (!Array.isArray(items)) throw new Error("items.json is geen lijst");
     if (!items.length) { $("#voortgang").textContent = "geen etiketten in items.json"; return; }
     zetStand(serverstand);
-    const open = items.findIndex((it) => !(records[it.id] && ["bevestigd", "onleesbaar"].includes(records[it.id].status)));
+    const open = items.findIndex((it) => !afgehandeld(records[it.id]));  // ook na te lopen
     idx = open < 0 ? 0 : open;
     toon();
     koppel();

@@ -6,7 +6,10 @@ Een fout telt als geen melding en wordt geteld; boven 2% fouten is de run ongeld
 
   python tel_proef.py --uitslag <toets/uitslag.json> --route D+A=<pad> --meta D+A=<pad> --route D=<pad> --meta D=<pad>
                       --route K4-aa=<pad> --meta K4-aa=<pad> --uit <map>
+                      [--referenties K4-aa=<route>-referentieset.json]
                       [--nakijken <nakijken.json> [--nakijken-ronde2 K=<pad>]... [--ronde2-overgeslagen K]...]
+--referenties: per klasse het aantal gebruikte referenties (`per_klasse` van k4aa_lokaal); een keurmerk zonder
+referenties krijgt bij die route het besluit "n.v.t. (geen referenties)" (trainingsset §9), vóór elk ander besluit.
 Een route is een run-bestand {"status": "voltooid", "etiketten": {doc_id: [codes] | {"fout": klasse}}}; een run die niet
 voltooid is wordt geweigerd (een afgebroken run met reden geen_zdr is de zdr-stop). Alleen de --route-routes tellen voor
 de nakijklijst; de informatieve K4-aa-run met alle referenties hoort er niet bij.
@@ -43,6 +46,7 @@ import uitslag as us  # noqa: E402
 
 NS = {f"NUTRISCORE_{x}": x for x in us.LETTERS}  # A–E (meetregels §3, besluit Friso 01-11-2026)
 MIN_MET, MIN_ZONDER, MAX_FOUT_PCT = 16, 35, 2.0
+NVT = "n.v.t. (geen referenties)"
 STEEKPROEF_SEED = 20261101  # meetregels §6: vast in de telcode (bevroren via de hash), geen opdrachtregeloptie
 KANTEN = ("met", "zonder")
 
@@ -68,7 +72,13 @@ def _ns_goed(record, waar):
     return bool(gemeld) and gemeld <= set(waar)
 
 
-def tel(uitslag, meldingen):
+def _zonder_referenties(k, referenties):
+    """Keurmerk zonder referenties: Nutri-Score-groep = som van de letters, een letter of klasse = zijn eigen aantal."""
+    n = sum(referenties.get(x, 0) for x in NS) if k == "NUTRISCORE" else referenties.get(k, 0)
+    return n == 0
+
+
+def tel(uitslag, meldingen, referenties=None):
     if any(isinstance(r, dict) and r.get("fout") == "geen_zdr" for r in meldingen.values()):
         raise ValueError("zdr-weigering: de run stopt en telt niet")
     pk = us.per_keurmerk(uitslag)
@@ -90,6 +100,8 @@ def tel(uitslag, meldingen):
         v["ondergrens"] = wilson(v["gevonden"], v["met"])[0] if v["met"] else None
         v["bovengrens"] = wilson(v["vals"], v["zonder"])[1] if v["zonder"] else None
         v["besluit"] = besluit(v["gevonden"], v["met"], v["vals"], v["zonder"])
+        if referenties is not None and _zonder_referenties(k, referenties):
+            v["besluit"] = NVT
     bevestigd = [d for d, x in uitslag.items() if x.get("status") == "bevestigd"]
     fouten = Counter((meldingen[d].get("fout", "onbekend") if isinstance(meldingen.get(d), dict) else "ontbreekt")
                      for d in bevestigd if d not in meldingen or isinstance(meldingen[d], dict))
@@ -107,8 +119,8 @@ def _p90(xs):
     return sorted(xs)[math.ceil(0.9 * len(xs)) - 1]
 
 
-def tabel(uitslag, meldingen, meta, seed=20261030, n_trekkingen=2000):
-    t = tel(uitslag, meldingen)
+def tabel(uitslag, meldingen, meta, seed=20261030, n_trekkingen=2000, referenties=None):
+    t = tel(uitslag, meldingen, referenties)
     pk = us.per_keurmerk(uitslag)
     toets = [d for d, x in uitslag.items() if x.get("status") == "bevestigd"]
     draws = trekkingen([_gln(d, meta) for d in toets], seed, n_trekkingen)
@@ -231,7 +243,7 @@ def _fout(oud, nieuw):
     return set(oud) != set(nieuw) if isinstance(oud, list) and isinstance(nieuw, list) else oud != nieuw
 
 
-def na_nakijken(uitslag, routes, metas, nakijken, ronde2=None, overgeslagen=(), seed=20261030):
+def na_nakijken(uitslag, routes, metas, nakijken, ronde2=None, overgeslagen=(), seed=20261030, referenties=None):
     """(tabellen ná nakijken, {keurmerk: lijst voor de tweede ronde}) volgens meetregels §6-§7. ValueError bij een
     onvolledig of ongeldig antwoord, of een ronde-2-keuze voor een onbekend keurmerk, een keurmerk zonder tweede ronde
     of met beide opties."""
@@ -260,7 +272,7 @@ def na_nakijken(uitslag, routes, metas, nakijken, ronde2=None, overgeslagen=(), 
         waar = corrigeer(waar, _antwoorden(pad, tweede[k])[1])
     uit = {}
     for naam, meld in routes.items():
-        t = uit[naam] = tabel(waar, meld, metas.get(naam, {}), seed=seed)
+        t = uit[naam] = tabel(waar, meld, metas.get(naam, {}), seed=seed, referenties=(referenties or {}).get(naam))
         for k in us.KEURMERKEN:
             v, sp = t[k], rapport[k]
             # gevoeligheid (informatief): bovengrens per kant in het nadeel van de route op de overeenkomende paren die
@@ -270,7 +282,7 @@ def na_nakijken(uitslag, routes, metas, nakijken, ronde2=None, overgeslagen=(), 
             v["steekproef"] = sp
             v["gevoeligheid"] = besluit(v["gevonden"] - e["met"], v["met"] - e["met"] + e["zonder"], v["vals"] + e["met"],
                                         v["zonder"] + e["met"] - e["zonder"])
-            if v["besluit"] != "te weinig voorbeelden" and k in fout and k not in ronde2:
+            if v["besluit"] not in ("te weinig voorbeelden", NVT) and k in fout and k not in ronde2:
                 v["besluit"] = "mens bevestigt" if k in overgeslagen else "mens bevestigt (voorlopig)"
     return uit, tweede
 
@@ -376,6 +388,8 @@ def main(argv=None):
                     help='NAAM=pad naar een run-bestand {"status": "voltooid", "etiketten": {doc_id: [codes] | {fout}}}')
     ap.add_argument("--meta", action="append", help="NAAM=pad naar {doc_id: {gln, tijd, kosten, beoordeeld}}")
     ap.add_argument("--uit", required=True, type=Path)
+    ap.add_argument("--referenties", action="append", metavar="ROUTE=PAD",
+                    help="referentieset.json van k4aa_lokaal (per_klasse): keurmerk zonder referenties = n.v.t.")
     ap.add_argument("--nakijken", type=Path, help="{nr: oordeel} voor elke regel van nakijklijst.json (stap 15)")
     ap.add_argument("--nakijken-ronde2", action="append", default=[], metavar="K=PAD",
                     help="antwoorden op nakijklijst-ronde2-<K>.json (een oordeel voor elke regel)")
@@ -391,12 +405,17 @@ def main(argv=None):
         uitslag = json.loads(a.uitslag.read_text(encoding="utf-8"))
         metas = {n: json.loads(Path(p).read_text(encoding="utf-8")) for n, p in _paren(a.meta).items()}
         routes = {n: _lees_route(p) for n, p in _paren(a.route).items()}
-        tabellen = {n: tabel(uitslag, m, metas.get(n, {}), seed=a.seed) for n, m in routes.items()}
+        refs = {n: json.loads(Path(p).read_text(encoding="utf-8")).get("per_klasse") for n, p in _paren(a.referenties).items()}
+        if any(not isinstance(v, dict) for v in refs.values()):
+            raise ValueError("--referenties: referentieset zonder per_klasse (draai k4aa_lokaal.py opnieuw)")
+        if set(refs) - set(routes):
+            raise ValueError(f"--referenties voor onbekende route {sorted(set(refs) - set(routes))}")
+        tabellen = {n: tabel(uitslag, m, metas.get(n, {}), seed=a.seed, referenties=refs.get(n)) for n, m in routes.items()}
         lijst, sleutel = nakijklijst(uitslag, routes)
         if a.nakijken:
             _controleer_sha(uit, lijst, sleutel)
             na, tweede = na_nakijken(uitslag, routes, metas, a.nakijken, _paren(a.nakijken_ronde2), a.ronde2_overgeslagen,
-                                     seed=a.seed)
+                                     seed=a.seed, referenties=refs)
         elif a.nakijken_ronde2 or a.ronde2_overgeslagen:
             raise ValueError("--nakijken-ronde2 en --ronde2-overgeslagen alleen samen met --nakijken")
         else:

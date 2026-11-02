@@ -37,6 +37,15 @@ def vraag_voor(code):
         return ("Image 1 is a crop from a product label; image 2 is the reference European V-Label. Does image 1 show the "
                 "European V-Label (not a similar-looking mark)? The vegan and the vegetarian V-Label count as the same mark, "
                 "whatever word is under the V. Answer ja (yes), nee (no) or twijfel (unsure).")
+    if code == "FOREST_STEWARDSHIP_COUNCIL_LABEL":  # Mix, Recycled en 100% zijn hetzelfde keurmerk (meetregels §2)
+        return ("Image 1 is a crop from a product label; image 2 is the reference FSC logo. Does image 1 show the FSC logo "
+                "(not a similar-looking mark such as PEFC)? FSC Mix, FSC Recycled and FSC 100% count as the same mark, "
+                "whatever word is under the tree. Answer ja (yes), nee (no) or twijfel (unsure).")
+    if code == "SOCIETY_PLASTICS_INDUSTRY":  # het cijfer telt niet (meetregels §2)
+        return ("Image 1 is a crop from a product label; image 2 is the reference plastic resin identification code. Does "
+                "image 1 show a resin code: a triangle of chasing arrows with a number inside? The number does not "
+                "matter, any number 1-7 counts; text alone (such as 'PP 5') does not. Answer ja (yes), nee (no) or "
+                "twijfel (unsure).")
     return ("Image 1 is a crop from a product label; image 2 is the reference logo of a quality mark. Does image 1 "
             "show the same quality mark (not a similar-looking one)? Answer ja (yes), nee (no) or twijfel (unsure).")
 

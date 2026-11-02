@@ -886,3 +886,133 @@ Rood: ronde 8 18 van 23, ronde 7 5 (alle op `breedte` waar nu `passend` hoort). 
 ### Na de bouw (bmad-build ronde 8, route oneshot, reviewpatches)
 
 Bouw zonder testwijziging groen (830 passed). Blind Hunter (12 bevindingen; 10 doorgevoerd, 2 verworpen) voegde toe (bindend): de passende maat wordt gemeten nadat het beeld eerst gekrompen is (scrollbalken van een ingezoomd beeld tellen niet mee); de zoomcursor staat alleen op het etiket. Tests erbij in `tests/test_ronde8_browser_20261102.py`: `met_scrollbalken_terug_naar_passend` (2), `met_scrollbalken_tweede_uitsnede_houdt_de_zoombreedte` (eigen Chromium zonder `--hide-scrollbars`, via dezelfde Playwright-instantie), `uitsnede_zet_haar_kader_zo_veel_mogelijk_in_het_midden` (2), `zoomcursor_alleen_op_het_etiket`, en een klein etiket met twee uitsneden (`KLEIN2`) in de uitsnedetest. Totaal ronde 8: 14 functies, 30 gevallen. Trace run 11: PASS. Suite: **837 passed, 2 skipped, 0 failed** (2×). Buildspec: `_bmad-output/implementation-artifacts/spec-spike-getrainde-detector-ronde8.md`.
+
+## Ronde 9 (vier extra keurmerken, nalopen, nachttraining; besluiten Friso 02-11-2026)
+
+Bron: de niet-gecommitte spec-update op `47edcb1` (`bmad-spec`, daarna `bmad-review` in een verse subagent: 18 bevindingen, 17 doorgevoerd, 1 keuze voor Friso open): SPEC CAP-1–4, 6–10, 12, 16, 17, nieuw CAP-18, stoppunten 1 en 2; meetregels §2/§4; toetsset §2/§4/§5/§6; trainingsset §1–§5, §7–§12; randvoorwaarden §3; invul-ux EXPERIENCE (Nalopen) en DESIGN (rij 32 px); memlog vanaf "ronde 9". De rest van deze checklist blijft bindend, behalve waar dit contract hem vervangt.
+
+### Stap 1 — preflight en context
+
+- **Werkwijze:** `bmad-testarch-atdd`, Create-modus, headless (staande toestemming; worktree `proef-ronde9`, tak `spike/proef-ronde9`).
+- **Stack:** `fullstack` (Python 3.12 + pytest via `uv`, `conftest.py`; Playwright-browsertests voor de invulpagina). Uitgangstoestand: de volle suite op `47edcb1` + spec-update loopt (verwacht 837 passed); detectoromgeving (`--group detector`, `rfdetr` 1.11.2) aanwezig voor de rooktest.
+- **Gelezen:** spec en companions (ronde 9), `uitslag.py`, `invul/server.py`, `invul/index.html`, `toets.py`, `scheiding.py`, `train.py`, `echt.py` (schema/prompt/GELIJKEND), `generator.py` (`_logos`), `beoordelaar.py`, `herken.py` (CERTIFICAAT), `k4aa_lokaal.py`, `off.py` (ZOEK, zoek_url), `tel_proef.py` (`tel`, `besluit`); tests `conftest.py`, `test_ronde7_browser_20261102.py` (fixtures `start_server`, `page`, `vi`, `etiket`), `test_ronde8_browser_20261102.py`, `test_ronde6_20261102.py`. Kennis: `test-quality`, `data-factories`, `component-tdd`, `test-healing-patterns`, `selector-resilience`, `timing-debugging`, `test-levels-framework`, `test-priorities-matrix`.
+- **Gemeten als invoer (02-11-2026, alleen aantallen):** declaraties op de 352 toets-docs FSC 56 / Triman 51 / kunststofcode 23 / PlanetProof 29; scheidingsrijen (train/toets GTIN's) FSC 145/292, Triman 77/682, kunststofcode 128/291, PlanetProof 54/43; Robotoff: `en:fsc-mix` 5.899, `en:fsc` 3.355, `fr:triman` 70.119, `en:planet-proof` 27, 16 harscode-schrijfwijzen samen 6.645; lege tegels 2.091 van 9.980; kostenmodel $0,00220/MP + $0,0164/aanroep (R² 0,994); `pytorch_lightning` 2.6.6 stopt op SIGTERM op een batchgrens (broncode).
+
+### Stap 2 — generatiemodus
+
+AI-generatie (backend en browser uit spec en broncode; geen opname nodig: de pagina-selectors bestaan al).
+
+### Stap 3 — teststrategie
+
+| criterium | niveau | prio |
+|---|---|---|
+| CAP-6/klassen: 17 klassen, id 1–13 gelijk, FSC-varianten, categorieën gedeeld (train, echt, nutrigreen, generator, herken, k4aa) | unit | P0 |
+| CAP-3 server/uitslag: 12 losse codes, bevestigd vraagt 13 keuzes, oud bevestigd blijft geldig, tussenstand houdt status, `bevestigde_codes` gezet/gehouden/geweigerd van de client, telling alleen bevestigde codes, na te lopen | unit + server | P0 (antwoorden Friso) |
+| CAP-3 pagina: 13 rijen in volgorde en op één scherm, voortgang na te lopen, startetiket, actieve rij, notitie, bevestigen houdt oude antwoorden, oud concept bruikbaar, weigermelding | browser | P0 |
+| CAP-2 voorinvulling ronde 9: schema alleen vier codes + gelijkende, lege tegels niet verstuurd, hinttegels op etiketindex, herstart betaalt niet opnieuw, samenvoegen overschrijft keurmerk 1–9 nooit, `items-r9.json`, startprojectie kostenmodel, rapport 13 | unit + opdrachtregel | P0 (kosten, live pagina) |
+| CAP-1 scheiding: vier extra rijen, FSC-varianten, nieuwe versie alleen met `--reden` en gelijke leveranciers | unit + opdrachtregel | P1 |
+| CAP-18 nachttraining: venster over middernacht, start/geen start, hervatpunt (leesbaar, terugval, eigen map), SIGTERM 07:30 + SIGKILL na 300 s, klaar, slot, opruimen, status + einddatum, stoppunt 1 zelfbewaking, vrijgeven, plist | unit met nagebootste klok/proces | P0 (nachten zonder toezicht) |
+| CAP-6 `train.py`: `--hervat`, `checkpoint_interval=1`, `resume` alleen met hervatpunt | unit | P0 |
+| CAP-6/18 rooktest hervatten met `rfdetr` (SIGTERM midden in epoch 2) | zwaar (lokaal) | P1 |
+| CAP-17 OFF-tabel vier klassen | unit | P1 |
+| CAP-4 referentieplaatje FSC uit variant, V-label houdt vegan; Triman/kunststofcode geen harde negatief | unit | P1 |
+| CAP-5 voorlabelschema 17 klassen, GELIJKEND zonder Triman/kunststofcode, met PEFC/G6 | unit | P1 |
+| CAP-7/8 FSC-certificaatnummer, beoordelaarvraag FSC/kunststofcode | unit | P2 |
+| CAP-9/12 referenties per klasse, "n.v.t. (geen referenties)" | unit | P1 |
+| CAP-10 draaiplan ronde 9 | documenttest | P2 |
+
+Uitvoeringsmodus: `auto`, subagents beschikbaar → **subagent**: worker A (backend), worker B (browser), parallel. Zoals rondes 2–8: geen `test.skip()`, de tests draaien echt rood.
+
+### Interfacecontract ronde 9 (bindend voor tests én bouw)
+
+**`train.py`**
+- `KLASSEN` = de 13 van ronde 5 in dezelfde volgorde, daarna `FOREST_STEWARDSHIP_COUNCIL_LABEL`, `TRIMAN`, `SOCIETY_PLASTICS_INDUSTRY`, `ON_THE_WAY_TO_PLANETPROOF` (17; COCO-id = index + 1). `VARIANTEN` = `{"EUROPEAN_V_LABEL_VEGETARIAN": "EUROPEAN_V_LABEL_VEGAN", "FOREST_STEWARDSHIP_COUNCIL_MIX": F, "FOREST_STEWARDSHIP_COUNCIL_RECYCLED": F, "FOREST_STEWARDSHIP_COUNCIL_100_PERCENT": F}` met F = `FOREST_STEWARDSHIP_COUNCIL_LABEL`.
+- `config(fase, maat, dataset, uit, epochs, seed, start=None, besluit=None, hervat=None)`: `cfg["hervat"]` = `str(hervat)` of `None`; een `hervat` dat niet bestaat → `ValueError`.
+- `train_argumenten(cfg, dataset_dir)` (nieuw, licht) → dict voor `model.train`: `dataset_dir`, `epochs`, `batch_size`, `output_dir` (= `cfg["uit"]`), `seed`, `tensorboard=False`, `num_workers=0`, `checkpoint_interval=1`, en `resume` = `cfg["hervat"]` alleen als dat gezet is (anders geen sleutel `resume`). `_train` gebruikt deze functie (plus `device` en `progress_bar`).
+- Opdrachtregel `train … --hervat <ckpt>`.
+- Foutmeldingen die "13 klassen" noemden, noemen nu het aantal uit `len(KLASSEN)`.
+
+**`uitslag.py`**
+- `KEURMERKEN_R5` = de 8 losse codes van ronde 5 (huidige `KEURMERKEN_LOS`); `NIEUW_R9 = ("FOREST_STEWARDSHIP_COUNCIL_LABEL", "TRIMAN", "SOCIETY_PLASTICS_INDUSTRY", "ON_THE_WAY_TO_PLANETPROOF")`; `KEURMERKEN_LOS = KEURMERKEN_R5 + NIEUW_R9` (12); `KEURMERKEN = KEURMERKEN_LOS + ("NUTRISCORE",)` (13).
+- `valideer(invoer, bekend, vereist=None)`: velden als nu (`bevestigde_codes` van de client → `ValueError`); codes in `keurmerken` ⊆ `KEURMERKEN_LOS`; status `bevestigd` vraagt `set(keurmerken) ⊇ vereist` en `nutriscore`; `vereist` standaard `KEURMERKEN_LOS`.
+- `bevestigde_codes(record)` → `set`: `record["bevestigde_codes"]` als die er is, anders (bevestigd van vóór ronde 9) `set(record["keurmerken"]) & set(KEURMERKEN_R5)`; leeg als de status niet `bevestigd` is.
+- `na_te_lopen(record)` → `True` als status `bevestigd` en `set(NIEUW_R9) - bevestigde_codes(record)` niet leeg.
+- `per_keurmerk`/`stand`: een bevestigd etiket telt voor code K alleen als K in `bevestigde_codes(record)`; Nutri-Score zoals nu; `stand` geeft de 13 keurmerken.
+
+**`invul/server.py`**
+- Opslag met `status` = `bevestigd`: `valideer(…)` met alle 12; daarna zet de server `bevestigde_codes = sorted(keurmerken)`. Opslag `onleesbaar`: geen `bevestigde_codes`.
+- Tussenstand (zonder `status`) op een etiket met status: valideren met de oude status en `vereist = KEURMERKEN_R5`; `bevestigde_codes` = die van het oude record (`uitslag.bevestigde_codes(oud)` als lijst, gesorteerd) als de status `bevestigd` is. Onvolledig volgens die regel → 400 zoals nu.
+- `/stand` geeft daarnaast `"na_te_lopen": <aantal>`.
+
+**`invul/index.html`**
+- `LOS` = de 12 codes in de volgorde van `uitslag.KEURMERKEN_LOS`; `NAAM`: FSC → "FSC", Triman → "Triman", kunststofcode → "Kunststofcode (1–7)", PlanetProof → "PlanetProof"; rijen `rij-<CODE>`/`keuze-<CODE>`/`stand-<CODE>`/`ai-<CODE>`/`gewijzigd-<CODE>` ook voor de vier; volgorde in `#standen`: 8 oude, 4 nieuwe, Nutri-Score.
+- Na te lopen (zelfde regel als `uitslag.na_te_lopen`, in JS): `#voortgang` = "`X van N etiketten afgehandeld`" + (als M > 0) "` · M na te lopen`", met X = etiketten onleesbaar of bevestigd en niet na te lopen.
+- Startetiket: het eerste dat niet afgehandeld is of na te lopen.
+- Op een na te lopen etiket: `#notitie` = "Al bevestigd: controleer alleen de vier nieuwe keurmerken (FSC, Triman, kunststofcode, PlanetProof)." (tenzij de voorinvulling ontbreekt: dan de bestaande melding); de eerste van de vier zonder bevestigde code is actief (`data-actief="true"`); de opgeslagen keuzes staan in de rijen; "Bevestigen en volgende"/`b` stuurt `status: "bevestigd"` met de oude waarden ongewijzigd.
+- Weigermelding bij bevestigen zonder alle keuzes: "Kies eerst bij alle 12 keurmerken (ook het V-label en de vier nieuwe) en bij Nutri-Score; niets opgeslagen."
+- Concept van vóór ronde 9 (8 codes) wordt per code samengevoegd; de vier komen uit de voorinvulling (of de server).
+- Rij 32 px; alle 13 rijen, opmerking en knoppen zonder paginascroll in 1440×800 en 1920×970 met de zwaarste etiketten van ronde 7.
+
+**`toets.py`**
+- `LOS = uitslag.KEURMERKEN_LOS` (12); `NIEUW = uitslag.NIEUW_R9`; `GELIJKEND` krijgt de vier (meetregels §2); `OMSCHRIJVING` krijgt de vier; `AANVUL_CODES` bevat de vier.
+- `GELIJKEND_R9` = gesorteerde gelijkende codes van de vier min `LOS` min Nutri-Score (`PEFC`, `PEFC_CERTIFIED`, `SEPARATE_COLLECTION`, `RETURNABLE_CAN_NL`, `RAINFOREST_ALLIANCE`, `RAINFOREST_ALLIANCE_PEOPLE_NATURE`, `FAIR_TRADE_MARK`, `FAIRTRADE_COCOA`, `CERTIFIED_B_CORPORATION`). `SCHEMA_R9`: `keurmerken[].code` enum = `NIEUW`, `gelijkend` enum = `GELIJKEND_R9`, geen `nutriscore`; `PROMPT_R9` noemt de vier met omschrijving, de FSC-variantregel en "het cijfer van de kunststofcode doet er niet toe".
+- `leeg(im)` → `True` als de standaardafwijking van de grijswaarden < 3.
+- `voorinvulling_r9(client, beeld, tegels, index)`: `tegels` = JPEG-bytes van de niet-lege tegels, `index` = hun etiketindex; verdeling met `openrouter.delen` zoals `voorinvulling`; uitkomst `{"keurmerken": {code: bool}, "hinttegels": {code: [etiketindex]}, "gelijkend": [...], "model", "kosten", "tijd", "ronde": 9}` (+ `"ruw"`); mislukt → lege velden met `fout`.
+- `samenvoegen(v, v9)` → kopie van `met_v_label(v)` met `keurmerken` aangevuld met de vier uit `v9` (alleen als `v9` geen `fout` heeft), `hinttegels` aangevuld voor de vier, `gelijkend` = vereniging; een sleutel uit keurmerk 1–9 wordt nooit overschreven; `ronde9` = `{model, kosten, tijd[, fout]}` van `v9`.
+- `raming_r9(megapixels, aanroepen)` = `0.0022 * megapixels + 0.0164 * aanroepen`.
+- Opdrachtregel `toets.py voorinvulling-r9 --proef-map <PM> --manifest <m> --zdr-logo <png> [--docs <json>] [--grens <$> --besluit "<…>"] [--items <pad>]`: docs = alle met sha256 in het manifest (of `--docs`); open = niet in `voorinvulling-r9.json` of met `fout`; startprojectie = grootboek + som van `raming_r9` over de open docs (MP en aanroepen van de niet-lege tegels) → boven de grens stopt hij vóór de client (exitcode ≠ 0, stoppunt 5); schrijft `<toets>/voorinvulling-r9.json` na elk etiket, hintbeelden voor de vier in `<toets>/beelden/`, en `--items` (standaard `<toets>/items-r9.json`; `items.json` wordt nooit geschreven) met per doc `samenvoegen(voorinvulling[doc], r9[doc])` en de hints van beide.
+- `rapport(voorinvullingen, r9=None)`: telt 13 (de vier uit `samenvoegen`); opdrachtregel `rapport` leest `voorinvulling-r9.json` als die bestaat.
+
+**`scheiding.py`**
+- `RIJEN_EXTRA` = de 3 van ronde 5 + de vier (FSC-rij heet `FOREST_STEWARDSHIP_COUNCIL_LABEL`; varianten via `VARIANTEN`).
+- Opdrachtregel `kies --proef-map <PM> [--reden "<…>"]`: bestaat `scheiding.json` al, dan zonder `--reden` exitcode 2 en niets geschreven; met `--reden` alleen als de nieuwe trainingsleveranciers gelijk zijn aan de bestaande (anders exitcode 2, niets geschreven); dan eerst een kopie `scheiding.<tijdstempel>.json` en de nieuwe versie met `"versie_reden"`.
+
+**`nacht.py`** (nieuw, stdlib)
+- Constanten: `BEGIN = time(22, 0)`, `EIND = time(7, 30)`, `STOP_WACHT = 300`, `HOUD = 2`, `MAX_NACHTEN = 4`, `MAX_EPOCH_S = 9.5 * 3600`, `LABEL = "com.xxtract.proef-nachttraining"`.
+- `in_venster(t)`; `einde(t)` (eerstvolgende 07:30 na `t`, alleen binnen het venster, anders `ValueError`); `einddatum(t, seconden)` (moment waarop `seconden` vensterseconden vanaf `t` op zijn, buiten het venster pas vanaf de volgende 22:00).
+- `checkpoints(uit)` → `[(epoch, pad)]` van `checkpoint_<n>.ckpt` oplopend; `hervatpunt(uit)` → het nieuwste waarvoor `zipfile.is_zipfile` waar is, anders `None`; `opruimen(uit)` verwijdert `checkpoint_<n>.ckpt` behalve de nieuwste `HOUD` leesbare; nooit andere bestanden.
+- `plan(uit, opdracht, epochs, fase)` → schrijft `<uit>/nacht.json` `{opdracht, epochs, fase, venster: ["22:00", "07:30"], uit}`; `--hervat` in `opdracht` → `ValueError`; `plist(python, script, uit)` → plist-tekst (plistlib) met `Label`, `ProgramArguments = [python, script, "draai", "--uit", uit]`, `StartCalendarInterval {Hour: 22, Minute: 0}`, logbestanden onder `uit`.
+- `draai(uit, nu=…, popen=subprocess.Popen, slaap=time.sleep, poll_s=60)` → uitkomst-string: `"klaar"` (train-resultaat.json bestaat; niets gestart), `"stoppunt_1"` (status heeft `stoppunt_1`; niets gestart), `"buiten_venster"`, `"bezet"` (slot `nacht.slot` met levend pid), `"afgerond"` (proces 0 en train-resultaat.json), `"gepauzeerd"` (om 07:30 gestopt), `"fout"` (andere afloop). Start `opdracht + ["--hervat", pad]` als er een hervatpunt is, plus `["caffeinate", "-i", "-w", <pid>]`; om `einde` `terminate()`, na `STOP_WACHT` s nog levend `kill()`. Elk nieuw checkpoint → epochduur in de status; na afloop `opruimen` en stoppuntcontrole: geen nieuw checkpoint in een run die tot het einde van het venster liep, een epoch > `MAX_EPOCH_S`, of `verwacht_klaar` > eerste start + `MAX_NACHTEN` × 24 h → `stoppunt_1` met reden.
+- `status(uit, nu)` → `{fase, epochs_totaal, epochs_klaar, gem_epoch_s, eerste_start, laatste_start, laatste_stop, uitkomst, verwacht_klaar, stoppunt_1}`; `epochs_klaar` = hoogste checkpoint-epoch + 1 (0 zonder); `verwacht_klaar` = `einddatum(nu, (totaal − klaar) × gem)` (ISO; `None` zonder meting); bewaard in `<uit>/nacht-status.json`.
+- `vrijgeven(uit)` wist `stoppunt_1`. Opdrachtregel: `plan --uit U --epochs N --fase F [--plist P] -- <opdracht…>`, `draai --uit U`, `status --uit U`, `vrijgeven --uit U`.
+
+**Overige modules**
+- `echt.py`: `GELIJKEND` zonder `TRIMAN` en `SOCIETY_PLASTICS_INDUSTRY`, met `PEFC`, `PEFC_CERTIFIED`, `RAINFOREST_ALLIANCE`, `RAINFOREST_ALLIANCE_PEOPLE_NATURE`, `FAIR_TRADE_MARK`, `FAIRTRADE_COCOA`, `CERTIFIED_B_CORPORATION`; schema-enum = 17 klassen + GELIJKEND + "ander"; prompt noemt de FSC-variantregel.
+- `generator.py _logos`: referentieplaatje per klasse: eigen code vóór variant; binnen elk: http vóór GS1; een variant alleen als de klasse zelf geen publiek/GS1-bestand heeft. `TRIMAN`/`SOCIETY_PLASTICS_INDUSTRY`-referenties worden gelabelde bronnen, geen gelijkende.
+- `beoordelaar.vraag_voor`: FSC-vraag noemt Mix, Recycled en 100% als hetzelfde; kunststofcode-vraag zegt dat het cijfer niet telt.
+- `herken.CERTIFICAAT[FOREST_STEWARDSHIP_COUNCIL_LABEL]` = `FSC[®\s]*[-–]?\s*C\s?\d{6}`.
+- `off.ZOEK`: FSC `(("label", "en:fsc-mix"), ("label", "en:fsc"))`, Triman `(("label", "fr:triman"),)`, kunststofcode 16 × `("packaging", w)` in de volgorde van trainingsset §11, PlanetProof `(("label", "en:planet-proof"),)`.
+- `k4aa_lokaal.per_klasse(codes)` → `{klasse: n}` voor alle `KLASSEN` (variant naar klasse); de referentieset-json krijgt `per_klasse`.
+- `tel_proef.tel(uitslag, meldingen, referenties=None)` / `tabel(…, referenties=None)`: met `referenties` (`{klasse: n}`) krijgt een keurmerk zonder referenties (Nutri-Score: groep = som van de letters; een letter = zijn klasse) besluit `"n.v.t. (geen referenties)"` (gaat vóór de andere besluiten); opdrachtregel `--referenties ROUTE=<referentieset.json>`.
+
+**`DRAAIPLAN.md`** (documenttest): bevat `nacht.py plan`, `nacht.py draai`, `nacht.py status`, `launchctl`, `pmset` of "slaapstand", `toets.py voorinvulling-r9`, `scheiding.py kies --proef-map $PM --reden`, het woord "wisselplan" met `items-r9.json` en `uitslag.json`; de stoppuntregel noemt geen "8 uur" meer als grens.
+
+**Aanvullingen op het contract na de workers (bindend):** een variant wordt alleen het referentieplaatje voor FSC (`FOREST_STEWARDSHIP_COUNCIL_LABEL`); voor V-label nooit (bestaande test `test_r5_logos_zonder_vegan…` blijft). `SCHEMA_VOORINVULLING` (gewone voorinvulling, voor latere aanvullingen) volgt `LOS` en vraagt dus 12 codes. Slot `nacht.slot` = pid als tekst; `status(uit, nu)` krijgt een tijdstip; na een run die stoppunt 1 raakt geeft `draai` `"gepauzeerd"` of `"stoppunt_1"`, de volgende `draai` altijd `"stoppunt_1"`. Megapixels in `raming_r9` = 10⁶ pixels van de niet-lege tegels; het overzicht zit in de kosten per aanroep; grootboekpost `"voorinvulling toets"`. De sectie "Snelheid" van het draaiplan houdt de geschiedenis ("boven 8 uur", "hoogstens 7 epochs") met het besluit van 02-11 erbij; de stoppuntregel van stap 10 noemt geen 8-uursgrens.
+
+### Stap 4 — falende tests (workers A en B, parallel als subagent)
+
+| criterium | tests (`R9:` = `tests/test_ronde9_20261102.py`, `R9B:` = `tests/test_ronde9_browser_20261102.py`) | functies (gevallen) | prio |
+|---|---|---:|---|
+| backend: klassen, uitslag/server, toets ronde 9, scheiding, nacht.py, train.py, echt, generator, beoordelaar, herken, off, k4aa, tel_proef, draaiplan | R9: `test_r9_*` | 70 (84) | P0–P2 |
+| browser: 13 rijen op één scherm, na te lopen (voortgang, start, notitie, actieve rij, bevestigen houdt oude antwoorden), tussenstand telt pas na bevestigen, oud concept, weigermelding, 1/2/3 door de nieuwe rijen | R9B: `test_r9b_*` | 9 (20) | P0 |
+
+**Bestaande tests aangepast aan het nieuwe contract** (geen niet-gerelateerde bewering afgezwakt; worker A controleerde zijn aanpassingen tegen een wegwerpbouw in `/tmp`, daarna verwijderd): `test_cap01` (7 extra rijen), `test_cap02` (rapport 13), `test_cap03_invulpagina` (`volledig()` met 12 keuzes; keurmerklijsten), `test_cap04`/`test_cap05` (17 klassen; gelijkend-voorbeeld TRIMAN → PEFC), `test_cap09` (`et()` met 12 keuzes), `test_cap12` (FSC_MIX → PEFC als code buiten de klassen), `test_review_20261101` (`et()` en browser-voorinvulling `volledig` met de vier), `test_ronde5_20261101` (22 tests: 17 categorieën, 12 keuzes, Triman als klasse, stoppunt 2 noemt de vier), `test_ronde6_20261102` (13 tests: categorieën van ronde 5; OFF-tabel = 9 oude exact + 4 nieuwe; byte-gelijk-controle over categorie 1–13, nagerekend gelijk aan de oude vastgepinde waarde); browser: `test_ronde7_browser` (`LOS` 12, `NEGEN` 13 rijen; 1/2/3 schuift na V-label door naar FSC, de laatste rij is PlanetProof), `test_cap03_invulpagina_browser` (voorinvulling en bevestigde POST met de vier), `test_ronde5_browser` (vier als afwezig, 12 radiogroepen, 13 standen, oud concept verwacht ook de vier).
+
+### Rode run (02-11-2026)
+
+```
+# worker A (backend, nieuw + aangepast), ±19:30
+cd _bmad-output/planning-artifacts/spike-getrainde-detector && uv run --group dev pytest -q -p no:cacheprovider tests/test_ronde9_20261102.py tests/test_cap01_scheiding.py tests/test_cap02_kandidaten.py tests/test_cap03_invulpagina.py tests/test_cap04_generator.py tests/test_cap05_echt.py tests/test_cap09_telling.py tests/test_cap12_k4aa_runner.py tests/test_review_20261101.py tests/test_ronde5_20261101.py tests/test_ronde6_20261102.py
+135 failed, 348 passed          (nieuw: 79 failed, 5 passed)
+# worker B (browser, nieuw + aangepast), ±18:30
+uv run --group dev pytest -q -p no:cacheprovider tests/test_cap03_invulpagina_browser.py tests/test_ronde3_browser_20261101.py tests/test_ronde5_browser_20261101.py tests/test_ronde7_browser_20261102.py tests/test_ronde8_browser_20261102.py tests/test_ronde9_browser_20261102.py
+33 failed, 81 passed            (nieuw: 20 failed, 0 passed)
+```
+
+Rood samen: **168** (99 nieuw + 69 aangepast). Rood op ontbrekend gedrag: `ModuleNotFoundError: nacht`, ontbrekende functies/constanten, argparse-onbekende opties (de tests controleren dat stderr géén argparse-fout heeft), 400 van de server op de vier codes, ontbrekende rijen/selectors, `KeyError 'na_te_lopen'`. Vooraf groen en bewust gehouden (5): server weigert FSC-variantcodes en een meegestuurd `bevestigde_codes`. Een volle-suite-uitgangsmeting vooraf liep niet af (gestopt op de tijdgrens van 90 minuten terwijl de workers parallel draaiden); de uitgangsstand is daarom de stand van `47edcb1` (837 passed, trace ronde 8) plus deze rode run.
+
+### Stap 5 — validatie en volgende stap
+
+- Elk contractpunt van ronde 9 heeft minstens één test; geen `test.skip()`; geen netwerk (nagebootste client, opener, klok, proces); alleen `tmp_path` en verzonnen ids; de live server (:8767) en `~/logo-meetset-20261018` niet aangeraakt door de nieuwe tests (de bestaande `lokaal`-test van CAP-1 leest de echte invoer alleen-lezend, zoals altijd).
+- Niet gedekt (bewust, na de keten): het echte OFF-ophalen, de contactbladen, de rooktest met `rfdetr` (zwaar, wordt in de bouw gedraaid en vastgelegd) en de echte voorinvulling (wacht op Friso: stoppunt 5).
+- **Volgende stap:** `bmad-build` op dit contract.

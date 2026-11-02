@@ -37,6 +37,9 @@ KEURMERKEN7 = (
 )
 KEURMERKEN8 = KEURMERKEN7 + ("NUTRISCORE",)
 V_LABEL = "EUROPEAN_V_LABEL_VEGAN"  # ronde 5: 8e losse keuze, voorgevuld afwezig
+# ronde 9: vier extra losse keuzes; bevestigen vraagt alle 12, dus de voorinvulling (en een bevestigde opslag) noemt ze
+NIEUW_R9 = ("FOREST_STEWARDSHIP_COUNCIL_LABEL", "TRIMAN", "SOCIETY_PLASTICS_INDUSTRY", "ON_THE_WAY_TO_PLANETPROOF")
+LOS12 = KEURMERKEN7 + (V_LABEL,) + NIEUW_R9
 
 # Verzonnen doc_id's (GLN-GTIN-doelmarkt); geen klantdata.
 E1 = "9990000000017-09990000000011-528"
@@ -84,7 +87,7 @@ window.__leesVerwijderd = () => { verwerk(waarnemer.takeRecords()); return windo
 
 def voorinvulling(aanwezig, nutriscore):
     return {
-        "keurmerken": {c: c in aanwezig for c in KEURMERKEN7 + (V_LABEL,)},
+        "keurmerken": {c: c in aanwezig for c in LOS12},
         "nutriscore": nutriscore,
         "hinttegels": {c: [0] for c in sorted(aanwezig)},
         "gelijkend": [],
@@ -239,7 +242,7 @@ def test_p0_concept_per_toetsaanslag_en_gaat_voor_op_serverstand(page, basis_url
     aanwezig, nutriscore = VOORGEVULD[E1]
     andere_stand = page.request.post(basis_url + "opslaan", data={"id": E1, "waarde": {
         "status": "bevestigd",
-        "keurmerken": {c: "aanwezig" if c in aanwezig else "afwezig" for c in KEURMERKEN7 + (V_LABEL,)},
+        "keurmerken": {c: "aanwezig" if c in aanwezig else "afwezig" for c in LOS12},
         "nutriscore": nutriscore,
         "veranderd": [],
         "opmerking": "servertekst",

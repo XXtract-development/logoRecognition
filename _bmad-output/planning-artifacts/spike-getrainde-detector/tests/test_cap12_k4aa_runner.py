@@ -23,7 +23,7 @@ def det(code, review=False):
 
 
 RESULTAAT = {
-    "detections": [det(GD), det(WM, review=True), det("FOREST_STEWARDSHIP_COUNCIL_MIX", review=True), det("NUTRISCORE_D"), det("NUTRISCORE_B")],
+    "detections": [det(GD), det(WM, review=True), det("PEFC", review=True), det("NUTRISCORE_D"), det("NUTRISCORE_B")],
     "stats": {"calls": 3, "attempts": 3, "tokens_in": 9000, "tokens_out": 300, "cost_usd": 0.0123},
 }
 
@@ -63,7 +63,7 @@ def test_cap12_alleen_referenties_van_trainingsleveranciers_en_publieke_bronnen(
 
 
 def test_cap12_elke_detectie_binnen_de_8_keurmerken_is_een_melding(kl):
-    assert kl.meldingen_uit(RESULTAAT) == {GD, WM, "NUTRISCORE_B", "NUTRISCORE_D"}  # ook requires_review; FSC valt af, D is een klasse (ronde 5)
+    assert kl.meldingen_uit(RESULTAAT) == {GD, WM, "NUTRISCORE_B", "NUTRISCORE_D"}  # ook requires_review; PEFC valt af (ronde 9: FSC is een klasse), D is een klasse (ronde 5)
     assert kl.meldingen_uit({"detections": [], "stats": {}}) == set()
 
 

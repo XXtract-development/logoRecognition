@@ -1,8 +1,8 @@
 ---
 name: Invulpagina toetsset (proef getrainde detector)
-description: Lokale beoordelingspagina waarop Friso per etiket bevestigt welke van de 9 keurmerken erop staan; alles op één scherm.
+description: Lokale beoordelingspagina waarop Friso per etiket bevestigt welke van de 13 keurmerken erop staan; alles op één scherm.
 status: final
-updated: 2026-11-02
+updated: 2026-11-02 (ronde 9: 13 rijen van 32 px)
 sources:
   - ../SPEC.md
   - ../toetsset.md
@@ -46,7 +46,7 @@ spacing:
   '3': 12px
   '4': 16px
   kopregel: 44px
-  rij: 40px
+  rij: 32px
   paneel: 460px
   naamkolom: 190px
   uitsnedekolom: 240px
@@ -98,7 +98,7 @@ Gedrag staat in [EXPERIENCE.md](EXPERIENCE.md). Bij strijd met een schermafbeeld
 
 ## Brand & Style
 
-Een werkinstrument voor één beoordelaar die 352 etiketten achter elkaar nakijkt op 9 keurmerken (8 met aanwezig/afwezig/onzeker plus Nutri-Score). Rustig en zakelijk in de XXtract-huisstijl: navy voor wat de beoordelaar kiest en bedient, teal voor alles wat van de AI komt (de AI-voorinvulling), groen alleen als een doel gehaald is, rood alleen voor een fout. Het etiket zelf is het belangrijkste beeld op het scherm; de bediening eromheen is compact en strak.
+Een werkinstrument voor één beoordelaar die 352 etiketten achter elkaar nakijkt op 13 keurmerken (12 met aanwezig/afwezig/onzeker plus Nutri-Score; ronde 9). Rustig en zakelijk in de XXtract-huisstijl: navy voor wat de beoordelaar kiest en bedient, teal voor alles wat van de AI komt (de AI-voorinvulling), groen alleen als een doel gehaald is, rood alleen voor een fout. Het etiket zelf is het belangrijkste beeld op het scherm; de bediening eromheen is compact en strak.
 
 ## Colors
 
@@ -119,7 +119,7 @@ Eén lettertype: Inter als het op de machine staat, anders het systeemlettertype
 - De pagina vult precies het venster (100vh) en scrollt nooit. Kopregel `{spacing.kopregel}` hoog.
 - Daaronder drie kolommen: **etiketbeeld** (alle overige breedte) · **AI-uitsneden** (`{spacing.uitsnedekolom}`, vervalt als het etiket geen uitsneden heeft) · **beoordelingspaneel** (`{spacing.paneel}`). Tussenruimte `{spacing.3}`, buitenmarge `{spacing.3}`.
 - In een venster van 1440 breed krijgt het etiketbeeld zo ±690 px breedte, in 1920 ±1170 px.
-- Keurmerkrijen zijn `{spacing.rij}` hoog (naam en stand op twee regels): 9 rijen plus melding, opmerking, knoppen en sneltoetsenregel passen in een venster van 800 px hoog. Niets in een rij mag afbreken naar een extra regel: de naam wordt zo nodig afgekapt met een beletselteken (volledige tekst in `title`); de stand staat altijd volledig.
+- Keurmerkrijen zijn `{spacing.rij}` hoog (naam en stand op twee regels; ronde 9: 32 px in plaats van 40 px, naam 13 px op regelhoogte 16 px, stand 12 px op regelhoogte 14 px): 13 rijen plus melding, opmerking, knoppen en sneltoetsenregel passen in een venster van 800 px hoog. Niets in een rij mag afbreken naar een extra regel: de naam wordt zo nodig afgekapt met een beletselteken (volledige tekst in `title`); de stand staat altijd volledig.
 - Alleen het beeldvak en (bij veel uitsneden) de uitsnedekolom scrollen intern.
 
 ## Elevation & Depth

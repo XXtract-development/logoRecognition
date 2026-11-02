@@ -81,7 +81,7 @@ def test_cap01_rijen_per_leverancier_en_zwangerschap_uit_alcohol(sch):
         ("1000000000002-10000000000031-056", "1000000000002", "10000000000031", frozenset({"NUTRISCORE_A"})),
     ]
     rijen = sch.bouw_rijen(decl, [("1000000000003", "10000000000048"), ("1000000000003", "10000000000055")])
-    assert set(rijen) == set(RIJEN) | {"NUTRISCORE_D", "NUTRISCORE_E", "EUROPEAN_V_LABEL_VEGAN"}  # ronde 5: 3 extra rijen
+    assert set(rijen) == set(RIJEN) | {"NUTRISCORE_D", "NUTRISCORE_E", "EUROPEAN_V_LABEL_VEGAN"} | set(("FOREST_STEWARDSHIP_COUNCIL_LABEL", "TRIMAN", "SOCIETY_PLASTICS_INDUSTRY", "ON_THE_WAY_TO_PLANETPROOF"))  # ronde 5: 3, ronde 9: 4 extra rijen
     assert dict(rijen["GREEN_DOT"]) == {"1000000000001": {"10000000000017"}}
     assert dict(rijen["NUTRISCORE_B"]) == {"1000000000001": {"10000000000017"}}
     assert dict(rijen["NUTRISCORE_A"]) == {"1000000000002": {"10000000000031"}}  # twee doelmarkten, één GTIN

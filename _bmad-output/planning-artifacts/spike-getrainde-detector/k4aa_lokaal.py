@@ -2,7 +2,8 @@
 k4aa-module als parameter; `main` laadt `apps/ml-service/app/services/k4aa.py` (origin/acc 8c9373d, niet gewijzigd) en
 vervangt alleen in dit proces de ACC-referenties door de gefilterde momentopname van 30-10-2026. Niets op ACC.
 
-Elke detectie binnen de 13 klassen (de 9 keurmerken; vegetarisch V-label telt als V-label) telt als melding, ook met
+Elke detectie binnen de 17 klassen (de 13 keurmerken; vegetarisch V-label telt als V-label, een FSC-variant als FSC) telt
+als melding, ook met
 requires_review. `budget_exhausted` en andere K4aaError-klassen zijn routefouten voor dat etiket; `no_zdr_provider`
 stopt de hele run.
 
@@ -28,7 +29,7 @@ import scheiding
 from train import KLASSEN, VARIANTEN
 
 PUBLIEK = {"gs1-packaging-label-guide", "synthetic-nutriscore-bootstrap"}
-ACHT = set(KLASSEN)  # naam van vóór ronde 5; nu alle 13 klassen (de 9 keurmerken)
+ACHT = set(KLASSEN)  # naam van vóór ronde 5; nu alle 17 klassen (de 13 keurmerken)
 PER_ETIKET = 0.012  # dollar, raming randvoorwaarden §3
 MOMENTOPNAME = Path.home() / "logo-meetset-20261018/ontwikkelmeting-20261028/fase-b/momentopname"
 
@@ -46,8 +47,18 @@ def filter_referenties(refs, gtin_naar_gln, trainings_glns):
 
 
 def _codes(detecties):
-    """Codes binnen de 13 klassen; een variant (vegetarisch V-label) telt als zijn klasse (trainingsset §9)."""
+    """Codes binnen de klassen; een variant (vegetarisch V-label, FSC-variant) telt als zijn klasse (trainingsset §9)."""
     return {c for c in (VARIANTEN.get(d.get("t3777_code"), d.get("t3777_code")) for d in detecties) if c in ACHT}
+
+
+def per_klasse(codes):
+    """Aantal referenties per klasse (alle KLASSEN, variant naar klasse); 0 = K4-aa "n.v.t. (geen referenties)"."""
+    uit = dict.fromkeys(KLASSEN, 0)
+    for c in codes:
+        k = VARIANTEN.get(c, c)
+        if k in uit:
+            uit[k] += 1
+    return uit
 
 
 def meldingen_uit(resultaat):
@@ -152,7 +163,7 @@ def main(argv=None):
     if bevroren_set and not a.alle_referenties and refset != bevroren_set:
         raise SystemExit("geweigerd: de referentieset wijkt af van de bevroren set")
     (uit.parent / f"{uit.stem}-referentieset.json").write_text(
-        json.dumps({"sha256": refset, "ids": ids, "budget_s": budget}, indent=1))
+        json.dumps({"sha256": refset, "ids": ids, "budget_s": budget, "per_klasse": per_klasse(codes)}, indent=1))
     if a.alleen_referentieset:
         print("referentieset", refset[:12], f"({len(ids)} referenties)")
         return 0

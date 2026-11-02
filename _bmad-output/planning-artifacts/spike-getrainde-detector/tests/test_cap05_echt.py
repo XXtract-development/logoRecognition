@@ -106,7 +106,8 @@ def test_cap05_bijna_gelijke_etiketten_blijven_aan_een_kant(ec):
 
 KLASSEN = ("EU_ORGANIC_FARMING", "GREEN_DOT", "RECYCLABLE_GENERAL_CLAIM", "NUTRISCORE_A", "NUTRISCORE_B", "NUTRISCORE_C",
            "PREGNANCY_WARNING", "MARINE_STEWARDSHIP_COUNCIL_LABEL", "WEIDEMELK", "VEGAN_SOCIETY_VEGAN_LOGO",
-           "NUTRISCORE_D", "NUTRISCORE_E", "EUROPEAN_V_LABEL_VEGAN")  # ronde 5: 13 klassen
+           "NUTRISCORE_D", "NUTRISCORE_E", "EUROPEAN_V_LABEL_VEGAN",  # ronde 5: 13 klassen
+           "FOREST_STEWARDSHIP_COUNCIL_LABEL", "TRIMAN", "SOCIETY_PLASTICS_INDUSTRY", "ON_THE_WAY_TO_PLANETPROOF")  # ronde 9: 17
 
 
 def png(maat, kleur=(250, 250, 250)):
@@ -132,7 +133,7 @@ ANTWOORD = {"vakjes": [
     {"beeld": 0, "code": GD, "box": [10, 10, 50, 50], "onzeker": False},
     {"beeld": 1, "code": EU, "box": [20, 30, 60, 70], "onzeker": False},
     {"beeld": 2, "code": WM, "box": [10, 10, 20, 20], "onzeker": True},  # tegel op halve schaal
-    {"beeld": 0, "code": "TRIMAN", "box": [100, 100, 140, 140], "onzeker": False},  # gelijkend keurmerk
+    {"beeld": 0, "code": "PEFC", "box": [100, 100, 140, 140], "onzeker": False},  # gelijkend keurmerk (ronde 9: Triman is een klasse)
     {"beeld": 1, "code": "ander", "box": [0, 0, 10, 10], "onzeker": False},
 ]}
 

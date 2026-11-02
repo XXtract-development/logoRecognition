@@ -20,6 +20,8 @@ pytestmark = pytest.mark.browser
 expect.set_options(timeout=5_000)
 
 V = "EUROPEAN_V_LABEL_VEGAN"
+# Ronde 9: bevestigen vraagt ook de vier nieuwe codes; de voorinvulling vult ze (afwezig), de tests gaan over het V-label.
+NIEUW_R9 = ("FOREST_STEWARDSHIP_COUNCIL_LABEL", "TRIMAN", "SOCIETY_PLASTICS_INDUSTRY", "ON_THE_WAY_TO_PLANETPROOF")
 KEUZES = ("aanwezig", "afwezig", "onzeker")
 E3 = "9990000000024-09990000000035-528"
 
@@ -27,6 +29,7 @@ E3 = "9990000000024-09990000000035-528"
 def voorinvulling(aanwezig, nutriscore, v_label):
     """v_label: True/False in `keurmerken`, of None = sleutel ontbreekt (oude voorinvulling)."""
     keurmerken = {c: c in aanwezig for c in K7}
+    keurmerken.update({c: False for c in NIEUW_R9})
     if v_label is not None:
         keurmerken[V] = v_label
     return {"keurmerken": keurmerken, "nutriscore": nutriscore, "hinttegels": {}, "gelijkend": []}
@@ -57,7 +60,7 @@ def test_r5_browser_v_label_keuze_bestaat_en_is_voorgevuld(page, start_server):
     groep = page.get_by_role("radiogroup", name="V-label (vegan of vegetarisch)", exact=True)
     expect(groep).to_have_attribute("data-testid", f"keuze-{V}")
     groepen = page.locator('#keuzes [role="radiogroup"]')
-    expect(groepen).to_have_count(8)
+    expect(groepen).to_have_count(12)  # ronde 9: 12 losse keuzes; het V-label blijft de 8e
     expect(groepen.nth(7)).to_have_attribute("data-testid", f"keuze-{V}")
     for w in KEUZES:
         expect(radio(page, V, w)).to_have_attribute("type", "radio")
@@ -78,8 +81,8 @@ def test_r5_browser_stand_toont_9_en_telt_bevestigd_v_label(page, start_server):
     expect(etiket(page)).to_have_text(E1)
 
     standen = page.locator('#standen [data-testid^="stand-"]')
-    expect(standen).to_have_count(9)
-    assert {s.get_attribute("data-testid") for s in standen.all()} == {f"stand-{c}" for c in K7 + (V, "NUTRISCORE")}
+    expect(standen).to_have_count(13)  # ronde 9: 13 keurmerken
+    assert {s.get_attribute("data-testid") for s in standen.all()} == {f"stand-{c}" for c in K7 + (V,) + NIEUW_R9 + ("NUTRISCORE",)}
     stand_v = page.get_by_test_id(f"stand-{V}")
     expect(stand_v).to_contain_text("16")
     expect(stand_v).to_contain_text("50")
@@ -193,6 +196,6 @@ def test_r5_browser_oud_concept_zonder_v_label_houdt_keuzes_en_toont_voorinvulli
     assert antwoord.value.status == 200
     r = lees_uitslag(tmp_path)[E1]
     assert r["status"] == "bevestigd"
-    assert r["keurmerken"] == {**OUD_CONCEPT["keurmerken"], V: "aanwezig"}
+    assert r["keurmerken"] == {**OUD_CONCEPT["keurmerken"], V: "aanwezig", **{c: "afwezig" for c in NIEUW_R9}}
     assert r["nutriscore"] == ["C"]
     assert r["opmerking"] == "oud concept"
