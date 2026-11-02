@@ -93,27 +93,24 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-ml:${{ github.sha }}
 
   # CI-1: acc-only deploy trigger. Runs ONLY when both images are pushed
-  # (needs:), pins the exact merge-SHA in Coolify (LOGO_IMAGE_TAG) so every
-  # deploy — including manual UI/MCP deploys later — pulls a consistent image
-  # pair, then triggers exactly one Coolify deployment. Secrets never echoed.
+  # (needs:). GitHub runners cannot reach the Coolify API (firewall-2), so the
+  # job only moves branch acc-deploy to this commit; Coolify follows that branch
+  # and deploys it on the GitHub push webhook, and docker-compose.acc.yml picks
+  # both images by SOURCE_COMMIT (the commit Coolify checked out).
   deploy-acc:
-    if: github.ref_name == 'acc'
+    if: github.ref == 'refs/heads/acc' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     needs: [build-app, build-ml]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - name: Pin image tag in Coolify
-        run: |
-          curl -fsS -X PATCH \
-            -H "Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -d "{\"key\":\"LOGO_IMAGE_TAG\",\"value\":\"${{ github.sha }}\"}" \
-            "${{ secrets.COOLIFY_URL }}/api/v1/applications/qsookwow8koko0kwg00g0cwk/envs" \
-            -o /dev/null
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
-      - name: Trigger Coolify deployment
-        run: |
-          curl -fsS \
-            -H "Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}" \
-            "${{ secrets.COOLIFY_URL }}/api/v1/deploy?uuid=qsookwow8koko0kwg00g0cwk" \
-            -o /dev/null
-          echo "Deploy getriggerd voor ${{ github.sha }}"
+      - name: Move acc-deploy to this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          DEPLOY_SHA: ${{ github.sha }}
+        run: bash .github/scripts/move-acc-deploy-branch.sh
