@@ -9,7 +9,10 @@ Uitvoer in COCO (`<uit>/<split>/_annotations.coco.json`), zoals `rfdetr` dat lee
   python generator.py logos --proef-map <PM>     logos/bronnen.json, gelijkend.json, referenties.json (+ -herkomst) uit de
                                                 momentopname (+ logos/handmatig.json, bv. het zwangerschapspictogram)
   python generator.py tegels --proef-map <PM> --achtergronden <achtergronden.json> --uit <PM>/train/nagemaakt
-                      --n 5000 --seed 20261031 [--split train] [--tegel 1024]
+                      --n 5000 --seed 20261031 [--split train] [--tegel 1024] [--off <PM>/off/bronnen.json]
+      --off (CAP-17, trainingsset §11): de index van `off.py ophalen`; per geplakt logo van een klasse met
+      OFF-uitsneden met kans AANDEEL_OFF een OFF-uitsnede in plaats van de eigen bron, als foto zoals hij is (geen
+      afgeleide varianten). Alleen in split train; schrijft dan <uit>/herkomst.json (attributie en licentie van OFF).
 """
 import argparse
 import hashlib
@@ -23,12 +26,14 @@ import numpy as np
 from PIL import Image, ImageChops, ImageFilter, ImageOps
 
 import beelden
+import off as offbron
 from train import KLASSEN
 from train import VARIANTEN as KLASSE_VAN_VARIANT  # VARIANTEN hieronder zijn de beeldvarianten
 
 CATEGORIE = {k: i + 1 for i, k in enumerate(KLASSEN)}  # COCO-categorie-id's 1..13, naam = code
 VARIANTEN = ("kleur", "zwartwit", "lijn", "negatief")
 MIN_PX, MAX_PX, MAX_HOEK, KANS_GELIJKEND, MIN_ZICHTBAAR = 40, 200, 5.0, 0.3, 0.6
+AANDEEL_OFF = 0.5  # kans op een OFF-uitsnede in plaats van de eigen bron (trainingsset §11)
 
 
 def _op_wit(im):
@@ -105,6 +110,14 @@ def _beeld(bron):
         return im.convert("RGB")
 
 
+def _off_beeld(x):
+    """Een OFF-uitsnede als RGBA: meegegeven beeld of pas nu geopend pad."""
+    if isinstance(x, Image.Image):
+        return x.convert("RGBA")
+    with Image.open(x) as im:
+        return im.convert("RGBA")
+
+
 def _sha_bron(bron):
     return _sha_beeld(bron["beeld"]) if "beeld" in bron else hashlib.sha256(Path(bron["pad"]).read_bytes()).hexdigest()
 
@@ -118,9 +131,16 @@ def _achtergrond(rng, im, tegel):
 
 
 def genereer(achtergronden, logos, gelijkend, trainings_gtins, n_tegels, seed, uit, tegel=1024, leeg_fractie=0.05,
-             split="train"):
+             split="train", off=None):
+    """`off` = {klasse: [Image | pad]}: OFF-uitsneden (CAP-17), alleen in split train; lege lijsten tellen niet."""
     if not 0 <= leeg_fractie <= 0.1:
         raise ValueError("lege tegels: 0-10%")
+    onbekend = [k for k in off or {} if k not in CATEGORIE]
+    if onbekend:
+        raise ValueError(f"OFF-uitsneden van onbekende klasse {onbekend}")
+    off = {k: v for k, v in (off or {}).items() if v}
+    if off and split != "train":
+        raise ValueError(f"OFF-uitsneden alleen in split train, niet in {split}")
     for a in achtergronden:
         _controleer_gtin(a, trainings_gtins, "achtergrond", verplicht=True)
     for klasse, lijst in logos.items():
@@ -149,15 +169,19 @@ def genereer(achtergronden, logos, gelijkend, trainings_gtins, n_tegels, seed, u
                           for k, b, vs in bronnen],
                 "gelijkend": [{"gtin": g.get("gtin"), "sha256": _sha_beeld(g["beeld"])} for g in gelijkend],
                 "achtergronden": [{"gtin": a["gtin"], "sha256": _sha_bron(a)} for a in ag],
-                "beelden": []}
+                "beelden": [], "off": {}}
     for i in range(n_tegels):
         t = _achtergrond(rng, _beeld(rng.choice(ag)), tegel)
         bezet, objecten = [], []
         if i not in leeg:
             for nr in range(rng.randint(1, 3)):
                 k, b, vs = rng.choice(bronnen)
-                variant = rng.choice(sorted(vs))
-                im = _vorm(rng, vs[variant])
+                variant, uitsnede = rng.choice(sorted(vs)), None
+                if off.get(k) and rng.random() < AANDEEL_OFF:  # zonder OFF voor k geen extra trekking: byte-gelijk
+                    uitsnede = rng.choice(off[k])
+                    variant, im = "off", _vorm(rng, _off_beeld(uitsnede))
+                else:
+                    im = _vorm(rng, vs[variant])
                 plek = im and _plaats(rng, im.width, im.height, tegel, bezet, deels=True)
                 if not plek and nr == 0 and im:  # elke niet-lege tegel heeft minstens één gelabeld logo
                     plek = _plaats(rng, im.width, im.height, tegel, bezet, deels=False)
@@ -168,6 +192,8 @@ def genereer(achtergronden, logos, gelijkend, trainings_gtins, n_tegels, seed, u
                 bezet.append(r)
                 objecten.append({"klasse": k, "variant": variant, "bbox": [r[0], r[1], r[2] - r[0], r[3] - r[1]],
                                  "volledig": [im.width, im.height]})  # maat vóór afsnijden (60%-regel controleerbaar)
+                if uitsnede is not None and not isinstance(uitsnede, Image.Image):
+                    objecten[-1]["uitsnede"] = str(uitsnede)  # welke OFF-uitsnede (pad uit bronnen.json)
             if gl and rng.random() < KANS_GELIJKEND:
                 im = _vorm(rng, rng.choice(gl))
                 plek = im and _plaats(rng, im.width, im.height, tegel, bezet, deels=False)
@@ -188,7 +214,15 @@ def genereer(achtergronden, logos, gelijkend, trainings_gtins, n_tegels, seed, u
     tekst = json.dumps(coco, indent=1, sort_keys=True)
     (map_ / "_annotations.coco.json").write_text(tekst)
     manifest["coco_sha256"] = hashlib.sha256(tekst.encode()).hexdigest()
+    for b in manifest["beelden"]:
+        for o in b["objecten"]:
+            if o["variant"] == "off":
+                manifest["off"][o["klasse"]] = manifest["off"].get(o["klasse"], 0) + 1
     (uit / f"manifest-{split}.json").write_text(json.dumps(manifest, indent=1, sort_keys=True))
+    if manifest["off"]:  # overschreven bij elke run met OFF; een run zonder OFF laat hem staan
+        (uit / "herkomst.json").write_text(json.dumps(
+            [{"bron": offbron.BRON, "attributie": offbron.ATTRIBUTIE, "licentie": offbron.LICENTIE}],
+            indent=1, ensure_ascii=False), encoding="utf-8")
     return manifest
 
 
@@ -257,7 +291,11 @@ def main(argv=None):
     tg.add_argument("--seed", type=int, default=20261031)
     tg.add_argument("--split", default="train")
     tg.add_argument("--tegel", type=int, default=1024)
+    tg.add_argument("--off", type=Path, help="bronnen.json van off.py ophalen (alleen met --split train)")
     a = ap.parse_args(argv)
+    if a.stap == "tegels" and a.off and a.split != "train":
+        print(f"--off alleen in split train, niet in {a.split}; niets geschreven", file=sys.stderr)
+        return 2
     logos_map = beelden.veilig_doel(a.proef_map / "logos")
     if a.stap == "logos":
         bronnen, gelijkend, referenties, ontbreekt = _logos(a.proef_map)
@@ -274,8 +312,12 @@ def main(argv=None):
     logos = {}
     for b in json.loads((logos_map / "bronnen.json").read_text()):
         logos.setdefault(b["klasse"], []).append({"beeld": Image.open(b["pad"]), "gtin": b.get("gtin")})
-    m = genereer(json.loads(a.achtergronden.read_text()), logos,  # achtergronden als pad: één tegelijk geopend _lees(json.loads((logos_map / "gelijkend.json").read_text())),
-                 gtins, a.n, a.seed, a.uit, tegel=a.tegel, split=a.split)
+    off = {}
+    for e in json.loads(a.off.read_text(encoding="utf-8")) if a.off else []:
+        off.setdefault(e["klasse"], []).append(e["pad"])  # pad: het beeld wordt pas bij gebruik geopend
+    m = genereer(json.loads(a.achtergronden.read_text()),  # achtergronden als pad: één tegelijk geopend
+                 logos, _lees(json.loads((logos_map / "gelijkend.json").read_text())),
+                 gtins, a.n, a.seed, a.uit, tegel=a.tegel, split=a.split, off=off)
     print(len(m["beelden"]), "tegels,", sum(len(b["objecten"]) for b in m["beelden"]), "gelabelde logo's →", a.uit / a.split)
     return 0
 

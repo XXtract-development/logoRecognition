@@ -158,7 +158,9 @@ def _gewichtsherkomst(cfg):
 
 def _data_herkomst(cfg):
     """Herkomst van data van derden (CAP-16): de lijst van de vorige fase (train-resultaat.json naast het startcheckpoint)
-    plus `<dataset>/herkomst.json` als die bestaat. Zo draagt elk model dat op NutriGreen verder traint de attributie."""
+    plus `<dataset>/herkomst.json` als die bestaat (een lijst; een los object telt als lijst van één). Zo draagt elk model
+    dat op NutriGreen of OFF verder traint de attributie. Ontdubbeld op `bron`: volgorde van het eerste voorkomen,
+    inhoud van het laatste (CAP-17)."""
     lijst = []
     if cfg["start"]:
         vorige = Path(cfg["start"]).parent / "train-resultaat.json"
@@ -166,8 +168,12 @@ def _data_herkomst(cfg):
             lijst += json.loads(vorige.read_text(encoding="utf-8")).get("data_herkomst", [])
     eigen = Path(cfg["dataset"]) / "herkomst.json"
     if eigen.exists():
-        lijst.append(json.loads(eigen.read_text(encoding="utf-8")))
-    return lijst
+        h = json.loads(eigen.read_text(encoding="utf-8"))
+        lijst += h if isinstance(h, list) else [h]
+    per_bron = {}
+    for h in lijst:
+        per_bron[h.get("bron")] = h  # dict houdt de volgorde van de eerste sleutel; de waarde is de laatste
+    return list(per_bron.values())
 
 
 def controleer_klassen(cfg):

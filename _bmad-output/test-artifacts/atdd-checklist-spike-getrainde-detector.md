@@ -19,6 +19,7 @@ inputDocuments:
   - _bmad/tea/testarch/knowledge/{timing-debugging,selector-resilience}.md (ronde 3, browser)
   - git diff 039b14f -- _bmad-output/planning-artifacts/spike-getrainde-detector/ (ronde 4: spec-update na bmad-review, 15 bevindingen)
   - git diff 08d2cf7 -- _bmad-output/planning-artifacts/spike-getrainde-detector/ (ronde 5: spec-update na bmad-review, 33 bevindingen)
+  - git diff 953ca95 -- _bmad-output/planning-artifacts/spike-getrainde-detector/ (ronde 6: Open Food Facts-uitsneden, spec-update na bmad-review, 27 bevindingen)
 ---
 
 # ATDD-checklist: proef getrainde detector
@@ -600,3 +601,106 @@ cd _bmad-output/planning-artifacts/spike-getrainde-detector && uv run --group de
 ### Na de bouw (bmad-build ronde 5, reviewpatches)
 
 Op verzoek van de codereview (drie lagen, 32 bevindingen, 21 doorgevoerd) kwamen er 18 testgevallen bij in `tests/test_ronde5_20261101.py`, alle groen: lege en nieuwe voorinvulling niet afgeleid, `ronde` bij succes en fout, gewone `kandidaten`-run overschrijft niets (2), `--alle NUTRISCORE_E` neemt alles (`over == 0`), Nutri-Score bij `--alleen` én `--alle` → exit 2, `kies_nutrigreen` met `nagemaakt` 0/8/1000, `dataset` zonder of met te weinig `--meng` (≤ 20%, `_nagemaakt`), herhaalde `dataset` zonder `--nutrigreen` wist `herkomst.json`, `train` weigert vóór `_train` (4 gevallen) en de opdrachtregel geeft exit 2. Aanvullingen op het contract (bindend): `voorinvulling()` zet `"ronde": 5`; `met_v_label` leidt alleen af zonder `fout`, zonder `ronde` en met niet-lege `keurmerken`; elke `kandidaten`-run weigert een bestaande lijst; `train.CATEGORIEEN` is de enige categorielijst en `train.controleer_klassen` weigert een set of startcheckpoint met andere klassen; `kies_nutrigreen(…, nagemaakt=None)` met de derde grens `floor(aandeel × (eigen + nagemaakt) / (1 − aandeel))`; `rapport.json._nagemaakt`; `herkomst.json` alleen bij > 0 NutriGreen-tegels; NutriGreen JPEG 90. Testwijzigingen door de bouw (testfout, reden in de buildspec): `test_r5_items_dragen…` en `test_review_20261101::test_voorinvulling_stopt…` legden de te brede afleiding vast; `test_p0_concept_per_toetsaanslag` terug naar `bevestigd` met V-label; `test_r4_cli_gewone_run…` wist eerst de bestaande lijst; drie trainingsfixtures kregen de 13 categorieën (nieuwe verplichte invoer). Suite: **664 passed, 0 failed**. Buildspec: `_bmad-output/implementation-artifacts/spec-spike-getrainde-detector-ronde5.md`.
+
+## Ronde 6 (Open Food Facts-logo's als bron van de generator; besluit Friso 02-11-2026)
+
+Bron: de niet-gecommitte spec-update op HEAD `953ca95` (`bmad-spec`, daarna `bmad-review` met 27 bevindingen: 25 patch, 2 besluiten binnen de opdracht): SPEC CAP-4/6/16, nieuw CAP-17, stoppunt 9; trainingsset §2/§3/§5 en nieuwe §11; randvoorwaarden §4; toetsset §4; de memlog-regels vanaf "ronde 6". De rest van deze checklist blijft bindend, behalve waar dit contract hem vervangt.
+
+### Stap 1 — preflight en context
+
+- **Werkwijze:** `bmad-testarch-atdd`, Create-modus, headless (staande toestemming van de eigenaar om tot review te bouwen op een schone tak).
+- **Stack:** `backend` (Python 3.12, pytest via `uv`; `conftest.py` aanwezig). Geen browserwerk in deze ronde (de invulpagina verandert niet). Uitgangstoestand: **664 passed, 0 failed** (`uv run --group dev pytest -q -p no:cacheprovider`, HEAD `953ca95` met de spec-update).
+- **Gelezen:** de spec en companions (ronde 6), `generator.py` (`genereer`, `_vorm`, opdrachtregel `tegels`), `echt.py` (`kies_nutrigreen`, `dataset` met `--meng`/`--nutrigreen`, `herkomst.json`), `train.py` (`_data_herkomst`, `controleer_klassen`), `nutrigreen.py` (`_toets`, `_toetsleveranciers`), `scheiding.py` (`dhash`, `hamming`, `bijna_gelijk`, `_hashes`), `beelden.py` (`veilig_doel`); tests `test_cap04_generator`, `test_cap10_draaiplan`, `test_ronde5_20261101` (helpers `dataset_ng`, `train_resultaat`, `attributie`, `waarden`), `test_review_20261101` (helpers `mod`, `schrijf`, `toets_pm`, `echt_pm`). Kennis: `test-quality`, `data-factories`, `component-tdd`, `test-healing-patterns`, `test-levels-framework`, `test-priorities-matrix`, `ci-burn-in`.
+- **Gemeten als invoer (02-11-2026, openbare data, alleen aantallen):** Robotoff-aantallen per OFF-id (trainingsset §11, gelijk aan 01-11); recordvorm (`bounding_box` `[y_min, x_min, y_max, x_max]`, `barcode`, `source_image`, `image.width/height/deleted`, `username`); `/api/v1/images/crop` geeft JPEG; `logos/search` zonder offset; steekproeven zwangerschap 40/40 + 24/24, Weidemelk 40/40, Recyclebaar 27/38 Möbius (afgewezen).
+
+### Stap 2 — generatiemodus
+
+AI-generatie (backend; geen opname).
+
+### Stap 3 — teststrategie
+
+| criterium | niveau | prio |
+|---|---|---|
+| CAP-17 lekpreventie (GTIN-14, toets-GTIN, toetsleverancier met cijfers 2–8), recordredenen, trekking en grens per klasse, index | unit | P0 (toets schoon houden) |
+| CAP-17 beleefd ophalen (User-Agent, pauze, wachttijden, `Retry-After` met plafond, 4xx, noodstop), hervatten (pools, uitsneden, `status.json`, filters opnieuw), schijfgrens, alleen uitsneden, werkboom geweigerd | unit met nagebootste aanbieder | P0 (OFF-servers, schijf) |
+| CAP-17 klassetabel (alleen `train.KLASSEN`, V-label drie id's, geen Recyclebaar), attributie en licentie | unit | P1 |
+| CAP-17/CAP-4 generator (`off`: aandeel 0,5, alleen klassen met OFF, geen afgeleide varianten, alleen `train`, zonder OFF byte-gelijk, seed, manifest, `herkomst.json`) | unit + opdrachtregel | P0 (validatie op eigen materiaal) |
+| CAP-17/CAP-16 mengen fase 2 (OFF-vakjes ≤ eigen vakjes, `_off`, herkomst van de mengmap, NutriGreen toets-GTIN) en `train.py` (`herkomst.json` als lijst, ontdubbeld op `bron`) | unit + opdrachtregel | P0 (licentie, niet overstemmen) |
+| CAP-17 opdrachtregel `off.py ophalen` (leest toetsset en toetsleveranciers uit `PROEF_MAP`, exitcode bij noodstop/schijf) | opdrachtregel | P1 |
+| CAP-10 draaiplan stap 10 en "Snelheid" | documenttest | P2 |
+
+Uitvoeringsmodus: `tea_execution_mode = auto`, subagents beschikbaar → **subagent**, alleen worker A (backend; geen browsercriterium, zoals ronde 4). Afwijking van de stapbestanden zoals in rondes 2–5: geen `test.skip()`; de tests draaien echt rood.
+
+### Interfacecontract ronde 6 (bindend voor tests én bouw)
+
+**`off.py` (nieuw, CAP-17; stdlib + Pillow, schrijft alleen via `beelden.veilig_doel`)**
+- Constanten: `SEED = "20261102"`, `GRENS = 1000`, `POOL = 2000`, `MIN_PX = 64`, `PAUZE = 0.6`, `WACHT = (2, 4, 8, 16, 32)`, `MAX_RETRY_AFTER = 300`, `NOODSTOP = 20`, `MAX_BYTES = 3_000_000_000`, `MIN_VRIJ = 5_000_000_000`; `UA` bevat `ict@xxtract.com`; `BRON = "https://world.openfoodfacts.org"`; `ATTRIBUTIE` = de OFF-attributietekst uit randvoorwaarden §4, letterlijk; `LICENTIE` bevat `CC-BY-SA-3.0` en `ODbL`; `REDENEN = ("verwijderd", "vakje_ongeldig", "te_klein", "geen_gtin", "toets_gtin", "toetsleverancier", "niet_op_te_halen", "dubbel", "bijna_gelijk")`.
+- `ZOEK = {klasse: ((type, waarde), …)}` precies volgens trainingsset §11: `EU_ORGANIC_FARMING` `(("label", "en:eu-organic"),)`, `GREEN_DOT` `en:green-dot`, `NUTRISCORE_A`…`E` `en:nutriscore-grade-a`…`-e`, `EUROPEAN_V_LABEL_VEGAN` `(("label", "en:european-vegetarian-union-vegan"), ("label", "en:european-vegetarian-union-vegetarian"), ("label", "en:european-vegetarian-union"))`, `MARINE_STEWARDSHIP_COUNCIL_LABEL` `en:sustainable-seafood-msc`, `VEGAN_SOCIETY_VEGAN_LOGO` `en:the-vegan-society`, `PREGNANCY_WARNING` `en:not-advised-for-pregnant-women`, `WEIDEMELK` `fr:lait-de-paturage`; geen `RECYCLABLE_GENERAL_CLAIM`; alle sleutels in `train.KLASSEN`.
+- `gtin14(barcode)` → GTIN-14 als string (voorloopnullen) als de barcode na `strip()` alleen cijfers heeft en 8, 12, 13 of 14 lang is; anders `None`.
+- `zoek_url(type_, waarde, n=POOL)` → `https://robotoff.openfoodfacts.org/api/v1/images/logos/search?…` met `type`, `taxonomy_value` (bij `label`) of `value` (bij `packaging`), `annotated=true`, `random=true`, `count=n`. `uitsnede_url(record)` → `https://robotoff.openfoodfacts.org/api/v1/images/crop?…` met `image_url=https://images.openfoodfacts.org/images/products<source_image>` en `y_min`, `x_min`, `y_max`, `x_max` uit `bounding_box` (in die volgorde in het record).
+- `record_reden(r, toets_gtins, lev_gtins, lev_gln7)` → de eerste passende reden of `None`, in deze volgorde: `verwijderd` (`image.deleted`), `vakje_ongeldig` (geen `image`, geen breedte of hoogte, een vakwaarde buiten [0, 1], of `x_max ≤ x_min` of `y_max ≤ y_min`), `te_klein` (langste zijde in bronpixels `max((x_max − x_min)·width, (y_max − y_min)·height)` < `MIN_PX`), `geen_gtin`, `toets_gtin` (GTIN-14 in `toets_gtins`), `toetsleverancier` (GTIN-14 in `lev_gtins`, of `gtin14[1:8]` in `lev_gln7` = de eerste 7 cijfers van de toets-GLN's). `toets_gtins` en `lev_gtins` zijn GTIN-14-strings.
+- `volgorde(records, seed=SEED)` → gesorteerd op `sha256((seed + str(r["id"])).encode()).hexdigest()`.
+- `Haler(opener=urllib.request.urlopen, slaap=time.sleep, klok=time.monotonic)` met `get(url) -> bytes`: elk verzoek met header `User-Agent: UA`; vóór elk verzoek (ook een nieuwe poging) minstens `PAUZE` s sinds het begin van het vorige (via `klok`/`slaap`); HTTP 429, ≥ 500, `URLError`, `TimeoutError`/`socket.timeout` → opnieuw na `WACHT[i]` s, of na `Retry-After` (seconden) als die er is, hoogstens `MAX_RETRY_AFTER`; na `len(WACHT)` nieuwe pogingen `off.Tijdelijk`; elke andere 4xx direct `off.Blijvend` (geen nieuwe poging). `opener(request, timeout=…)` geeft een object met `read()` en `headers`, of gooit `urllib.error.HTTPError`.
+- `ophalen(uit, haler, toets_gtins, lev_gtins, lev_gln7, toets_hashes, klassen=None, grens=GRENS, seed=SEED, max_bytes=MAX_BYTES, min_vrij=MIN_VRIJ, vrij=None)` → rapport. `klassen` = deel van `ZOEK` (standaard alles); `toets_hashes` = `{naam: dhash}` van de toetsbeelden; `vrij()` geeft vrije bytes (standaard `shutil.disk_usage(uit).free`).
+  - Pools: per `(type, waarde)` het ruwe antwoord van `zoek_url` in `uit/pools/<type>-<waarde met ":" → "_">.json`; bestaat het bestand, dan geen verzoek. Een pool die niet op te halen is → de uitzondering gaat door (stoppen).
+  - Per klasse: de records van zijn pools (ontdubbeld op `id`); recordredenen over alle records; dan de bruikbare in `volgorde` tot `grens` behouden. Uitsnede in `uit/uitsneden/<KLASSE>/<id>.jpg`: bestaat hij, dan geen verzoek; staat het id in `uit/status.json` (`{id: reden}`, blijvende uitkomsten `niet_op_te_halen` na `Blijvend`, `dubbel`, `bijna_gelijk`), dan overslaan en tellen; anders `haler.get(uitsnede_url(r))`. `Tijdelijk` → telt als `niet_op_te_halen`, niet in `status.json`; na `NOODSTOP` mislukte op rij → `off.Noodstop`. `dubbel` = zelfde sha256 als een eerder behouden uitsnede van de klasse; `bijna_gelijk` = dHash (`scheiding.dhash`) op afstand ≤ 6 van een waarde in `toets_hashes`; beide worden niet weggeschreven. Een bestaand bestand van een record dat nu een recordreden heeft (bijvoorbeeld een nieuwe toets-GTIN), wordt verwijderd en vervangen door de volgende in de volgorde.
+  - Schijf: vóór het wegschrijven van een uitsnede `off.Schijfvol` als de bytes onder `uit` plus de nieuwe uitsnede boven `max_bytes` komen, of als `vrij()` < `min_vrij`.
+  - Alleen de zoek- en de crop-endpoint worden aangeroepen (nooit een hele foto).
+  - Schrijft `uit/bronnen.json` (lijst van `{klasse, pad, logo_id, gtin14, source_image, sha256, annotator}` van de behouden uitsneden; `annotator` = `username`) en `uit/rapport.json`: `{"klassen": {K: {"off": som van de "count" van zijn pools, "pool": records, "afgevallen": {elke reden uit REDENEN: n}, "behouden": n, "annotatoren": {naam: n}, "bytes": n}}, "bytes", "vrij", "pools": {bestand: sha256}, "seed", "grens", "bron", "attributie", "licentie"}`; het rapport wordt ook teruggegeven.
+- Opdrachtregel `python off.py ophalen --proef-map <PM> [--uit <PM>/off] [--klasse K …]`: `toets_gtins` uit `<PM>/toets/toets-docs.json` (GTIN = tweede deel van het doc-id, als GTIN-14); toetsleveranciers via `nutrigreen._toetsleveranciers(<PM>)`; `toets_hashes` via `scheiding._hashes(<PM>/toets/beelden)` als die map bestaat; rapport op stdout, exitcode 0; `Noodstop`, `Schijfvol` of een mislukte pool → melding op stderr en exitcode 3; een onbekende `--klasse` → exitcode 2.
+
+**`generator.py`**
+- `genereer(…, split="train", off=None)`: `off = {klasse: [Image | pad]}`; lege lijsten tellen niet. Een klasse buiten de 13 → `ValueError`; niet-lege `off` bij `split != "train"` → `ValueError`, vóór er iets geschreven wordt. Per geplakt logo eerst `(klasse, bron)` en variant zoals nu; alleen als die klasse OFF-uitsneden heeft volgt één `rng.random()`: < `AANDEEL_OFF` (= 0,5, moduleconstante) → een OFF-uitsnede van die klasse (`rng.choice`), als foto zoals hij is (alleen `convert("RGBA")`, geen `varianten`), variant `"off"`. Zonder OFF (of met OFF alleen voor klassen zonder eigen bron) dus geen extra trekking: `train/` byte-gelijk.
+- Manifest: elk object houdt zijn `variant` (`"off"` voor OFF); `manifest["off"]` = `{klasse: aantal geplakte OFF-logo's}` (leeg `{}` zonder OFF).
+- Zodra er minstens één OFF-logo geplakt is: `<uit>/herkomst.json` = `[{"bron": off.BRON, "attributie": off.ATTRIBUTIE, "licentie": off.LICENTIE}]` (overschreven); de generator verwijdert hem nooit.
+- Opdrachtregel `tegels … --off <bronnen.json>`: de index van `off.py` (lijst met `klasse` en `pad`; beelden pas bij gebruik geopend); met `--split` ≠ `train` → exitcode 2, niets geschreven.
+
+**`echt.py dataset`**
+- `--meng <map>/train`: OFF-vakjes per nagemaakte tegel uit `<map>/manifest-train.json` (objecten met `variant: "off"`; ontbreekt het manifest, dan 0). De nagemaakte tegels worden in vaste volgorde genomen tot het budget (zoals nu); daarbij houdt hij op vóór de tegel die de som van OFF-vakjes boven het aantal eigen echte vakjes van `train/` (vóór het mengen) zou brengen. `rapport.json._off = {"vakjes": {klasse: n}, "grens": eigen_vakjes}` als `--meng` gebruikt is.
+- `herkomst.json` is een lijst: NutriGreen-object (zoals nu, met rapport) als er NutriGreen-tegels gemengd zijn, plus de inhoud van `<map>/herkomst.json` (lijst of object) als er nagemaakte tegels gemengd zijn; geen van beide → bestand weg.
+- `--nutrigreen`: NutriGreen-beelden waarvan `ng_naam` een barcode is (8–14 cijfers) met GTIN-14 in de GTIN's van `<proef-map>/toets/toets-docs.json` (als dat bestand bestaat) vallen vóór `kies_nutrigreen` af, met hun vakjes; `_nutrigreen.toets_gtin` = hun aantal (0 als er geen zijn).
+
+**`train.py`** — `_data_herkomst`: de lijst van de vorige fase plus `<dataset>/herkomst.json` (een lijst wordt uitgebreid, een los object telt als lijst van één); daarna ontdubbeld op `bron`: volgorde van het eerste voorkomen, inhoud van het laatste.
+
+**`DRAAIPLAN.md`** (documenttest) — stap 10 bevat `off.py ophalen --proef-map $PM` vóór de nagemaakte tegels, de regel met `--n 5000` bevat `--off $PM/off/bronnen.json`, de regels met `--split valid` en `--split test` niet; de stoppuntregel van stap 10 noemt 9; de sectie "Snelheid" noemt 33 tegels per etiket en dat fase 2 met 20 epochs boven 8 uur komt (stoppunt 1), en "hoogstens 7 epochs"; vijftien stappen blijven.
+
+
+### Stap 4 — falende tests (worker A, subagent)
+
+| criterium | tests (`R6:` = `tests/test_ronde6_20261102.py`) | functies (gevallen) | prio |
+|---|---|---:|---|
+| CAP-17 constanten, attributie, licentie, klassetabel (alleen `train.KLASSEN`, V-label drie id's, geen Recyclebaar), standaarden van `Haler` | R6: `test_r6_off_*` | 3 (3) | P1 |
+| CAP-17 `gtin14`, `zoek_url`, `uitsnede_url`, `record_reden` (vaste volgorde, cijfers 2–8 tegen de toets-GLN), `volgorde` | R6: `test_r6_gtin14_*`, `test_r6_zoek_url_*`, `test_r6_uitsnede_url_*`, `test_r6_record_reden_*`, `test_r6_volgorde_*` | 5 (±40) | P0 |
+| CAP-17 beleefd ophalen: User-Agent, pauze, 2/4/8/16/32, `Retry-After` met plafond 300, andere 4xx direct blijvend | R6: `test_r6_haler_*` | 5 (±13) | P0 |
+| CAP-17 `ophalen`: grens en volgorde, recordredenen, index en rapport, V-label drie pools ontdubbeld, dubbel/bijna gelijk/blijvend in `status.json`, hervatten zonder verzoeken, nieuwe toets-GTIN vervangt, noodstop 20, bytegrens, < 5 GB vrij, mislukte pool, werkboom geweigerd | R6: `test_r6_ophalen_*` | 10 (±13) | P0 |
+| CAP-17 opdrachtregel `off.py ophalen` (invoer uit de proefmap, exit 3, exit 2) | R6: `test_r6_cli_ophalen_*` | 3 (6) | P1 |
+| CAP-17/CAP-4 generator: aandeel 0,5 alleen voor klassen met uitsneden, uitsnede zoals hij is, zonder OFF byte-gelijk, seed en pad/beeld gelijk, alleen `train` en bekende klassen, `herkomst.json`; opdrachtregel `tegels --off` | R6: `test_r6_generator_*`, `test_r6_cli_tegels_*` | 8 (9) | P0 |
+| CAP-17/CAP-16 `echt.py dataset`: OFF-vakjes ≤ eigen vakjes in vaste volgorde, `_off`, `herkomst.json` als lijst, NutriGreen toets-GTIN vóór mengen; `train.py` `data_herkomst` ontdubbeld op `bron` | R6: `test_r6_dataset_*`, `test_r6_train_*` | 5 (10) | P0 |
+| CAP-10 draaiplan stap 10 en "Snelheid" | R6: `test_r6_draaiplan_*` | 2 (2) | P2 |
+
+Totaal: 41 testfuncties, 97 gevallen.
+
+**Bestaande tests aangepast aan het nieuwe contract** (geen niet-gerelateerde bewering afgezwakt):
+- `test_ronde5_20261101::test_r5_dataset_nutrigreen_alleen_in_train_uit_het_mengbudget_met_rapport_en_herkomst`: `_nutrigreen` krijgt de sleutel `toets_gtin` (contract `echt.py dataset --nutrigreen`); de bewering vergelijkt nu met `{**verwacht, "toets_gtin": 0}` (geen `toets-docs.json` in de opzet, dus 0). De rest van de test blijft gelijk; `herkomst.json` als lijst wordt al gedekt door `waarden(h)`.
+- Verder geen: de generator zonder `--off` blijft byte-gelijk, `test_r5_train_resultaat_neemt_herkomst…` blijft geldig (twee verschillende `bron`-waarden, dus de ontdubbeling verandert niets).
+
+**Aggregatie (step-04c):** worker A `success`. Elke rode test faalt op ontbrekend gedrag, geen import- of fixturefout in de testmodule zelf: `ModuleNotFoundError: No module named 'off'` (de nieuwe module), `genereer() got an unexpected keyword argument 'off'`, `generator` zonder `AANDEEL_OFF`, `KeyError '_off'`, `unrecognized arguments: --off`, en beweringen op `herkomst.json` (object in plaats van lijst), het mengen en het draaiplan. Worker A draaide de tests groen tegen een wegwerpbouw in `/tmp/r6-groen` (geen implementatie, niet overgenomen; na de keten verwijderd); de volledige suite in die kopie wees één bestaande test aan die door het contract verandert (hierboven). De overige rode tests in die kopie kwamen van de plek buiten de repository (werkboomcontrole, pad naar `fase-b/tel.py`), niet van het contract. Geen `test.skip()` (zoals rondes 2–5): de tests draaien echt rood. Vooraf groen en bewust gehouden: geen.
+
+### Rode run (02-11-2026, 09:46)
+
+```
+cd _bmad-output/planning-artifacts/spike-getrainde-detector && uv run --group dev pytest -q -p no:cacheprovider
+98 failed, 663 passed, 18 warnings in 121.46s
+```
+
+761 tests (664 + 97). Rood: `test_ronde6_20261102.py` 97 (van 97) en de aangepaste test uit ronde 5 (1). Alle andere bestaande tests groen.
+
+### Stap 5 — validatie en volgende stap
+
+- Voorwaarden: spec-update gereviewd (`bmad-review`, 27 bevindingen: 25 doorgevoerd, 2 besluiten binnen de opdracht); framework aanwezig. Elk contractpunt van ronde 6 heeft minstens één test; geen placeholders; geen `test.skip()`; geen echte wachttijden of netwerkverkeer (nagebootste `opener`, `slaap` en `klok`); alleen verzonnen ids en barcodes; alles in `tmp_path`; `~/logo-meetset-20261018/` en Robotoff niet aangeraakt door de tests. Geen browser gestart.
+- Niet gedekt (bewust): het echte ophalen tegen Robotoff en de contactbladen per klasse (na de keten, met telling per klasse en schijfruimte in het verslag).
+- **Volgende stap:** `bmad-build` op dit interfacecontract; groen maken zonder tests te wijzigen, behalve bij een aantoonbare testfout (met reden in het buildverslag).
+
+### Na de bouw (bmad-build ronde 6, reviewpatches)
+
+Bouw zonder testwijziging groen (761 passed). Op verzoek van de codereview (drie lagen, 29 bevindingen; 16 doorgevoerd in 11 groepen, 1 uitgesteld, 12 verworpen) kwamen er 6 testfuncties bij in `tests/test_ronde6_20261102.py`, alle groen: bijna gelijk aan een toetsbeeld bij hervatten, gelijkende keurmerken via `generator.py tegels`, NutriGreen ≤ 20% als de OFF-grens nagemaakte tegels weigert (faalt met de oude regel), kapot zoekantwoord of uitsnede die geen beeld is, ophalen met een deel van de klassen houdt index en rapport van de andere (en geen index na een noodstop), `Retry-After` negatief/`nan` en afgebroken `read()`. Aanvullingen op het contract (bindend): `ophalen` verwijdert `bronnen.json` aan het begin en houdt indexregels en `rapport.klassen` van klassen buiten de run; een zoekantwoord moet een JSON-object met een lijst `logos` zijn en een uitsnede moet als beeld te openen zijn, anders `Tijdelijk`; `Retry-After` begrensd op [0, 300], niet-eindig → vaste wachttijd; `ConnectionError` en `http.client.HTTPException` zijn tijdelijk; een OFF-object in het manifest draagt `uitsnede` (pad) als de invoer een pad was; `echt.py dataset` geeft `kies_nutrigreen` als `nagemaakt` het aantal nagemaakte tegels binnen de OFF-grens. Geen bestaande test gewijzigd. Suite: **767 passed, 0 failed**. Buildspec: `_bmad-output/implementation-artifacts/spec-spike-getrainde-detector-ronde6.md`.

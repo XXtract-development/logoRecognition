@@ -689,7 +689,8 @@ def test_r5_dataset_nutrigreen_alleen_in_train_uit_het_mengbudget_met_rapport_en
     eigen_vakjes = sum(a["image_id"] in eigen for a in tr["annotations"])
     ids, verwacht = ec.kies_nutrigreen(ng, len(eigen), eigen_vakjes, 20)  # eigen tegels en vakjes van train/ vóór mengen
     rp = json.loads((uit / "rapport.json").read_text())["_nutrigreen"]
-    assert rp == json.loads(json.dumps(verwacht)) and len(ng_im) == verwacht["tegels"] > 0
+    # ronde 6: dataset telt ook de NutriGreen-foto's met een toets-GTIN (hier geen toets-docs.json, dus 0)
+    assert rp == {**json.loads(json.dumps(verwacht)), "toets_gtin": 0} and len(ng_im) == verwacht["tegels"] > 0
     naam = {im["id"]: im["file_name"] for im in ng["images"]}
     assert sorted(im["file_name"] for im in ng_im) == sorted(naam[i] for i in ids)
     assert sorted(im["file_name"] for im in nep) == [f"nep-{i:03d}.jpg" for i in range(20 - len(ng_im))]  # rest nagemaakt

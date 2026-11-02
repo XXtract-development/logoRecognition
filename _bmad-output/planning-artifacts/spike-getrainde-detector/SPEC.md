@@ -3,7 +3,7 @@ id: SPEC-spike-getrainde-detector
 title: "Proef: herkent een getrainde detector onze keurmerken betrouwbaarder dan de huidige route?"
 type: spike (gereedschap + draaiplan; het experiment zelf draait daarna)
 datum: 2026-10-31
-bijgewerkt: 2026-11-01 (besluiten Friso: licenties, maat N, steekproef bij nakijken; ronde 3: grens voorinvulling $65, verzoekgrootte, klaar-teken invulpagina; ronde 4: aanvulling vóór bevestiging, grens voorlabels $50; ronde 5: Nutri-Score A–E, V-label als 9e keurmerk, NutriGreen in de training)
+bijgewerkt: 2026-11-02 (besluiten Friso: licenties, maat N, steekproef bij nakijken; ronde 3: grens voorinvulling $65, verzoekgrootte, klaar-teken invulpagina; ronde 4: aanvulling vóór bevestiging, grens voorlabels $50; ronde 5: Nutri-Score A–E, V-label als 9e keurmerk, NutriGreen in de training; ronde 6 (02-11-2026): Open Food Facts-logo's als bron van de generator)
 peildatum_code: origin/acc 8c9373d
 companions:
   - meetregels.md
@@ -14,6 +14,7 @@ sources:
   - ../research/technical-keurmerkherkenning-zonder-training-2026-10-31/research.md
   - ../research/technical-keurmerkherkenning-zonder-training-2026-10-31/meting-etiketbestanden-2026-10-31.md
   - ../spike-architectuurkeuze-logoherkenning/BESLISRAPPORT.md
+  - ../research/technical-keurmerkherkenning-zonder-training-2026-10-31/datasets-keurmerken-2026-11-01.md
 ---
 
 > **Bindend contract.** Deze SPEC en de bestanden onder `companions:` vormen samen het volledige, op volledigheid gecontroleerde contract voor wat er gebouwd, getoetst en gevalideerd wordt. De bronnen onder `sources:` dienen alleen voor herleidbaarheid; lees ze alleen voor achtergrond die dit contract bewust weglaat.
@@ -37,13 +38,13 @@ Er is een probleem en een eis van de producteigenaar. Een keurmerk mag pas "auto
   - **success:** servertests bewijzen: elke keuze landt atomisch in `uitslag.json` volgens het schema; 8 gelijktijdige opslagen komen alle 8 aan; onbekende etiketten, ongeldige waarden en "bevestigd" zonder alle 9 keuzes worden geweigerd. Een browsertest (Playwright) bewijst: tijdens typen blijven cursor en tekst staan bij opslaan en tellerupdate; sneltoetsen doen niets in een tekstveld; na herladen met een andere serverstand staat het concept er nog; de pagina wordt pas bruikbaar als sneltoetsen en invoer gekoppeld zijn (klaar-teken), elke browsertest wacht na laden en herladen op dat klaar-teken, en een sneltoets direct na het klaar-teken werkt ook als `items.json` later binnenkomt dan `/stand`; lukt het laden niet, dan blijft de pagina onbruikbaar en zegt dat. De pagina toont per keurmerk de stand ten opzichte van het doel (≥ 16 mét, ≥ 50 zonder).
 - **CAP-4** — nagemaakte trainingsbeelden ([trainingsset-en-herkenning.md §2–3](trainingsset-en-herkenning.md#2-logobronnen-en-referentieplaatjes-buiten-de-repository-proef_maplogos))
   - **intent:** trainingstegels met officiële logo's in alle varianten op gescreende echte etiketachtergronden, met harde negatieven (gelijkende keurmerken die bewust ongelabeld worden toegevoegd zodat de detector ze leert negeren) en lege tegels.
-  - **success:** COCO-uitvoer; tests bewijzen: elk geplakt exemplaar van een klasse gelabeld, gelijkende keurmerken ongelabeld, geplakte objecten overlappen niet, 0–10% lege tegels, varianten kleur/zwart-wit/lijn/negatief aanwezig, vegetarische V-label-referenties zijn gelabelde V-label-bronnen en V-label en Nutri-Score D/E zitten niet in de pool harde negatieven, elke bron met een GTIN hoort bij een trainingsleverancier, achtergronden zonder gemeld keurmerk, vaste seed geeft identieke uitvoer.
+  - **success:** COCO-uitvoer; tests bewijzen: elk geplakt exemplaar van een klasse gelabeld, gelijkende keurmerken ongelabeld, geplakte objecten overlappen niet, 0–10% lege tegels, varianten kleur/zwart-wit/lijn/negatief aanwezig, vegetarische V-label-referenties zijn gelabelde V-label-bronnen en V-label en Nutri-Score D/E zitten niet in de pool harde negatieven, elke bron met een GTIN hoort bij een trainingsleverancier (OFF-uitsneden zijn een aparte invoer onder de lekregel van CAP-17), achtergronden zonder gemeld keurmerk, vaste seed geeft identieke uitvoer.
 - **CAP-5** — echte trainingsvoorbeelden ([trainingsset-en-herkenning.md §4](trainingsset-en-herkenning.md#4-echte-trainingsvoorbeelden-cap-5))
   - **intent:** echte productie-etiketten van trainingsleveranciers met AI-vakjes (kaders die een taalmodel om elk gevonden keurmerk tekent) als trainingsmateriaal, plus een validatieset.
   - **success:** voorlabels via de gedeelde client, met dezelfde verzoekregel als CAP-2 ([randvoorwaarden.md §5](randvoorwaarden.md#5-verzoekgrootte)); tests bewijzen: de grens en de splitsing met juiste vakjescoördinaten; geen toetsleverancier in de uitvoer; tegels die een onzeker vakje raken vallen af; validatiesplit per klasse op dHash-cluster; vegetarisch wordt V-label en D/E en V-label staan niet bij de gelijkende codes. Een rapport geeft per keurmerk het aantal overgebleven echte etiketten en vakjes.
 - **CAP-6** — training van de detector ([trainingsset-en-herkenning.md §5](trainingsset-en-herkenning.md#5-detector-en-training-cap-6))
   - **intent:** een RF-DETR-model met 13 klassen (maat N; S/M/L alleen na een nieuw besluit van Friso) op tegels, eerst op nagemaakte beelden en daarna bijgetraind op echte, met NutriGreen als extra bron tot een vast aandeel (CAP-16), reproduceerbaar.
-  - **success:** trainingscommando met configuratie, seed, log, checkpoint, sha256 en gewichtsherkomst; een andere maat dan N wordt geweigerd zonder vastgelegde besluitverwijzing; generator, echt, train, herken, k4aa_lokaal en het NutriGreen-gereedschap delen één klassenlijst (13, COCO-id's 1–10 ongewijzigd) en weigeren een COCO-set of checkpoint met andere klassen; een snelheidsmeting op de grafische chip van de Mac (MPS) met de verwachte duur; rooktest: een paar iteraties op een kleine lokale set leveren een checkpoint dat de herkenning kan laden.
+  - **success:** trainingscommando met configuratie, seed, log, checkpoint, sha256 en gewichtsherkomst; een andere maat dan N wordt geweigerd zonder vastgelegde besluitverwijzing; generator, echt, train, herken, k4aa_lokaal, het NutriGreen- en het OFF-gereedschap delen één klassenlijst (13, COCO-id's 1–10 ongewijzigd) en weigeren een COCO-set of checkpoint met andere klassen; een snelheidsmeting op de grafische chip van de Mac (MPS) met de verwachte duur; rooktest: een paar iteraties op een kleine lokale set leveren een checkpoint dat de herkenning kan laden.
 - **CAP-7** — herkenning op het hele etiket ([trainingsset-en-herkenning.md §6 en §8](trainingsset-en-herkenning.md#6-herkenning-op-het-hele-etiket-cap-7))
   - **intent:** de detector loopt op de processor in tegels over het hele etiket en geeft per code een melding, een twijfelgeval of niets; een certificaatnummer kan een twijfelgeval bevestigen.
   - **success:** tests op verzonnen beelden en scores bewijzen: tegelomrekening, samenvoegen van overlappende vakjes (ook over de Nutri-Score-letters A–E), de bandregel, het afleiden van `laag`/`hoog` uit een mini-validatieset met bekende uitkomst (ook de terugval naar gezamenlijke drempels en `hoog` = 1,01), en dat een certificaatnummer een twijfelgeval alleen kan bevestigen en nooit een melding weghaalt.
@@ -74,7 +75,12 @@ Er is een probleem en een eis van de producteigenaar. Een keurmerk mag pas "auto
 - **CAP-16** — NutriGreen in de training ([trainingsset-en-herkenning.md §10](trainingsset-en-herkenning.md#10-nutrigreen-cap-16))
   - **intent:** de openbare NutriGreen-foto's (Nutri-Score A–E, EU-biologisch, V-label) helpen de detector in fase 2, zonder dat ze de eigen productie-etiketten overstemmen of in validatie of toets komen.
   - **success:** een getest gereedschap zet de annotaties uit de Zenodo-zip om naar COCO met onze 13 categorieën, buiten elke git-werkboom, zonder de hele zip uit te pakken, en rapporteert per klasse beelden en vakjes; tests op een mini-zip bewijzen: een zip met een andere md5 wordt geweigerd, klasse-id's 0–6 naar de juiste code, YOLO-middelpunt naar COCO-vakje in pixels na verkleinen, foto's zonder annotatie als achtergrond, koppelen op naam zonder extensie (spaties en haakjes), een annotatie zonder foto, een foto met EXIF-oriëntatie ≠ 1 en een foto van een toetsleverancier (barcode = toets-GTIN of zelfde eerste 7 cijfers als een toets-GLN) vallen af en worden geteld, ongeldige regels geweigerd. Tests op het mengen in fase 2 bewijzen: NutriGreen komt uit het mengbudget (de rest blijft nagemaakt), hoogstens 20% van de trainingstegels van die fase en hoogstens zoveel NutriGreen-vakjes als eigen echte vakjes, om de beurt per klasse met vaste seed, hoogstens 10% foto's zonder vakje, nooit in `valid/` of `test/`, een rapport per klasse met het gebruikte aantal; `train-resultaat.json` van een model met NutriGreen draagt de attributie en licentie.
-
+- **CAP-17** — Open Food Facts-logo's als logobron ([trainingsset-en-herkenning.md §11](trainingsset-en-herkenning.md#11-open-food-facts-logos-cap-17))
+  - **intent:** door mensen benoemde uitsneden uit de logodatabase van Open Food Facts (OFF) geven de generator echte varianten van de keurmerken (gedrukt, vervormd, andere kleuren), zonder dat ze eigen materiaal of NutriGreen overstemmen, de toets lekken of in validatie of toets komen.
+  - **success:**
+    - *Ophalen* (tests met een nagebootste aanbieder): alleen uitsneden, nooit hele foto's, alleen buiten een git-werkboom; de klasse-naar-OFF-tabel (alleen codes uit `train.KLASSEN`, V-label uit drie id's, geen Recyclebaar); barcode naar GTIN-14 (8, 12, 13 of 14 cijfers, anders afgevallen); afvallers per reden apart geteld: afbeelding verwijderd, vakje ongeldig, vakje < 64 px, geen GTIN, toets-GTIN, toetsleverancier (GTIN of cijfers 2–8 tegen de eerste 7 van een toets-GLN), niet op te halen, dubbel, bijna gelijk aan een toetsbeeld (dHash ≤ 6); trekking op sha256(seed + logo-id) tot 1.000 per klasse; User-Agent met contact, één verzoek tegelijk met minstens 0,6 s ertussen, opnieuw na oplopende wachttijd (`Retry-After` gaat voor, hoogstens 300 s) en daarna overslaan, noodstop na 20 mislukte op rij; hervatten haalt bewaarde pools, bestaande uitsneden en blijvende afvallers niet opnieuw, en past de filters opnieuw toe op de dan geldende toetsset; stoppen bij 3 GB of minder dan 5 GB vrij; een rapport per klasse (OFF-aantal, pool, afvallers per reden, behouden, per annotator, bytes) en een index met GTIN-14.
+    - *Generator:* per geplakt logo met kans 0,5 een OFF-uitsnede van dezelfde klasse (klassenverhouding ongewijzigd), zonder afgeleide varianten; alleen in split `train` (anders geweigerd); zonder OFF byte-gelijk aan vóór ronde 6; vaste seed geeft identieke uitvoer; het manifest telt OFF per klasse.
+    - *Herkomst en mengen:* `herkomst.json` is een lijst; de attributie komt via de generator in `train-resultaat.json` van fase 1 en via het mengen in fase 2, één keer per bron; in fase 2 hoogstens zoveel OFF-vakjes als eigen echte vakjes, met `_off` per klasse in het rapport; NutriGreen-foto's met een toets-GTIN vallen vóór het mengen af en worden geteld.
 ## Constraints
 
 - **Definities en stopregel liggen vast** (Friso, 31-10-2026); de telling is per etiket op aanwezigheid ([meetregels.md](meetregels.md)). Toetsdoel per keurmerk (9, inclusief V-label; besluit Friso 01-11-2026): ≥ 16 bevestigde etiketten mét het keurmerk (liefst ≥ 25) en ≥ 50 zonder (correctie op "30–50"; akkoord Friso 01-11-2026).
@@ -82,12 +88,12 @@ Er is een probleem en een eis van de producteigenaar. Een keurmerk mag pas "auto
 - **Scheiding op leverancier (GLN)**, in de vaste volgorde bevroren vóór de snelheidsmeting. Versoepelen is een keuze van Friso. De 5 leveranciers van 31-10 blijven, ook nu de regel met de nieuwe rijen anders zou kiezen: de toetsset is erop gebouwd en voorgevuld.
 - **Eerlijke vergelijking:** K4-aa krijgt voor het besluit geen referenties van toetsleveranciers, en etiketten uit de fase-B-meetset (waarop K4-aa gekozen is) komen niet in de toets.
 - **Privacy:** elke taalmodelaanroep met klantartwork gaat via OpenRouter met zdr (de aanbieder bewaart niets), geen batch-API, sleutel alleen in de omgeving ([randvoorwaarden.md §1](randvoorwaarden.md#1-privacy-zdr)).
-- **NutriGreen alleen in de training:** de toets en de validatie bevatten alleen eigen materiaal; drempels en modelkeuze nooit op NutriGreen; de data staat alleen onder `PROEF_MAP`.
-- **Licenties:** alleen zoals in [randvoorwaarden.md §4](randvoorwaarden.md#4-licenties-cap-13) (NutriGreen: CC BY-SA 4.0 met attributie, alleen intern); nooit Ultralytics, YOLOE, PyMuPDF, AlbumentationsX of `albumentations` ≥ 2.0.9, DEIMv2, RF-DETR-platformmaten of DINOv3.
+- **NutriGreen en OFF alleen in de training:** de toets en de validatie bevatten alleen eigen materiaal; drempels en modelkeuze nooit op NutriGreen of OFF; OFF alleen als generatorbron in split `train` (in fase 2 dus alleen via het mengbudget, na NutriGreen); de data staat alleen onder `PROEF_MAP`, OFF alleen als uitsneden (±0,1–0,4 GB verwacht, hoogstens 3 GB).
+- **Licenties:** alleen zoals in [randvoorwaarden.md §4](randvoorwaarden.md#4-licenties-cap-13) (NutriGreen: CC BY-SA 4.0, OFF: foto's CC BY-SA en database ODbL, beide met attributie, alleen intern); nooit Ultralytics, YOLOE, PyMuPDF, AlbumentationsX of `albumentations` ≥ 2.0.9, DEIMv2, RF-DETR-platformmaten of DINOv3.
 - **Klantdata buiten elke git-werkboom** (`~/logo-meetset-20261018/proef-detector/`): geen beelden, uitsneden, GLN's, GTIN's of certificaatnummers in commits; de spec noemt leveranciers alleen geanonimiseerd.
 - **Productie en ACC alleen lezen:** `banana:/media/Xmedia` met `nice -n 19` en zonder volledige `find`; `replica-db` alleen `SELECT`; MongoDB alleen op `_id`. Geen zware proeven in de ACC ml-service, geen migraties.
 - **Herkenning op de processor** (ACC heeft geen GPU), gemeten met 8 threads; training lokaal op MPS.
-- **Uitgaven:** ±$78–88 geraamd (voorlabels ±$25–35; de aanvulling van ronde 5, ±$3, valt binnen de voorinvulling); per post stoppen bij zijn grens ([randvoorwaarden.md §3](randvoorwaarden.md#3-kosten-cap-14)). Friso's werk: ±2 uur bevestigen voor ±345 etiketten, plus ±45 minuten steekproef bij het nakijken en ±50 minuten per eventuele tweede ronde (INFERENCE).
+- **Uitgaven:** ±$78–88 geraamd (voorlabels ±$25–35; de aanvulling van ronde 5, ±$3, valt binnen de voorinvulling; NutriGreen en OFF zonder AI-aanroepen, $0); per post stoppen bij zijn grens ([randvoorwaarden.md §3](randvoorwaarden.md#3-kosten-cap-14)). Friso's werk: ±2 uur bevestigen voor ±345 etiketten, plus ±45 minuten steekproef bij het nakijken en ±50 minuten per eventuele tweede ronde (INFERENCE).
 - Bestaande suites in de repository blijven groen.
 - **Stoppunten** (de enige lijst; terug naar Friso, niet zelf beslissen):
   1. Maat N schiet tekort op de validatieset (definitie in [trainingsset-en-herkenning.md §5](trainingsset-en-herkenning.md#5-detector-en-training-cap-6)), of een trainingsfase met N duurt volgens de meting of in werkelijkheid meer dan 8 uur, of MPS werkt niet (grotere maat of GPU? Besluit Friso 01-11-2026: eerst alleen N).
@@ -98,6 +104,7 @@ Er is een probleem en een eis van de producteigenaar. Een keurmerk mag pas "auto
   6. Elke schrijfactie op ACC of productie.
   7. Een verplicht referentieplaatje voor de beoordelaar ontbreekt bij het bevriezen.
   8. RF-DETR installeert of traint niet (terugval D-FINE?).
+  9. De OFF-uitsneden passen niet: meer dan 3 GB in `PROEF_MAP/off`, of minder dan 5 GB vrij op de schijf (GB = 10⁹ bytes; de NutriGreen-zip blijft staan; Friso beslist).
 - Geen stoppunt maar een ongeldige run: foutpercentage boven 2% ([meetregels.md §5](meetregels.md#5-welke-etiketten-tellen)).
 
 ## Non-goals
@@ -106,12 +113,12 @@ Er is een probleem en een eis van de producteigenaar. Een keurmerk mag pas "auto
 - Productiecode, integratie in de ml-service of de API, uitrol, of iets schrijven op ACC.
 - De overige keurmerken uit de top 15 (FSC, Rainforest Alliance, Beter Leven, `VEGAN`): alleen als gelijkend keurmerk.
 - Vegan en vegetarisch V-label van elkaar onderscheiden: beide tellen als V-label.
-- NutriGreen in de toets of de validatieset.
 - Vergelijking met de oude standaardroute (B0/legacy).
 - D-FINE bouwen (alleen gedocumenteerde terugval, stoppunt 8).
 - De Nutri-Score-letter uit vectorkleuren lezen.
 - Scoren op vakniveau; menselijke correctie van trainingsvakjes; actief leren.
-- Foto's van verpakkingen.
+- Foto's van verpakkingen (NutriGreen, OFF) in de toets of de validatieset; ze dienen alleen de training.
+- Hele OFF-foto's in de training; OFF-uitsneden voor Recyclebaar (steekproef afgewezen); OFF-tekens buiten onze klassen (zoals Triman of AB) als harde negatieven.
 
 ## Success signal
 
@@ -131,4 +138,12 @@ Met de gebouwde gereedschappen en het draaiplan levert één doorloop op een doo
 - NutriGreen-foto's kunnen keurmerken van onze andere klassen ongelabeld tonen en de detector zo leren ze te negeren; de eigen validatieset laat zien of het schaadt (INFERENCE).
 - NutriGreen-logo's zijn ten opzichte van het beeld groter dan de onze (vakje/beeld p50 0,17 tegen ±0,08–0,15); de eigen validatieset laat zien of dat schaadt (INFERENCE).
 - V-label is het krapste keurmerk: 28 toets-GTIN's, dus ≥ 57% moet echt zichtbaar zijn voor 16 bevestigd; aan de trainingskant geeft het ±3 validatie-etiketten, dus gezamenlijke drempels en zijn kwaliteit blijkt pas op de toets (INFERENCE).
-- NutriGreen onder CC BY-SA 4.0 is alleen voor intern gebruik aanvaardbaar ([randvoorwaarden.md §4](randvoorwaarden.md#4-licenties-cap-13), INFERENCE).
+- NutriGreen onder CC BY-SA 4.0 en OFF onder CC BY-SA/ODbL zijn alleen voor intern gebruik aanvaardbaar ([randvoorwaarden.md §4](randvoorwaarden.md#4-licenties-cap-13), INFERENCE).
+- OFF-uitsneden zijn foto's van gedrukte verpakkingen, de toets bestaat uit drukbestanden; met aandeel 0,5 wegen de schone eigen bronnen even zwaar; de eigen validatieset laat zien of het helpt (INFERENCE).
+- Een OFF-vakje kan naast het keurmerk tekst of een ander keurmerk bevatten (half labelen binnen de uitsnede), en een OFF-uitsnede is een fotolapje zonder marge waarvan de rand het vakje is; de eigen validatieset laat zien of het schaadt (INFERENCE).
+- De benoeming van de niet-gecontroleerde OFF-klassen is goed genoeg, ook al benoemde het account `gcloud-annotators` ruim de helft van een EU-bio-steekproef; een contactblad van 40 per klasse na het ophalen controleert dat (INFERENCE).
+- De steekproeven van 40 (zwangerschap, Weidemelk) zonder fout geven een Wilson-95%-bovengrens van ±8,8% voor het foutaandeel van hun pool (INFERENCE).
+
+## Open Questions
+
+- Fase 2 met 20 epochs duurt volgens de raming met 33 tegels per etiket ±13–19 uur, boven 8 uur (stoppunt 1; [trainingsset-en-herkenning.md §5](trainingsset-en-herkenning.md#5-detector-en-training-cap-6)): fase 2 met hoogstens 7 epochs, lege eigen tegels uitdunnen, of een GPU? Keuze van Friso vóór de training.

@@ -2,7 +2,7 @@
 titel: Toetsset, scheiding training/toets en beelden
 hoort-bij: SPEC.md (CAP-1, CAP-2, CAP-3, CAP-15)
 datum: 2026-10-31
-bijgewerkt: 2026-11-01 (ronde 3: verzoekgrootte voorinvulling, klaar-teken invulpagina; ronde 4: aanvulling vóór bevestiging, besluiten Friso; ronde 5: Nutri-Score A–E, V-label als 9e keurmerk)
+bijgewerkt: 2026-11-02 (ronde 3: verzoekgrootte voorinvulling, klaar-teken invulpagina; ronde 4: aanvulling vóór bevestiging, besluiten Friso; ronde 5: Nutri-Score A–E, V-label als 9e keurmerk; ronde 6: OFF-lekfilter vóór de training)
 gemeten-op: declaraties-prod-basiseenheden-20261008.tsv, alcohol-kandidaten.tsv, referentiemomentopname 2026-10-30, voorlopige-selectie.json
 ---
 
@@ -98,7 +98,7 @@ Verwachte omvang: ±345 etiketten (322 voorgevuld vóór ronde 5, plus ±12 V-la
 - elke aanvulling schrijft een eigen lijst en overschrijft nooit een bestaande; per gekozen keurmerk meldt ze het aantal toegevoegde kandidaten en het aantal ongekozen toets-GTIN's dat overblijft;
 - ontdubbelen tegen de bestaande toets-docs (GTIN, sha256, dHash ≤ 6); de voorinvulling draait daarna over alle toets-docs, zodat de invulpagina alle etiketten toont, en betaalt alleen de nieuwe.
 
-**Volgorde (vast, ook in het draaiplan):** scheiding → kandidaten → voorinvulling → stoppunt 2 → bevestiging door Friso → aanvullen waar een keurmerk na bevestiging onder het doel blijft (zelfde regels, volgende kandidaten in de vaste volgorde) → dHash-controle op de definitieve toetsset → scheiding bevriezen → snelheidsmeting → training.
+**Volgorde (vast, ook in het draaiplan):** scheiding → kandidaten → voorinvulling → stoppunt 2 → bevestiging door Friso → aanvullen waar een keurmerk na bevestiging onder het doel blijft (zelfde regels, volgende kandidaten in de vaste volgorde) → dHash-controle op de definitieve toetsset → scheiding bevriezen → snelheidsmeting → training. De OFF-uitsneden (trainingsset §11) mogen eerder worden opgehaald; vóór de training draait het ophalen opnieuw, zodat het lekfilter op de definitieve toetsset staat.
 
 **Aanvulling vóór de bevestiging (besluiten Friso 01-11-2026).** Eenmalig en in afwijking van de volgorde hierboven: na de voorinvulling stond zwangerschap op 14 waarschijnlijke etiketten (stoppunt 2), MSC op 18, Vegan Society op 17 en Weidemelk op 23. Friso besliste om vóór zijn bevestiging aan te vullen:
 1. **Zwangerschap:** meer alcoholproducten van toetsleveranciers: eerst alle ongekozen met print-laag, daarna de rest in de vaste volgorde, samen hoogstens 60 kandidaten. Doel ±40–60 extra gebouwde etiketten na ontdubbelen, zodat het keurmerk na de voorinvulling ruim ≥ 16 waarschijnlijk haalt; het aantal wordt gemeld, niet afgedwongen (zonder print-laag bouwt vrijwel geen alcoholproduct). De scheiding op leverancier blijft streng.

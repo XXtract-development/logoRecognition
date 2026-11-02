@@ -13,11 +13,13 @@ wordt per code samengevoegd (herken.nms, IoU 0,5).
   python echt.py dataset --lijst <json> --voorlabels <voorlabels.json> --proef-map <PM> --uit <PM>/train/echt
                          [--meng <PM>/train/nagemaakt/train --meng-aantal 1000] [--nutrigreen <PM>/nutrigreen/coco]
       (fase 2: het mengbudget --meng-aantal gaat eerst naar NutriGreen tot zijn grens (kies_nutrigreen: ≤ 20% van de
-       trainingstegels, ≤ de eigen echte vakjes), de rest naar nagemaakte tegels; NutriGreen alleen in train/)
+       trainingstegels, ≤ de eigen echte vakjes), de rest naar nagemaakte tegels in vaste volgorde, tot vóór de tegel
+       die de OFF-vakjes (manifest-train.json naast de mengmap) boven de eigen echte vakjes zou brengen (CAP-17);
+       NutriGreen alleen in train/, zonder foto's met een toets-GTIN als naam (<PM>/toets/toets-docs.json))
       → train/, valid/, test/ (kopie van valid, voor rfdetr), achtergronden.json (alleen de trainingskant),
         validatie-waarheid.json {doc: {"aanwezig": [...], "onzeker": [...]}}, validatie-lijst.json, rapport.json
-        (met _nutrigreen en _nagemaakt), herkomst.json (attributie en licentie van NutriGreen, als er NutriGreen-tegels
-        gemengd zijn)
+        (met _nutrigreen, _nagemaakt en _off), herkomst.json (lijst: NutriGreen als er NutriGreen-tegels gemengd zijn,
+        plus de inhoud van herkomst.json naast de mengmap als er nagemaakte tegels gemengd zijn)
   python echt.py validatie-uitslag --waarheid <echt/validatie-waarheid.json> --uit <echt/validatie-uitslag.json>
 """
 import argparse
@@ -28,6 +30,7 @@ import math
 import random
 import shutil
 import sys
+from collections import Counter
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -379,11 +382,19 @@ def main(argv=None):
         return 0
 
     uit = beelden.veilig_doel(a.uit)
-    ng = None
+    ng, ng_toets = None, 0
     if a.nutrigreen:  # vóór er iets geschreven wordt: andere categorieën zouden klassen verwisselen
+        import nutrigreen
+        import off
+
         ng = json.loads((a.nutrigreen / "_annotations.coco.json").read_text(encoding="utf-8"))
         if {c["id"]: c["name"] for c in ng["categories"]} != {c["id"]: c["name"] for c in CATEGORIEEN}:
             raise SystemExit("--nutrigreen: andere categorieën dan de 13 klassen; niets gemengd")
+        toets_gtins = off.toets_gtins(a.proef_map)  # foto's met een toets-GTIN als naam vallen vóór het mengen af
+        weg = {im["id"] for im in ng["images"] if nutrigreen._toets(im.get("ng_naam", ""), toets_gtins, ())}
+        ng_toets = len(weg)
+        ng = {**ng, "images": [im for im in ng["images"] if im["id"] not in weg],
+              "annotations": [x for x in ng["annotations"] if x["image_id"] not in weg]}
     vl = json.loads(a.voorlabels.read_text())
     et, pad, waarheid = [], {}, {}
     for e in lijst:
@@ -400,7 +411,7 @@ def main(argv=None):
     train, valid = valsplit(et, overgeslagen=overgeslagen)
     for kant, docs in (("train", train), ("valid", valid)):
         _coco(naar_tegels([e for e in et if e["doc_id"] in docs], train_glns, a.tegel, a.overlap), pad, uit / kant)
-    rp_ng, n_nep = None, 0
+    rp_ng, rp_off, n_nep = None, None, 0
     if a.meng or ng:  # mengbudget: eerst NutriGreen tot zijn grens, de rest de eerste nagemaakte tegels (al geschud)
         coco = json.loads((uit / "train" / "_annotations.coco.json").read_text())
         delen = []
@@ -408,14 +419,27 @@ def main(argv=None):
             extra = json.loads((a.meng / "_annotations.coco.json").read_text())
             if extra["categories"] != coco["categories"]:
                 raise SystemExit("--meng: andere categorieën dan de echte set; samenvoegen op id zou klassen verwisselen")
-        if ng:  # eigen tegels en vakjes van train/ vóór het mengen
+            eigen_vakjes = len(coco["annotations"])  # eigen echte vakjes van train/ vóór het mengen
+            manifest = a.meng.parent / f"manifest-{a.meng.name}.json"
+            off_per_tegel = {b["bestand"]: [o["klasse"] for o in b["objecten"] if o.get("variant") == "off"]
+                             for b in (json.loads(manifest.read_text())["beelden"] if manifest.exists() else [])}
+            binnen, n_off = [], 0  # nagemaakte tegels in vaste volgorde, tot vóór de tegel die de OFF-grens passeert
+            for im in extra["images"]:
+                n_off += len(off_per_tegel.get(im["file_name"], []))
+                if n_off > eigen_vakjes:
+                    break  # stoppen, niet overslaan: OFF-vakjes ≤ eigen vakjes (trainingsset §11)
+                binnen.append(im)
+        if ng:  # eigen tegels en vakjes van train/ vóór het mengen; alleen nagemaakte tegels die echt mee kunnen
             ids, rp_ng = kies_nutrigreen(ng, len(coco["images"]), len(coco["annotations"]), a.meng_aantal,
-                                         nagemaakt=len(extra["images"]) if a.meng else 0)
+                                         nagemaakt=len(binnen) if a.meng else 0)
+            rp_ng["toets_gtin"] = ng_toets
             per_id = {im["id"]: im for im in ng["images"]}
             delen.append((a.nutrigreen, [per_id[i] for i in ids], ng["annotations"]))
         if a.meng:
-            nep = extra["images"][:a.meng_aantal - (rp_ng or {}).get("tegels", 0)]
+            nep = binnen[:a.meng_aantal - (rp_ng or {}).get("tegels", 0)]
+            off_vakjes = Counter(k for im in nep for k in off_per_tegel.get(im["file_name"], []))
             n_nep = len(nep)
+            rp_off = {"vakjes": {k: off_vakjes[k] for k in KLASSEN if off_vakjes[k]}, "grens": eigen_vakjes}
             delen.append((a.meng, nep, extra["annotations"]))
         namen = {im["file_name"] for im in coco["images"]}
         for map_, ims, annotaties in delen:
@@ -436,14 +460,20 @@ def main(argv=None):
     herkomst = uit / "herkomst.json"  # train.py neemt hem over in train-resultaat.json (attributie, randvoorwaarden §4)
     if rp_ng is not None:
         rp["_nutrigreen"] = rp_ng
+    if rp_off is not None:
+        rp["_off"] = rp_off
+    lijst_herkomst = []
     if rp_ng and rp_ng["tegels"] > 0:
-        import nutrigreen
-
-        herkomst.write_text(json.dumps({"bron": nutrigreen.BRON, "attributie": nutrigreen.ATTRIBUTIE,
-                                        "licentie": nutrigreen.LICENTIE, "rapport": rp_ng}, indent=1, ensure_ascii=False),
-                            encoding="utf-8")
+        lijst_herkomst.append({"bron": nutrigreen.BRON, "attributie": nutrigreen.ATTRIBUTIE,
+                               "licentie": nutrigreen.LICENTIE, "rapport": rp_ng})
+    meng_herkomst = a.meng.parent / "herkomst.json" if a.meng else None
+    if n_nep > 0 and meng_herkomst.exists():  # attributie van de gemengde nagemaakte tegels (bv. OFF)
+        h = json.loads(meng_herkomst.read_text(encoding="utf-8"))
+        lijst_herkomst += h if isinstance(h, list) else [h]
+    if lijst_herkomst:
+        herkomst.write_text(json.dumps(lijst_herkomst, indent=1, ensure_ascii=False), encoding="utf-8")
     else:
-        herkomst.unlink(missing_ok=True)  # geen NutriGreen gemengd: geen attributie van een eerdere run
+        herkomst.unlink(missing_ok=True)  # niets van derden gemengd: geen attributie van een eerdere run
     (uit / "rapport.json").write_text(json.dumps(rp, indent=1))
     achtergronden = [{"pad": pad[e["doc_id"]], "gtin": e["doc_id"].split("-")[1], "meldingen": e["meldingen"]}
                      for e in et if e["doc_id"] in train]  # alleen de trainingskant: validatie blijft buiten de generator
