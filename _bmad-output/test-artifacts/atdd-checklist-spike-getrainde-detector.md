@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-generation-mode', 'step-03-test-strategy', 'step-04-generate-tests', 'step-04c-aggregate', 'step-05-validate-and-complete']
 lastStep: 'step-05-validate-and-complete'
-lastSaved: '2026-11-01'
+lastSaved: '2026-11-02'
 story_id: spike-getrainde-detector
 inputDocuments:
   - _bmad-output/planning-artifacts/spike-getrainde-detector/SPEC.md
@@ -18,6 +18,7 @@ inputDocuments:
   - git diff 89887f2 -- _bmad-output/planning-artifacts/spike-getrainde-detector/ (ronde 3: spec-update na bmad-review, 24 bevindingen)
   - _bmad/tea/testarch/knowledge/{timing-debugging,selector-resilience}.md (ronde 3, browser)
   - git diff 039b14f -- _bmad-output/planning-artifacts/spike-getrainde-detector/ (ronde 4: spec-update na bmad-review, 15 bevindingen)
+  - git diff 08d2cf7 -- _bmad-output/planning-artifacts/spike-getrainde-detector/ (ronde 5: spec-update na bmad-review, 33 bevindingen)
 ---
 
 # ATDD-checklist: proef getrainde detector
@@ -476,3 +477,126 @@ cd _bmad-output/planning-artifacts/spike-getrainde-detector && uv run --group de
 ### Na de bouw (bmad-build ronde 4, reviewpatches)
 
 Op verzoek van de codereview (geen testfout) kwamen er 9 testgevallen bij, alle groen: `test_r4_bouwen_en_bouwen_origineel_vullen_het_manifest_aan` (CAP-15: het manifest wordt aangevuld), `test_r4_cli_gewone_run_naar_toets_en_kant_train_naar_train` (doelbestand van de gewone run en de trainingskant), `test_r4_cli_weigert_zonder_iets_te_schrijven` (7 gevallen: lijst of parenbestand bestaat al met `--naam`, `--naam` met een map of `..`, `--bestaand` zonder `--alleen`/`--alle`, dezelfde code bij `--alleen` en `--alle`); de stap-6-test eist nu `--uit $T/$N`. Aanvullingen op het contract (bindend): een aanvulling vraagt `--alleen` of `--alle`; `--naam` is een bestandsnaam zonder map; elke run met `--naam` of `--bestaand` weigert als `<naam>.json` of `<naam>-paren.tsv` bestaat; dezelfde code bij `--alleen` en `--alle` weigert; `certificaten.json` wordt atomisch geschreven; `echt.py voorlabels` heeft geen `--raming` meer. Verduidelijking (review E9): bij Nutri-Score geldt de print-laagvoorkeur binnen elke letter; de groepsregel "gelijk verdeeld over A, B en C" gaat voor. Suite: 569 passed, 0 failed. Buildspec: `_bmad-output/implementation-artifacts/spec-spike-getrainde-detector-ronde4.md`.
+
+## Ronde 5 (Nutri-Score A–E, V-label als 9e keurmerk, NutriGreen in de training; besluiten Friso 01-11-2026)
+
+Bron: de niet-gecommitte spec-update op HEAD `08d2cf7` (`bmad-spec`, daarna `bmad-review` met 33 bevindingen: 28 patch, 1 besluit binnen de opdracht, 2 uitgesteld, 2 verworpen): SPEC CAP-1/2/3/4/5/6/7/8/9/12, nieuw CAP-16; meetregels §2–§4/§6; toetsset §2/§4/§5/§6; trainingsset §1/§2/§4–§7/§9/§10; randvoorwaarden §3/§4; de memlog-regels vanaf "ronde 5". De rest van deze checklist blijft bindend, behalve waar dit contract hem vervangt.
+
+### Stap 1 — preflight en context
+
+- **Werkwijze:** `bmad-testarch-atdd`, Create-modus, headless (keuzes hieronder vastgelegd; staande toestemming van de eigenaar om tot review te bouwen op een schone tak).
+- **Stack:** `backend` (Python 3.12, pytest via `uv`) plus de invulpagina (Playwright voor Python, al aanwezig). Uitgangstoestand: **569 passed, 0 failed** (`uv run --group dev pytest -q -p no:cacheprovider`, HEAD `08d2cf7`).
+- **Gelezen:** de spec en companions (ronde 5), `train.py`, `scheiding.py`, `uitslag.py`, `toets.py`, `echt.py`, `generator.py` (`_logos`), `herken.py` (`nms`, `NS`), `tel_proef.py` (`tel`, `tabel`, `_letters`, `_ns_goed`), `k4aa_lokaal.py` (`ACHT`, `meldingen_uit`), `beoordelaar.py`, `invul/index.html`, `invul/server.py`; de tests die de klassen- en keurmerklijsten vastleggen (`test_cap01`, `test_cap02`, `test_cap03`, `test_cap04`, `test_cap05`, `test_cap09`, `test_cap12`, `test_review_20261101`, `test_besluiten_20261101`). Kennis: kern (`test-quality`, `data-factories`, `test-healing-patterns`, `component-tdd`), backend (`test-levels-framework`, `test-priorities-matrix`, `ci-burn-in`), browser (`timing-debugging`, `selector-resilience`).
+- **Gemeten als invoer (alleen aantallen, 01-11-2026):** V-label-declaraties vegan 66 docs / 53 GTIN's, vegetarisch 4 / 4 (nooit samen); scheiding met de extra rijen zou 6 leveranciers kiezen, de 5 blijven (V-label 11/1 train, 28/8 toets); voorinvulling: V-label in `gelijkend` op 21 van 322 etiketten; NutriGreen `data.csv` 8.509 vakjes op 7.271 beelden, zip md5 `6836b94d5c065aee397fad8415396e5a`.
+
+### Stap 2 — generatiemodus
+
+AI-generatie (backend en één browsercriterium met bekende selectoren; geen opname).
+
+### Stap 3 — teststrategie
+
+| criterium | niveau | prio |
+|---|---|---|
+| CAP-9 Nutri-Score A–E (D/E mét, lege lijst = zonder, verkeerde letter, per letter A–E) en V-label als 9e keurmerk in `uitslag` en `tel_proef` | unit | P0 (bepaalt het besluit; besluit 1 en 2) |
+| CAP-3 schema: V-label verplicht voor "bevestigd", vegetarisch geweigerd, stand met 9 | unit (`uitslag`) + server | P0 |
+| CAP-3 pagina: V-label-keuze met de invoerregels, oud concept zonder V-label | browser (worker B) | P0 (typen nooit kwijt) |
+| CAP-1 extra rijen: keuze ongewijzigd, rijen geteld met reden, vegetarisch in de V-label-rij | unit (`scheiding`) | P0 (strenge scheiding; toetsset al gebouwd) |
+| CAP-2 voorinvulling/rapport: V-label uit `gelijkend`, 9 keurmerken, NS per letter, aanvulling op één letter en op vegetarisch | unit + opdrachtregel (`toets`) | P0 (stoppunt 2, kosten) |
+| CAP-4/5/6/7/8/12 klassenlijst 13 en variant: generator-bronnen en harde negatieven, voorlabels, checkpoint met andere klassen geweigerd, NMS A–E, beoordelaarvraag, K4-aa-meldingen | unit | P1 |
+| CAP-16 omzetten (md5, klasse-id's, vakjes, achtergrond, koppelen op naam, afvallers) en mengen (twee grenzen, om de beurt per klasse, ≤ 10% leeg, nooit valid/test, rapport, attributie in `train-resultaat.json`) | unit + opdrachtregel op een mini-zip | P0 (toets schoon houden, licentie) |
+| CAP-10 draaiplan stap 1/4/5/6/10 | documenttest | P2 |
+
+Uitvoeringsmodus: `tea_execution_mode = auto`, subagents beschikbaar → **subagent**, worker A (unit/opdrachtregel/document) en worker B (browser) parallel. Afwijking van de stapbestanden zoals in rondes 2–4: geen `test.skip()`; de tests draaien echt rood.
+
+### Interfacecontract ronde 5 (bindend voor tests én bouw)
+
+**Klassen en keurmerken (één plek)**
+- `train.KLASSEN` = de 10 bestaande in dezelfde volgorde + `("NUTRISCORE_D", "NUTRISCORE_E", "EUROPEAN_V_LABEL_VEGAN")`; COCO-categorie-id = index + 1. `train.VARIANTEN = {"EUROPEAN_V_LABEL_VEGETARIAN": "EUROPEAN_V_LABEL_VEGAN"}`. `echt`, `generator`, `herken`, `k4aa_lokaal` en `nutrigreen` gebruiken `train.KLASSEN` (zelfde object).
+- `uitslag.KEURMERKEN_LOS` = `("EU_ORGANIC_FARMING", "GREEN_DOT", "RECYCLABLE_GENERAL_CLAIM", "PREGNANCY_WARNING", "MARINE_STEWARDSHIP_COUNCIL_LABEL", "WEIDEMELK", "VEGAN_SOCIETY_VEGAN_LOGO", "EUROPEAN_V_LABEL_VEGAN")`; `uitslag.KEURMERKEN` = `KEURMERKEN_LOS + ("NUTRISCORE",)`; de oude namen `KEURMERKEN7`/`KEURMERKEN8` verdwijnen. `toets.LOS is uitslag.KEURMERKEN_LOS`; `toets.NS` = de vijf codes `NUTRISCORE_A` t/m `NUTRISCORE_E`; `herken.NS` en de sleutels van `tel_proef.NS` idem.
+
+**`uitslag`**
+- `valideer`: `keurmerken` ⊆ `KEURMERKEN_LOS` (dus `EUROPEAN_V_LABEL_VEGETARIAN` → `ValueError`); "bevestigd" vraagt alle 8 losse codes én `nutriscore`; `veranderd` ⊆ `KEURMERKEN`.
+- `per_keurmerk`: sleutels `KEURMERKEN` + `NUTRISCORE_A` t/m `NUTRISCORE_E`. `NUTRISCORE`: mét = lijst met minstens één letter, zonder = lege lijst. Per letter: mét = letter in de lijst, zonder = een lijst zonder die letter; `"onleesbaar"` telt nergens. `stand` geeft 9 sleutels.
+
+**`tel_proef`**
+- `NS` = `{"NUTRISCORE_A": "A", …, "NUTRISCORE_E": "E"}`. Groep: gevonden als alle gemelde letters in de ware verzameling zitten en er minstens één is (een melding `NUTRISCORE_D` op een etiket met `["D"]` is gevonden); verkeerde letter apart; vals = minstens één NS-melding op een etiket met een lege lijst. Tabellen per route bevatten `NUTRISCORE` en `NUTRISCORE_A` t/m `NUTRISCORE_E` en `EUROPEAN_V_LABEL_VEGAN`; besluit en nakijklijst lopen over de 9 van `KEURMERKEN`.
+
+**`scheiding`**
+- `RIJEN` blijft de 10 keuzerijen; `RIJEN_EXTRA = ("NUTRISCORE_D", "NUTRISCORE_E", "EUROPEAN_V_LABEL_VEGAN")`. `bouw_rijen` geeft 13 rijen; een declaratie `EUROPEAN_V_LABEL_VEGETARIAN` telt in de rij `EUROPEAN_V_LABEL_VEGAN`.
+- `kies(rijen, uitgesloten)` kiest alleen op `RIJEN` (zelfde uitkomst als zonder extra rijen, ook als de extra rijen de keuze zouden veranderen); `per_rij` bevat ook de extra rijen, geteld met de gekozen leveranciers, met `"buiten_keuze": true`; `score` alleen over `RIJEN`. `schrijf` zet `"rijen_buiten_keuze": {"rijen": [...], "reden": "<tekst>"}` in `scheiding.json`.
+
+**`toets`**
+- `GELIJKEND`: `VEGAN_SOCIETY_VEGAN_LOGO` → `("VEGAN",)`, `EUROPEAN_V_LABEL_VEGAN` → `("VEGAN",)`, `NUTRISCORE` → `()`; `GELIJKEND_CODES` bevat geen `NUTRISCORE_*` en geen `EUROPEAN_V_LABEL_*`. `OMSCHRIJVING` en `PROMPT` noemen het V-label (vegan of vegetarisch); `SCHEMA_VOORINVULLING` heeft `enum` = `LOS`.
+- `met_v_label(v)`: geeft een kopie van één voorinvulling. Heeft hij `fout`, of al een sleutel `EUROPEAN_V_LABEL_VEGAN` in `keurmerken`, dan ongewijzigd; anders `keurmerken["EUROPEAN_V_LABEL_VEGAN"]` = (`EUROPEAN_V_LABEL_VEGAN` of `EUROPEAN_V_LABEL_VEGETARIAN` in `gelijkend`). `rapport` en `items.json` (stap `voorinvulling`) gebruiken het; `voorinvulling.json` wordt er niet mee herschreven.
+- `rapport(v)` → 9 sleutels (`LOS` + `NUTRISCORE`; Nutri-Score waarschijnlijk = minstens één letter A–E). `letters(v)` → `{"A": n, …, "E": n}`. De opdrachtregel `rapport` print `{"rapport", "nutriscore_per_letter", "stoppunt_2"}`; stoppunt 2 alleen over de 9.
+- `kandidaten`/opdrachtregel: de V-label-rij komt uit `scheiding.bouw_rijen` (vegetarisch telt mee). CODE voor `--alleen`/`--alle` ∈ `LOS` ∪ {`NUTRISCORE`} ∪ `NS`; een lettercode beperkt de Nutri-Score-groep tot die letter met hetzelfde maximum; `per_keurmerk` heeft de opgegeven code als sleutel (bij een lettercode telt `toegevoegd` alleen die letter). Zonder aanvulling: Nutri-Score 40 voor de groep, om de beurt over A–E.
+
+**`generator._logos`** — codes eerst via `VARIANTEN`: een vegetarische V-label-referentie wordt een bron van klasse `EUROPEAN_V_LABEL_VEGAN`, maar nooit het verplichte referentieplaatje (alleen de eigen code); de pool gelijkende bevat geen `NUTRISCORE_D/E` of `EUROPEAN_V_LABEL_*`; `ontbreekt` loopt over de 13.
+
+**`echt`**
+- `GELIJKEND` zonder `NUTRISCORE_D/E` en `EUROPEAN_V_LABEL_*`; prompt en schema met de 13 klassen; `voorlabels` zet een vakje met code `EUROPEAN_V_LABEL_VEGETARIAN` om naar `EUROPEAN_V_LABEL_VEGAN`. `rapport` en `validatie-uitslag` over 13 klassen resp. `KEURMERKEN_LOS` en letters A–E.
+- `kies_nutrigreen(coco, eigen_tegels, eigen_vakjes, budget, seed=20261031, aandeel=0.2, max_leeg=0.1)` → `(ids, rapport)`. `n_max = min(budget, floor(aandeel × (eigen_tegels + budget)))`. Positieven: per categorie (in `KLASSEN`-volgorde, alleen aanwezige) een rij beelden met die categorie op `sha256(str(seed) + ng_naam)`; om de beurt per categorie het volgende nog niet gekozen beeld; stoppen zodra `n_max` bereikt is of het volgende beeld het totaal aantal vakjes boven `eigen_vakjes` zou brengen. Daarna beelden zonder vakje: `min(beschikbaar, aantal_positief // 9, n_max − aantal_positief)`, in de volgorde van `sha256(str(seed) + ng_naam)`. Rapport: `tegels`, `zonder_vakje`, `beelden` en `vakjes` per code, `grens_tegels`, `grens_vakjes`.
+- `echt.py dataset --nutrigreen <coco-map>`: weigert (exitcode ≠ 0, niets gemengd) bij andere categorieën dan de 13; `--meng-aantal` (standaard 1000) is het mengbudget: eerst NutriGreen via `kies_nutrigreen` (eigen tegels en vakjes = die van `train/` vóór het mengen), daarna nagemaakt tot het budget; NutriGreen alleen in `train/`, nooit in `valid/` of `test/`; `rapport.json` krijgt `_nutrigreen`; de map krijgt `herkomst.json` met de attributie, licentie `CC-BY-SA-4.0`, bron `doi:10.5281/zenodo.10020545` en het rapport.
+
+**`train`** — `train-resultaat.json` krijgt `"klassen": list(KLASSEN)` en `"data_herkomst"`: de lijst van de vorige fase (bij `--start`, uit het `train-resultaat.json` ernaast) plus de inhoud van `<dataset>/herkomst.json` als die bestaat.
+
+**`herken`** — `nms` voegt `NUTRISCORE_A` t/m `NUTRISCORE_E` samen; `detecteer` weigert (exitcode ≠ 0, vóór het laden van `torch`) als het `train-resultaat.json` naast het checkpoint ontbreekt of andere `klassen` heeft dan `KLASSEN`.
+
+**`beoordelaar.vraag_voor("EUROPEAN_V_LABEL_VEGAN")`** noemt vegan en vegetarisch als hetzelfde keurmerk; `NUTRISCORE_D/E` krijgen de lettervraag.
+
+**`k4aa_lokaal`** — `meldingen_uit` en `requires_review` zetten `EUROPEAN_V_LABEL_VEGETARIAN` om naar `EUROPEAN_V_LABEL_VEGAN` en houden alle codes uit `KLASSEN` (ook `NUTRISCORE_D/E`).
+
+**`nutrigreen.py` (nieuw, CAP-16)**
+- `MD5 = "6836b94d5c065aee397fad8415396e5a"`, `KLASSE = {0: "NUTRISCORE_A", 1: "NUTRISCORE_B", 2: "NUTRISCORE_C", 3: "NUTRISCORE_D", 4: "NUTRISCORE_E", 5: "EU_ORGANIC_FARMING", 6: "EUROPEAN_V_LABEL_VEGAN"}`, `ATTRIBUTIE` = de tekst uit randvoorwaarden §4, `LICENTIE = "CC-BY-SA-4.0"`.
+- `lees_csv(pad)` → `{stam: [(code, x, y, w, h)]}` (stam = `File Name` zonder `.txt`); een regel met een onbekende klasse-id of een getal buiten [0, 1] → `ValueError` met het regelnummer.
+- `omzetten(zip_pad, annotaties, uit, tegel=1024, toets_gtins=(), toets_glns=(), md5=MD5)` → rapport. Weigert (`ValueError`, niets geschreven) bij een andere md5. Leest per beeld uit de zip (`.jpg`/`.jpeg`/`.png`, hoofdletters ongeacht), koppelt op stam (basisnaam zonder extensie). Schrijft `<uit>/_annotations.coco.json` (categorieën = die van `echt`, `images[*]` met `ng_naam` = stam) en de beelden als JPEG, langste zijde ≤ `tegel`, vakjes in COCO-pixels ((x − w/2)·W, (y − h/2)·H, w·W, h·H) × schaal, binnen het beeld geknipt. Beeld zonder annotatie = achtergrond (zonder vakjes). Vallen af en worden geteld in `rapport["afgevallen"]`: `annotatie_zonder_beeld`, `exif_orientatie` (EXIF-oriëntatie ≠ 1), `toetsleverancier` (stam van 8–14 cijfers: `stam.zfill(14)` in `toets_gtins`, of `stam.zfill(14)[1:8]` gelijk aan `gln[:7]` van een `toets_glns`), `dubbele_naam` (stam komt meer dan eens voor). Rapport ook: `beelden` en `vakjes` per code, `zonder_vakje`, `md5`, `bron`, `attributie`. Schrijft via `beelden.veilig_doel` (nooit in een git-werkboom).
+- Opdrachtregel `python nutrigreen.py omzetten --zip <zip> --csv <data.csv> --proef-map <PM> --uit <map> [--tegel 1024]`: toetsleveranciers en hun GTIN's uit `<PM>/scheiding.json` en `<PM>/invoer/` (alle GLN's in declaraties en alcohollijst buiten de trainingsleveranciers); rapport naar `<uit>/rapport.json` en op stdout.
+
+**`invul/index.html`** — het V-label staat als 8e losse keuze (zelfde radiogroep, `data-testid="keuze-EUROPEAN_V_LABEL_VEGAN"`, naam "V-label (vegan of vegetarisch)"), voorgevuld uit `voorinvulling.keurmerken`; de stand toont 9 (`stand-EUROPEAN_V_LABEL_VEGAN`); `b` en opslaan als bevestigd vragen ook de V-label-keuze; een concept zonder V-label houdt zijn keuzes en toont voor V-label de voorinvulling. Alle invoerregels van toetsset §6 gelden ongewijzigd.
+
+**`DRAAIPLAN.md`** (documenttest) — stap 1 noemt de extra rijen en dat de 5 leveranciers blijven; stap 4 noemt 9 keurmerken en Nutri-Score per letter; stap 5 noemt het V-label; stap 6 bevat een blok "ronde 5" met `toets.py kandidaten … --alle EUROPEAN_V_LABEL_VEGAN --alleen NUTRISCORE_E --max-per 20 --bestaand $T/kandidaten.json --bestaand $T/kandidaten-aanvulling-1.json --naam kandidaten-aanvulling-2 --print-laag-eerst` en de ophaal- en bouwregels met `$T/$N`; stap 10 bevat `nutrigreen.py omzetten` en `echt.py dataset … --nutrigreen`, noemt 20% en de attributie; vijftien stappen blijven.
+
+### Stap 4 — falende tests (workers A en B, parallel als subagent)
+
+| criterium | tests (`R5:` = `tests/test_ronde5_20261101.py`, `R5B:` = `tests/test_ronde5_browser_20261101.py`) | aantal | prio |
+|---|---|---:|---|
+| klassenlijst 13, `VARIANTEN`, gedeeld object | R5: `test_r5_klassen_*` | 4 | P0 |
+| CAP-3/9 `uitslag` (losse codes, vegetarisch geweigerd, bevestigd met V-label, NS A–E groep en per letter, onleesbaar, stand 9) | R5: `test_r5_uitslag_*`, `test_r5_server_*` | 10 | P0 |
+| CAP-9 `tel_proef` (D op D gevonden, verkeerde letter, vals op lege lijst, rijen A–E en V-label, nakijklijst over 9) | R5: `test_r5_tel_*` | 7 | P0 |
+| CAP-1 extra rijen (keuze ongewijzigd ook als ze hem zouden veranderen, `buiten_keuze`, vegetarisch in de V-label-rij, `rijen_buiten_keuze`) | R5: `test_r5_scheiding_*` | 5 | P0 |
+| CAP-2 `toets` (gelijkende, prompt/schema, `met_v_label`, rapport 9, `letters`, opdrachtregel rapport, `items.json` met afgeleid V-label, vegetarische declaratie, `--alleen NUTRISCORE_E`, A–E om de beurt) | R5: `test_r5_toets_*`, `test_r5_cli_*` | 12 | P0 |
+| CAP-4/5/6/7/8/12 (generator-bronnen en harde negatieven, voorlabels, `train-resultaat.json` met `klassen` en `data_herkomst`, `detecteer` weigert vóór torch, NMS A–E, beoordelaarvraag, K4-aa-omzetting) | R5: `test_r5_generator_*`, `test_r5_echt_*`, `test_r5_train_*`, `test_r5_herken_*`, `test_r5_beoordelaar_*`, `test_r5_k4aa_*` | 12 | P1 |
+| CAP-16 omzetten (md5, `lees_csv`, klasse-id's, vakjes na verkleinen, achtergrond, naam met spaties/haakjes, afvallers, categorieën, werkboom geweigerd, opdrachtregel) en mengen (`kies_nutrigreen`: twee grenzen, om de beurt, meerklassenbeeld één keer, ≤ 10% leeg, seed; `dataset --nutrigreen`: categorieën, alleen `train/`, budget met `--meng`, `_nutrigreen`, `herkomst.json`) | R5: `test_r5_nutrigreen_*`, `test_r5_kies_nutrigreen_*`, `test_r5_dataset_nutrigreen_*` | 15 (+15 parameterruns) | P0 |
+| CAP-10 draaiplan stap 1/4/5/6/10 | R5: `test_r5_draaiplan_*` | 5 | P2 |
+| CAP-3 pagina (V-label-keuze voorgevuld, stand 9, `b` weigert zonder V-label en slaat hem op, typen blijft staan bij een V-label-klik, oud concept zonder V-label) | R5B: `test_r5_browser_*` | 5 | P0 |
+
+**Bestaande tests aangepast aan het nieuwe contract** (geen niet-gerelateerde bewering afgezwakt):
+- `test_cap01_scheiding`: `bouw_rijen` geeft 13 rijen; de lokale test op echte invoer vergelijkt de 10 keuzerijen met zijn tabel (de extra rijen staan er nu ook in).
+- `test_cap02_kandidaten::…rapport…`: 9 sleutels; D telt mee voor de groep (2 → 3).
+- `test_cap03_invulpagina`: `volledig()` kiest ook het V-label (raakt ±18 server- en validatietests via de hulpfunctie); lijsttest op `KEURMERKEN_LOS`/`KEURMERKEN`; D telt als mét in `per_keurmerk` en `stand`.
+- `test_cap04_generator`, `test_cap05_echt`: lokale klassenlijst 10 → 13.
+- `test_cap09_telling`: `et()` met V-label; `…_d_en_e_zijn_zonder` hernoemd naar `…_d_en_e_zijn_met` (5/2/2 mét, 1/1 zonder); integratietest (1,1,2) → (2,1,1).
+- `test_cap12_k4aa_runner`: `NUTRISCORE_D` blijft een melding (2 tests).
+- `test_review_20261101`: `et()` en de paginaopzet met V-label; `items.json` draagt het afgeleide V-label; nakijken: Nutri-Score 2 mét / 1 zonder.
+- Browser (worker B, groen vóór en na de bouw): `test_cap03_invulpagina_browser` (hulp `voorinvulling()` vult het V-label als afwezig; `test_p0_concept_per_toetsaanslag` slaat rechtstreeks op als `onleesbaar` in plaats van `bevestigd` met 7 keurmerken, zelfde scenario en beweringen), `test_ronde3_browser_20261101` (`VOLLEDIG` met V-label).
+
+**Aggregatie (step-04c):** beide workers `success`; elke rode test faalt op ontbrekend gedrag (ontbrekende module `nutrigreen` of attribuut, 400 omdat het V-label ontbreekt, `torch` geladen vóór de klassencontrole), geen import- of fixturefout in de testmodules. Beide workers draaiden de tests ook groen tegen een wegwerpbouw in `/tmp` (daarna verwijderd). Vooraf groen en bewust gehouden (3): twee controles dat een onbekende code exitcode 2 geeft, en de controle dat `detecteer` met de 13 klassen tot het laden van `torch` komt. Interpretaties van de workers, vastgelegd zonder het contract te wijzigen: `lees_csv` meldt het bestandsregelnummer (kop = 1); `omzetten(annotaties=…)` krijgt de uitkomst van `lees_csv`; `dubbele_naam` mag per naam of per beeld tellen; `kies_nutrigreen` geeft COCO-image-id's; `herkomst.json` staat in de uitvoermap van `dataset`; `data_herkomst` = vorige lijst + inhoud van `herkomst.json`; `nutrigreen.KLASSEN` en `k4aa_lokaal.KLASSEN` zijn `train.KLASSEN`; de V-label-radiogroep is de 8e in `#keuzes` met toegankelijke naam "V-label (vegan of vegetarisch)"; de conceptsleutel komt van `conceptSleutel`. Bouwvalkuil: `generator.py` heeft al een eigen `VARIANTEN` (beeldvarianten); `train.VARIANTEN` daar onder een andere naam importeren.
+
+### Rode run (02-11-2026, 00:2x)
+
+```
+cd _bmad-output/planning-artifacts/spike-getrainde-detector && uv run --group dev pytest -q -p no:cacheprovider
+105 failed, 543 passed, 18 warnings in 94.68s
+```
+
+648 tests (569 + 74 + 5). Rood: `test_ronde5_20261101.py` 71 (van 74), `test_ronde5_browser_20261101.py` 5 (van 5), aangepaste bestaande tests 29 (`test_cap03_invulpagina` 18, `test_review_20261101` 4, `test_cap09` 2, `test_cap12` 2, `test_cap01`, `test_cap02`, `test_cap05` elk 1). Alle andere bestaande tests groen.
+
+### Stap 5 — validatie en volgende stap
+
+- Voorwaarden: spec-update gereviewd (`bmad-review`, 33 bevindingen verwerkt); framework aanwezig. Elk contractpunt van ronde 5 heeft minstens één test; geen placeholders; geen `test.skip()`; geen vaste wachttijden (browsertests wachten op het klaar-teken); alleen verzonnen ids; alles in `tmp_path`; `~/logo-meetset-20261018/` niet gelezen door de tests.
+- Niet gedekt (bewust): het omzetten van de echte zip (5,1 GB) en het ophalen/bouwen van de V-label- en E-aanvulling tegen productie; die draaien na de keten (alleen lezen, aantallen in het verslag).
+- **Volgende stap:** `bmad-build` op dit interfacecontract; groen maken zonder tests te wijzigen, behalve bij een aantoonbare testfout (met reden in het buildverslag).
+
+### Na de bouw (bmad-build ronde 5, reviewpatches)
+
+Op verzoek van de codereview (drie lagen, 32 bevindingen, 21 doorgevoerd) kwamen er 18 testgevallen bij in `tests/test_ronde5_20261101.py`, alle groen: lege en nieuwe voorinvulling niet afgeleid, `ronde` bij succes en fout, gewone `kandidaten`-run overschrijft niets (2), `--alle NUTRISCORE_E` neemt alles (`over == 0`), Nutri-Score bij `--alleen` én `--alle` → exit 2, `kies_nutrigreen` met `nagemaakt` 0/8/1000, `dataset` zonder of met te weinig `--meng` (≤ 20%, `_nagemaakt`), herhaalde `dataset` zonder `--nutrigreen` wist `herkomst.json`, `train` weigert vóór `_train` (4 gevallen) en de opdrachtregel geeft exit 2. Aanvullingen op het contract (bindend): `voorinvulling()` zet `"ronde": 5`; `met_v_label` leidt alleen af zonder `fout`, zonder `ronde` en met niet-lege `keurmerken`; elke `kandidaten`-run weigert een bestaande lijst; `train.CATEGORIEEN` is de enige categorielijst en `train.controleer_klassen` weigert een set of startcheckpoint met andere klassen; `kies_nutrigreen(…, nagemaakt=None)` met de derde grens `floor(aandeel × (eigen + nagemaakt) / (1 − aandeel))`; `rapport.json._nagemaakt`; `herkomst.json` alleen bij > 0 NutriGreen-tegels; NutriGreen JPEG 90. Testwijzigingen door de bouw (testfout, reden in de buildspec): `test_r5_items_dragen…` en `test_review_20261101::test_voorinvulling_stopt…` legden de te brede afleiding vast; `test_p0_concept_per_toetsaanslag` terug naar `bevestigd` met V-label; `test_r4_cli_gewone_run…` wist eerst de bestaande lijst; drie trainingsfixtures kregen de 13 categorieën (nieuwe verplichte invoer). Suite: **664 passed, 0 failed**. Buildspec: `_bmad-output/implementation-artifacts/spec-spike-getrainde-detector-ronde5.md`.

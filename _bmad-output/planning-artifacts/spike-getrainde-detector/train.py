@@ -21,8 +21,13 @@ from beelden import veilig_doel
 
 MATEN = {"N": "RFDETRNano", "S": "RFDETRSmall", "M": "RFDETRMedium", "L": "RFDETRLarge"}
 FASEN = ("nagemaakt", "echt")
+# De enige klassenlijst (trainingsset §1): COCO-categorie-id = index + 1. De drie van ronde 5 (besluit Friso 01-11-2026)
+# staan achteraan, zodat id 1–10 gelijk blijven.
 KLASSEN = ("EU_ORGANIC_FARMING", "GREEN_DOT", "RECYCLABLE_GENERAL_CLAIM", "NUTRISCORE_A", "NUTRISCORE_B", "NUTRISCORE_C",
-           "PREGNANCY_WARNING", "MARINE_STEWARDSHIP_COUNCIL_LABEL", "WEIDEMELK", "VEGAN_SOCIETY_VEGAN_LOGO")
+           "PREGNANCY_WARNING", "MARINE_STEWARDSHIP_COUNCIL_LABEL", "WEIDEMELK", "VEGAN_SOCIETY_VEGAN_LOGO",
+           "NUTRISCORE_D", "NUTRISCORE_E", "EUROPEAN_V_LABEL_VEGAN")
+VARIANTEN = {"EUROPEAN_V_LABEL_VEGETARIAN": "EUROPEAN_V_LABEL_VEGAN"}  # variant → klasse (meetregels §2)
+CATEGORIEEN = [{"id": i + 1, "name": k, "supercategory": "keurmerk"} for i, k in enumerate(KLASSEN)]  # COCO van echt en nutrigreen
 RESOLUTIE = {"N": 384, "S": 512, "M": 576, "L": 704}
 GEWICHTEN = {  # rfdetr 1.11.2, rfdetr/assets/model_weights.py
     "N": ("rf-detr-nano.pth", "https://storage.googleapis.com/rfdetr/nano_coco/checkpoint_best_regular.pth"),
@@ -151,8 +156,38 @@ def _gewichtsherkomst(cfg):
     return {**cfg["gewichten"], "pad": str(pad), "sha256": _sha256(pad)}
 
 
+def _data_herkomst(cfg):
+    """Herkomst van data van derden (CAP-16): de lijst van de vorige fase (train-resultaat.json naast het startcheckpoint)
+    plus `<dataset>/herkomst.json` als die bestaat. Zo draagt elk model dat op NutriGreen verder traint de attributie."""
+    lijst = []
+    if cfg["start"]:
+        vorige = Path(cfg["start"]).parent / "train-resultaat.json"
+        if vorige.exists():
+            lijst += json.loads(vorige.read_text(encoding="utf-8")).get("data_herkomst", [])
+    eigen = Path(cfg["dataset"]) / "herkomst.json"
+    if eigen.exists():
+        lijst.append(json.loads(eigen.read_text(encoding="utf-8")))
+    return lijst
+
+
+def controleer_klassen(cfg):
+    """ValueError als de COCO-set (`<dataset>/train`) andere categorieën heeft dan de 13 klassen, of het startcheckpoint
+    (train-resultaat.json ernaast) andere `klassen`: rfdetr zou de kop dan stil opnieuw opbouwen (CAP-6)."""
+    coco = Path(cfg["dataset"]) / "train" / "_annotations.coco.json"
+    cat = {c["id"]: c["name"] for c in json.loads(coco.read_text())["categories"]} if coco.exists() else None
+    if cat != {c["id"]: c["name"] for c in CATEGORIEEN}:
+        raise ValueError(f"{coco} ontbreekt of heeft andere categorieën dan de 13 klassen van train.KLASSEN")
+    if cfg["start"]:
+        vorige = Path(cfg["start"]).parent / "train-resultaat.json"
+        klassen = json.loads(vorige.read_text()).get("klassen") if vorige.exists() else None
+        if klassen != list(KLASSEN):
+            raise ValueError(f"startcheckpoint: {vorige} ontbreekt of heeft andere klassen ({klassen})")
+
+
 def train(cfg):
-    """Eén trainingsfase; resultaat met checkpoint, sha256, seed, log, apparaat en herkomst van de gewichten."""
+    """Eén trainingsfase; resultaat met checkpoint, sha256, seed, log, apparaat, klassen en herkomst van gewichten en
+    data. Weigert vóór het werk een set of startcheckpoint met andere klassen (`controleer_klassen`)."""
+    controleer_klassen(cfg)
     uit = Path(cfg["uit"])
     log = uit / "train.log"
     uit.mkdir(parents=True, exist_ok=True)
@@ -161,7 +196,8 @@ def train(cfg):
                                     "checkpoint.pth")]
     ckpt = next((p for p in kandidaten if p.exists()), None) or max(uit.glob("*.pth"), key=lambda p: p.stat().st_mtime)
     resultaat = {"config": cfg, "checkpoint": str(ckpt), "sha256": _sha256(ckpt), "seed": cfg["seed"], "log": str(log),
-                 "apparaat": apparaat, "duur_s": duur, "gewichten": _gewichtsherkomst(cfg)}
+                 "apparaat": apparaat, "duur_s": duur, "gewichten": _gewichtsherkomst(cfg), "klassen": list(KLASSEN),
+                 "data_herkomst": _data_herkomst(cfg)}
     (uit / "train-resultaat.json").write_text(json.dumps(resultaat, indent=1, sort_keys=True))
     return resultaat
 
@@ -231,6 +267,7 @@ def main(argv=None):
             _maat(a.maat, a.besluit)
         else:
             cfg = config(a.fase, a.maat, a.dataset, a.uit, a.epochs, a.seed, a.start, besluit=a.besluit)
+            controleer_klassen(cfg)
     except ValueError as e:
         print(f"niet gestart: {e}", file=sys.stderr)
         return 2

@@ -11,14 +11,20 @@ wordt per code samengevoegd (herken.nms, IoU 0,5).
   python echt.py voorlabels --lijst <json [{doc_id, gln, pad}]> --proef-map <PM> --uit <voorlabels.json> --zdr-logo <png>
                             [--grens <dollar> --besluit "<verwijzing>"]   (standaard de grens $50, besluit Friso 01-11-2026)
   python echt.py dataset --lijst <json> --voorlabels <voorlabels.json> --proef-map <PM> --uit <PM>/train/echt
-                         [--meng <PM>/train/nagemaakt/train --meng-aantal 1000]   (fase 2: deel nagemaakte tegels erbij)
+                         [--meng <PM>/train/nagemaakt/train --meng-aantal 1000] [--nutrigreen <PM>/nutrigreen/coco]
+      (fase 2: het mengbudget --meng-aantal gaat eerst naar NutriGreen tot zijn grens (kies_nutrigreen: ≤ 20% van de
+       trainingstegels, ≤ de eigen echte vakjes), de rest naar nagemaakte tegels; NutriGreen alleen in train/)
       → train/, valid/, test/ (kopie van valid, voor rfdetr), achtergronden.json (alleen de trainingskant),
         validatie-waarheid.json {doc: {"aanwezig": [...], "onzeker": [...]}}, validatie-lijst.json, rapport.json
+        (met _nutrigreen en _nagemaakt), herkomst.json (attributie en licentie van NutriGreen, als er NutriGreen-tegels
+        gemengd zijn)
   python echt.py validatie-uitslag --waarheid <echt/validatie-waarheid.json> --uit <echt/validatie-uitslag.json>
 """
 import argparse
+import hashlib
 import io
 import json
+import math
 import random
 import shutil
 import sys
@@ -32,11 +38,11 @@ import herken
 import openrouter
 import scheiding
 from toets import aanroepen, grens_uit, jpeg
-from train import KLASSEN
+from train import CATEGORIEEN, KLASSEN, VARIANTEN
+
 GELIJKEND = ("AGRICULTURE_BIOLOGIQUE", "BDIH_LOGO", "TRIMAN", "SEPARATE_COLLECTION", "SOCIETY_PLASTICS_INDUSTRY",
-             "RETURNABLE_CAN_NL", "NUTRISCORE_D", "NUTRISCORE_E", "MINIMUM_DRINKING_AGE_18_WARNING",
-             "DO_NOT_DRINK_AND_DRIVE_WARNING", "AQUACULTURE_STEWARDSHIP_COUNCIL", "BETER_LEVEN_1_STER",
-             "BETER_LEVEN_2_STER", "EUROPEAN_V_LABEL_VEGAN", "EUROPEAN_V_LABEL_VEGETARIAN", "VEGAN")
+             "RETURNABLE_CAN_NL", "MINIMUM_DRINKING_AGE_18_WARNING", "DO_NOT_DRINK_AND_DRIVE_WARNING",
+             "AQUACULTURE_STEWARDSHIP_COUNCIL", "BETER_LEVEN_1_STER", "BETER_LEVEN_2_STER", "VEGAN")
 SCHEMA_VOORLABELS = {
     "type": "object",
     "properties": {"vakjes": {"type": "array", "items": {
@@ -53,7 +59,8 @@ PROMPT = (
     "Image 0 is a whole product label; images 1, 2, ... are tiles of the same label. Draw a box around every printed "
     "quality mark, logo or pictogram you see. For each box give the image number it is drawn in, the code, the box as "
     "[x0, y0, x1, y1] in pixels of that image as you received it, and onzeker=true if you are not sure of the code or "
-    "the box. Use these codes: " + ", ".join(KLASSEN) + " (Nutri-Score: the highlighted letter); look-alike marks: "
+    "the box. Use these codes: " + ", ".join(KLASSEN) + " (Nutri-Score: the highlighted letter; European V-Label: "
+    "EUROPEAN_V_LABEL_VEGAN for the vegan and the vegetarian V-Label alike); look-alike marks: "
     + ", ".join(GELIJKEND) + "; anything else: ander. Text without a logo is not a mark."
 )
 MIN_ZICHTBAAR = 0.6
@@ -166,7 +173,8 @@ def valsplit(etiketten, fractie=0.3, seed=20261031, overgeslagen=None):
 
 def voorlabels(client, beeld, tegels, maat=None):
     """Heel etiket, dan per aanroep de tegels die `openrouter.delen` toelaat (hoogstens MAX_TEGELS en MAX_BEELD_BYTES,
-    overzicht meegeteld); vakjes van de 10 klassen in etiketcoördinaten, opgeschoond met `schoon`. `tegels` =
+    overzicht meegeteld); vakjes van de 13 klassen in etiketcoördinaten (vegetarisch V-label → V-label), opgeschoond
+    met `schoon`. `tegels` =
     [(beeldbytes, (x0, y0, x1, y1) in het etiket)]; `maat` = (w, h) van het etiket als het hele beeld verkleind is.
     Past het overzicht plus één tegel niet: EtiketFout("te_groot") zonder aanroep. Een antwoord in een andere vorm:
     EtiketFout("antwoord_ongeldig")."""
@@ -183,11 +191,12 @@ def voorlabels(client, beeld, tegels, maat=None):
                 tw, th = _maat(png)
                 schalen.append(((x1 - x0) / tw, (y1 - y0) / th, x0, y0))
             for v in a["vakjes"]:
-                if v["code"] not in KLASSEN or not 0 <= v["beeld"] < len(schalen) or len(v["box"]) != 4:
+                code = VARIANTEN.get(v["code"], v["code"])
+                if code not in KLASSEN or not 0 <= v["beeld"] < len(schalen) or len(v["box"]) != 4:
                     continue
                 sx, sy, dx, dy = schalen[v["beeld"]]
                 b = v["box"]
-                uit.append({"code": v["code"], "box": (round(b[0] * sx + dx), round(b[1] * sy + dy), round(b[2] * sx + dx),
+                uit.append({"code": code, "box": (round(b[0] * sx + dx), round(b[1] * sy + dy), round(b[2] * sx + dx),
                                                         round(b[3] * sy + dy)), "onzeker": bool(v["onzeker"])})
     except (TypeError, AttributeError, KeyError, ValueError):
         raise openrouter.EtiketFout("antwoord_ongeldig") from None
@@ -206,6 +215,50 @@ def rapport(train, valid):
     return r
 
 
+def kies_nutrigreen(coco, eigen_tegels, eigen_vakjes, budget, seed=20261031, aandeel=0.2, max_leeg=0.1, nagemaakt=None):
+    """(COCO-image-id's, rapport) van de NutriGreen-tegels voor fase 2 (trainingsset §10). Hoogstens
+    n_max = min(budget, floor(aandeel × (eigen_tegels + budget)), floor(aandeel × (eigen_tegels + nagemaakt) /
+    (1 − aandeel))) tegels, zodat NutriGreen ook ≤ aandeel blijft als er minder dan budget − NutriGreen nagemaakte tegels
+    zijn (`nagemaakt` = beschikbare nagemaakte tegels, None = onbeperkt), en hoogstens `eigen_vakjes` vakjes. Positieven
+    om de beurt per klasse (KLASSEN-volgorde, alleen aanwezige), binnen een klasse op sha256(str(seed) + ng_naam); een
+    beeld met meer klassen wordt één keer gekozen en telt voor elk. Stopt zodra n_max bereikt is of het volgende beeld de
+    vakjesgrens zou passeren. Daarna beelden zonder vakje: min(beschikbaar, positief // 9, n_max − positief), zodat ze
+    hoogstens `max_leeg` (10%) van de gekozen tegels zijn."""
+    n_max = min(budget, math.floor(round(aandeel * (eigen_tegels + budget), 9)))  # round: geen 28,999… door float
+    if nagemaakt is not None:
+        n_max = min(n_max, math.floor(round(aandeel * (eigen_tegels + nagemaakt) / (1 - aandeel), 9)))
+    naam = {c["id"]: c["name"] for c in coco["categories"]}
+    codes = {im["id"]: [] for im in coco["images"]}
+    for a in coco["annotations"]:
+        codes[a["image_id"]].append(naam[a["category_id"]])
+    sleutel = {im["id"]: hashlib.sha256((str(seed) + im["ng_naam"]).encode()).hexdigest() for im in coco["images"]}
+    rijen = [sorted((i for i, c in codes.items() if k in c), key=sleutel.get) for k in KLASSEN]
+    rijen = [iter(r) for r in rijen if r]
+    gekozen, al, vakjes = [], set(), 0
+    while rijen and len(gekozen) < n_max:
+        for r in list(rijen):
+            i = next((i for i in r if i not in al), None)
+            if i is None:
+                rijen.remove(r)
+                continue
+            if vakjes + len(codes[i]) > eigen_vakjes:
+                rijen = []
+                break
+            gekozen.append(i)
+            al.add(i)
+            vakjes += len(codes[i])
+            if len(gekozen) >= n_max:
+                break
+    positief = len(gekozen)
+    leeg = sorted((i for i, c in codes.items() if not c), key=sleutel.get)
+    gekozen += leeg[:min(len(leeg), math.floor(round(max_leeg / (1 - max_leeg) * positief, 9)), n_max - positief)]
+    aanwezig = [k for k in KLASSEN if any(k in c for c in codes.values())]
+    return gekozen, {"tegels": len(gekozen), "zonder_vakje": len(gekozen) - positief,
+                     "beelden": {k: sum(k in codes[i] for i in gekozen) for k in aanwezig},
+                     "vakjes": {k: sum(codes[i].count(k) for i in gekozen) for k in aanwezig},
+                     "grens_tegels": n_max, "grens_vakjes": eigen_vakjes}
+
+
 # --- opdrachtregel (lijm) ----------------------------------------------------------------------------------------
 
 def _rgb(pad):
@@ -216,9 +269,8 @@ def _rgb(pad):
 def _coco(tegels, pad_per_doc, map_):
     """Tegels als COCO-set; elk etiket wordt één keer geopend, gebruikt en losgelaten (niet alles tegelijk in het geheugen)."""
     map_.mkdir(parents=True, exist_ok=True)
-    cat = {k: i + 1 for i, k in enumerate(KLASSEN)}  # zelfde categorieën als generator.py
-    coco = {"images": [], "annotations": [],
-            "categories": [{"id": i, "name": k, "supercategory": "keurmerk"} for k, i in cat.items()]}
+    cat = {c["name"]: c["id"] for c in CATEGORIEEN}
+    coco = {"images": [], "annotations": [], "categories": CATEGORIEEN}
     huidig = beeld = None
     for i, t in enumerate(tegels):
         if t["doc_id"] != huidig:
@@ -264,7 +316,9 @@ def main(argv=None):
     d.add_argument("--tegel", type=int, default=1024)
     d.add_argument("--overlap", type=int, default=256)
     d.add_argument("--meng", type=Path, help="COCO-map met nagemaakte tegels die (deels) bij train komen")
-    d.add_argument("--meng-aantal", type=int, default=1000)
+    d.add_argument("--meng-aantal", type=int, default=1000,
+                   help="mengbudget van fase 2: eerst NutriGreen tot zijn grens, de rest nagemaakt")
+    d.add_argument("--nutrigreen", type=Path, help="COCO-map van nutrigreen.py omzetten (alleen in train/, CAP-16)")
     w = sub.add_parser("validatie-uitslag")
     w.add_argument("--waarheid", required=True, type=Path)
     w.add_argument("--uit", required=True, type=Path)
@@ -280,7 +334,7 @@ def main(argv=None):
             ns = sorted(c[-1] for c in aanwezig if c.startswith("NUTRISCORE_"))
             uit[doc] = {"status": "bevestigd",
                         "keurmerken": {k: "aanwezig" if k in aanwezig else "onzeker" if k in onzeker else "afwezig"
-                                       for k in us.KEURMERKEN7},
+                                       for k in us.KEURMERKEN_LOS},
                         "nutriscore": ns if ns or not any(c.startswith("NUTRISCORE_") for c in onzeker) else "onleesbaar",
                         "veranderd": [], "opmerking": "validatie (AI-vakjes, niet door Friso bevestigd)", "tijd": ""}
         beelden.veilig_doel(a.uit).write_text(json.dumps(uit, indent=1))
@@ -325,6 +379,11 @@ def main(argv=None):
         return 0
 
     uit = beelden.veilig_doel(a.uit)
+    ng = None
+    if a.nutrigreen:  # vóór er iets geschreven wordt: andere categorieën zouden klassen verwisselen
+        ng = json.loads((a.nutrigreen / "_annotations.coco.json").read_text(encoding="utf-8"))
+        if {c["id"]: c["name"] for c in ng["categories"]} != {c["id"]: c["name"] for c in CATEGORIEEN}:
+            raise SystemExit("--nutrigreen: andere categorieën dan de 13 klassen; niets gemengd")
     vl = json.loads(a.voorlabels.read_text())
     et, pad, waarheid = [], {}, {}
     for e in lijst:
@@ -341,23 +400,50 @@ def main(argv=None):
     train, valid = valsplit(et, overgeslagen=overgeslagen)
     for kant, docs in (("train", train), ("valid", valid)):
         _coco(naar_tegels([e for e in et if e["doc_id"] in docs], train_glns, a.tegel, a.overlap), pad, uit / kant)
-    if a.meng:  # vaste keuze: de eerste N nagemaakte tegels (de generator schudt al met zijn seed)
+    rp_ng, n_nep = None, 0
+    if a.meng or ng:  # mengbudget: eerst NutriGreen tot zijn grens, de rest de eerste nagemaakte tegels (al geschud)
         coco = json.loads((uit / "train" / "_annotations.coco.json").read_text())
-        extra = json.loads((a.meng / "_annotations.coco.json").read_text())
-        if extra["categories"] != coco["categories"]:
-            raise SystemExit("--meng: andere categorieën dan de echte set; samenvoegen op id zou klassen verwisselen")
-        ids = [im["id"] for im in extra["images"][:a.meng_aantal]]
-        nieuw = {i: len(coco["images"]) + n for n, i in enumerate(ids)}
-        for im in extra["images"][:a.meng_aantal]:
-            shutil.copyfile(a.meng / im["file_name"], uit / "train" / im["file_name"])
-            coco["images"].append({**im, "id": nieuw[im["id"]]})
-        for x in extra["annotations"]:
-            if x["image_id"] in nieuw:
-                coco["annotations"].append({**x, "id": len(coco["annotations"]), "image_id": nieuw[x["image_id"]]})
-        (uit / "train" / "_annotations.coco.json").write_text(json.dumps(coco, indent=1))
+        delen = []
+        if a.meng:
+            extra = json.loads((a.meng / "_annotations.coco.json").read_text())
+            if extra["categories"] != coco["categories"]:
+                raise SystemExit("--meng: andere categorieën dan de echte set; samenvoegen op id zou klassen verwisselen")
+        if ng:  # eigen tegels en vakjes van train/ vóór het mengen
+            ids, rp_ng = kies_nutrigreen(ng, len(coco["images"]), len(coco["annotations"]), a.meng_aantal,
+                                         nagemaakt=len(extra["images"]) if a.meng else 0)
+            per_id = {im["id"]: im for im in ng["images"]}
+            delen.append((a.nutrigreen, [per_id[i] for i in ids], ng["annotations"]))
+        if a.meng:
+            nep = extra["images"][:a.meng_aantal - (rp_ng or {}).get("tegels", 0)]
+            n_nep = len(nep)
+            delen.append((a.meng, nep, extra["annotations"]))
+        namen = {im["file_name"] for im in coco["images"]}
+        for map_, ims, annotaties in delen:
+            if namen & {im["file_name"] for im in ims}:
+                raise SystemExit(f"{map_}: bestandsnaam bestaat al in train/; mengen zou een tegel overschrijven")
+            namen |= {im["file_name"] for im in ims}
+            nieuw = {im["id"]: len(coco["images"]) + n for n, im in enumerate(ims)}
+            for im in ims:
+                shutil.copyfile(map_ / im["file_name"], uit / "train" / im["file_name"])
+                coco["images"].append({**im, "id": nieuw[im["id"]]})
+            for x in annotaties:
+                if x["image_id"] in nieuw:
+                    coco["annotations"].append({**x, "id": len(coco["annotations"]), "image_id": nieuw[x["image_id"]]})
+        (uit / "train" / "_annotations.coco.json").write_text(json.dumps(coco, indent=1))  # ASCII: elke lezer kan hem aan
     shutil.copytree(uit / "valid", uit / "test", dirs_exist_ok=True)  # rfdetr wil een test-map; de toetsset is het nooit
     rp = {**rapport([e for e in et if e["doc_id"] in train], [e for e in et if e["doc_id"] in valid]),
-          "_overgeslagen_clusters": overgeslagen}
+          "_overgeslagen_clusters": overgeslagen, "_nagemaakt": n_nep}
+    herkomst = uit / "herkomst.json"  # train.py neemt hem over in train-resultaat.json (attributie, randvoorwaarden §4)
+    if rp_ng is not None:
+        rp["_nutrigreen"] = rp_ng
+    if rp_ng and rp_ng["tegels"] > 0:
+        import nutrigreen
+
+        herkomst.write_text(json.dumps({"bron": nutrigreen.BRON, "attributie": nutrigreen.ATTRIBUTIE,
+                                        "licentie": nutrigreen.LICENTIE, "rapport": rp_ng}, indent=1, ensure_ascii=False),
+                            encoding="utf-8")
+    else:
+        herkomst.unlink(missing_ok=True)  # geen NutriGreen gemengd: geen attributie van een eerdere run
     (uit / "rapport.json").write_text(json.dumps(rp, indent=1))
     achtergronden = [{"pad": pad[e["doc_id"]], "gtin": e["doc_id"].split("-")[1], "meldingen": e["meldingen"]}
                      for e in et if e["doc_id"] in train]  # alleen de trainingskant: validatie blijft buiten de generator

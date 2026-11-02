@@ -24,7 +24,9 @@ from PIL import Image, ImageChops, ImageFilter, ImageOps
 
 import beelden
 from train import KLASSEN
-CATEGORIE = {k: i + 1 for i, k in enumerate(KLASSEN)}  # COCO-categorie-id's 1..10, naam = code
+from train import VARIANTEN as KLASSE_VAN_VARIANT  # VARIANTEN hieronder zijn de beeldvarianten
+
+CATEGORIE = {k: i + 1 for i, k in enumerate(KLASSEN)}  # COCO-categorie-id's 1..13, naam = code
 VARIANTEN = ("kleur", "zwartwit", "lijn", "negatief")
 MIN_PX, MAX_PX, MAX_HOEK, KANS_GELIJKEND, MIN_ZICHTBAAR = 40, 200, 5.0, 0.3, 0.6
 
@@ -202,7 +204,8 @@ def _gtin_gln(inv):
 
 
 def _logos(pm):
-    """Logobronnen per klasse (trainingsset §2): publiek/GS1/synthetisch, plus schone uitsneden van trainingsleveranciers."""
+    """Logobronnen per klasse (trainingsset §2): publiek/GS1/synthetisch, plus schone uitsneden van trainingsleveranciers.
+    Een variant (vegetarisch V-label) is een bron van zijn klasse, maar nooit het verplichte referentieplaatje."""
     import scheiding
     import toets
 
@@ -213,8 +216,8 @@ def _logos(pm):
     publiek = {"gs1-packaging-label-guide", "synthetic-nutriscore-bootstrap"}
     bronnen, gelijkend, referenties = [], [], {}
     for r in json.loads((inv / "momentopname/actieve-refs.json").read_text()):
-        pad, bron = mo / r["path"], r.get("source") or ""
-        if r["code"] not in CATEGORIE and r["code"] not in toets.GELIJKEND_CODES or not pad.exists():
+        pad, bron, klasse = mo / r["path"], r.get("source") or "", KLASSE_VAN_VARIANT.get(r["code"], r["code"])
+        if klasse not in CATEGORIE and klasse not in toets.GELIJKEND_CODES or not pad.exists():
             continue
         if np.asarray(Image.open(pad).convert("L")).std() < 3:
             continue  # vrijwel egaal: valt altijd af (toetsset §2)
@@ -225,10 +228,10 @@ def _logos(pm):
             gtin = next(iter(gtins)) if len(gtins) == 1 else None
             if gtin is None or gtin_gln.get(gtin) not in train:
                 continue  # uitsnede niet van een trainingsleverancier
-        item = {"klasse": r["code"], "pad": str(pad), "gtin": gtin, "herkomst": f"{bron} {r['id']}",
+        item = {"klasse": klasse, "pad": str(pad), "gtin": gtin, "herkomst": f"{bron} {r['id']}",
                 "sha256": hashlib.sha256(pad.read_bytes()).hexdigest(), "licentie": "alleen intern"}
-        (bronnen if r["code"] in CATEGORIE else gelijkend).append(item)
-        if r["code"] in CATEGORIE and gtin is None:  # verplicht referentieplaatje: bron 1 (http) vóór bron 2
+        (bronnen if klasse in CATEGORIE else gelijkend).append(item)
+        if r["code"] in CATEGORIE and gtin is None:  # verplicht referentieplaatje (eigen code): bron 1 (http) vóór bron 2
             oud = referenties.get(r["code"])
             if oud is None or (bron.startswith("http") and not oud["herkomst"].startswith("http")):
                 referenties[r["code"]] = {"pad": str(pad), "herkomst": item["herkomst"], "sha256": item["sha256"]}

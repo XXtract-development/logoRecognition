@@ -26,7 +26,7 @@ def wilson(k, n, z=1.959963984540054):  # z zoals fase-b/tel.py (Z), die meetreg
 
 
 def et(aanwezig=(), onzeker=(), nutriscore=(), status="bevestigd"):
-    k = {c: ("aanwezig" if c in aanwezig else "onzeker" if c in onzeker else "afwezig") for c in K7}
+    k = {c: ("aanwezig" if c in aanwezig else "onzeker" if c in onzeker else "afwezig") for c in K7 + ("EUROPEAN_V_LABEL_VEGAN",)}
     ns = nutriscore if isinstance(nutriscore, str) else list(nutriscore)
     return {"status": status, "keurmerken": k, "nutriscore": ns, "veranderd": [], "opmerking": "", "tijd": "2026-10-31T21:00:00+01:00"}
 
@@ -64,13 +64,13 @@ def test_cap09_definities_gevonden_en_vals_per_etiket_met_wilson(tp):
     assert set(K8) <= set(r)
 
 
-def test_cap09_nutriscore_groep_verkeerde_letter_is_gemist_d_en_e_zijn_zonder(tp):
+def test_cap09_nutriscore_groep_verkeerde_letter_is_gemist_d_en_e_zijn_met(tp):  # ronde 5: groep A–E
     uitslag = {"n1": et(nutriscore=["B"]), "n2": et(nutriscore=["B"]), "n3": et(nutriscore=["D"]), "n4": et(nutriscore=["E"]),
                "n5": et(nutriscore="onleesbaar"), "n6": et(nutriscore=[]), "n7": et(nutriscore=["A", "B"])}
     meld = {"n1": {NSB}, "n2": {NSC}, "n3": {NSA}, "n4": set(), "n5": {NSA}, "n6": {NSC}, "n7": {NSB}}
     ns = tp.tel(uitslag, meld)["NUTRISCORE"]
-    assert (ns["met"], ns["gevonden"], ns["verkeerde_letter"]) == (3, 2, 1)
-    assert (ns["zonder"], ns["vals"]) == (3, 2)  # n3 (D), n4 (E), n6 (geen); n5 onleesbaar telt niet
+    assert (ns["met"], ns["gevonden"], ns["verkeerde_letter"]) == (5, 2, 2)  # n3 (D, gemeld A) gemist en verkeerd
+    assert (ns["zonder"], ns["vals"]) == (1, 1)  # alleen n6 (geen); n5 onleesbaar telt niet
 
 
 def test_cap09_gedeelde_negatieven_een_etiket_telt_als_zonder_voor_elk_afwezig_keurmerk(tp):
@@ -172,7 +172,7 @@ def test_cap09_integratie_server_uitslag_json_telscript(tp, tmp_path):
     r = tp.tel(uitslag, {docs[0]: {GD, NSA}, docs[1]: {GD}, docs[2]: set()})
     assert (r[GD]["met"], r[GD]["gevonden"], r[GD]["zonder"], r[GD]["vals"]) == (1, 1, 2, 1)
     assert (r[EU]["met"], r[EU]["gevonden"]) == (1, 0)
-    assert (r["NUTRISCORE"]["met"], r["NUTRISCORE"]["gevonden"], r["NUTRISCORE"]["zonder"]) == (1, 1, 2)
+    assert (r["NUTRISCORE"]["met"], r["NUTRISCORE"]["gevonden"], r["NUTRISCORE"]["zonder"]) == (2, 1, 1)  # ronde 5: D is mét
     assert r["geldig"] is True
 
 

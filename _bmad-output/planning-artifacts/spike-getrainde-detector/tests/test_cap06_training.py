@@ -46,7 +46,9 @@ def test_cap06_uitvoermap_binnen_een_git_werkboom_wordt_geweigerd(tr, tmp_path):
 
 
 def mini_coco(map_, n=2, maat=320):
-    """train/valid/test met elk n beelden en één vakje van klasse GREEN_DOT."""
+    """train/valid/test met elk n beelden en één vakje van klasse GREEN_DOT; categorieën = de 13 klassen (ronde 5: `train`
+    weigert een set met andere categorieën)."""
+    tr = importlib.import_module("train")
     for split in ("train", "valid", "test"):
         d = map_ / split
         d.mkdir(parents=True)
@@ -56,8 +58,9 @@ def mini_coco(map_, n=2, maat=320):
             ImageDraw.Draw(im).ellipse((100, 100, 180, 180), fill=(0, 110, 40))
             im.save(d / f"t{i}.jpg", quality=92)
             images.append({"id": i, "file_name": f"t{i}.jpg", "width": maat, "height": maat})
-            annotations.append({"id": i, "image_id": i, "category_id": 1, "bbox": [100, 100, 80, 80], "area": 6400, "iscrowd": 0})
-        coco = {"images": images, "annotations": annotations, "categories": [{"id": 1, "name": "GREEN_DOT", "supercategory": "keurmerk"}]}
+            annotations.append({"id": i, "image_id": i, "category_id": tr.KLASSEN.index("GREEN_DOT") + 1,
+                                "bbox": [100, 100, 80, 80], "area": 6400, "iscrowd": 0})
+        coco = {"images": images, "annotations": annotations, "categories": tr.CATEGORIEEN}
         (d / "_annotations.coco.json").write_text(json.dumps(coco))
 
 
@@ -80,7 +83,7 @@ def test_cap06_rooktest_paar_iteraties_geeft_laadbaar_checkpoint_met_herkomst(tr
     kandidaten = hk.voorspel(model, tegel, drempel=0.0)
     assert isinstance(kandidaten, list)
     assert all({"code", "box", "score"} <= set(x) and 0.0 <= x["score"] <= 1.0 and len(x["box"]) == 4 for x in kandidaten)
-    assert {x["code"] for x in kandidaten} <= {"GREEN_DOT"}  # alleen klassen uit de trainingsset
+    assert {x["code"] for x in kandidaten} <= set(tr.KLASSEN)  # alleen klassen uit de trainingsset (de 13 categorieën)
 
 
 @pytest.mark.zwaar

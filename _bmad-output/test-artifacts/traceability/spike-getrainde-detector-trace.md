@@ -1,11 +1,12 @@
 ---
 stepsCompleted: ['step-01-load-context', 'step-02-discover-tests', 'step-03-map-criteria', 'step-04-analyze-gaps', 'step-05-gate-decision']
 lastStep: 'step-05-gate-decision'
-lastSaved: '2026-11-01'
-run: 5
-head: '039b14f + niet-gecommitte ronde 4 (spec, ATDD, bouw)'
+lastSaved: '2026-11-02'
+run: 6
+head: '08d2cf7 + niet-gecommitte ronde 5 (spec, ATDD, bouw)'
 gate: 'PASS'
 vorige_runs:
+  - {run: 5, head: '039b14f + ronde 4 (gecommit als 08d2cf7 e.e.)', gate: 'PASS', reden: 'ronde 4 volledig gedekt'}
   - {run: 4, head: '89887f2 + ronde 3 (gecommit als 039b14f e.e.)', gate: 'PASS', reden: 'ronde 3 volledig gedekt'}
   - {run: 3, head: 'c6c2a23 + testuitbreiding B-IO-1 (gecommit als 89887f2)', gate: 'PASS', reden: 'B-IO-1 gedicht'}
   - {run: 1, head: 'e157e5f', gate: 'FAIL', reden: 'licentietest echte omgeving rood (stoppunt 4)'}
@@ -14,10 +15,10 @@ vorige_runs:
 
 # Traceability — spike proef getrainde detector
 
-> [!note] Gatebesluit run 5: PASS
-> P0-dekking 41/41 (100%), P1 11/11 (100%), totaal 53/55 (96%); alle tests groen (569/569 in twee volledige runs na de reviewpatches, `zwaar or lokaal` 4/4) en de licentiecontrole op de echte omgeving schoon (93 pakketten, 0 overtredingen). Nieuw in run 5: ronde 4 (aanvulling vóór de bevestiging, certificaattekst aanvullen, grens voorlabels $50; besluiten Friso 01-11-2026) met 8 criteria uit `spec-spike-getrainde-detector-ronde4.md`, alle FULL. Blijft gedeeltelijk, zonder blokkade: CAP-6a en AC-2 (P2, MPS niet beweerd).
+> [!note] Gatebesluit run 6: PASS
+> P0-dekking 57/57 (100%), P1 21/21 (100%), totaal 80/82 (98%); alle tests groen (664/664 in twee volledige runs na de reviewpatches, `zwaar or lokaal` 4/4) en de licentiecontrole op de echte omgeving schoon (93 pakketten, 0 overtredingen). Nieuw in run 6: ronde 5 (besluiten Friso 01-11-2026: Nutri-Score A–E, V-label als 9e keurmerk met vegetarisch als variant, V-label geen gelijkend van Vegan Society, NutriGreen in de training) met 27 criteria uit SPEC (CAP-1/2/3/4/5/6/7/8/9/10/12/16) en `spec-spike-getrainde-detector-ronde5.md`, alle FULL. Blijft gedeeltelijk, zonder blokkade: CAP-6a en AC-2 (P2, MPS niet beweerd).
 >
-> **Let op:** ronde 4 is nog niet gecommit; de werkboom is HEAD `039b14f` plus de spec-update, de ATDD-tests, de bouw en deze trace. Commit ze samen, anders klopt het besluit niet met de tak.
+> **Let op:** ronde 5 is nog niet gecommit (opdracht: niet committen); de werkboom is HEAD `08d2cf7` plus de spec-update, de ATDD-tests, de bouw en deze trace. Commit ze samen, anders klopt het besluit niet met de tak.
 
 ## Historie
 
@@ -27,7 +28,8 @@ vorige_runs:
 | 2 | 01-11-2026 | `c6c2a23` | 485/485 / 4/4 | 34/37 (92%), P0 24/25, P1 9/9 | FAIL | P0-dekkingsgat B-IO-1 (hoofdletterongevoeligheid ongetest). Geen rode test. |
 | 3 | 01-11-2026 | `c6c2a23` + testuitbreiding | 494/494 / 4/4 | 35/37 (95%), P0 25/25, P1 9/9 | PASS | B-IO-1 gedicht; alleen P2 gedeeltelijk (CAP-6a, AC-2). |
 | 4 | 01-11-2026 | `89887f2` + ronde 3 | 543/543 / 4/4 | 45/47 (96%), P0 34/34, P1 10/10 | PASS | ronde 3 volledig gedekt; alleen P2 gedeeltelijk (CAP-6a, AC-2). |
-| 5 | 01-11-2026 | `039b14f` + ronde 4 | 569/569 / 4/4 | 53/55 (96%), P0 41/41, P1 11/11 | **PASS** | ronde 4 volledig gedekt; alleen P2 gedeeltelijk (CAP-6a, AC-2). |
+| 5 | 01-11-2026 | `039b14f` + ronde 4 | 569/569 / 4/4 | 53/55 (96%), P0 41/41, P1 11/11 | PASS | ronde 4 volledig gedekt; alleen P2 gedeeltelijk (CAP-6a, AC-2). |
+| 6 | 02-11-2026 | `08d2cf7` + ronde 5 | 664/664 / 4/4 | 80/82 (98%), P0 57/57, P1 21/21 | **PASS** | ronde 5 volledig gedekt; alleen P2 gedeeltelijk (CAP-6a, AC-2). |
 
 Wat in run 5 veranderde: ronde 4 (niet gecommit op `039b14f`). Spec-update via `bmad-spec` (SPEC CAP-2/14/15, Constraints uitgaven, stoppunt 2 en 5; randvoorwaarden §3; toetsset §3–§4; trainingsset §4), getoetst met `bmad-review` (15 bevindingen, alle doorgevoerd). ATDD ronde 4: 19 tests in `tests/test_ronde4_20261101.py`, rode run 17 failed / 543 passed; twee ronde-3-tests vervielen door het besluit van Friso (`test_r3_echt_projectie_per_aanroep_tegen_standaardgrens_15`, `test_r3_draaiplan_stap_9_voorlabels_pas_na_besluit_over_hun_grens`). Bouw via `bmad-build` (route dispatch, 3 reviewlagen; 13 patchgroepen doorgevoerd, waarvan 9 extra testgevallen; 1 uitgesteld, 9 verworpen). Productiecode: `toets.py` (`kandidaten` met `bestaand`/`maxima`/`voorkeur`, opdrachtregel `--alle`, `--naam`, `--print-laag-eerst`, herhaalbare `--alleen`/`--bestaand`, weigeringen, JSON-melding), `beelden.py` (`pdftekst` vult atomisch aan), `echt.py` (`GRENS_VOORLABELS = 50.0`, `--raming` weg); `DRAAIPLAN.md` stap 4/6/9 en kostennotitie.
 
@@ -65,6 +67,14 @@ Volledige tekst van run 1: `git show 55a22a9:_bmad-output/test-artifacts/traceab
 - **Nieuwe criteria:** de bijgewerkte `success`-regels van CAP-2 (aanvulling), CAP-10 (draaiplan stap 4/6/9), CAP-14 (voorlabels $50) en CAP-15 (aanvullen van manifest en certificaattekst), met toetsset §3–§4 en randvoorwaarden §3; de 2 AC's en 6 I/O-rijen van `spec-spike-getrainde-detector-ronde4.md` (status `done`).
 - **Prioriteiten:** R4-IO-1 t/m R4-IO-6 en R4-AC-1 P0 (welke etiketten Friso bevestigt, gegevensverlies, geldpad); R4-AC-2 (alleen toegestane paden) P1.
 - **Vervallen door besluit:** de helft "voorlabels 1,5 × raming" van R3-IO-4 is vervangen door R4-IO-6 ($50); de voorinvulling-helft ($65) blijft gedekt.
+- **Klantdata:** deze trace las `~/logo-meetset-20261018/` niet; de `lokaal`-tests lezen hun invoer zelf.
+
+## Stap 1 — Context, aanvulling run 6
+
+- **Werkboom:** HEAD `08d2cf7` plus de niet-gecommitte paden van ronde 5; `git status --porcelain` bevat alleen de specmap, de ATDD-checklist, de buildspec `spec-spike-getrainde-detector-ronde5.md`, `deferred-work.md` en deze tracebestanden.
+- **Nieuwe criteria:** de bijgewerkte `success`-regels van CAP-1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12 en het nieuwe CAP-16, met meetregels §2–§4, toetsset §2/§4–§6, trainingsset §1/§2/§10 en randvoorwaarden §4; de 2 AC's, de verificatieregel en de 9 I/O-rijen van `spec-spike-getrainde-detector-ronde5.md` (status `done`); het interfacecontract ronde 5 in de ATDD-checklist.
+- **Prioriteiten:** P0 = telling en besluit (NS A–E, 9 keurmerken), schema en pagina, scheiding, voorinvulling en aanvulling, NutriGreen omzetten en mengen (toets schoon houden, licentie), suite; P1 = klassenlijst en variant in generator/echt/herken/k4aa/beoordelaar, verplicht referentieplaatje, licentiecontrole, paden; P2 = draaiplan.
+- **Vervallen door besluit:** de deelregel "D/E = zonder" van CAP-9 (run 1–5) is vervangen door R5-CAP-9 en R5-IO-1..3; de bestaande test is hernoemd (`…_d_en_e_zijn_met`) en groen.
 - **Klantdata:** deze trace las `~/logo-meetset-20261018/` niet; de `lokaal`-tests lezen hun invoer zelf.
 
 ## Stap 2 — Tests gevonden en ingedeeld
@@ -191,7 +201,41 @@ Dekking = of elke deelbewering van het criterium een test heeft; "uitslag" = run
 | R4-IO-5 | `certificaten.json` bestaat → andere docs blijven, docs uit de lijst nieuwe uitkomst, mislukte lezing `null` | P0 | R4: `pdftekst_vult_bestaande_certificaten_aan` | FULL | groen |
 | R4-IO-6 | voorlabels zonder `--grens` → $50; projectie > 50 start niet, geen zdr-proef | P0 | R4: `echt_voorlabels_standaardgrens_50_projectie_per_aanroep` | FULL | groen |
 
+### Ronde 5 — SPEC en buildspec 5 `spec-spike-getrainde-detector-ronde5.md` (nieuw, run 6)
+
+Testnamen voluit in de fase-1-matrix `/tmp/tea-trace-coverage-matrix-2026-11-02T01-30-00.json`; `R5:` = `tests/test_ronde5_20261101.py`, `R5B:` = `tests/test_ronde5_browser_20261101.py`.
+
+| # | criterium | prio | tests | dekking | uitslag |
+|---|---|---|---|---|---|
+| R5-AC-1 | volledige suite 0 failed (ook de 105 rode van ATDD ronde 5) | P0 | hele suite | FULL | 664 passed, twee volledige runs |
+| R5-AC-2 | licentiecontrole 0 overtredingen | P1 | `licenties.py` echte omgeving | FULL | exit 0, 93 pakketten |
+| R5-VER-1 | `git status --porcelain` alleen toegestane paden | P1 | het commando (deze run) | FULL | gehaald |
+| R5-IO-1..3 | NS: D op D gevonden; andere letter gemist + verkeerde letter; lege lijst + elke NS-melding vals | P0 | R5: `tel_nutriscore_d_op_d…`; `test_cap09_…_d_en_e_zijn_met` | FULL | groen |
+| R5-IO-4 | V-label afgeleid uit `gelijkend` (alleen oude, niet-lege voorinvulling), `voorinvulling.json` ongewijzigd, `fout` blijft leeg | P0 | R5: `met_v_label_*` (3), `items_dragen…`, `rapport_negen…`, `voorinvulling_markeert_ronde_5…` | FULL | groen |
+| R5-IO-5 | vegetarisch in schema → `ValueError`/400; bevestigd vraagt V-label | P0 | R5: `valideer_bevestigd…`, `server_bevestigd_met_v_label…` | FULL | groen |
+| R5-IO-6 | extra rijen veranderen de keuze niet; `buiten_keuze`, `rijen_buiten_keuze` | P0 | R5: `kies_kiest_alleen_op_de_tien_rijen…`, `schrijf_zet…`; `test_cap01_lokaal…` | FULL | groen |
+| R5-IO-7 | zip met andere md5 → weigeren, niets geschreven | P0 | R5: `omzetten_weigert_een_andere_md5…`, `cli_omzetten_met_de_mini_zip_weigert…` | FULL | groen |
+| R5-IO-8 | mengen: ≤ 20% (ook zonder genoeg nagemaakt), ≤ eigen vakjes, ≤ 10% leeg, om de beurt, nooit valid/test, andere categorieën → weigeren | P0 | R5: `kies_nutrigreen_*` (5), `dataset_nutrigreen_*` (3), `dataset_zonder_nutrigreen…` | FULL | groen |
+| R5-IO-9 | checkpoint/set met andere klassen → `detecteer`/`train` weigeren vóór het werk | P1 | R5: `detecteer_weigert…`, `detecteer_met_de_13…`, `train_weigert…` | FULL | groen |
+| R5-CAP-1 | 3 extra rijen geteld met de gekozen leveranciers, vegetarisch in de V-label-rij | P0 | R5: `scheiding_tien…`, `bouw_rijen_13…`, `kies…`, `schrijf…` | FULL | groen |
+| R5-CAP-2a | voorinvulling/rapport 9 keurmerken, NS elke letter, per letter, stoppunt 2 over de 9 | P0 | R5: `toets_gelijkende…`, `toets_schema_en_prompt…`, `rapport…`, `cli_rapport…`, `items…` | FULL | groen |
+| R5-CAP-2b | kandidaten en aanvulling: vegetarische declaratie, één letter (`--alleen`/`--alle`), NS bij beide → exit 2, geen overschrijven | P0 | R5: `toetsrijen_v_label…`, `cli_aanvulling_*` (3), `cli_alle_op_een_letter…`, `cli_nutriscore_bij_alleen_en_alle…`, `cli_gewone_run…`, `kandidaten_*` (2) | FULL | groen |
+| R5-CAP-3 | pagina: V-label-keuze voorgevuld, stand 9, `b` weigert zonder V-label, typen blijft staan, oud concept | P0 | R5B: `browser_*` (5); R5: `valideer…`, `server…`, `per_keurmerk_en_stand…` | FULL | groen |
+| R5-CAP-4 / 4b | generator: vegetarisch = V-label-bron, nooit referentieplaatje; geen D/E/V-label in harde negatieven; verplicht referentieplaatje over 13 | P1 | R5: `logos_vegetarisch…`, `logos_zonder_vegan_referentie…` | FULL | groen |
+| R5-CAP-5 | voorlabels: vegetarisch → V-label, D/E/V-label niet gelijkend; rapport en validatie-uitslag over 13 | P1 | R5: `echt_gelijkend…`, `voorlabels_vegetarisch…`, `echt_rapport…`, `validatie_uitslag…` | FULL | groen |
+| R5-CAP-6 | één klassenlijst (13, id 1–10 gelijk); set/checkpoint met andere klassen geweigerd | P1 | R5: `klassen_13…`, `een_klassenlijst…`, `train_weigert…`, `detecteer_weigert…`, `dataset_nutrigreen_met_andere_categorieen…` | FULL | groen |
+| R5-CAP-7 / 8 / 12 | NMS A–E; beoordelaar V-label vegan = vegetarisch; K4-aa vegetarisch → V-label, D/E blijven | P1 | R5: `nms_…`, `beoordelaar_…`, `k4aa_…`; `test_cap12` (2 aangepast) | FULL | groen |
+| R5-CAP-9 | telling NS A–E en V-label, nakijklijst en besluit over de 9 | P0 | R5: `tel_*` (3), `nakijklijst_en_besluit…`, `per_keurmerk_nutriscore…`, `keurmerklijsten…` | FULL | groen |
+| R5-CAP-16a | omzetten: md5, klasse-id's, vakjes na verkleinen, achtergrond, afvallers, ongeldige regels, werkboom, opdrachtregel | P0 | R5: `nutrigreen_constanten`, `lees_csv_*` (2), `omzetten_*` (3), `cli_omzetten_*` (2) | FULL | groen |
+| R5-CAP-16b | mengen + attributie in `train-resultaat.json` | P0 | R5: `kies_nutrigreen_*` (5), `dataset_*` (4), `train_resultaat_*` (2) | FULL | groen |
+| R5-CAP-10 | draaiplan stap 1/4/5/6/10 | P2 | R5: `draaiplan_*` (5) | FULL | groen |
+
+(Telling: R5-IO-1..3 zijn 3 criteria en R5-CAP-4/4b en R5-CAP-7/8/12 elk apart, samen 27.)
+
 ### Controle op de dekkingslogica
+
+- **Run 6:** P0 57/57 FULL, P1 21/21, P2 2/4 (CAP-6a, AC-2 ongewijzigd PARTIAL). Elk nieuw foutpad van ronde 5 (vegetarische code, andere md5, andere categorieën of klassen, bestaande lijst, NS bij beide vlaggen, oude `herkomst.json`) heeft een negatieve test die ook controleert dat er niets geschreven of gemengd is; de geluksscenario's hebben een positieve. De buildreview liet drie toetsgaten zien (VG1–VG3); die zijn met tests gedicht, en de grens van 20% is ook getoetst zonder genoeg nagemaakte tegels.
+
 
 - **Run 5:** P0 41/41 FULL, P1 11/11, P2 1/3 (CAP-6a, AC-2 ongewijzigd PARTIAL). Elk nieuw foutpad van ronde 4 heeft een negatieve test die ook controleert dat de toetsmap byte-gelijk blijft; de geluksscenario's (aanvulling, aanvullen van manifest en certificaten, $50 met start) hebben een positieve. De buildreview toonde met mutaties dat de manifest-, doelbestand- en overschrijfregels nu elk een rode test geven.
 
@@ -209,17 +253,17 @@ Dekking = of elke deelbewering van het criterium een test heeft; "uitslag" = run
 ## Stap 4 — Gatenanalyse (fase 1 afgerond)
 
 - **Uitvoermodus:** config `auto`; tellingen in één deterministisch script, na elkaar (headless keuze).
-- **Fase-1-matrix:** `/tmp/tea-trace-coverage-matrix-2026-11-01T18-40-00.json` (run 5, `phase: PHASE_1_COMPLETE`); run 4: `…T17-07-48.json`; run 3: `…T10-42-59.json`; run 2: `…T10-28-46.json`.
+- **Fase-1-matrix:** `/tmp/tea-trace-coverage-matrix-2026-11-02T01-30-00.json` (run 6, `phase: PHASE_1_COMPLETE`); run 5: `…2026-11-01T18-40-00.json`; run 4: `…T17-07-48.json`; run 3: `…T10-42-59.json`; run 2: `…T10-28-46.json`.
 
-| statistiek | run 5 | run 4 | run 3 | run 2 | run 1 |
-|---|---|---|---|---|---|
-| criteria totaal | 55 | 47 | 37 | 37 | 25 |
-| FULL | 53 (96%) | 45 (96%) | 35 (95%) | 34 (92%) | 23 (92%) |
-| PARTIAL | 2 (CAP-6a P2, AC-2 P2) | 2 (CAP-6a P2, AC-2 P2) | 2 (CAP-6a P2, AC-2 P2) | 3 (+ B-IO-1 P0) | 2 (CAP-6, AC-2) |
-| NONE | 0 | 0 | 0 | 0 | 0 |
-| P0 | 41/41 (100%) | 34/34 (100%) | 25/25 (100%) | 24/25 (96%) | 15/15 (100%) |
-| P1 | 11/11 (100%) | 10/10 (100%) | 9/9 (100%) | 9/9 (100%) | 7/7 (100%) |
-| P2 | 1/3 (33%) | 1/3 (33%) | 1/3 (33%) | 1/3 (33%) | 1/3 (33%) |
+| statistiek | run 6 | run 5 | run 4 | run 3 | run 2 | run 1 |
+|---|---|---|---|---|---|---|
+| criteria totaal | 82 | 55 | 47 | 37 | 37 | 25 |
+| FULL | 80 (98%) | 53 (96%) | 45 (96%) | 35 (95%) | 34 (92%) | 23 (92%) |
+| PARTIAL | 2 (CAP-6a P2, AC-2 P2) | 2 (CAP-6a P2, AC-2 P2) | 2 (CAP-6a P2, AC-2 P2) | 2 (CAP-6a P2, AC-2 P2) | 3 (+ B-IO-1 P0) | 2 (CAP-6, AC-2) |
+| NONE | 0 | 0 | 0 | 0 | 0 | 0 |
+| P0 | 57/57 (100%) | 41/41 (100%) | 34/34 (100%) | 25/25 (100%) | 24/25 (96%) | 15/15 (100%) |
+| P1 | 21/21 (100%) | 11/11 (100%) | 10/10 (100%) | 9/9 (100%) | 9/9 (100%) | 7/7 (100%) |
+| P2 | 2/4 (50%) | 1/3 (33%) | 1/3 (33%) | 1/3 (33%) | 1/3 (33%) | 1/3 (33%) |
 
 - **Gaten:** geen criterium zonder test; geen P0- of P1-criterium gedeeltelijk. Gedeeltelijk: CAP-6a en AC-2 (P2).
 - **Heuristieken:** endpoints zonder test 0; toegangsregels zonder negatief pad 0; alleen geluksscenario 0.
@@ -230,6 +274,24 @@ Dekking = of elke deelbewering van het criterium een test heeft; "uitslag" = run
 2. **LOW** — `bmad-testarch-test-review` voor de testkwaliteit (omvang van `test_review_20261101.py` en `test_besluiten_20261101.py`).
 
 ## Stap 5 — Gatebesluit (fase 2)
+
+### Bewijs run 6 (VERIFIED, 02-11-2026, HEAD `08d2cf7` + ronde 5)
+
+```
+cd _bmad-output/planning-artifacts/spike-getrainde-detector && uv run --group dev pytest -q -p no:cacheprovider --collect-only
+664 tests collected
+uv run --group dev pytest -q -p no:cacheprovider
+664 passed, 18 warnings in 68.59s        # bouw na de reviewpatches: 664 passed (68,9 s)
+
+uv run --group dev --group detector pytest -q -p no:cacheprovider -m "zwaar or lokaal"
+4 passed, 660 deselected, 18 warnings in 25.85s
+
+uv run --group dev --group detector python licenties.py
+exit 0 · "pakketten": 93 · "overtredingen": [] · 8 onder "ruim"
+```
+
+- Rode run vóór de bouw (ATDD ronde 5): `105 failed, 543 passed` (648 tests); na de bouw 648 passed, na de reviewpatches 664 passed (648 + 16 testgevallen uit de review).
+- Ronde-5-bestanden: `test_ronde5_20261101.py` + `test_ronde5_browser_20261101.py` 95/95 groen.
 
 ### Bewijs run 5 (VERIFIED, 01-11-2026, HEAD `039b14f` + ronde 4)
 
@@ -295,19 +357,19 @@ exit 0 · "pakketten": 93 · "overtredingen": [] · 8 onder "ruim" (zelfde lijst
 
 | regel | drempel | gemeten | status |
 |---|---|---|---|
-| P0-dekking | 100% | 100% (41/41) | MET |
-| P0-slaagpercentage | 100% | 100% (305/305) | MET |
-| P1-dekking | ≥ 90% (PASS), ≥ 80% (minimum) | 100% (11/11) | MET |
-| totale dekking | ≥ 80% | 96% (53/55) | MET |
-| totaal slaagpercentage | — | 100% (569/569) | informatief |
-| P2 | informatief | dekking 1/3, slagen 21/21 | blokkeert niet |
+| P0-dekking | 100% | 100% (57/57) | MET |
+| P0-slaagpercentage | 100% | 100% (alle tests groen, 664/664) | MET |
+| P1-dekking | ≥ 90% (PASS), ≥ 80% (minimum) | 100% (21/21) | MET |
+| totale dekking | ≥ 80% | 98% (80/82) | MET |
+| totaal slaagpercentage | — | 100% (664/664) | informatief |
+| P2 | informatief | dekking 2/4, alle P2-tests groen | blokkeert niet |
 | waiver | — | geen nodig | — |
 
 Regel 4 van de beslisboom (P0 100%, P1 ≥ 90%, totaal ≥ 80%) geeft **PASS**.
 
 ### GATE DECISION: PASS
 
-**Reden (run 5):** elk P0- en P1-criterium, ook de 8 nieuwe van ronde 4, is volledig gedekt en elke test slaagt, ook de `lokaal`-tests op de echte invoer en de echte omgeving. De twee gedeeltelijke criteria (CAP-6a, AC-2) zijn P2 en betreffen alleen dat geen test beweert dat de training op MPS liep; het pytest-log en `snelheid.json` tonen het wel.
+**Reden (run 6):** elk P0- en P1-criterium, ook de 27 nieuwe van ronde 5 (Nutri-Score A–E, V-label als 9e keurmerk, NutriGreen omzetten en mengen), is volledig gedekt en elke test slaagt, ook de `lokaal`-tests op de echte invoer en de echte omgeving. De twee gedeeltelijke criteria (CAP-6a, AC-2) zijn P2 en betreffen alleen dat geen test beweert dat de training op MPS liep; het pytest-log en `snelheid.json` tonen het wel.
 
 **Risico (probability × impact, INFERENCE):** CAP-6a/AC-2 — kans 1 (de rooktests draaiden op MPS volgens het log), impact 1 (een training die stil op de processor loopt, valt op door de duur, die stoppunt 1 bewaakt) → score 1, DOCUMENT.
 
@@ -320,17 +382,19 @@ Geen blokkade. Ter kennisname:
 3. **Bijlage-regels zonder eigen gereedschap:** correctiepercentage per keurmerk, tekortschieten van N, de 8-uursgrens tijdens een lopende fase (zie stap 3).
 4. **Wankele browsertest:** opgelost in ronde 3 (klaar-teken + `laad_klaar`), afgesloten in `deferred-work.md`; 20/20 los groen.
 5. **Buildspec 1** staat nog op `in-review`; afronden valt buiten deze trace.
-6. **Niet gecommit:** ronde 4 (spec-update, ATDD-tests, bouw, buildspec, `deferred-work.md`) en deze trace; samen committen, anders geldt dit besluit niet voor de tak.
+6. **Niet gecommit:** ronde 5 (spec-update, ATDD-tests, bouw, buildspec, `deferred-work.md`) en deze trace, volgens de opdracht; samen committen, anders geldt dit besluit niet voor de tak.
+10. **Uitgesteld uit de buildreview van ronde 5:** het correctiepercentage per keurmerk (meetregels §6, vooraf bestaand) met V-label als afgeleid gemarkeerd (`deferred-work.md`).
+11. **Niet automatisch getest (volgt na de keten):** het omzetten van de echte NutriGreen-zip (5,1 GB) en het ophalen en bouwen van de V-label- en E-aanvulling tegen productie (alleen lezen); de bouwstenen zijn getest (CAP-15, CAP-16).
 8. **Uitgesteld uit de buildreview van ronde 4:** `manifest.json` wordt niet atomisch geschreven (bestond al; `deferred-work.md`).
 9. **Netwerkstappen van de aanvulling** (ssh, rsync tegen productie, alleen lezen) zijn niet automatisch getest; de bouwstenen wel (CAP-15).
 7. **Na de herhaalrun (geen gatecriterium):** JPEG $0,0431 per aanroep tegen PNG $0,0451 bij etiketten van 12–22 tegels: geen meerkosten (review #11, buildspec Implementation Notes).
 
 ```
 ✅ GATE DECISION: PASS
-- P0 Coverage: 100% (41/41; Required: 100%) → MET
-- P0 Test Pass Rate: 100% (305/305) → MET
-- P1 Coverage: 100% (11/11; PASS target: 90%, minimum: 80%) → MET
-- Overall Coverage: 96% (53/55; Minimum: 80%) → MET
+- P0 Coverage: 100% (57/57; Required: 100%) → MET
+- P0 Test Pass Rate: 100% (664/664 all tests) → MET
+- P1 Coverage: 100% (21/21; PASS target: 90%, minimum: 80%) → MET
+- Overall Coverage: 98% (80/82; Minimum: 80%) → MET
 ⚠️ Critical Gaps: 0
 📂 Gate-bestand: _bmad-output/test-artifacts/traceability/spike-getrainde-detector-gate.json
 ```

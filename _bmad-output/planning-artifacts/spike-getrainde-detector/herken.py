@@ -25,7 +25,7 @@ import numpy as np
 
 from train import KLASSEN, MATEN
 
-NS = ("NUTRISCORE_A", "NUTRISCORE_B", "NUTRISCORE_C")
+NS = tuple(f"NUTRISCORE_{x}" for x in "ABCDE")  # één groep bij NMS (besluit Friso 01-11-2026: D en E eigen klassen)
 MSC, EU = "MARINE_STEWARDSHIP_COUNCIL_LABEL", "EU_ORGANIC_FARMING"
 CERTIFICAAT = {
     MSC: re.compile(r"MSC[-–\s]*C[-–\s]*\d{5}"),
@@ -62,7 +62,7 @@ def _iou(a, b):
 
 
 def nms(kandidaten, iou=0.5):
-    """Gulzige NMS vanaf IoU `iou`, per klasse; Nutri-Score A/B/C als één groep (één balk geeft één letter)."""
+    """Gulzige NMS vanaf IoU `iou`, per klasse; Nutri-Score A–E als één groep (één balk geeft één letter)."""
     groep = lambda c: "NUTRISCORE" if c in NS else c  # noqa: E731
     blijft = []
     for k in sorted(kandidaten, key=lambda x: -x["score"]):
@@ -200,6 +200,10 @@ def _detecteer(a):
         raise SystemExit("met --bevroren moet --model in het bevroren onderdeel `model` liggen")
     if w["maat"] is None:
         raise SystemExit("--maat ontbreekt")
+    resultaat = Path(a.model).parent / "train-resultaat.json"  # een checkpoint met andere klassen leest codes verkeerd
+    klassen = json.loads(resultaat.read_text()).get("klassen") if resultaat.exists() else None
+    if klassen != list(KLASSEN):
+        raise SystemExit(f"geweigerd: {resultaat} ontbreekt of heeft andere klassen dan train.KLASSEN ({klassen})")
     import torch  # groep `detector`; pas na de controles
 
     torch.set_num_threads(a.threads)

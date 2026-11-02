@@ -2,8 +2,9 @@
 k4aa-module als parameter; `main` laadt `apps/ml-service/app/services/k4aa.py` (origin/acc 8c9373d, niet gewijzigd) en
 vervangt alleen in dit proces de ACC-referenties door de gefilterde momentopname van 30-10-2026. Niets op ACC.
 
-Elke detectie binnen de 8 keurmerken telt als melding, ook met requires_review. `budget_exhausted` en andere
-K4aaError-klassen zijn routefouten voor dat etiket; `no_zdr_provider` stopt de hele run.
+Elke detectie binnen de 13 klassen (de 9 keurmerken; vegetarisch V-label telt als V-label) telt als melding, ook met
+requires_review. `budget_exhausted` en andere K4aaError-klassen zijn routefouten voor dat etiket; `no_zdr_provider`
+stopt de hele run.
 
   python k4aa_lokaal.py --ml-service <hoofdrepo>/apps/ml-service --proef-map <PM> --lijst <toets-lijst.json>
                         --uit <route.json> --meta <route-meta.json> --zdr-logo <png> [--alle-referenties]
@@ -24,10 +25,10 @@ from pathlib import Path
 
 import openrouter
 import scheiding
-from train import KLASSEN
+from train import KLASSEN, VARIANTEN
 
 PUBLIEK = {"gs1-packaging-label-guide", "synthetic-nutriscore-bootstrap"}
-ACHT = set(KLASSEN)
+ACHT = set(KLASSEN)  # naam van vóór ronde 5; nu alle 13 klassen (de 9 keurmerken)
 PER_ETIKET = 0.012  # dollar, raming randvoorwaarden §3
 MOMENTOPNAME = Path.home() / "logo-meetset-20261018/ontwikkelmeting-20261028/fase-b/momentopname"
 
@@ -44,8 +45,13 @@ def filter_referenties(refs, gtin_naar_gln, trainings_glns):
     return uit
 
 
+def _codes(detecties):
+    """Codes binnen de 13 klassen; een variant (vegetarisch V-label) telt als zijn klasse (trainingsset §9)."""
+    return {c for c in (VARIANTEN.get(d.get("t3777_code"), d.get("t3777_code")) for d in detecties) if c in ACHT}
+
+
 def meldingen_uit(resultaat):
-    return {d["t3777_code"] for d in resultaat.get("detections", []) if d.get("t3777_code") in ACHT}
+    return _codes(resultaat.get("detections", []))
 
 
 def draai_etiket(k4aa, data, budget_s=300):
@@ -59,8 +65,7 @@ def draai_etiket(k4aa, data, budget_s=300):
         return {"fout": e.klasse}
     return {"meldingen": meldingen_uit(r), "kosten": float(r.get("stats", {}).get("cost_usd") or 0.0),
             "tijd": float(time.monotonic() - start),
-            "requires_review": {d["t3777_code"] for d in r.get("detections", [])
-                                if d.get("requires_review") and d.get("t3777_code") in ACHT}}
+            "requires_review": _codes(d for d in r.get("detections", []) if d.get("requires_review"))}
 
 
 def draai(k4aa, lijst, run, meta, bewaker, budget_s, bewaar):

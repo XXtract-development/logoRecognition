@@ -135,6 +135,7 @@ def test_cap06_opdrachtregel_train_vraagt_besluit_voor_andere_maat(tmp_path, mon
     tr = mod("train")
     gestart = []
     monkeypatch.setattr(tr, "train", lambda cfg: gestart.append(cfg) or {})
+    schrijf(tmp_path / "ds" / "train" / "_annotations.coco.json", {"categories": tr.CATEGORIEEN})  # ronde 5: verplicht
     basis = ["train", "--fase", "nagemaakt", "--maat", "S", "--dataset", str(tmp_path / "ds"), "--uit", str(tmp_path / "m"),
              "--epochs", "1"]
     assert rc(tr.main, basis) not in (0, None) and gestart == []

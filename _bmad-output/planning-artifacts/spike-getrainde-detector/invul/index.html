@@ -62,12 +62,14 @@
 </main>
 <script>
 "use strict";
-const K7 = ["EU_ORGANIC_FARMING", "GREEN_DOT", "RECYCLABLE_GENERAL_CLAIM", "PREGNANCY_WARNING",
-            "MARINE_STEWARDSHIP_COUNCIL_LABEL", "WEIDEMELK", "VEGAN_SOCIETY_VEGAN_LOGO"];
-const K8 = K7.concat(["NUTRISCORE"]);
+// Zelfde lijsten als uitslag.KEURMERKEN_LOS en uitslag.KEURMERKEN (ronde 5: V-label als 9e keurmerk).
+const LOS = ["EU_ORGANIC_FARMING", "GREEN_DOT", "RECYCLABLE_GENERAL_CLAIM", "PREGNANCY_WARNING",
+             "MARINE_STEWARDSHIP_COUNCIL_LABEL", "WEIDEMELK", "VEGAN_SOCIETY_VEGAN_LOGO", "EUROPEAN_V_LABEL_VEGAN"];
+const KEURMERKEN = LOS.concat(["NUTRISCORE"]);
 const NAAM = {EU_ORGANIC_FARMING: "EU-biologisch", GREEN_DOT: "Groene Punt", RECYCLABLE_GENERAL_CLAIM: "Recyclebaar",
               PREGNANCY_WARNING: "Zwangerschapswaarschuwing", MARINE_STEWARDSHIP_COUNCIL_LABEL: "MSC",
-              WEIDEMELK: "Weidemelk", VEGAN_SOCIETY_VEGAN_LOGO: "Vegan Society", NUTRISCORE: "Nutri-Score"};
+              WEIDEMELK: "Weidemelk", VEGAN_SOCIETY_VEGAN_LOGO: "Vegan Society",
+              EUROPEAN_V_LABEL_VEGAN: "V-label (vegan of vegetarisch)", NUTRISCORE: "Nutri-Score"};
 const KEUZES = ["aanwezig", "afwezig", "onzeker"];
 const LETTERS = ["A", "B", "C", "D", "E"];
 const DOEL_MET = 16, DOEL_ZONDER = 50;
@@ -85,7 +87,7 @@ const conceptSleutel = (id) => "concept:" + id;
 // --- het formulier wordt één keer gebouwd; daarna alleen waarden zetten ------------------------------------------
 function bouwFormulier() {
   const rijen = $("#rijen");
-  for (const code of K7) {
+  for (const code of LOS) {
     const tr = el("tr");
     tr.append(el("td", {class: "naam"}, NAAM[code]));
     const td = el("td", {"data-testid": "keuze-" + code, role: "radiogroup", "aria-label": NAAM[code]});
@@ -111,7 +113,7 @@ function bouwFormulier() {
   tr.append(td, el("td", {class: "ai", id: "ai-NUTRISCORE"}));
   rijen.append(tr);
   const standen = $("#standen");
-  for (const k of K8) standen.append(el("span", {class: "stand", "data-testid": "stand-" + k, "data-met": "0", "data-zonder": "0"}));
+  for (const k of KEURMERKEN) standen.append(el("span", {class: "stand", "data-testid": "stand-" + k, "data-met": "0", "data-zonder": "0"}));
 }
 
 // --- toestand ------------------------------------------------------------------------------------------------------
@@ -122,7 +124,7 @@ function heeftVoorinvulling(it) {
 
 function uitVoorinvulling(it) {
   const vi = it.voorinvulling || {}, keurmerken = {};
-  for (const code of K7) if (typeof (vi.keurmerken || {})[code] === "boolean") keurmerken[code] = vi.keurmerken[code] ? "aanwezig" : "afwezig";
+  for (const code of LOS) if (typeof (vi.keurmerken || {})[code] === "boolean") keurmerken[code] = vi.keurmerken[code] ? "aanwezig" : "afwezig";
   const nutriscore = heeftVoorinvulling(it) ? [...(vi.nutriscore || [])].sort() : undefined;
   return {keurmerken, nutriscore, opmerking: ""};
 }
@@ -139,15 +141,16 @@ function getoond(it) {
     if (r.opmerking !== undefined) s.opmerking = r.opmerking;
   }
   const c = sessionStorage.getItem(conceptSleutel(it.id));
-  if (c) {
-    try { Object.assign(s, JSON.parse(c)); } catch (e) { /* kapot concept: serverstand blijft */ }
+  if (c) {  // keuzes per keurmerk samenvoegen: een concept van vóór het V-label houdt zijn keuzes, V-label uit de voorinvulling
+    try { const k = JSON.parse(c); Object.assign(s, k, {keurmerken: {...s.keurmerken, ...(k.keurmerken || {})}}); }
+    catch (e) { /* kapot concept: serverstand blijft */ }
   }
   return s;
 }
 
 function formulier() {
   const keurmerken = {};
-  for (const code of K7) {
+  for (const code of LOS) {
     const r = document.querySelector(`input[name="k-${code}"]:checked`);
     if (r) keurmerken[code] = r.value;
   }
@@ -157,11 +160,11 @@ function formulier() {
 }
 
 function volledig(s) {
-  return K7.every((c) => s.keurmerken[c]) && s.nutriscore !== undefined;
+  return LOS.every((c) => s.keurmerken[c]) && s.nutriscore !== undefined;
 }
 
 function veranderd(it, s) {
-  const vi = uitVoorinvulling(it), uit = K7.filter((c) => s.keurmerken[c] !== vi.keurmerken[c]);
+  const vi = uitVoorinvulling(it), uit = LOS.filter((c) => s.keurmerken[c] !== vi.keurmerken[c]);
   if (s.nutriscore === undefined) return uit;
   const ns = JSON.stringify(s.nutriscore === "onleesbaar" ? s.nutriscore : [...s.nutriscore].sort());
   const gekozen = s.nutriscore === "onleesbaar" || s.nutriscore.length > 0;
@@ -183,7 +186,7 @@ function toon() {
   $('[data-testid="volledig"]').href = it.beeld;
   $("#hints").replaceChildren(...(it.hint || []).map((p) => el("img", {src: p, alt: "hinttegel"})));
   $("#notitie").textContent = heeftVoorinvulling(it) ? "" : "AI-voorinvulling ontbreekt of is mislukt: vul alles zelf in.";
-  for (const code of K7) {
+  for (const code of LOS) {
     for (const r of document.querySelectorAll(`input[name="k-${code}"]`)) r.checked = s.keurmerken[code] === r.value;
     $("#ai-" + code).textContent = vi.keurmerken[code] ? "AI: " + vi.keurmerken[code] : "AI: —";
   }
@@ -206,7 +209,7 @@ function zetStand(antwoord) {
   records = antwoord.uitslag || {};
   const klaar = items.filter((it) => records[it.id] && ["bevestigd", "onleesbaar"].includes(records[it.id].status)).length;
   $("#voortgang").textContent = `${klaar} van ${items.length} etiketten afgehandeld`;
-  for (const k of K8) {
+  for (const k of KEURMERKEN) {
     const st = (antwoord.stand || {})[k] || {met: 0, zonder: 0}, e = $(`[data-testid="stand-${k}"]`);
     e.setAttribute("data-met", String(st.met));
     e.setAttribute("data-zonder", String(st.zonder));
@@ -234,7 +237,7 @@ async function slaNu(it, waarde, momentopname) {
   try {
     const r = await fetch("opslaan", {method: "POST", headers: {"Content-Type": "application/json"},
                                       body: JSON.stringify({id: it.id, waarde})});
-    if (!r.ok) throw new Error(r.status === 400 ? "geweigerd: kies eerst bij alle 8 keurmerken" : "server " + r.status);
+    if (!r.ok) throw new Error(r.status === 400 ? "geweigerd: kies eerst bij alle 9 keurmerken" : "server " + r.status);
     if (sessionStorage.getItem(sleutel) === momentopname) sessionStorage.removeItem(sleutel);
     records[it.id] = waarde;
     melding.className = "";
@@ -250,7 +253,7 @@ function slaHuidigeOp(status) {
   const it = items[idx], s = formulier();
   if (status === "bevestigd" && !volledig(s)) {  // niet opslaan en niet doorgaan: eerst overal een keuze
     $("#melding").className = "fout";
-    $("#melding").textContent = "Kies eerst bij alle 7 keurmerken en bij Nutri-Score; niets opgeslagen.";
+    $("#melding").textContent = "Kies eerst bij alle 8 keurmerken (ook het V-label) en bij Nutri-Score; niets opgeslagen.";
     return false;
   }
   const waarde = {keurmerken: s.keurmerken, veranderd: veranderd(it, s), opmerking: s.opmerking};

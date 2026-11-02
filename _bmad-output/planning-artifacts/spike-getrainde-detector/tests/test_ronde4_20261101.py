@@ -207,7 +207,8 @@ def test_r4_cli_gewone_run_naar_toets_en_kant_train_naar_train(tmp_path, monkeyp
     p = aanvul(tmp_path, monkeypatch)
     ts = mod("toets")
     rijen, gelijkend = ts._toets_rijen(p.pm)
-    assert ts.main(p.argv) == 0  # zonder --bestaand/--naam: kandidaten.json wordt overschreven (stap 2 opnieuw)
+    p.kand.unlink()  # ronde 5: ook een gewone run overschrijft nooit een bestaande kandidaten.json (toetsset §4)
+    assert ts.main(p.argv) == 0  # zonder --bestaand/--naam: kandidaten.json (stap 2)
     verwacht = ts.kandidaten(rijen, gelijkend)
     assert json.loads((p.t / "kandidaten.json").read_text()) == verwacht
     assert any(i["reden"].startswith("gelijkend:") for i in verwacht)

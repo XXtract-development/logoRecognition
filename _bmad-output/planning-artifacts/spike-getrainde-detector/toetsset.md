@@ -2,7 +2,7 @@
 titel: Toetsset, scheiding training/toets en beelden
 hoort-bij: SPEC.md (CAP-1, CAP-2, CAP-3, CAP-15)
 datum: 2026-10-31
-bijgewerkt: 2026-11-01 (ronde 3: verzoekgrootte voorinvulling, klaar-teken invulpagina; ronde 4: aanvulling vóór bevestiging, besluiten Friso)
+bijgewerkt: 2026-11-01 (ronde 3: verzoekgrootte voorinvulling, klaar-teken invulpagina; ronde 4: aanvulling vóór bevestiging, besluiten Friso; ronde 5: Nutri-Score A–E, V-label als 9e keurmerk)
 gemeten-op: declaraties-prod-basiseenheden-20261008.tsv, alcohol-kandidaten.tsv, referentiemomentopname 2026-10-30, voorlopige-selectie.json
 ---
 
@@ -30,14 +30,14 @@ Begrippen:
 
 ## 2. Scheidingseenheid: de leverancier (GLN)
 
-Elke leverancier (GLN) zit óf aan de trainingskant óf aan de toetskant, voor alle 8 keurmerken tegelijk. Dat is strenger dan "productlijn binnen een leverancier": een ontwerp dat een leverancier op meerdere producten gebruikt, kan zo niet aan beide kanten terechtkomen.
+Elke leverancier (GLN) zit óf aan de trainingskant óf aan de toetskant, voor alle 9 keurmerken tegelijk. Dat is strenger dan "productlijn binnen een leverancier": een ontwerp dat een leverancier op meerdere producten gebruikt, kan zo niet aan beide kanten terechtkomen.
 
 **Regel om de trainingsleveranciers te kiezen (deterministisch, CAP-1):**
-1. **Rijen** (10): EU-biologisch, Groene Punt, Recyclebaar, Nutri-Score A, Nutri-Score B, Nutri-Score C, zwangerschap, MSC, Weidemelk, Vegan Society. Voor zwangerschap gelden alcoholproducten als benadering (er bestaat geen GS1-declaratie voor).
+1. **Rijen** (10): EU-biologisch, Groene Punt, Recyclebaar, Nutri-Score A, Nutri-Score B, Nutri-Score C, zwangerschap, MSC, Weidemelk, Vegan Society. Voor zwangerschap gelden alcoholproducten als benadering (er bestaat geen GS1-declaratie voor). **Extra rijen** (3, ronde 5): Nutri-Score D, Nutri-Score E en V-label (declaratie vegan of vegetarisch); ze worden met de gekozen leveranciers geteld en gerapporteerd, maar tellen niet mee in stap 2 en 4 van deze regel.
 2. **Kandidaten** = per rij de 2 leveranciers met de meeste unieke GTIN's.
 3. Per rij: `train` = unieke GTIN's bij trainingsleveranciers; `toets` = unieke GTIN's bij de overige leveranciers, zonder GTIN's die in een referentie of in `training_data` zitten (de GTIN staat in het pad van de referentie) en zonder docs uit de fase-B-meetset.
 4. Kies de verzameling trainingsleveranciers waarvoor de rij van waarden `min(toets/2, train)` (per rij het kleinste van: het aantal trainings-GTIN's, of de helft van de toets-GTIN's), van klein naar groot gesorteerd, lexicografisch het grootst is: eerst het zwakste keurmerk zo goed mogelijk, dan het op één na zwakste, enzovoort. Uitputtend zoeken over alle deelverzamelingen van de kandidaten. Gelijkspel: de kleinste verzameling, daarna de laagste gesorteerde rij GLN's.
-5. Uitkomst naar `PROEF_MAP/scheiding.json`: leveranciers, regel, invoerhashes, aantallen per rij, en het aantal uitgesloten GTIN's (nul uitgesloten GTIN's is een fout).
+5. Uitkomst naar `PROEF_MAP/scheiding.json`: leveranciers, regel, invoerhashes, aantallen per rij (ook de extra rijen, gemarkeerd als buiten de keuze met reden), en het aantal uitgesloten GTIN's (nul uitgesloten GTIN's is een fout).
 
 **Uitkomst op de invoer van 31-10-2026** (unieke GTIN's; gedeclareerd ≠ zichtbaar; leveranciers staan alleen in `scheiding.json`):
 
@@ -53,11 +53,17 @@ Elke leverancier (GLN) zit óf aan de trainingskant óf aan de toetskant, voor a
 | MSC | 19 / 1 | 33 / 7 |
 | Weidemelk | 71 / 1 | 98 / 3 |
 | Vegan Society | 24 / 1 | 35 / 3 |
+| *extra:* Nutri-Score D | 183 / 1 | 200 / 11 |
+| *extra:* Nutri-Score E | 171 / 1 | 183 / 8 |
+| *extra:* V-label (vegan of vegetarisch) | 11 / 1 | 28 / 8 |
 
-Er zijn vijf trainingsleveranciers. De laagste waarde in de rij is 16,5: de helft van de 33 toets-GTIN's van MSC.
+Er zijn vijf trainingsleveranciers. De laagste waarde van de 10 keuzerijen is 16,5: de helft van de 33 toets-GTIN's van MSC.
 
-> [!warning] Krap: MSC en Vegan Society
-> MSC heeft 33 en Vegan Society 35 GTIN's aan de toetskant (3 tot 7 leveranciers). Om 16 bevestigde etiketten mét te halen, moet het keurmerk op ten minste 48% resp. 46% van die producten echt zichtbaar zijn. Beperkt tot docs met print-laag zou MSC aan de toetskant maximaal 15 docs hebben; daarom mogen docs zonder print-laag uit het origineel gebouwd worden (§3). Valt een keurmerk tekort, dan is dat stoppunt 2 in [SPEC.md](SPEC.md#constraints); de scheiding wordt niet zelf versoepeld.
+> [!warning] Extra rijen veranderen de keuze, de leveranciers blijven (ronde 5, gemeten 01-11-2026)
+> Met de drie extra rijen in de keuze zou de regel 6 trainingsleveranciers kiezen (1 eruit, 2 erbij; zwakste waarde 13,5). De toetsset is op de 5 van 31-10 gebouwd en voorgevuld en wordt niet opnieuw gebouwd (opdracht bij het besluit van Friso 01-11-2026); de regel kiest daarom op de 10 oorspronkelijke rijen. Met die 5 is V-label de zwakste rij (min(28/2, 11) = 11): 11 trainings-GTIN's bij 1 leverancier, 28 toets-GTIN's bij 8, waarvan 4 vegetarisch. NutriGreen vult de trainingskant aan (trainingsset-en-herkenning §10).
+
+> [!warning] Krap: V-label, MSC en Vegan Society
+> V-label heeft 28, MSC 33 en Vegan Society 35 GTIN's aan de toetskant (3 tot 8 leveranciers). Om 16 bevestigde etiketten mét te halen, moet het keurmerk op ten minste 57%, 48% resp. 46% van die producten echt zichtbaar zijn (INFERENCE). Beperkt tot docs met print-laag zou MSC aan de toetskant maximaal 15 docs hebben; daarom mogen docs zonder print-laag uit het origineel gebouwd worden (§3). Valt een keurmerk tekort, dan is dat stoppunt 2 in [SPEC.md](SPEC.md#constraints); de scheiding wordt niet zelf versoepeld.
 
 **Bijna-duplicaatcontrole.** Van elk toetsbeeld en elk trainingsbeeld (achtergronden, echte trainingsetiketten en validatiebeelden) wordt een 64-bit verschilhash (dHash) van het hele beeld berekend. Een trainingsbeeld dat vrijwel gelijk is aan een toetsbeeld (Hamming-afstand ≤ 6) gaat uit de training; het toetsbeeld blijft. Dezelfde controle draait tussen training en validatie. Aantallen staan in het rapport.
 
@@ -76,17 +82,18 @@ Eigen gereedschap in de proefmap (niet de ongetrackte scripts in de hoofdmap), m
 ## 4. Kandidaten voor de toets (CAP-2)
 
 Uit toetsleveranciers, ontdubbeld op GTIN en daarna op beeld (zelfde sha256 of dHash ≤ 6):
-1. Per keurmerk de gedeclareerde GTIN's, verspreid over leveranciers (om de beurt per leverancier, binnen een leverancier op `sha256("20261031" + GTIN)`), tot **40 kandidaten per keurmerk**, of alle beschikbare. Voor Nutri-Score: 40 voor de groep, gelijk verdeeld over A, B en C.
+1. Per keurmerk de gedeclareerde GTIN's, verspreid over leveranciers (om de beurt per leverancier, binnen een leverancier op `sha256("20261031" + GTIN)`), tot **40 kandidaten per keurmerk**, of alle beschikbare. Voor Nutri-Score: 40 voor de groep, gelijk verdeeld over A–E (de eerste ronde van 31-10 verdeelde over A, B en C; die lijst blijft).
 2. Zwangerschap: alcoholproducten, tot 40.
-3. Gelijkende keurmerken ([meetregels.md §2](meetregels.md#2-de-8-keurmerken-en-hun-gelijkende-keurmerken)), gekozen op declaratie, tot **10 per keurmerk**.
+3. Gelijkende keurmerken ([meetregels.md §2](meetregels.md#2-de-9-keurmerken-en-hun-gelijkende-keurmerken)), gekozen op declaratie, tot **10 per keurmerk**.
 4. Nooit: docs uit de fase-B-meetset (de huidige route is daarop gekozen), GTIN's uit referenties of `training_data`.
 
-Verwachte omvang: ±350 etiketten. Bij ±20 seconden per etiket kost bevestigen Friso ±2 uur (INFERENCE).
+Verwachte omvang: ±345 etiketten (322 voorgevuld vóór ronde 5, plus ±12 V-label en ±13 E, als 67% bouwt zoals in de eerdere rondes; INFERENCE). Bij ±20 seconden per etiket kost bevestigen Friso ±2 uur (INFERENCE).
 
 **Aanvullen.** Zelfde regels als hierboven, met:
 - alleen GTIN's die nog geen kandidaat waren (niet in `kandidaten.json` en niet in een eerdere aanvullingslijst); ze komen in de vaste volgorde en alleen de nieuwe tellen voor het maximum;
 - één of meer keurmerken per aanvulling, per keurmerk een eigen maximum of alles wat aan de toetskant overblijft (ook boven 40); een GTIN die bij twee keurmerken hoort, wordt één keer gekozen;
 - geen gelijkende kandidaten;
+- een keurmerk kan ook één Nutri-Score-letter zijn (bijvoorbeeld `NUTRISCORE_E`); V-label kiest op een vegan- of vegetarisch-declaratie;
 - desgewenst eerst de GTIN's met print-laag (`invoer/pool-met-converted-laag-20261008.txt`), daarna de rest, elk deel in de vaste volgorde;
 - elke aanvulling schrijft een eigen lijst en overschrijft nooit een bestaande; per gekozen keurmerk meldt ze het aantal toegevoegde kandidaten en het aantal ongekozen toets-GTIN's dat overblijft;
 - ontdubbelen tegen de bestaande toets-docs (GTIN, sha256, dHash ≤ 6); de voorinvulling draait daarna over alle toets-docs, zodat de invulpagina alle etiketten toont, en betaalt alleen de nieuwe.
@@ -96,12 +103,15 @@ Verwachte omvang: ±350 etiketten. Bij ±20 seconden per etiket kost bevestigen 
 **Aanvulling vóór de bevestiging (besluiten Friso 01-11-2026).** Eenmalig en in afwijking van de volgorde hierboven: na de voorinvulling stond zwangerschap op 14 waarschijnlijke etiketten (stoppunt 2), MSC op 18, Vegan Society op 17 en Weidemelk op 23. Friso besliste om vóór zijn bevestiging aan te vullen:
 1. **Zwangerschap:** meer alcoholproducten van toetsleveranciers: eerst alle ongekozen met print-laag, daarna de rest in de vaste volgorde, samen hoogstens 60 kandidaten. Doel ±40–60 extra gebouwde etiketten na ontdubbelen, zodat het keurmerk na de voorinvulling ruim ≥ 16 waarschijnlijk haalt; het aantal wordt gemeld, niet afgedwongen (zonder print-laag bouwt vrijwel geen alcoholproduct). De scheiding op leverancier blijft streng.
 2. **MSC, Vegan Society, Weidemelk:** elk toetsproduct dat nog geen kandidaat was, ook boven 40, voor marge boven 16 na bevestiging; per keurmerk wordt gemeld hoeveel erbij kwamen en hoeveel er overbleven. Bij het besluit had Weidemelk nog 58 ongekozen toets-GTIN's (57 met print-laag); bij MSC en Vegan Society was elke toets-GTIN al kandidaat (onder welk keurmerk ook).
+3. **V-label** (besluit Friso 01-11-2026 (2), ronde 5): elk toetsproduct met een V-label-declaratie (vegan of vegetarisch) dat nog geen kandidaat was, eerst die met print-laag; bij het besluit 18 GTIN's (12 met print-laag, 7 leveranciers), 10 al kandidaat.
+4. **Nutri-Score E** (ronde 5, opdracht van de coördinator om NS-D/E-kandidaten mee te nemen): de letter E stond op 10 waarschijnlijke etiketten, D op 33; daarom hoogstens 20 nieuwe kandidaten voor letter E, print-laag eerst (±13 gebouwd, ±$1,5; samen met het V-label ±$3, randvoorwaarden §3). Het besluit valt op de groep; per letter is informatief, maar zo heeft ook E een telling.
 
 Alle extra voorinvullingen vallen onder de post voorinvulling toets en haar grens van $65 ([randvoorwaarden.md §3](randvoorwaarden.md#3-kosten-cap-14)). Staat een keurmerk na deze aanvulling onder 16 waarschijnlijke etiketten, dan is dat opnieuw stoppunt 2; meer aanvullen dan dit besluit toestaat, vraagt een nieuw besluit van Friso. De aanvulling na de bevestiging blijft daarnaast bestaan.
 
 ## 5. AI-voorinvulling (CAP-2)
 
-- Per etiket: heel etiket plus **tegels** (vaste, overlappende uitsneden van het etiket op werkschaal). Uitkomst per keurmerk: aanwezig ja/nee, voor Nutri-Score de verzameling letters (A–E), de tegels waarin het model het keurmerk zag (hinttegels), en gezien gelijkende keurmerken.
+- Per etiket: heel etiket plus **tegels** (vaste, overlappende uitsneden van het etiket op werkschaal). Uitkomst per keurmerk (9): aanwezig ja/nee, voor Nutri-Score de verzameling letters (A–E), de tegels waarin het model het keurmerk zag (hinttegels), en gezien gelijkende keurmerken.
+- **V-label uit eerdere voorinvullingen** (ronde 5): vóór 01-11-2026 stond het V-label alleen bij de gelijkende keurmerken. Heeft een voorinvulling geen V-label-oordeel, dan geldt `EUROPEAN_V_LABEL_VEGAN` of `EUROPEAN_V_LABEL_VEGETARIAN` in `gelijkend` als aanwezig en anders als afwezig, zonder hinttegels en zonder nieuwe aanroep. Gemeten 01-11-2026: 21 van de 322 voorgevulde etiketten (vegan 10 + vegetarisch 12, 1 met beide). Een mislukte voorinvulling blijft leeg. Nieuwe voorinvullingen vragen het V-label als keurmerk, met tegels.
 - Model: **een ander model dan het taalmodel van K4-aa** (`google/gemini-3.8-flash`); standaard `anthropic/claude-sonnet-5.5`. De client weigert het K4-aa-model. Reden: fouten van de voorinvulling mogen niet meebewegen met de route die vergeleken wordt.
 - Via de gedeelde OpenRouter-client ([randvoorwaarden.md §1](randvoorwaarden.md#1-privacy-zdr)). Geen zdr-endpoint voor dit model → stoppunt 3.
 - Verzoeken volgens [randvoorwaarden.md §5](randvoorwaarden.md#5-verzoekgrootte); kosten en grens volgens [randvoorwaarden.md §3](randvoorwaarden.md#3-kosten-cap-14).
@@ -112,7 +122,7 @@ Alle extra voorinvullingen vallen onder de post voorinvulling toets en haar gren
 
 Lokale server op `127.0.0.1` (patroon `~/logo-meetset-20261018/ontwikkelmeting-20261028/fase-b/nakijken/server.py` + `index.html`), alleen de standaardbibliotheek van Python.
 
-- **Per etiket:** overzichtsbeeld (klik = volledige resolutie), hinttegels, en per keurmerk een keuze voorgevuld met het AI-oordeel: **aanwezig / afwezig / onzeker**. Nutri-Score: de verzameling zichtbare letters (A–E) of "letter onleesbaar". Daarnaast per etiket: **onleesbaar** (hele etiket onbruikbaar) en een opmerkingveld.
+- **Per etiket:** overzichtsbeeld (klik = volledige resolutie), hinttegels, en per keurmerk een keuze voorgevuld met het AI-oordeel: **aanwezig / afwezig / onzeker**. Nutri-Score: de verzameling zichtbare letters (A–E) of "letter onleesbaar". V-label: één keuze voor vegan of vegetarisch (meetregels §2); een ouder concept zonder V-label houdt zijn keuzes en toont voor V-label de voorinvulling. Daarnaast per etiket: **onleesbaar** (hele etiket onbruikbaar) en een opmerkingveld.
 - **Snel:** sneltoetsen voor vorige/volgende en "bevestigd zoals voorgevuld"; voortgang, en per keurmerk de stand ten opzichte van het doel (≥ 16 mét, ≥ 50 zonder).
 - **Wat iemand typt raak je nooit kwijt:**
   - sneltoetsen doen niets zolang de cursor in een tekstveld staat;
@@ -121,8 +131,8 @@ Lokale server op `127.0.0.1` (patroon `~/logo-meetset-20261018/ontwikkelmeting-2
   - elke toetsaanslag als concept in `sessionStorage`; bij het laden gaat het concept vóór op de opgeslagen stand; een concept verdwijnt pas als de server de opslag heeft bevestigd;
   - herbouwen alleen na een klik op opslaan;
   - tijdens het laden is het formulier `#keuzes` `inert` (niet aan te klikken of te typen). Het attribuut verdwijnt pas na het eerste tonen (met concept) en nadat sneltoetsen en invoerafhandeling gekoppeld zijn: dat is het klaar-teken. Zo overschrijft het eerste tonen geen invoer van tijdens het laden, en wachten browsertests na elke paginalading (ook herladen) hierop, niet op het antwoord van `/stand`. Lege `items.json` of mislukt laden (netwerk- of JSON-fout): het formulier blijft `inert` en de voortgangsregel meldt het.
-- **Opslaan:** elke keuze direct naar `PROEF_MAP/toets/uitslag.json`. De server verwerkt opslagen één voor één (lock rond lezen-wijzigen-schrijven), schrijft atomisch (tijdelijk bestand + vervangen), weigert onbekende etiketten en ongeldige waarden, en weigert "bevestigd" zolang niet alle 8 keurmerken een keuze hebben.
-- **Schema `uitslag.json`:** `{"<doc_id>": {"status": "bevestigd"|"onleesbaar", "keurmerken": {"<code van keurmerk 1–3, 5–8>": "aanwezig"|"afwezig"|"onzeker"}, "nutriscore": ["A".."E"] | "onleesbaar", "veranderd": [<codes waar Friso de voorinvulling wijzigde>], "opmerking": "<tekst>", "tijd": "<ISO-8601>"}}`. De pagina, de voortgangsteller en de telcode gebruiken één gedeelde functie om dit te lezen.
+- **Opslaan:** elke keuze direct naar `PROEF_MAP/toets/uitslag.json`. De server verwerkt opslagen één voor één (lock rond lezen-wijzigen-schrijven), schrijft atomisch (tijdelijk bestand + vervangen), weigert onbekende etiketten en ongeldige waarden (ook de code `EUROPEAN_V_LABEL_VEGETARIAN`), en weigert "bevestigd" zolang niet alle 9 keurmerken een keuze hebben.
+- **Schema `uitslag.json`:** `{"<doc_id>": {"status": "bevestigd"|"onleesbaar", "keurmerken": {"<code van keurmerk 1–3, 5–9; keurmerk 9 = EUROPEAN_V_LABEL_VEGAN>": "aanwezig"|"afwezig"|"onzeker"}, "nutriscore": ["A".."E"] | "onleesbaar", "veranderd": [<codes waar Friso de voorinvulling wijzigde>], "opmerking": "<tekst>", "tijd": "<ISO-8601>"}}`. De pagina, de voortgangsteller en de telcode gebruiken één gedeelde functie om dit te lezen.
 
 ## 7. Bevriezen van de scheiding
 

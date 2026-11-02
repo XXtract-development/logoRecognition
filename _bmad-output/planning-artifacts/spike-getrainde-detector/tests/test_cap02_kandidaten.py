@@ -188,12 +188,12 @@ def test_cap02_rapport_telt_per_keurmerk_nutriscore_als_groep(ts):
     alle_nee = {c: False for c in K7}
     r = ts.rapport({
         "d1": vi({**alle_nee, GD: True}, ["A"]),
-        "d2": vi({**alle_nee, GD: True}, ["D"]),  # D telt niet voor de groep
+        "d2": vi({**alle_nee, GD: True}, ["D"]),  # ronde 5: D telt mee voor de groep A–E
         "d3": vi({}, []),                         # mislukte voorinvulling
         "d4": vi({**alle_nee, EU: True}, ["B", "C"]),
     })
-    assert set(r) == set(K7) | {"NUTRISCORE"}
-    assert (r[GD], r[EU], r["NUTRISCORE"], r[WM]) == (2, 1, 2, 0)
+    assert set(r) == set(K7) | {"EUROPEAN_V_LABEL_VEGAN", "NUTRISCORE"}  # ronde 5: 9 keurmerken
+    assert (r[GD], r[EU], r["NUTRISCORE"], r[WM]) == (2, 1, 3, 0)
 
 
 def test_cap02_stoppunt2_meldt_keurmerken_onder_16(ts):

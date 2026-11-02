@@ -2,7 +2,7 @@
 titel: Meetregels proef getrainde detector
 hoort-bij: SPEC.md (CAP-9, CAP-11, stopregel)
 datum: 2026-10-31
-bijgewerkt: 2026-11-01 (besluiten Friso: steekproef bij nakijken, akkoord ≥ 50 zonder)
+bijgewerkt: 2026-11-01 (besluiten Friso: steekproef bij nakijken, akkoord ≥ 50 zonder; ronde 5: Nutri-Score A–E, V-label als 9e keurmerk)
 ---
 
 # Meetregels
@@ -20,30 +20,33 @@ Alles telt **per etiket**, op aanwezigheid. Een vakje of positie telt niet mee. 
 - De Wilson-ondergrens is het percentage dat je met 95% zekerheid minstens haalt, gegeven hoeveel etiketten zijn geteld; de bovengrens is wat je met 95% zekerheid hooguit haalt. Met weinig etiketten liggen ze ver van het gemeten percentage.
 - Berekening: `wilson` uit `_bmad-output/planning-artifacts/spike-architectuurkeuze-logoherkenning/fase-b/tel.py` (z = 1,96), hergebruikt.
 
-## 2. De 8 keurmerken en hun gelijkende keurmerken
+## 2. De 9 keurmerken en hun gelijkende keurmerken
 
-Een **gelijkend keurmerk** lijkt op een van de 8, maar is het niet. In de training worden ze bewust ongelabeld toegevoegd (**harde negatieven**), zodat de detector ze leert negeren. In de toets maken ze de zonder-kant moeilijker.
+Een **gelijkend keurmerk** lijkt op een van de 9, maar is het niet. In de training worden ze bewust ongelabeld toegevoegd (**harde negatieven**), zodat de detector ze leert negeren. In de toets maken ze de zonder-kant moeilijker.
 
 | # | Keurmerk | Codes | Rol | Gelijkende keurmerken |
 |---|---|---|---|---|
 | 1 | EU-biologisch | `EU_ORGANIC_FARMING` | kern | `AGRICULTURE_BIOLOGIQUE`, `BDIH_LOGO`, nationale bio-logo's |
 | 2 | Groene Punt | `GREEN_DOT` | kern | `RECYCLABLE_GENERAL_CLAIM`, `TRIMAN`, `SEPARATE_COLLECTION`, `SOCIETY_PLASTICS_INDUSTRY`, `RETURNABLE_CAN_NL` |
 | 3 | Recyclebaar | `RECYCLABLE_GENERAL_CLAIM` | kern | `GREEN_DOT`, `TRIMAN`, `SEPARATE_COLLECTION`, `SOCIETY_PLASTICS_INDUSTRY`, `RETURNABLE_CAN_NL` |
-| 4 | Nutri-Score | `NUTRISCORE_A`, `NUTRISCORE_B`, `NUTRISCORE_C` (één groep) | kern | `NUTRISCORE_D`, `NUTRISCORE_E`, andere gekleurde schalen |
+| 4 | Nutri-Score | `NUTRISCORE_A` t/m `NUTRISCORE_E` (één groep; D en E eigen klasse sinds besluit Friso 01-11-2026) | kern | andere gekleurde schalen |
 | 5 | Zwangerschapswaarschuwing | `PREGNANCY_WARNING` | kern | `MINIMUM_DRINKING_AGE_18_WARNING`, `DO_NOT_DRINK_AND_DRIVE_WARNING` |
 | 6 | MSC | `MARINE_STEWARDSHIP_COUNCIL_LABEL` | ijkpunt | `AQUACULTURE_STEWARDSHIP_COUNCIL` |
 | 7 | Weidemelk | `WEIDEMELK` | ijkpunt | `BETER_LEVEN_1_STER`, `BETER_LEVEN_2_STER` |
-| 8 | Vegan Society | `VEGAN_SOCIETY_VEGAN_LOGO` | ijkpunt | `EUROPEAN_V_LABEL_VEGAN`, `EUROPEAN_V_LABEL_VEGETARIAN`, `VEGAN` |
+| 8 | Vegan Society | `VEGAN_SOCIETY_VEGAN_LOGO` | ijkpunt | `VEGAN` |
+| 9 | V-label | `EUROPEAN_V_LABEL_VEGAN`, met `EUROPEAN_V_LABEL_VEGETARIAN` als variant | kern (besluit Friso 01-11-2026) | `VEGAN` |
 
-IJkpunten zijn de drie keurmerken die ook in de vorige proef (fase B) gemeten zijn; ze maken de uitkomst vergelijkbaar met die proef. Ze krijgen dezelfde telling en hetzelfde besluit als de kern. Bron van de groepen: `_bmad-output/planning-artifacts/eindtest-logo-pijplijn/lookalike-groepen.md` in de hoofdmap.
+IJkpunten zijn de drie keurmerken die ook in de vorige proef (fase B) gemeten zijn; ze maken de uitkomst vergelijkbaar met die proef. Ze krijgen dezelfde telling en hetzelfde besluit als de kern.
 
-## 3. Nutri-Score als groep
+**V-label** (besluit Friso 01-11-2026): eigen klasse en 9e keurmerk, niet langer gelijkend van Vegan Society; `VEGAN` (algemeen woord of logo) blijft gelijkend. Vegan en vegetarisch zijn hetzelfde V-label-ontwerp, alleen het woord eronder verschilt; ze tellen samen als één keurmerk **V-label aanwezig**. Overal (declaraties, referenties, AI-codes, K4-aa-detecties) telt `EUROPEAN_V_LABEL_VEGETARIAN` als `EUROPEAN_V_LABEL_VEGAN`. Reden: op de detectorschaal is het woord niet leesbaar, NutriGreen kent één klasse V-label voor beide, een ongelabelde vegetarische variant zou de detector een vrijwel gelijk logo leren negeren, en de vegetarische variant heeft 4 declaraties zonder één aan de trainingskant (gemeten 01-11-2026). Bron van de groepen: `_bmad-output/planning-artifacts/eindtest-logo-pijplijn/lookalike-groepen.md` in de hoofdmap.
+
+## 3. Nutri-Score als groep (A–E, besluit Friso 01-11-2026)
 
 - Friso legt per etiket de verzameling zichtbare letters vast (A–E), of "letter onleesbaar".
-- **Mét:** etiketten met minstens één van A, B, C. **Gevonden** als alle gemelde Nutri-Score-letters in die verzameling zitten (en er minstens één is). Een gemelde letter buiten de verzameling, ook naast de juiste, maakt het etiket **gemist**; het wordt apart geteld als "verkeerde letter".
-- **Zonder:** etiketten zonder A, B en C, dus ook etiketten met alleen Nutri-Score D of E (de detector kent D en E niet als klasse). Op zulke etiketten is elke melding A, B of C **vals**.
+- **Mét:** etiketten met minstens één letter A–E. **Gevonden** als alle gemelde Nutri-Score-letters in die verzameling zitten (en er minstens één is): een melding D op een etiket met D is gevonden. Een gemelde letter buiten de verzameling, ook naast de juiste, maakt het etiket **gemist**; het wordt apart geteld als "verkeerde letter".
+- **Zonder:** etiketten zonder Nutri-Score (lege verzameling). Op zulke etiketten is elke Nutri-Score-melding, welke letter ook, **vals**. D en E tellen niet meer als zonder.
 - "Letter onleesbaar" telt aan geen van beide kanten mee.
-- A, B en C worden ook per letter gerapporteerd, ter informatie; het besluit valt op de groep.
+- A t/m E worden ook per letter gerapporteerd (mét = letter in de verzameling, zonder = een leesbare verzameling zonder die letter; "letter onleesbaar" telt aan geen kant), ter informatie; het besluit valt op de groep.
 
 ## 4. Benodigde aantallen (Wilson 95%, nagerekend met `wilson`, 31-10-2026)
 
@@ -62,7 +65,7 @@ IJkpunten zijn de drie keurmerken die ook in de vorige proef (fase B) gemeten zi
 > [!warning] Correctie op het doel "30–50 zonder" (akkoord Friso 01-11-2026)
 > Met 30 tot 34 etiketten zonder keurmerk is "< 10% vals" nooit te bewijzen, ook niet met nul fouten. Doel daarom: **≥ 50 zonder per keurmerk**. Dat kost geen extra etiketten: elk etiket waarop Friso een keurmerk afwezig verklaart, telt als "zonder" voor dat keurmerk (**gedeelde negatieven**).
 
-**Doel per keurmerk:** ≥ 16 bevestigde etiketten mét het keurmerk (liefst ≥ 25) en ≥ 50 zonder, waarvan liefst ≥ 10 met een gelijkend keurmerk (§2). Het aantal met een gelijkend keurmerk komt uit de voorinvulling en is niet door Friso bevestigd.
+**Doel per keurmerk (9):** ≥ 16 bevestigde etiketten mét het keurmerk (liefst ≥ 25) en ≥ 50 zonder, waarvan liefst ≥ 10 met een gelijkend keurmerk (§2; n.v.t. voor Nutri-Score, dat geen gelijkend met code meer heeft). Het aantal met een gelijkend keurmerk komt uit de voorinvulling en is niet door Friso bevestigd. Codes van V-label en Nutri-Score D/E tellen niet meer als gelijkend; eerder als gelijkend gekozen etiketten blijven in de toetsset en tellen aan de mét-kant van hun eigen keurmerk.
 **Te weinig voorbeelden:** minder dan 16 mét of minder dan 35 zonder → besluit "te weinig voorbeelden", niet "mens bevestigt".
 
 ## 5. Welke etiketten tellen
@@ -94,8 +97,8 @@ Vóór de eerste toetsrun liggen vast in `bevroren.json`, elk met sha256:
   - **Fout in de waarheid:** elk oordeel dat afwijkt van Friso's eerdere oordeel, ook een wijziging naar "onzeker" of "onleesbaar" en elke wijziging van de Nutri-Score-letters.
 - **Steekproef apart gerapporteerd:** per keurmerk en per kant het aantal nagekeken overeenkomende paren, het aantal fouten en de Wilson-bovengrens van die foutkans ("–" bij 0 paren). Ter informatie ook het besluit dat zou volgen als die bovengrens in het nadeel van de route op de overeenkomende paren werd toegepast (gevoeligheid; het besluit zelf volgt de regel hieronder).
 - **Besluitregel bij fouten in de steekproef:** vindt de steekproef bij een keurmerk minstens één fout, dan volgt een **tweede ronde** met alle overige overeenkomende paren van dat keurmerk, in een eigen bestand (`nakijklijst-ronde2-<KEURMERK>.json`); die ronde is alleen blind voor de route, want alle regels zijn overeenkomende paren. Tot de tweede ronde is nagekeken, is het besluit voor dat keurmerk **"mens bevestigt (voorlopig)"**; wordt hij niet nagekeken, dan **"mens bevestigt"** (definitief).
-- **Tijd voor Friso (INFERENCE):** de steekproef voegt ±230 regels toe (±40 minuten); een tweede ronde ±290 regels per keurmerk (±50 minuten).
-- Per keurmerk wordt gelogd hoe vaak Friso de voorinvulling veranderde (correctiepercentage).
+- **Tijd voor Friso (INFERENCE):** de steekproef voegt ±260 regels toe voor 9 keurmerken (±45 minuten); een tweede ronde ±290 regels per keurmerk (±50 minuten).
+- Per keurmerk wordt gelogd hoe vaak Friso de voorinvulling veranderde (correctiepercentage); bij V-label gemarkeerd als gemeten tegen een afgeleide voorinvulling voor de etiketten van vóór ronde 5 (toetsset §5).
 
 ## 7. Uitvoer per route en keurmerk
 

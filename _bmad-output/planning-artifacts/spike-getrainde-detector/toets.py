@@ -4,7 +4,7 @@ Kandidaten komen alleen van toetsleveranciers, zonder GTIN's uit referenties/tra
 filtering doet `main kandidaten` vóór `kandidaten`). De voorinvulling gebruikt een ander model dan K4-aa, via de
 gedeelde zdr-client.
 
-  python toets.py kandidaten --proef-map <PM> [--max-per 40] [--kant train]
+  python toets.py kandidaten --proef-map <PM> [--max-per 40] [--kant train]   (weigert als de lijst al bestaat)
   python toets.py kandidaten --proef-map <PM> --bestaand <kandidaten.json> [--bestaand <eerdere aanvulling.json> ...]
                   [--alleen CODE ...] [--alle CODE ...] [--max-per 40] [--naam <lijst>] [--print-laag-eerst]
                   (aanvulling: alleen nieuwe GTIN's, eigen lijst <toets>/<naam>.json die nooit overschreven wordt;
@@ -18,6 +18,7 @@ gedeelde zdr-client.
 """
 import argparse
 import collections
+import copy
 import hashlib
 import io
 import itertools
@@ -31,23 +32,26 @@ from pathlib import Path
 import beelden
 import openrouter
 import scheiding
+import uitslag
 
-K7 = ("EU_ORGANIC_FARMING", "GREEN_DOT", "RECYCLABLE_GENERAL_CLAIM", "PREGNANCY_WARNING",
-      "MARINE_STEWARDSHIP_COUNCIL_LABEL", "WEIDEMELK", "VEGAN_SOCIETY_VEGAN_LOGO")
-NS = ("NUTRISCORE_A", "NUTRISCORE_B", "NUTRISCORE_C")
-CODES = K7 + ("NUTRISCORE",)  # sleutels per keurmerk (aanvulling, melding)
+LOS = uitslag.KEURMERKEN_LOS  # de 8 losse keurmerken (V-label inbegrepen, besluit Friso 01-11-2026)
+NS = tuple(f"NUTRISCORE_{x}" for x in uitslag.LETTERS)  # A–E
+V, VV = "EUROPEAN_V_LABEL_VEGAN", "EUROPEAN_V_LABEL_VEGETARIAN"
+CODES = LOS + ("NUTRISCORE",)  # sleutels per keurmerk (rapport, melding)
+AANVUL_CODES = CODES + NS  # --alleen/--alle: ook één Nutri-Score-letter (toetsset §4)
 POOL = "pool-met-converted-laag-20261008.txt"  # docs met print-laag, in <PM>/invoer/
 GELIJKEND = {  # meetregels §2 (codes; "nationale bio-logo's" en "andere gekleurde schalen" hebben geen code)
     "EU_ORGANIC_FARMING": ("AGRICULTURE_BIOLOGIQUE", "BDIH_LOGO"),
     "GREEN_DOT": ("RECYCLABLE_GENERAL_CLAIM", "TRIMAN", "SEPARATE_COLLECTION", "SOCIETY_PLASTICS_INDUSTRY", "RETURNABLE_CAN_NL"),
     "RECYCLABLE_GENERAL_CLAIM": ("GREEN_DOT", "TRIMAN", "SEPARATE_COLLECTION", "SOCIETY_PLASTICS_INDUSTRY", "RETURNABLE_CAN_NL"),
-    "NUTRISCORE": ("NUTRISCORE_D", "NUTRISCORE_E"),
+    "NUTRISCORE": (),  # D en E zijn sinds ronde 5 eigen letters
     "PREGNANCY_WARNING": ("MINIMUM_DRINKING_AGE_18_WARNING", "DO_NOT_DRINK_AND_DRIVE_WARNING"),
     "MARINE_STEWARDSHIP_COUNCIL_LABEL": ("AQUACULTURE_STEWARDSHIP_COUNCIL",),
     "WEIDEMELK": ("BETER_LEVEN_1_STER", "BETER_LEVEN_2_STER"),
-    "VEGAN_SOCIETY_VEGAN_LOGO": ("EUROPEAN_V_LABEL_VEGAN", "EUROPEAN_V_LABEL_VEGETARIAN", "VEGAN"),
+    "VEGAN_SOCIETY_VEGAN_LOGO": ("VEGAN",),  # het V-label is sinds ronde 5 een eigen keurmerk
+    V: ("VEGAN",),
 }
-GELIJKEND_CODES = sorted({c for v in GELIJKEND.values() for c in v} - set(K7) - set(NS))
+GELIJKEND_CODES = sorted({c for v in GELIJKEND.values() for c in v} - set(LOS) - set(NS))
 OMSCHRIJVING = {
     "EU_ORGANIC_FARMING": "EU organic logo: a leaf outline made of white stars on a green rectangle",
     "GREEN_DOT": "Der Grüne Punkt / Green Dot: a circle with two interlocking arrows",
@@ -56,13 +60,15 @@ OMSCHRIJVING = {
     "MARINE_STEWARDSHIP_COUNCIL_LABEL": "MSC blue fish label: a fish shaped like a tick mark, 'certified sustainable seafood MSC'",
     "WEIDEMELK": "Dutch 'Weidemelk' meadow-milk logo",
     "VEGAN_SOCIETY_VEGAN_LOGO": "The Vegan Society trademark: a sunflower with the word 'Vegan'",
+    V: "European V-Label: a stylised V with a leaf, with the word 'vegan' or 'vegetarian' under it (both count as this "
+       "mark)",
 }
 SCHEMA_VOORINVULLING = {
     "type": "object",
     "properties": {
         "keurmerken": {"type": "array", "items": {
             "type": "object",
-            "properties": {"code": {"type": "string", "enum": list(K7)}, "aanwezig": {"type": "boolean"},
+            "properties": {"code": {"type": "string", "enum": list(LOS)}, "aanwezig": {"type": "boolean"},
                            "tegels": {"type": "array", "items": {"type": "integer"}}},
             "required": ["code", "aanwezig", "tegels"], "additionalProperties": False}},
         "nutriscore": {"type": "array", "items": {"type": "string", "enum": ["A", "B", "C", "D", "E"]}},
@@ -124,10 +130,10 @@ def kandidaten(rijen_toets, gelijkend, max_per=40, max_gelijkend=10, seed="20261
                 if n >= maximum:
                     break
 
-    for code in K7[:3]:
+    for code in LOS[:3]:
         neem([(code, rijen_toets.get(code, {}))], maxima.get(code, max_per), code)
     neem([(c, rijen_toets.get(c, {})) for c in NS], maxima.get("NUTRISCORE", max_per), "NUTRISCORE")
-    for code in K7[3:]:
+    for code in LOS[3:]:
         neem([(code, rijen_toets.get(code, {}))], maxima.get(code, max_per), code)
     for keurmerk in sorted(gelijkend):
         neem([(f"gelijkend:{keurmerk}", gelijkend[keurmerk])], max_gelijkend, f"gelijkend:{keurmerk}")
@@ -147,6 +153,7 @@ def ontdubbel(items):
     return blijft
 
 
+RONDE = 5  # voorinvullingen met dit kenmerk vroegen het V-label zelf; zonder kenmerk: van vóór ronde 5 (toetsset §5)
 MAX_TEGELS = 16  # per aanroep, naast het hele etiket (grens van de aanbieder op beelden per verzoek)
 GRENS_VOORINVULLING = 65.0  # dollar, hard (besluit Friso 01-11-2026 ±14:05; randvoorwaarden §3)
 PER_AANROEP = 0.06  # verwachte kosten per aanroep (heel etiket + hoogstens 16 tegels; randvoorwaarden §3)
@@ -157,9 +164,9 @@ def voorinvulling(client, beeld, tegels):
     overzicht meegeteld); de uitkomsten worden samengevoegd (aanwezig = in een van de aanroepen, hinttegels op
     etiketindex). Alleen codes die het model teruggaf staan in `keurmerken`; een ontbrekende code blijft zonder
     voorinvulling. Mislukt (EtiketFout, ook `te_groot` zonder aanroep, of een onleesbaar antwoord) → lege velden met
-    `fout`; RunStop gaat door."""
+    `fout`; RunStop gaat door. Elke uitkomst draagt `ronde` (sinds ronde 5 vraagt de voorinvulling het V-label zelf)."""
     leeg = {"keurmerken": {}, "nutriscore": [], "hinttegels": {}, "gelijkend": [], "model": client.model, "kosten": 0.0,
-            "tijd": time.strftime("%Y-%m-%dT%H:%M:%S%z")}
+            "tijd": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "ronde": RONDE}
     keurmerken, letters, hint, gelijkend, prijs, ruw = {}, set(), {}, set(), 0.0, []
     try:
         for r in openrouter.delen([len(t) for t in tegels], vast=len(beeld), max_aantal=MAX_TEGELS):
@@ -168,7 +175,7 @@ def voorinvulling(client, beeld, tegels):
             prijs += p
             ruw.append(a)
             for k in a["keurmerken"]:
-                if k["code"] not in K7:
+                if k["code"] not in LOS:
                     continue
                 keurmerken[k["code"]] = keurmerken.get(k["code"], False) or bool(k["aanwezig"])
                 if k["aanwezig"]:
@@ -184,15 +191,33 @@ def voorinvulling(client, beeld, tegels):
             "ruw": ruw[0] if len(ruw) == 1 else ruw}
 
 
+def met_v_label(v):
+    """Kopie van één voorinvulling met een V-label-oordeel (toetsset §5): alleen bij een geslaagde voorinvulling van
+    vóór ronde 5 (geen `ronde`, geen `fout`, niet-lege `keurmerken`) zonder V-label-oordeel geldt V-label vegan of
+    vegetarisch in `gelijkend` als aanwezig, anders afwezig. Al het andere blijft ongewijzigd (een nieuwe voorinvulling
+    zonder V-label-oordeel laat het V-label zonder keuze). Geen aanroep, geen kosten."""
+    uit = copy.deepcopy(v)
+    k = uit.get("keurmerken")
+    if "fout" not in uit and "ronde" not in uit and isinstance(k, dict) and k and V not in k:
+        k[V] = bool({V, VV} & set(uit.get("gelijkend", [])))
+    return uit
+
+
 def rapport(voorinvullingen):
-    """Per keurmerk (8) het aantal etiketten waarop het volgens de voorinvulling waarschijnlijk staat."""
-    r = {c: 0 for c in K7}
-    r["NUTRISCORE"] = 0
-    for v in voorinvullingen.values():
-        for c in K7:
+    """Per keurmerk (9) het aantal etiketten waarop het volgens de voorinvulling waarschijnlijk staat; Nutri-Score als
+    groep (minstens één letter A–E), V-label via `met_v_label`."""
+    r = dict.fromkeys(CODES, 0)
+    for v in map(met_v_label, voorinvullingen.values()):
+        for c in LOS:
             r[c] += bool(v.get("keurmerken", {}).get(c))
-        r["NUTRISCORE"] += bool(set(v.get("nutriscore", [])) & {"A", "B", "C"})
+        r["NUTRISCORE"] += bool(set(v.get("nutriscore", [])) & set(uitslag.LETTERS))
     return r
+
+
+def letters(voorinvullingen):
+    """Per Nutri-Score-letter het aantal etiketten waarop de voorinvulling hem zag (informatief; het besluit valt op de
+    groep)."""
+    return {x: sum(x in v.get("nutriscore", []) for v in voorinvullingen.values()) for x in uitslag.LETTERS}
 
 
 def stoppunt2(rapport, minimum=16):
@@ -264,9 +289,10 @@ def main(argv=None):
     k = sub.add_parser("kandidaten")
     k.add_argument("--proef-map", required=True, type=Path)
     k.add_argument("--max-per", type=int, default=40)
-    k.add_argument("--alleen", action="append", choices=CODES, metavar="CODE",
-                   help="aanvullen: hoogstens --max-per nieuwe voor dit keurmerk (code of NUTRISCORE; herhaalbaar)")
-    k.add_argument("--alle", action="append", choices=CODES, metavar="CODE",
+    k.add_argument("--alleen", action="append", choices=AANVUL_CODES, metavar="CODE",
+                   help="aanvullen: hoogstens --max-per nieuwe voor dit keurmerk (code, NUTRISCORE of één letter "
+                        "NUTRISCORE_A..E; herhaalbaar)")
+    k.add_argument("--alle", action="append", choices=AANVUL_CODES, metavar="CODE",
                    help="aanvullen: alles wat voor dit keurmerk overblijft, ook boven 40 (herhaalbaar)")
     k.add_argument("--bestaand", action="append", type=Path,
                    help="aanvullen: eerdere kandidatenlijst (herhaalbaar); alleen nieuwe GTIN's komen erbij")
@@ -300,6 +326,8 @@ def main(argv=None):
             ap.error("een aanvulling (--bestaand) vraagt --alleen of --alle (geen gelijkende kandidaten, toetsset §4)")
         if set(a.alleen or []) & set(a.alle or []):
             ap.error("dezelfde code bij --alleen en --alle: kies één van de twee")
+        if all(any(c == "NUTRISCORE" or c in NS for c in x or []) for x in (a.alleen, a.alle)):
+            ap.error("Nutri-Score (groep of letter) bij --alleen en --alle samen: de groep heeft één maximum")
         if a.naam is not None and (Path(a.naam).name != a.naam or a.naam in ("", ".", "..")):
             ap.error("--naam is een bestandsnaam zonder map (geen /, . of ..)")
     if a.stap == "voorinvulling":
@@ -314,12 +342,13 @@ def main(argv=None):
             toets_map.mkdir(parents=True, exist_ok=True)
         doel = toets_map / f"{a.naam or ('kandidaten-aanvulling' if a.bestaand else 'kandidaten')}.json"
         paren = doel.with_name(f"{doel.stem}-paren.tsv")
-        if (a.bestaand or a.naam) and (doel.exists() or paren.exists()):  # eigen lijst, nooit overschrijven (toetsset §4)
+        if doel.exists() or paren.exists():  # nooit overschrijven, ook kandidaten.json van 31-10 niet (toetsset §4)
             raise SystemExit(f"{doel} of {paren.name} bestaat al: niets overschreven; kies een andere --naam")
+        rij_codes = lambda c: NS if c == "NUTRISCORE" else (c,)  # noqa: E731
         alle = set(a.alle or [])
-        keuze = [c for c in CODES if c in alle | set(a.alleen or [])]
-        if keuze:  # aanvulling: alleen de gekozen rijen, geen gelijkende
-            houd = {r for c in keuze for r in (NS if c == "NUTRISCORE" else (c,))}
+        keuze = [c for c in AANVUL_CODES if c in alle | set(a.alleen or [])]
+        if keuze:  # aanvulling: alleen de gekozen rijen (een letter beperkt de Nutri-Score-groep), geen gelijkende
+            houd = {r for c in keuze for r in rij_codes(c)}
             rijen_toets = {r: (v if r in houd else {}) for r, v in rijen_toets.items()}
             gelijkend = {}
         bestaand = {i["gtin"] for p in a.bestaand or [] for i in json.loads(p.read_text())}
@@ -327,16 +356,16 @@ def main(argv=None):
         if a.print_laag_eerst:  # één doc_id GLN-GTIN-doelmarkt per regel
             pool = (a.proef_map / "invoer" / POOL).read_text().split()
             voorkeur = {tuple(d.split("-")[:2]) for d in pool if d.count("-") == 2}
-        lijst = kandidaten(rijen_toets, gelijkend, max_per=a.max_per, bestaand=bestaand, maxima=dict.fromkeys(alle),
-                           voorkeur=voorkeur)
+        maxima = dict.fromkeys("NUTRISCORE" if c in NS else c for c in alle)  # een letter: maximum van de groep
+        lijst = kandidaten(rijen_toets, gelijkend, max_per=a.max_per, bestaand=bestaand, maxima=maxima, voorkeur=voorkeur)
         doel.write_text(json.dumps(lijst, indent=1) + "\n")
         paren.write_text("gln\tgtin\n" + "".join(f"{i['gln']}\t{i['gtin']}\n" for i in lijst))
         nieuw = {i["gtin"] for i in lijst}
-        tel = collections.Counter("NUTRISCORE" if i["reden"].startswith("NUTRISCORE_") else i["reden"] for i in lijst)
+        tel = collections.Counter(i["reden"] for i in lijst)
         per_keurmerk = {}
         for c in keuze or CODES:
-            alle_gtins = set().union(*(v for r in (NS if c == "NUTRISCORE" else (c,)) for v in rijen_toets.get(r, {}).values()))
-            per_keurmerk[c] = {"toegevoegd": tel[c], "over": len(alle_gtins - bestaand - nieuw)}
+            alle_gtins = set().union(*(v for r in rij_codes(c) for v in rijen_toets.get(r, {}).values()))
+            per_keurmerk[c] = {"toegevoegd": sum(tel[r] for r in rij_codes(c)), "over": len(alle_gtins - bestaand - nieuw)}
         print(json.dumps({"kandidaten": len(lijst), "bestand": str(doel), "per_keurmerk": per_keurmerk}, indent=1))
     elif a.stap == "voorinvulling":
         from PIL import Image
@@ -384,7 +413,8 @@ def main(argv=None):
             volledig = toets_map / "beelden" / f"{doc}.png"  # de pagina serveert alleen bestanden binnen de toetsmap
             if not volledig.exists():
                 shutil.copyfile(pad, volledig)
-            items.append({"id": doc, "beeld": f"beelden/{doc}.png", "hint": hint, "voorinvulling": klaar[doc]})
+            items.append({"id": doc, "beeld": f"beelden/{doc}.png", "hint": hint,
+                          "voorinvulling": met_v_label(klaar[doc])})  # voorinvulling.json blijft zoals hij is
         (toets_map / "zdr-proef.json").write_text(json.dumps({**proef, "grens": grens, "besluit": besluit}) + "\n")
         (toets_map / "items.json").write_text(json.dumps(items, indent=1) + "\n")
         print(len(items), "etiketten, uitgegeven $%.2f" % bewaker.uitgegeven)
@@ -415,9 +445,10 @@ def main(argv=None):
         (toets_map / "toets-lijst.json").write_text(json.dumps(lijst, indent=1) + "\n")
         print(len(lijst), "bevestigde toetsetiketten →", toets_map / "toets-lijst.json")
     else:
-        rp = rapport(json.loads((toets_map / "voorinvulling.json").read_text()))
-        stop = stoppunt2(rp)
-        print(json.dumps({"rapport": rp, "stoppunt_2": stop}, indent=1))
+        vi = json.loads((toets_map / "voorinvulling.json").read_text())
+        rp = rapport(vi)
+        stop = stoppunt2(rp)  # alleen over de 9; per letter is informatief
+        print(json.dumps({"rapport": rp, "nutriscore_per_letter": letters(vi), "stoppunt_2": stop}, indent=1))
         return 2 if stop else 0
     return 0
 

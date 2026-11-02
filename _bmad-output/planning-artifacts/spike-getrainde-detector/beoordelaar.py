@@ -33,6 +33,10 @@ def vraag_voor(code):
         return ("Image 1 is a crop from a product label; image 2 is the reference Nutri-Score scale with letter "
                 f"{code[-1]} highlighted. Does image 1 show a Nutri-Score scale with the same letter highlighted? "
                 "Answer ja (yes), nee (no) or twijfel (unsure).")
+    if code == "EUROPEAN_V_LABEL_VEGAN":  # vegan en vegetarisch zijn hetzelfde V-label (meetregels §2)
+        return ("Image 1 is a crop from a product label; image 2 is the reference European V-Label. Does image 1 show the "
+                "European V-Label (not a similar-looking mark)? The vegan and the vegetarian V-Label count as the same mark, "
+                "whatever word is under the V. Answer ja (yes), nee (no) or twijfel (unsure).")
     return ("Image 1 is a crop from a product label; image 2 is the reference logo of a quality mark. Does image 1 "
             "show the same quality mark (not a similar-looking one)? Answer ja (yes), nee (no) or twijfel (unsure).")
 

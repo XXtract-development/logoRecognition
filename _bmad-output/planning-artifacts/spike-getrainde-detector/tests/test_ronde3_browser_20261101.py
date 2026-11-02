@@ -23,7 +23,8 @@ expect.set_options(timeout=5_000)
 K7 = ("EU_ORGANIC_FARMING", "GREEN_DOT", "RECYCLABLE_GENERAL_CLAIM", "PREGNANCY_WARNING",
       "MARINE_STEWARDSHIP_COUNCIL_LABEL", "WEIDEMELK", "VEGAN_SOCIETY_VEGAN_LOGO")
 E1, E2 = "9990000000017-09990000000011-528", "9990000000017-09990000000028-528"
-VOLLEDIG = {"keurmerken": {c: c == "GREEN_DOT" for c in K7}, "nutriscore": [], "hinttegels": {}, "gelijkend": []}
+VOLLEDIG = {"keurmerken": {c: c == "GREEN_DOT" for c in K7 + ("EUROPEAN_V_LABEL_VEGAN",)}, "nutriscore": [], "hinttegels": {},
+            "gelijkend": []}  # ronde 5: V-label hoort bij volledig
 # E1 mist WEIDEMELK in de voorinvulling: `b` moet daar weigeren ("Kies eerst …") en blijven staan.
 ZONDER_WM = {**VOLLEDIG, "keurmerken": {c: v for c, v in VOLLEDIG["keurmerken"].items() if c != "WEIDEMELK"}}
 ITEMS = [{"id": E1, "beeld": "beelden/0.png", "hint": [], "voorinvulling": ZONDER_WM},

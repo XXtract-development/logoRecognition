@@ -1,10 +1,10 @@
 {
  "decision": "PASS",
- "rationale": "P0 coverage 100% (41/41), P1 100% (11/11), overall 96% (53/55); all tests pass (569/569 dev in two full runs after the review patches, 4/4 zwaar-or-lokaal) and the real-environment licence check is clean (93 packages, 0 violations). Run 5 adds round 4 (owner decisions Friso 01-11-2026: top-up before confirmation with existing candidates excluded, per-mark maxima, print-layer preference, own never-overwritten list and per-mark report; certificate text merged atomically; voorlabels limit $50 by default) with 8 criteria from spec-spike-getrainde-detector-ronde4.md, all FULL. Only P2 partial (CAP-6a, AC-2: MPS not asserted).",
- "decision_date": "2026-11-01",
- "run": 5,
+ "rationale": "P0 coverage 100% (57/57), P1 100% (21/21), overall 98% (80/82); all tests pass (664/664 dev in two full runs after the review patches, 4/4 zwaar-or-lokaal) and the real-environment licence check is clean (93 packages, 0 violations). Run 6 adds round 5 (owner decisions Friso 01-11-2026: Nutri-Score A-E with the letter required, V-label as 9th measured mark with vegetarian as variant, V-label no longer a Vegan Society look-alike, NutriGreen in phase-2 training within the mix budget) with 27 criteria from SPEC and spec-spike-getrainde-detector-ronde5.md, all FULL. Only P2 partial (CAP-6a, AC-2: MPS not asserted).",
+ "decision_date": "2026-11-02",
+ "run": 6,
  "subject": "spike-getrainde-detector",
- "head": "039b14f + uncommitted round 4 (spec update, ATDD tests, build, trace)",
+ "head": "08d2cf7 + uncommitted round 5 (spec update, ATDD tests, build, trace)",
  "branch": "spike/proef-getrainde-detector",
  "specs": [
   "_bmad-output/implementation-artifacts/spec-spike-getrainde-detector-besluiten.md",
@@ -14,21 +14,16 @@
  ],
  "contract": "_bmad-output/planning-artifacts/spike-getrainde-detector/SPEC.md",
  "atdd_checklist": "_bmad-output/test-artifacts/atdd-checklist-spike-getrainde-detector.md",
- "phase1_matrix": "/tmp/tea-trace-coverage-matrix-2026-11-01T18-40-00.json",
- "tests": [
-  {
-   "command": "cd _bmad-output/planning-artifacts/spike-getrainde-detector && uv run --group dev pytest -q -p no:cacheprovider",
-   "result": "569 passed, 0 failed, 0 skipped"
-  },
-  {
-   "command": "cd _bmad-output/planning-artifacts/spike-getrainde-detector && uv run --group dev --group detector pytest -q -p no:cacheprovider -m \"zwaar or lokaal\"",
-   "result": "4 passed, 0 failed, 565 deselected"
-  },
-  {
-   "command": "cd _bmad-output/planning-artifacts/spike-getrainde-detector && uv run --group dev --group detector python licenties.py",
-   "result": "exit 0, 93 packages, 0 violations, 8 under ruim"
+ "phase1_matrix": "/tmp/tea-trace-coverage-matrix-2026-11-02T01-30-00.json",
+ "tests": {
+  "dev": "664/664",
+  "zwaar_or_lokaal": "4/4",
+  "collected": 664,
+  "licence_check": {
+   "packages": 93,
+   "violations": 0
   }
- ],
+ },
  "failed_tests": [],
  "flaky_known": {
   "test": "tests/test_review_20261101.py::test_pagina_b_zonder_alle_keuzes_slaat_niets_op_en_blijft_staan",
@@ -102,13 +97,45 @@
    "R4-IO-3",
    "R4-IO-4",
    "R4-IO-5",
-   "R4-IO-6"
+   "R4-IO-6",
+   "R5-AC-1",
+   "R5-AC-2",
+   "R5-VER-1",
+   "R5-IO-1",
+   "R5-IO-2",
+   "R5-IO-3",
+   "R5-IO-4",
+   "R5-IO-5",
+   "R5-IO-6",
+   "R5-IO-7",
+   "R5-IO-8",
+   "R5-IO-9",
+   "R5-CAP-1",
+   "R5-CAP-2a",
+   "R5-CAP-2b",
+   "R5-CAP-3",
+   "R5-CAP-4",
+   "R5-CAP-4b",
+   "R5-CAP-5",
+   "R5-CAP-6",
+   "R5-CAP-7",
+   "R5-CAP-8",
+   "R5-CAP-9",
+   "R5-CAP-12",
+   "R5-CAP-16a",
+   "R5-CAP-16b",
+   "R5-CAP-10"
   ],
   "PARTIAL": [
    "CAP-6a",
    "AC-2"
   ],
-  "NONE": []
+  "NONE": [],
+  "p0": "57/57",
+  "p1": "21/21",
+  "p2": "2/4",
+  "overall": "80/82",
+  "overall_pct": 97.6
  },
  "partial_reasons": {
   "CAP-6a": "P2: no test asserts the device is mps (unchanged since run 1)",
@@ -141,9 +168,10 @@
   "build spec 1 still 'in-review' (rejected finding 9 in build-spec-2 triage)",
   "manifest.json not written atomically (pre-existing; deferred-work.md, build review round 4 B5b)",
   "network steps of the top-up (ssh, rsync against production, read-only) not automated; building blocks tested (CAP-15)",
-  "round 4 and this trace are not committed yet"
+  "round 4 and this trace are not committed yet",
+  "correctiepercentage per keurmerk incl. V-label-markering (meetregels §6; pre-existing; deferred-work.md, round-5 review BH8)"
  ],
- "next": "Commit round 4 (spec update, ATDD tests, build, build spec, deferred-work line) together with this trace. Optional (P2): assert apparaat == 'mps' in the two zwaar tests of CAP-6.",
+ "next": "Commit round 5 (spec update, ATDD tests, build, build spec, deferred-work line) together with this trace when the owner allows; this round was run without commit by instruction. Optional (P2): assert apparaat == 'mps' in the two zwaar tests of CAP-6.",
  "history": [
   {
    "run": 1,
@@ -192,6 +220,14 @@
    "head": "89887f2 + uncommitted round 3 (spec update, ATDD tests, build, trace)",
    "decision": "PASS",
    "rationale": "P0 coverage 100% (34/34), P1 100% (10/10), overall 96% (45/47); all tests pass (543/543 dev in three full runs, 4/4 zwaar-or-lokaal) and the real-environment licence check is clean (93 packages, 0 violations). Run 4 adds round 3 (request size: JPEG q90, <=16 tiles and 20,000,000 image bytes per request; prefill limit $65 per Friso's decision with a decision reference required for any other limit; fill-in page readiness sign) with 10 criteria from spec-spike-getrainde-detector-ronde3.md, all FULL. The flaky browser test was shown to be a test fault and is fixed (20/20 isolated). Only P2 items CAP-6a and AC-2 remain partial (no assertion that training ran on mps)."
+  },
+  {
+   "run": 5,
+   "decision": "PASS",
+   "head": "039b14f + uncommitted round 4 (spec update, ATDD tests, build, trace)",
+   "decision_date": "2026-11-01",
+   "coverage": "53/55",
+   "tests": "569/569"
   }
  ],
  "atdd_red_run_round3": {
@@ -201,5 +237,31 @@
  "atdd_red_run_round4": {
   "command": "cd _bmad-output/planning-artifacts/spike-getrainde-detector && uv run --group dev pytest -q -p no:cacheprovider",
   "result": "17 failed, 543 passed"
+ },
+ "atdd_red_run_round5": {
+  "command": "cd _bmad-output/planning-artifacts/spike-getrainde-detector && uv run --group dev pytest -q -p no:cacheprovider",
+  "result": "105 failed, 543 passed (648 tests)",
+  "date": "2026-11-02"
+ },
+ "build_round5": {
+  "spec": "_bmad-output/implementation-artifacts/spec-spike-getrainde-detector-ronde5.md",
+  "route": "dispatch",
+  "route_facts": {
+   "intent_gaps": 0,
+   "irreversibles": 0,
+   "footprint": "12 files + new nutrigreen.py"
+  },
+  "review_layers": [
+   "blind-hunter",
+   "edge-case-hunter",
+   "verification-gap"
+  ],
+  "triage": {
+   "findings": 32,
+   "patch": 21,
+   "defer": 1,
+   "rejected": 10
+  },
+  "after_patches": "664 passed"
  }
 }

@@ -63,7 +63,7 @@ def test_cap12_alleen_referenties_van_trainingsleveranciers_en_publieke_bronnen(
 
 
 def test_cap12_elke_detectie_binnen_de_8_keurmerken_is_een_melding(kl):
-    assert kl.meldingen_uit(RESULTAAT) == {GD, WM, "NUTRISCORE_B"}  # ook requires_review; FSC en D vallen af
+    assert kl.meldingen_uit(RESULTAAT) == {GD, WM, "NUTRISCORE_B", "NUTRISCORE_D"}  # ook requires_review; FSC valt af, D is een klasse (ronde 5)
     assert kl.meldingen_uit({"detections": [], "stats": {}}) == set()
 
 
@@ -84,7 +84,7 @@ def test_cap12_uitvoer_per_etiket_met_kosten_en_tijd(kl):
     k4 = nep_k4aa()
     uit = kl.draai_etiket(k4, b"\x89PNG-verzonnen")
     assert k4.gezien["data"] == b"\x89PNG-verzonnen"
-    assert uit["meldingen"] == {GD, WM, "NUTRISCORE_B"}
+    assert uit["meldingen"] == {GD, WM, "NUTRISCORE_B", "NUTRISCORE_D"}
     assert uit["kosten"] == pytest.approx(0.0123)
     assert isinstance(uit["tijd"], float) and uit["tijd"] >= 0
     assert uit["requires_review"] == {WM}

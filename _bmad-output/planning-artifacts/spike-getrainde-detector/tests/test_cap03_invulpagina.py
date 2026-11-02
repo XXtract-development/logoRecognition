@@ -16,13 +16,14 @@ import pytest
 K7 = ("EU_ORGANIC_FARMING", "GREEN_DOT", "RECYCLABLE_GENERAL_CLAIM", "PREGNANCY_WARNING",
       "MARINE_STEWARDSHIP_COUNCIL_LABEL", "WEIDEMELK", "VEGAN_SOCIETY_VEGAN_LOGO")
 K8 = K7 + ("NUTRISCORE",)
+KL = K7 + ("EUROPEAN_V_LABEL_VEGAN",)  # ronde 5: V-label als 8e losse keuze
 EU, GD, WM = "EU_ORGANIC_FARMING", "GREEN_DOT", "WEIDEMELK"
 DOCS = [f"1000000000001-{20000000000000 + i}-528" for i in range(8)]
 ITEMS = [{"id": d, "beeld": f"beelden/{d}.png", "hint": [], "voorinvulling": {"keurmerken": {GD: True}, "nutriscore": []}} for d in DOCS]
 
 
 def volledig(**over):
-    w = {"status": "bevestigd", "keurmerken": {c: "afwezig" for c in K7}, "nutriscore": [], "veranderd": [],
+    w = {"status": "bevestigd", "keurmerken": {c: "afwezig" for c in KL}, "nutriscore": [], "veranderd": [],
          "opmerking": "", "tijd": "2026-10-31T21:00:00+01:00"}
     w.update(over)
     return w
@@ -62,7 +63,7 @@ def get(url, pad):
 # --- gedeelde uitslagfunctie ---------------------------------------------------------------------------------------
 
 def test_cap03_keurmerklijsten(us):
-    assert tuple(us.KEURMERKEN7) == K7 and tuple(us.KEURMERKEN8) == K8
+    assert tuple(us.KEURMERKEN_LOS) == KL and tuple(us.KEURMERKEN) == KL + ("NUTRISCORE",)
 
 
 def test_cap03_valideer_accepteert_volledig_bevestigd_en_onleesbaar(us):
@@ -115,14 +116,14 @@ def test_cap03_per_keurmerk_gedeelde_negatieven_onzeker_en_onleesbaar_tellen_nie
 
 def test_cap03_per_keurmerk_nutriscore_als_groep_en_per_letter(us):
     pk = us.per_keurmerk(uitslag_mini())
-    assert (pk["NUTRISCORE"]["met"], pk["NUTRISCORE"]["zonder"]) == ({"d1", "d5"}, {"d2", "d6"})  # D telt als zonder
+    assert (pk["NUTRISCORE"]["met"], pk["NUTRISCORE"]["zonder"]) == ({"d1", "d2", "d5"}, {"d6"})  # ronde 5: D telt als mét
     assert (pk["NUTRISCORE_A"]["met"], pk["NUTRISCORE_B"]["met"], pk["NUTRISCORE_C"]["met"]) == ({"d5"}, {"d1"}, {"d5"})
     assert "d2" in pk["NUTRISCORE_A"]["zonder"] and "d3" not in pk["NUTRISCORE_A"]["zonder"]
 
 
 def test_cap03_stand_telt_per_keurmerk(us):
     st = us.stand(uitslag_mini())
-    assert st[GD] == {"met": 1, "zonder": 4} and st["NUTRISCORE"] == {"met": 2, "zonder": 2}
+    assert st[GD] == {"met": 1, "zonder": 4} and st["NUTRISCORE"] == {"met": 3, "zonder": 1}
     assert all(set(st[k]) == {"met", "zonder"} for k in K8)
 
 

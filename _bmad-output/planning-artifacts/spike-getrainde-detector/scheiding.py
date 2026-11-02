@@ -3,7 +3,8 @@
 Regel: kandidaten = per rij de 2 leveranciers met de meeste unieke GTIN's; kies uitputtend de verzameling
 trainingsleveranciers waarvoor de oplopend gesorteerde rij `min(toets/2, train)` lexicografisch het grootst is;
 gelijkspel: kleinste verzameling, dan laagste gesorteerde rij GLN's. Toets-GTIN's zonder GTIN's uit referenties,
-`training_data` en de fase-B-meetset. Alleen standaardbibliotheek + Pillow.
+`training_data` en de fase-B-meetset. De extra rijen (ronde 5: Nutri-Score D, E en V-label, vegan of vegetarisch) worden
+met de gekozen leveranciers geteld, maar tellen niet mee in de keuze (toetsset §2). Alleen standaardbibliotheek + Pillow.
 
   python scheiding.py invoer --proef-map <PROEF_MAP>              kopieert de invoer eenmalig naar PROEF_MAP/invoer (+ sha256)
   python scheiding.py kies --proef-map <PROEF_MAP>                schrijft PROEF_MAP/scheiding.json
@@ -22,9 +23,14 @@ from pathlib import Path
 from PIL import Image
 
 import beelden
+from train import VARIANTEN
 
 RIJEN = ("EU_ORGANIC_FARMING", "GREEN_DOT", "RECYCLABLE_GENERAL_CLAIM", "NUTRISCORE_A", "NUTRISCORE_B", "NUTRISCORE_C",
          "PREGNANCY_WARNING", "MARINE_STEWARDSHIP_COUNCIL_LABEL", "WEIDEMELK", "VEGAN_SOCIETY_VEGAN_LOGO")
+RIJEN_EXTRA = ("NUTRISCORE_D", "NUTRISCORE_E", "EUROPEAN_V_LABEL_VEGAN")  # ronde 5: geteld, niet in de keuze
+REDEN_EXTRA = ("ronde 5 (besluit Friso 01-11-2026): de toetsset is op de 5 trainingsleveranciers van 31-10 gebouwd en "
+               "voorgevuld en wordt niet opnieuw gebouwd; de keuze gebruikt alleen de 10 oorspronkelijke rijen, de extra "
+               "rijen worden met de gekozen leveranciers geteld (toetsset §2)")
 REGEL = ("leverancier (GLN) aan precies één kant; kandidaten = per rij de 2 leveranciers met de meeste unieke GTIN's; "
          "uitputtend de verzameling met lexicografisch grootste oplopende rij min(toets/2, train); gelijkspel: kleinste "
          "verzameling, dan laagste gesorteerde GLN-rij; toets zonder GTIN's uit referenties, training_data en fase-B-meetset")
@@ -77,10 +83,11 @@ def gtins_uit_paden(regels):
 
 
 def bouw_rijen(declaraties, alcohol):
-    """{rij: {gln: set(gtin)}}; zwangerschap = alcoholproducten (er is geen GS1-declaratie voor)."""
-    rijen = {r: {} for r in RIJEN}
+    """{rij: {gln: set(gtin)}} over RIJEN + RIJEN_EXTRA; zwangerschap = alcoholproducten (er is geen GS1-declaratie
+    voor); een variant (vegetarisch V-label) telt in de rij van zijn klasse."""
+    rijen = {r: {} for r in RIJEN + RIJEN_EXTRA}
     for _, gln, gtin, codes in declaraties:
-        for rij in codes & set(RIJEN):
+        for rij in {VARIANTEN.get(c, c) for c in codes} & set(rijen):
             rijen[rij].setdefault(gln, set()).add(gtin)
     for gln, gtin in alcohol:
         rijen["PREGNANCY_WARNING"].setdefault(gln, set()).add(gtin)
@@ -88,6 +95,8 @@ def bouw_rijen(declaraties, alcohol):
 
 
 def kies(rijen, uitgesloten):
+    """Keuze op RIJEN alleen; per_rij telt ook RIJEN_EXTRA met de gekozen leveranciers (`buiten_keuze`)."""
+    extra = {r: {g: set(v) for g, v in rijen.get(r, {}).items() if v} for r in RIJEN_EXTRA}
     rijen = {r: {g: set(v) for g, v in rijen.get(r, {}).items() if v} for r in RIJEN}
     alle = set().union(*(v for per in rijen.values() for v in per.values()))
     n_uit = len(alle & set(uitgesloten))
@@ -126,13 +135,14 @@ def kies(rijen, uitgesloten):
                 beste = (s, combi)
     trainers = [kandidaten[i] for i in beste[1]]
     per_rij = {}
-    for rij in RIJEN:
-        per = rijen[rij]
+    for rij, per in {**rijen, **extra}.items():
         train = set().union(*(per[g] for g in trainers if g in per))
         toets = set().union(*(per[g] - set(uitgesloten) for g in per if g not in trainers))
         per_rij[rij] = {"train": len(train), "toets": len(toets),
                         "train_glns": sum(g in per for g in trainers),
                         "toets_glns": sum(1 for g in per if g not in trainers and per[g] - set(uitgesloten))}
+        if rij in extra:
+            per_rij[rij]["buiten_keuze"] = True
     return {"trainingsleveranciers": trainers, "kandidaten": kandidaten, "per_rij": per_rij, "score": beste[0],
             "uitgesloten_gtins": n_uit}
 
@@ -159,7 +169,8 @@ def bijna_gelijk(train, toets, max_afstand=6):
 def schrijf(uitkomst, pad, invoerhashes):
     pad = beelden.veilig_doel(pad)
     data = {"regel": REGEL, **{k: uitkomst[k] for k in ("trainingsleveranciers", "per_rij", "score", "uitgesloten_gtins")},
-            "kandidaten": uitkomst.get("kandidaten", []), "invoer": dict(invoerhashes)}
+            "kandidaten": uitkomst.get("kandidaten", []), "invoer": dict(invoerhashes),
+            "rijen_buiten_keuze": {"rijen": list(RIJEN_EXTRA), "reden": REDEN_EXTRA}}
     pad.write_text(json.dumps(data, indent=1, sort_keys=True, ensure_ascii=False) + "\n", encoding="utf-8")
     return pad
 

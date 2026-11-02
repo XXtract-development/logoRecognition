@@ -41,7 +41,7 @@ from tel import bootstrap, trekkingen, wilson  # noqa: E402
 import beelden  # noqa: E402
 import uitslag as us  # noqa: E402
 
-NS = {"NUTRISCORE_A": "A", "NUTRISCORE_B": "B", "NUTRISCORE_C": "C"}
+NS = {f"NUTRISCORE_{x}": x for x in us.LETTERS}  # A–E (meetregels §3, besluit Friso 01-11-2026)
 MIN_MET, MIN_ZONDER, MAX_FOUT_PCT = 16, 35, 2.0
 STEEKPROEF_SEED = 20261101  # meetregels §6: vast in de telcode (bevroren via de hash), geen opdrachtregeloptie
 KANTEN = ("met", "zonder")
@@ -73,7 +73,7 @@ def tel(uitslag, meldingen):
         raise ValueError("zdr-weigering: de run stopt en telt niet")
     pk = us.per_keurmerk(uitslag)
     r = {}
-    for k in us.KEURMERKEN7 + tuple(NS):
+    for k in us.KEURMERKEN_LOS + tuple(NS):
         met, zonder = pk[k]["met"], pk[k]["zonder"]
         r[k] = {"met": len(met), "gevonden": sum(k in _codes(meldingen.get(d)) for d in met),
                 "zonder": len(zonder), "vals": sum(k in _codes(meldingen.get(d)) for d in zonder)}
@@ -112,7 +112,7 @@ def tabel(uitslag, meldingen, meta, seed=20261030, n_trekkingen=2000):
     pk = us.per_keurmerk(uitslag)
     toets = [d for d, x in uitslag.items() if x.get("status") == "bevestigd"]
     draws = trekkingen([_gln(d, meta) for d in toets], seed, n_trekkingen)
-    for k in us.KEURMERKEN8 + tuple(NS):
+    for k in us.KEURMERKEN + tuple(NS):
         met, zonder = pk[k]["met"], pk[k]["zonder"]
         if k == "NUTRISCORE":
             raak = lambda d: _ns_goed(meldingen.get(d), uitslag[d]["nutriscore"])  # noqa: E731
@@ -138,7 +138,7 @@ def tabel(uitslag, meldingen, meta, seed=20261030, n_trekkingen=2000):
         "door_certificaat": dict(Counter(c for x in m for c in x.get("door_certificaat", []))),
     }
     if any("requires_review" in x for x in m):
-        totaal = sum(len(_codes(meldingen.get(d)) & set(us.KEURMERKEN7 + tuple(NS))) for d in meta)
+        totaal = sum(len(_codes(meldingen.get(d)) & set(us.KEURMERKEN_LOS + tuple(NS))) for d in meta)
         rr = sum(len(set(x.get("requires_review", []))) for x in m)
         route["aandeel_requires_review"] = rr / totaal if totaal else None
     t["route"] = route
@@ -153,7 +153,7 @@ def _mediaan(xs):
 def verschil(a, b):
     """Route a min route b in procentpunten, per keurmerk."""
     uit = {}
-    for k in us.KEURMERKEN8:
+    for k in us.KEURMERKEN:
         x, y = a[k], b[k]
         uit[k] = {"gevonden_pp": 100 * (x["gevonden"] / x["met"] - y["gevonden"] / y["met"]) if x["met"] and y["met"] else None,
                   "vals_pp": 100 * (x["vals"] / x["zonder"] - y["vals"] / y["zonder"]) if x["zonder"] and y["zonder"] else None}
@@ -162,14 +162,14 @@ def verschil(a, b):
 
 def _per_keurmerk(record):
     c = _codes(record)
-    return {**{k: k in c for k in us.KEURMERKEN7}, "NUTRISCORE": frozenset(_letters(c))}
+    return {**{k: k in c for k in us.KEURMERKEN_LOS}, "NUTRISCORE": frozenset(_letters(c))}
 
 
 def verschil_etiketten(a, b):
     uit = []
     for d in sorted(set(a) | set(b)):
         x, y = _per_keurmerk(a.get(d)), _per_keurmerk(b.get(d))
-        uit += [{"doc_id": d, "keurmerk": k} for k in us.KEURMERKEN8 if x[k] != y[k]]
+        uit += [{"doc_id": d, "keurmerk": k} for k in us.KEURMERKEN if x[k] != y[k]]
     return uit
 
 
@@ -180,13 +180,13 @@ def _trekking(uitslag, routes):
     pk = us.per_keurmerk(uitslag)
     verschil = set()
     for meld in routes.values():
-        for k in us.KEURMERKEN7:
+        for k in us.KEURMERKEN_LOS:
             verschil |= {(d, k) for d in pk[k]["met"] if k not in _codes(meld.get(d))}
             verschil |= {(d, k) for d in pk[k]["zonder"] if k in _codes(meld.get(d))}
         verschil |= {(d, "NUTRISCORE") for d in pk["NUTRISCORE"]["met"] if not _ns_goed(meld.get(d), uitslag[d]["nutriscore"])}
         verschil |= {(d, "NUTRISCORE") for d in pk["NUTRISCORE"]["zonder"] if _letters(_codes(meld.get(d)))}
     rng, eens, steek = random.Random(STEEKPROEF_SEED), {}, set()
-    for k in us.KEURMERKEN8:
+    for k in us.KEURMERKEN:
         for kant in KANTEN:
             eens[k, kant] = sorted(d for d in pk[k][kant] if (d, k) not in verschil)
             steek |= {(d, k) for d in rng.sample(eens[k, kant], (len(eens[k, kant]) + 9) // 10)}  # ceil zonder float
@@ -241,7 +241,7 @@ def na_nakijken(uitslag, routes, metas, nakijken, ronde2=None, overgeslagen=(), 
     antwoord, correcties = _antwoorden(nakijken, lijst)
     waar = corrigeer(uitslag, correcties)
     kant = {(d, k): z for (k, z), ds in eens.items() for d in ds}
-    rapport = {k: {z: {"nagekeken": 0, "fouten": 0} for z in KANTEN} for k in us.KEURMERKEN8}
+    rapport = {k: {z: {"nagekeken": 0, "fouten": 0} for z in KANTEN} for k in us.KEURMERKEN}
     for r in lijst:
         if sleutel[str(r["nr"])] == "steekproef":
             s = rapport[r["keurmerk"]][kant[r["doc_id"], r["keurmerk"]]]
@@ -261,7 +261,7 @@ def na_nakijken(uitslag, routes, metas, nakijken, ronde2=None, overgeslagen=(), 
     uit = {}
     for naam, meld in routes.items():
         t = uit[naam] = tabel(waar, meld, metas.get(naam, {}), seed=seed)
-        for k in us.KEURMERKEN8:
+        for k in us.KEURMERKEN:
             v, sp = t[k], rapport[k]
             # gevoeligheid (informatief): bovengrens per kant in het nadeel van de route op de overeenkomende paren die
             # niet zijn nagekeken (niet in de steekproef, niet in een nagekeken tweede ronde)
@@ -286,12 +286,12 @@ def _steek_md(s):
 def _md(tabellen):
     regels = []
     for naam, t in tabellen.items():
-        na = "steekproef" in t[us.KEURMERKEN8[0]]
+        na = "steekproef" in t[us.KEURMERKEN[0]]
         regels += [f"## {naam}", "", "| keurmerk | mét (gevonden/aanwezig) | ondergrens | zonder (vals/afwezig) | bovengrens | "
                    "verkeerde letter | spreiding gevonden | leveranciers | besluit |"
                    + (" steekproef mét (nagekeken / fouten / bovengrens) | steekproef zonder | gevoeligheid |" if na else ""),
                    "|---|---|---|---|---|---|---|---|---|" + ("---|---|---|" if na else "")]
-        for k in us.KEURMERKEN8:
+        for k in us.KEURMERKEN:
             v = t[k]
             sp = v["spreiding"]["gevonden"]
             regels.append(f"| {k} | {v['gevonden']}/{v['met']} | {_pct(v['ondergrens'])} | {v['vals']}/{v['zonder']} | "
@@ -344,7 +344,7 @@ def corrigeer(uitslag, correcties):
                 if not (w == "onleesbaar" or (isinstance(w, list) and all(x in us.LETTERS for x in w))):
                     raise ValueError(f"{d}: Nutri-Score-correctie moet een lijst letters A-E of 'onleesbaar' zijn, niet {w!r}")
                 uit[d]["nutriscore"] = w if w == "onleesbaar" else sorted(set(w))
-            elif k in us.KEURMERKEN7 and w in us.KEUZES:
+            elif k in us.KEURMERKEN_LOS and w in us.KEUZES:
                 uit[d].setdefault("keurmerken", {})[k] = w
             else:
                 raise ValueError(f"{d}: ongeldige correctie {k!r}={w!r}")

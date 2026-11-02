@@ -24,6 +24,7 @@ K7 = ("EU_ORGANIC_FARMING", "GREEN_DOT", "RECYCLABLE_GENERAL_CLAIM", "PREGNANCY_
 GD, EU, WM = "GREEN_DOT", "EU_ORGANIC_FARMING", "WEIDEMELK"
 NSA, NSB, NSC = "NUTRISCORE_A", "NUTRISCORE_B", "NUTRISCORE_C"
 TRAIN_GLN, TOETS_GLN = "1000000000001", "1000000000002"
+V_LABEL = "EUROPEAN_V_LABEL_VEGAN"  # ronde 5: 8e losse keuze van een bevestigd etiket
 
 
 def mod(naam):
@@ -40,7 +41,7 @@ def png(maat=(32, 32), kleur=(200, 200, 200), ruis=None):
 
 
 def et(aanwezig=(), nutriscore=(), status="bevestigd"):
-    return {"status": status, "keurmerken": {c: "aanwezig" if c in aanwezig else "afwezig" for c in K7},
+    return {"status": status, "keurmerken": {c: "aanwezig" if c in aanwezig else "afwezig" for c in K7 + (V_LABEL,)},
             "nutriscore": list(nutriscore), "veranderd": [], "opmerking": "", "tijd": "2026-11-01T10:00:00+01:00"}
 
 
@@ -114,7 +115,7 @@ def pagina(tmp_path):
     playwright = pytest.importorskip("playwright.sync_api")
     (tmp_path / "beelden").mkdir()
     Image.new("RGB", (40, 30), "white").save(tmp_path / "beelden/0.png")
-    volledig = {"keurmerken": {c: c == GD for c in K7}, "nutriscore": [], "hinttegels": {}, "gelijkend": []}
+    volledig = {"keurmerken": {c: c == GD for c in K7 + (V_LABEL,)}, "nutriscore": [], "hinttegels": {}, "gelijkend": []}
     zonder_wm = {**volledig, "keurmerken": {c: v for c, v in volledig["keurmerken"].items() if c != WM}}  # WM niet beoordeeld
     schrijf(tmp_path / "items.json", [{"id": E1, "beeld": "beelden/0.png", "hint": [], "voorinvulling": zonder_wm},
                                       {"id": E2, "beeld": "beelden/0.png", "hint": [], "voorinvulling": volledig}])
@@ -270,7 +271,9 @@ def test_voorinvulling_stopt_na_5_weigeringen_en_herprobeert_fouten(tmp_path, mo
     vi = json.loads((pm / "toets" / "voorinvulling.json").read_text())
     assert len(goed.calls) == 6 and all("fout" not in v for v in vi.values())
     items = json.loads((pm / "toets" / "items.json").read_text())
-    assert items[0]["voorinvulling"]["keurmerken"] == {GD: True}  # niet-beoordeelde codes blijven zonder voorinvulling
+    # niet-beoordeelde codes blijven zonder voorinvulling, ook het V-label: deze voorinvulling is van ronde 5 en vroeg het
+    # zelf (alleen oudere krijgen het uit `gelijkend`, toetsset §5; review 02-11)
+    assert items[0]["voorinvulling"]["keurmerken"] == {GD: True}
 
 
 def test_ontdubbel_voegt_aanvulling_samen_met_bestaande_toetsdocs(tmp_path):
@@ -673,7 +676,7 @@ def test_nakijken_voor_een_keurmerk_en_nutriscore(tmp_path):
     voor = json.loads((tmp_path / "t" / "tabellen.json").read_text())["da"]
     na = json.loads((tmp_path / "t" / "tabellen-na-nakijken.json").read_text())["da"]
     assert (voor[GD]["met"], voor[GD]["gevonden"], na[GD]["met"], na[GD]["gevonden"]) == (1, 1, 2, 2)
-    assert (voor["NUTRISCORE"]["met"], na["NUTRISCORE"]["met"], na["NUTRISCORE"]["zonder"]) == (2, 1, 2)
+    assert (voor["NUTRISCORE"]["met"], na["NUTRISCORE"]["met"], na["NUTRISCORE"]["zonder"]) == (2, 2, 1)  # ronde 5: D is mét
 
 
 @pytest.mark.parametrize("fout", ["nutriscore_als_keurmerk", "letter_buiten_a_e", "keurmerk_als_letters", "waarde"])
