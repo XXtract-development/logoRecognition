@@ -4,60 +4,132 @@
 <meta charset="utf-8">
 <title>Toetsset bevestigen — proef getrainde detector</title>
 <style>
-  :root { --navy: #2F5A7A; --teal: #54949E; --groen: #B7D945; --rood: #D64545; --tekst: #1E293B; --lijn: #D5DEE6; }
+  /* Tokens uit invul-ux/DESIGN.md; geen externe lettertypen of bibliotheken. */
+  :root { --navy: #2F5A7A; --teal: #54949E; --teal-licht: #EAF4F5; --groen: #B7D945; --rood: #D64545;
+          --tekst: #1E293B; --gedempt: #5B6B7B; --lijn: #D5DEE6; --vlak: #F4F7F9; }
   * { box-sizing: border-box; }
-  body { margin: 0; font: 14px/1.45 Inter, system-ui, sans-serif; color: var(--tekst); background: #F4F7F9; }
-  header { background: var(--navy); color: #fff; padding: 10px 20px; display: flex; gap: 24px; align-items: baseline; flex-wrap: wrap; }
-  header h1 { font-size: 16px; margin: 0; font-weight: 600; }
-  #voortgang { font-weight: 600; }
-  .uitleg { opacity: .85; font-size: 13px; }
-  #standen { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 20px; background: #fff; border-bottom: 1px solid var(--lijn); }
-  .stand { border: 1px solid var(--lijn); border-radius: 6px; padding: 3px 8px; font-size: 12px; }
-  .stand.gehaald { border-color: var(--teal); background: #EAF4F5; }
-  main { display: grid; grid-template-columns: minmax(320px, 1fr) 420px; gap: 20px; padding: 16px 20px; }
-  .kaart { background: #fff; border: 1px solid var(--lijn); border-radius: 8px; padding: 14px; }
-  .kop { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
-  [data-testid="etiket-id"] { font-family: ui-monospace, monospace; font-weight: 600; color: var(--navy); }
-  [data-testid="overzicht"] { max-width: 100%; max-height: 70vh; min-width: 40px; min-height: 30px; border: 1px solid var(--lijn); background: #fff; }
-  #hints { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-  #hints img { max-width: 220px; max-height: 220px; border: 2px solid var(--teal); border-radius: 4px; }
-  #notitie { color: var(--rood); font-weight: 600; min-height: 1em; }
-  table { border-collapse: collapse; width: 100%; }
-  td { padding: 5px 4px; border-bottom: 1px solid var(--lijn); vertical-align: middle; }
-  td.naam { font-weight: 600; }
-  td.ai { color: var(--teal); font-size: 12px; white-space: nowrap; }
-  label { cursor: pointer; margin-right: 8px; white-space: nowrap; }
-  .ns label { margin-right: 6px; }
-  textarea { width: 100%; min-height: 70px; font: inherit; color: inherit; border: 1px solid var(--lijn); border-radius: 6px; padding: 6px; margin-top: 10px; }
-  .knoppen { display: flex; gap: 8px; margin-top: 10px; align-items: center; flex-wrap: wrap; }
-  button { font: inherit; border-radius: 6px; padding: 7px 14px; cursor: pointer; border: 1px solid var(--navy); background: #fff; color: var(--navy); }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; }
+  body { margin: 0; font: 14px/1.4 Inter, system-ui, sans-serif; color: var(--tekst); background: var(--vlak);
+         display: flex; flex-direction: column; overflow: hidden; }
+
+  /* kopregel: één regel, eerst titel en dan etiketcode afkappen */
+  header { flex: none; height: 44px; background: var(--navy); color: #fff; padding: 0 12px; display: flex;
+           align-items: center; gap: 16px; white-space: nowrap; overflow: hidden; }
+  header h1 { font-size: 15px; font-weight: 600; margin: 0; flex: 0 1000 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  #voortgang { font-weight: 600; flex: none; }
+  #positie { flex: none; }
+  [data-testid="etiket-status"] { flex: none; font-size: 12px; font-weight: 600; background: #fff; color: var(--navy);
+                                  border-radius: 4px; padding: 1px 6px; }
+  [data-testid="etiket-id"] { font: 600 13px ui-monospace, SFMono-Regular, Menlo, monospace; margin-left: auto;
+                              flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+
+  main { flex: 1; min-height: 0; display: flex; gap: 12px; padding: 12px; }
+  .vlak { background: #fff; border: 1px solid var(--lijn); border-radius: 8px; }
+
+  /* etiketbeeld */
+  .beeld { flex: 1; min-width: 0; position: relative; overflow: hidden; }
+  #beeldvak { position: absolute; inset: 0; overflow: auto; }
+  #beeldvak a { display: block; cursor: default; }
+  #omhulsel { cursor: zoom-in; }
+  #beeldvak[data-stand="in"] #omhulsel { cursor: zoom-out; }
+  #omhulsel { position: relative; width: 100%; margin: 0 auto; }
+  [data-testid="overzicht"] { display: block; width: 100%; height: auto; }
+  [data-testid="overzicht"].laden { visibility: hidden; }
+  #kaders { position: absolute; inset: 0; pointer-events: none; }
+  [data-testid="kader"] { position: absolute; border: 2px solid var(--teal); background: transparent; z-index: 1; }
+  [data-testid="kader"][data-actief="true"] { border: 3px solid var(--navy); background: color-mix(in srgb, var(--navy) 18%, transparent); z-index: 2; }
+  [data-testid="beeld-fout"] { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+                               color: var(--gedempt); }
+
+  /* AI-uitsneden */
+  [data-testid="uitsneden"] { flex: none; width: 240px; overflow-y: auto; padding: 8px; display: flex;
+                              flex-direction: column; gap: 8px; }
+  .uitsnede { margin: 0; cursor: pointer; }
+  [data-testid="uitsnede"] { display: block; width: 100%; aspect-ratio: 1; object-fit: contain;
+                             border: 2px solid var(--teal); border-radius: 4px; }
+  .uitsnede.actief [data-testid="uitsnede"] { border-color: var(--navy); }
+  .uitsnede figcaption { font-size: 12px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* beoordelingspaneel */
+  #keuzes { flex: none; width: 460px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; min-height: 0;
+            overflow-y: auto; }
+  #notitie { color: var(--rood); font-weight: 600; min-height: 1.4em; }
+  #notitie:empty { min-height: 0; }
+  #standen { display: flex; flex-direction: column; gap: 2px; }
+  .rij { height: 40px; display: flex; align-items: center; gap: 6px; padding: 0 6px; border-radius: 4px;
+         border-left: 3px solid transparent; cursor: default; }
+  .rij[data-ai-aanwezig="true"] { border-left-color: var(--teal); background: var(--teal-licht); }
+  .rij[data-actief="true"] { outline: 2px solid var(--navy); outline-offset: -2px; }
+  .naam { width: 190px; flex: none; min-width: 0; }
+  .regel1 { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+  .regel1 b { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .regel1 [data-testid^="gewijzigd-"] { flex: none; font-size: 12px; color: var(--navy); font-weight: 600; }
+  .regel1 [data-testid^="ai-"] { flex: none; font-size: 12px; color: var(--gedempt); }
+  .regel2 { display: block; white-space: nowrap; font-size: 12px; line-height: 1.3; color: var(--gedempt); }
+  .regel2 [data-testid^="stand-"].gehaald::before { content: "●"; color: var(--groen); margin-right: 3px; }
+  .seg { flex: 1; min-width: 0; display: flex; }
+  .seg label { position: relative; flex: 1 1 0; min-width: 0; height: 28px; display: flex; align-items: center;
+               justify-content: center; border: 1px solid var(--lijn); margin-left: -1px; background: #fff;
+               white-space: nowrap; cursor: pointer; user-select: none; }
+  .seg label:first-child { margin-left: 0; border-radius: 4px 0 0 4px; }
+  .seg label:last-child { border-radius: 0 4px 4px 0; }
+  .seg label span { overflow: hidden; text-overflow: ellipsis; padding: 0 4px; }
+  .seg.ns label { flex: none; width: 22px; }
+  .seg.ns label.los { flex: 1 1 0; width: auto; margin-left: 4px; border-radius: 4px; font-size: 12px; }
+  .seg.ns label.los span { padding: 0 2px; }
+  .seg input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; z-index: 1; }
+  .seg label:has(> input:checked) { background: var(--navy); border-color: var(--navy); color: #fff; z-index: 1; }
+  .seg.ns:has([data-testid="ns-onleesbaar"]:checked) label:not(.los) { background: #fff; border-color: var(--lijn);
+                                                                       color: var(--gedempt); opacity: .5; }
+  .seg label:has(> input:focus-visible) { outline: 2px solid var(--navy); outline-offset: 1px; z-index: 2; }
+  .seg label[data-ai="true"]::after { content: "AI"; position: absolute; top: -6px; right: -2px; z-index: 3;
+                                      background: var(--teal); color: #fff; font: 700 9px/1 Inter, system-ui, sans-serif;
+                                      padding: 2px 3px; border-radius: 4px; pointer-events: none; }
+  textarea { width: 100%; font: inherit; color: inherit; border: 1px solid var(--lijn); border-radius: 6px;
+             padding: 5px 6px; resize: none; }
+  .knoppen { display: flex; gap: 6px; }
+  button { font: inherit; border-radius: 6px; padding: 6px 10px; cursor: pointer; border: 1px solid var(--navy);
+           background: #fff; color: var(--navy); white-space: nowrap; }
   button.hoofd { background: var(--navy); color: #fff; }
-  #melding { font-size: 13px; }
+  button:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
+  #melding { font-size: 13px; min-height: 1.3em; }
   #melding.fout { color: var(--rood); font-weight: 600; }
+  [data-testid="sneltoetsen"] { margin-top: auto; font-size: 12px; line-height: 1.4; color: var(--gedempt); }
+  kbd { font: inherit; font-weight: 600; color: var(--tekst); }
 </style>
 </head>
 <body>
-<header>
+<header data-testid="kopregel">
   <h1>Toetsset bevestigen</h1>
   <span id="voortgang">laden…</span>
-  <span class="uitleg">← → vorige/volgende · b = bevestigd zoals ingevuld, door naar het volgende (niet in het tekstveld)</span>
+  <span id="positie"></span>
+  <span data-testid="etiket-status" hidden></span>
+  <span data-testid="etiket-id"></span>
 </header>
-<section id="standen" aria-label="Stand per keurmerk tegen het doel"></section>
 <main>
-  <div class="kaart">
-    <div class="kop"><span data-testid="etiket-id"></span><span id="positie"></span></div>
-    <a data-testid="volledig" target="_blank" rel="noopener"><img data-testid="overzicht" alt="overzicht van het etiket"></a>
-    <div id="hints" aria-label="tegels waarin de AI een keurmerk zag"></div>
-  </div>
-  <form class="kaart" id="keuzes" autocomplete="off" onsubmit="return false" inert>
-    <div id="notitie"></div>
-    <table><tbody id="rijen"></tbody></table>
-    <textarea id="opmerking" placeholder="Opmerking bij dit etiket"></textarea>
-    <div class="knoppen">
-      <button type="button" class="hoofd" id="opslaan">Bevestigen en opslaan</button>
-      <button type="button" id="onleesbaar">Etiket onleesbaar</button>
-      <span id="melding" role="status"></span>
+  <section class="vlak beeld" aria-label="etiketbeeld">
+    <div id="beeldvak" data-testid="beeldvak">
+      <a data-testid="volledig" target="_blank" rel="noopener"><div id="omhulsel"><img data-testid="overzicht"
+         alt="overzicht van het etiket"><div id="kaders"></div></div></a>
     </div>
+    <div data-testid="beeld-fout" hidden>Beeld niet te laden</div>
+  </section>
+  <aside class="vlak" data-testid="uitsneden" aria-label="uitsneden waarin de AI een keurmerk zag" hidden></aside>
+  <form class="vlak" id="keuzes" autocomplete="off" onsubmit="return false" inert>
+    <div id="notitie"></div>
+    <div id="standen" aria-label="Keurmerken, met de stand per keurmerk tegen het doel"></div>
+    <textarea id="opmerking" rows="2" placeholder="Opmerking bij dit etiket"></textarea>
+    <div class="knoppen">
+      <button type="button" class="hoofd" id="volgende">Bevestigen en volgende</button>
+      <button type="button" id="opslaan">Bevestigen</button>
+      <button type="button" id="onleesbaar">Etiket onleesbaar</button>
+    </div>
+    <div id="melding" role="status"></div>
+    <div data-testid="sneltoetsen"><kbd>←</kbd> <kbd>→</kbd> etiket · <kbd>↑</kbd> <kbd>↓</kbd> keurmerk ·
+      <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> aanwezig / afwezig / onzeker · Nutri-Score: <kbd>1</kbd>–<kbd>5</kbd> letter A–E,
+      <kbd>0</kbd> onleesbaar · <kbd>b</kbd> bevestigen en volgende · <kbd>Esc</kbd> beeld terug · klik op het beeld = inzoomen,
+      Cmd-klik (Mac) of Ctrl-klik = volledige resolutie. Niet in het opmerkingveld.</div>
   </form>
 </main>
 <script>
@@ -73,8 +145,13 @@ const NAAM = {EU_ORGANIC_FARMING: "EU-biologisch", GREEN_DOT: "Groene Punt", REC
 const KEUZES = ["aanwezig", "afwezig", "onzeker"];
 const LETTERS = ["A", "B", "C", "D", "E"];
 const DOEL_MET = 16, DOEL_ZONDER = 50;
+const TEGEL = 1024, OVERLAP = 256;  // zelfde regel als herken.tegels
 
 let items = [], records = {}, idx = 0, nsGekozen = false, keten = Promise.resolve();
+let actief = 0;                                  // index in KEURMERKEN van de actieve rij
+let beeld = null, stand = null;                 // ware maat + tegels van het getoonde beeld; beeldstand (passend | in)
+let uitsneden = [];
+let fout = null;                                 // {id, tekst}: mislukte opslag, blijft staan tot dat etiket wél opslaat                              // per hint: {fig, img, code, tegel} (code/tegel uit de bestandsnaam)
 const $ = (s) => document.querySelector(s);
 const el = (tag, attrs = {}, tekst) => {
   const e = document.createElement(tag);
@@ -83,37 +160,133 @@ const el = (tag, attrs = {}, tekst) => {
   return e;
 };
 const conceptSleutel = (id) => "concept:" + id;
+const tid = (naam) => document.querySelector(`[data-testid="${naam}"]`);
 
-// --- het formulier wordt één keer gebouwd; daarna alleen waarden zetten ------------------------------------------
+// --- het formulier wordt één keer gebouwd; daarna alleen waarden en attributen zetten ---------------------------------
+function rijKop(code) {
+  const naam = el("div", {class: "naam"}), r1 = el("div", {class: "regel1"}), r2 = el("div", {class: "regel2"});
+  r1.append(el("b", {title: NAAM[code]}, NAAM[code]),
+            el("span", {"data-testid": "gewijzigd-" + code, hidden: ""}, "gewijzigd"),
+            el("span", {"data-testid": "ai-" + code}));
+  r2.append(el("span", {"data-testid": "stand-" + code, "data-met": "0", "data-zonder": "0"}));
+  naam.append(r1, r2);
+  return naam;
+}
+
+function knop(input, tekst, klasse) {
+  const lab = el("label", klasse ? {class: klasse} : {});
+  lab.append(input, el("span", {}, tekst));
+  return lab;
+}
+
 function bouwFormulier() {
-  const rijen = $("#rijen");
-  for (const code of LOS) {
-    const tr = el("tr");
-    tr.append(el("td", {class: "naam"}, NAAM[code]));
-    const td = el("td", {"data-testid": "keuze-" + code, role: "radiogroup", "aria-label": NAAM[code]});
-    for (const w of KEUZES) {
-      const lab = el("label");
-      lab.append(el("input", {type: "radio", name: "k-" + code, value: w}), document.createTextNode(" " + w));
-      td.append(lab);
-    }
-    tr.append(td, el("td", {class: "ai", id: "ai-" + code}));
-    rijen.append(tr);
-  }
-  const tr = el("tr");
-  tr.append(el("td", {class: "naam"}, NAAM.NUTRISCORE));
-  const td = el("td", {class: "ns"});
-  for (const x of LETTERS) {
-    const lab = el("label");
-    lab.append(el("input", {type: "checkbox", "data-testid": "ns-" + x, value: x}), document.createTextNode(" " + x));
-    td.append(lab);
-  }
-  const lab = el("label");
-  lab.append(el("input", {type: "checkbox", "data-testid": "ns-onleesbaar"}), document.createTextNode(" letter onleesbaar"));
-  td.append(lab);
-  tr.append(td, el("td", {class: "ai", id: "ai-NUTRISCORE"}));
-  rijen.append(tr);
   const standen = $("#standen");
-  for (const k of KEURMERKEN) standen.append(el("span", {class: "stand", "data-testid": "stand-" + k, "data-met": "0", "data-zonder": "0"}));
+  for (const code of LOS) {
+    const rij = el("div", {class: "rij", "data-testid": "rij-" + code});
+    const seg = el("div", {class: "seg", "data-testid": "keuze-" + code, role: "radiogroup", "aria-label": NAAM[code]});
+    for (const w of KEUZES) seg.append(knop(el("input", {type: "radio", name: "k-" + code, value: w}), w[0].toUpperCase() + w.slice(1)));
+    rij.append(rijKop(code), seg);
+    standen.append(rij);
+  }
+  const rij = el("div", {class: "rij", "data-testid": "rij-NUTRISCORE"});
+  const seg = el("div", {class: "seg ns", role: "group", "aria-label": NAAM.NUTRISCORE});
+  for (const x of LETTERS) seg.append(knop(el("input", {type: "checkbox", "data-testid": "ns-" + x, value: x}), x));
+  seg.append(knop(el("input", {type: "checkbox", "data-testid": "ns-onleesbaar"}), "letter onleesbaar", "los"));
+  rij.append(rijKop("NUTRISCORE"), seg);
+  standen.append(rij);
+}
+
+const rijen = () => KEURMERKEN.map((c) => tid("rij-" + c));
+
+function zetActief(i) {
+  actief = Math.min(KEURMERKEN.length - 1, Math.max(0, i));
+  const code = KEURMERKEN[actief];
+  rijen().forEach((r, j) => r.setAttribute("data-actief", String(j === actief)));
+  for (const k of document.querySelectorAll('[data-testid="kader"]')) k.setAttribute("data-actief", String(k.dataset.code === code));
+  for (const u of uitsneden) u.fig.classList.toggle("actief", u.code === code && u.img.hasAttribute("data-code"));
+}
+
+// --- tegels (spiegel van herken._starts/tegels) en het beeld ----------------------------------------------------------
+function starts(lengte) {
+  if (lengte <= TEGEL) return [0];
+  const stap = TEGEL - OVERLAP, s = [];
+  while (s.length * stap + TEGEL < lengte) s.push(s.length * stap);
+  return s.concat([lengte - TEGEL]);
+}
+
+function tegels(w, h) {
+  const t = [];
+  for (const y of starts(h)) for (const x of starts(w)) t.push([x, y, Math.min(x + TEGEL, w), Math.min(y + TEGEL, h)]);
+  return t;
+}
+
+function leesNaam(pad) {  // <id>-<CODE>-<i>.png, van rechts gelezen (de etiketcode bevat zelf streepjes)
+  const m = /-([A-Z_]+)-(\d+)\.png$/.exec(pad.split("/").pop());
+  return m ? {code: m[1], tegel: Number(m[2])} : {};
+}
+
+function zetStandBeeld(s) {
+  stand = s;
+  $("#beeldvak").setAttribute("data-stand", s);
+}
+
+function passendeMaat() {  // ronde 8: hele etiket, 100% van de binnenbreedte óf -hoogte van het vak (wat het eerst raakt)
+  const vak = $("#beeldvak"), om = $("#omhulsel");
+  om.style.width = "0px"; om.style.marginTop = "0px";  // eerst krimpen: meten zonder scrollbalken van een ingezoomd beeld
+  const schaal = Math.min(vak.clientWidth / beeld.w, vak.clientHeight / beeld.h);
+  return {w: beeld.w * schaal, h: beeld.h * schaal, vak};  // geen afronding: anders raakt een smalle strook de hoogte niet
+}
+
+function beginstand() {  // altijd passend, in beide richtingen gecentreerd; inzoomen alleen op verzoek
+  if (!beeld) return;
+  const {w, h, vak} = passendeMaat(), om = $("#omhulsel");
+  om.style.width = w + "px";
+  om.style.marginTop = Math.max(0, Math.floor((vak.clientHeight - h) / 2)) + "px";
+  zetStandBeeld("passend");
+  vak.scrollTop = 0; vak.scrollLeft = 0;
+}
+
+function zoomIn(fx, fy) {  // fx, fy = fractie van het beeld die in het midden van het vak moet komen
+  const vak = $("#beeldvak"), img = tid("overzicht"), om = $("#omhulsel");
+  om.style.width = Math.max(beeld.w, 3 * passendeMaat().w) + "px";  // passende breedte zonder scrollbalken gemeten
+  om.style.marginTop = "0px";
+  zetStandBeeld("in");
+  const r = img.getBoundingClientRect();
+  vak.scrollLeft = fx * r.width - vak.clientWidth / 2;
+  vak.scrollTop = fy * r.height - vak.clientHeight / 2;
+}
+
+function beeldGeladen() {
+  const img = tid("overzicht"), it = items[idx];
+  if (!it || img.getAttribute("src") !== it.beeld) return;  // alleen het beeld van het getoonde etiket
+  beeld = {w: img.naturalWidth, h: img.naturalHeight};
+  beeld.tegels = tegels(beeld.w, beeld.h);
+  const kaders = [];
+  for (const u of uitsneden) {
+    if (u.code === undefined || u.tegel >= beeld.tegels.length) {  // onleesbaar of buiten het tegelvlak: geen naam
+      u.fig.querySelector("figcaption").textContent = "";
+      u.fig.removeAttribute("title");
+      continue;
+    }
+    const [x0, y0, x1, y1] = beeld.tegels[u.tegel];
+    u.img.setAttribute("data-code", u.code);
+    u.img.setAttribute("data-tegel", String(u.tegel));
+    const k = el("div", {"data-testid": "kader", "data-code": u.code, "data-tegel": String(u.tegel), "data-vak": [x0, y0, x1, y1].join(",")});
+    k.style.left = (x0 / beeld.w * 100) + "%";
+    k.style.top = (y0 / beeld.h * 100) + "%";
+    k.style.width = ((x1 - x0) / beeld.w * 100) + "%";
+    k.style.height = ((y1 - y0) / beeld.h * 100) + "%";
+    kaders.push(k);
+  }
+  $("#kaders").replaceChildren(...kaders);  // geen invoervelden in dit vak
+  img.classList.remove("laden");
+  zetActief(actief);
+  beginstand();
+}
+
+function beeldFout() {
+  const it = items[idx];
+  if (it && tid("overzicht").getAttribute("src") === it.beeld) tid("beeld-fout").hidden = false;
 }
 
 // --- toestand ------------------------------------------------------------------------------------------------------
@@ -154,8 +327,8 @@ function formulier() {
     const r = document.querySelector(`input[name="k-${code}"]:checked`);
     if (r) keurmerken[code] = r.value;
   }
-  const nutriscore = !nsGekozen ? undefined : $('[data-testid="ns-onleesbaar"]').checked ? "onleesbaar"
-    : LETTERS.filter((x) => $(`[data-testid="ns-${x}"]`).checked);
+  const nutriscore = !nsGekozen ? undefined : tid("ns-onleesbaar").checked ? "onleesbaar"
+    : LETTERS.filter((x) => tid("ns-" + x).checked);
   return {keurmerken, nutriscore, opmerking: $("#opmerking").value};
 }
 
@@ -172,36 +345,88 @@ function veranderd(it, s) {
   return uit;
 }
 
+function toonGewijzigd() {  // zelfde functie als bij opslaan
+  const v = veranderd(items[idx], formulier());
+  for (const code of KEURMERKEN) tid("gewijzigd-" + code).hidden = !v.includes(code);
+}
+
+function toonStatus() {
+  const r = records[items[idx].id], e = tid("etiket-status"), st = (r && r.status) || "";
+  e.textContent = st;
+  e.hidden = !st;
+}
+
 function bewaarConcept() {
   const it = items[idx];
   if (it) sessionStorage.setItem(conceptSleutel(it.id), JSON.stringify({...formulier(), nsGekozen}));
 }
 
-// --- tonen: alleen waarden zetten, nooit focus verplaatsen ----------------------------------------------------------
+// --- tonen: alleen waarden en attributen zetten, nooit focus verplaatsen ----------------------------------------------
 function toon() {
   const it = items[idx], s = getoond(it), vi = uitVoorinvulling(it);
-  $('[data-testid="etiket-id"]').textContent = it.id;
-  $("#positie").textContent = `${idx + 1} / ${items.length}` + (records[it.id] && records[it.id].status ? ` · ${records[it.id].status}` : "");
-  $('[data-testid="overzicht"]').src = it.beeld;
-  $('[data-testid="volledig"]').href = it.beeld;
-  $("#hints").replaceChildren(...(it.hint || []).map((p) => el("img", {src: p, alt: "hinttegel"})));
+  tid("etiket-id").textContent = it.id;
+  tid("etiket-id").title = it.id;
+  $("#positie").textContent = `${idx + 1} / ${items.length}`;
+  toonStatus();
+
+  // beeld: altijd opnieuw in de beginstand; kaders pas na het laden van dit beeld
+  beeld = null; stand = null;
+  const vak = $("#beeldvak"), img = tid("overzicht");
+  vak.removeAttribute("data-stand");
+  vak.scrollTop = 0; vak.scrollLeft = 0;
+  $("#omhulsel").style.width = "100%";
+  $("#omhulsel").style.marginTop = "0px";
+  $("#kaders").replaceChildren();
+  tid("beeld-fout").hidden = true;
+  img.classList.add("laden");
+  img.setAttribute("src", it.beeld);
+  tid("volledig").href = it.beeld;
+  uitsneden = (it.hint || []).map((p) => {
+    const fig = el("figure", {class: "uitsnede"}), u = el("img", {"data-testid": "uitsnede", src: p, alt: "uitsnede"});
+    const n = leesNaam(p), naam = n.code ? NAAM[n.code] || n.code : "";
+    fig.append(u, el("figcaption", {}, naam));  // naam meteen; data-code/-tegel en kader pas na het laden van het beeld
+    if (naam) fig.title = naam;
+    return {fig, img: u, ...n};
+  });
+  tid("uitsneden").replaceChildren(...uitsneden.map((u) => u.fig));  // geen invoervelden in deze kolom
+  tid("uitsneden").hidden = !uitsneden.length;
+
   $("#notitie").textContent = heeftVoorinvulling(it) ? "" : "AI-voorinvulling ontbreekt of is mislukt: vul alles zelf in.";
   for (const code of LOS) {
-    for (const r of document.querySelectorAll(`input[name="k-${code}"]`)) r.checked = s.keurmerken[code] === r.value;
-    $("#ai-" + code).textContent = vi.keurmerken[code] ? "AI: " + vi.keurmerken[code] : "AI: —";
+    for (const r of document.querySelectorAll(`input[name="k-${code}"]`)) {
+      r.checked = s.keurmerken[code] === r.value;
+      if (vi.keurmerken[code] === r.value) r.parentElement.setAttribute("data-ai", "true");
+      else r.parentElement.removeAttribute("data-ai");
+    }
+    tid("ai-" + code).textContent = heeftVoorinvulling(it) && !vi.keurmerken[code] ? "AI: —" : "";
+    tid("rij-" + code).setAttribute("data-ai-aanwezig", String(vi.keurmerken[code] === "aanwezig"));
   }
   nsGekozen = !!s.nsGekozen;
   const onleesbaar = s.nutriscore === "onleesbaar";
-  for (const x of LETTERS) $(`[data-testid="ns-${x}"]`).checked = !onleesbaar && s.nutriscore.includes(x);
-  $('[data-testid="ns-onleesbaar"]').checked = onleesbaar;
-  $("#ai-NUTRISCORE").textContent = vi.nutriscore === undefined ? "AI: —" : "AI: " + (vi.nutriscore.join(", ") || "geen");
+  for (const x of LETTERS) {
+    const c = tid("ns-" + x);
+    c.checked = !onleesbaar && s.nutriscore.includes(x);
+    if (vi.nutriscore && vi.nutriscore.includes(x)) c.parentElement.setAttribute("data-ai", "true");
+    else c.parentElement.removeAttribute("data-ai");
+  }
+  tid("ns-onleesbaar").checked = onleesbaar;
+  tid("ai-NUTRISCORE").textContent = vi.nutriscore && !vi.nutriscore.length ? "AI: geen letter" : "";
+  tid("rij-NUTRISCORE").setAttribute("data-ai-aanwezig", String(!!(vi.nutriscore && vi.nutriscore.length)));
   $("#opmerking").value = s.opmerking || "";
-  $("#melding").textContent = "";
+  $("#melding").className = fout ? "fout" : "";  // een mislukte opslag van een ander etiket blijft zichtbaar
+  $("#melding").textContent = fout ? fout.tekst : "";
+  toonGewijzigd();
+  zetActief(0);
 }
 
 function ga(stap) {
   const nieuw = Math.min(items.length - 1, Math.max(0, idx + stap));
-  if (nieuw !== idx) { idx = nieuw; toon(); }
+  if (nieuw === idx) return;
+  // Spatie/Enter mogen niet ongezien op het volgende etiket werken: eigen knop of keuze loslaten (nooit een tekstveld).
+  const a = document.activeElement;
+  if (a && a.closest("#keuzes") && a.matches('button, input[type="radio"], input[type="checkbox"]')) a.blur();
+  idx = nieuw;
+  toon();
 }
 
 // --- stand van de server: alleen textContent/attributen op de tellers ----------------------------------------------
@@ -210,12 +435,15 @@ function zetStand(antwoord) {
   const klaar = items.filter((it) => records[it.id] && ["bevestigd", "onleesbaar"].includes(records[it.id].status)).length;
   $("#voortgang").textContent = `${klaar} van ${items.length} etiketten afgehandeld`;
   for (const k of KEURMERKEN) {
-    const st = (antwoord.stand || {})[k] || {met: 0, zonder: 0}, e = $(`[data-testid="stand-${k}"]`);
+    const st = (antwoord.stand || {})[k] || {met: 0, zonder: 0}, e = tid("stand-" + k);
+    const gehaald = st.met >= DOEL_MET && st.zonder >= DOEL_ZONDER;
     e.setAttribute("data-met", String(st.met));
     e.setAttribute("data-zonder", String(st.zonder));
-    e.textContent = `${NAAM[k]}: mét ${st.met}/${DOEL_MET} · zonder ${st.zonder}/${DOEL_ZONDER}`;
-    e.classList.toggle("gehaald", st.met >= DOEL_MET && st.zonder >= DOEL_ZONDER);
+    e.textContent = `mét ${st.met}/${DOEL_MET} · zonder ${st.zonder}/${DOEL_ZONDER}`;
+    e.title = `${NAAM[k]}: mét ${st.met}/${DOEL_MET} · zonder ${st.zonder}/${DOEL_ZONDER}` + (gehaald ? " (doel gehaald)" : "");
+    e.classList.toggle("gehaald", gehaald);
   }
+  if (items[idx]) toonStatus();
 }
 
 async function haalStand() {
@@ -234,18 +462,24 @@ function sla(it, waarde) {
 async function slaNu(it, waarde, momentopname) {
   const sleutel = conceptSleutel(it.id);
   const melding = $("#melding");
+  const ander = () => (items[idx] && items[idx].id !== it.id ? ` (etiket ${it.id})` : "");
   try {
     const r = await fetch("opslaan", {method: "POST", headers: {"Content-Type": "application/json"},
                                       body: JSON.stringify({id: it.id, waarde})});
     if (!r.ok) throw new Error(r.status === 400 ? "geweigerd: kies eerst bij alle 9 keurmerken" : "server " + r.status);
     if (sessionStorage.getItem(sleutel) === momentopname) sessionStorage.removeItem(sleutel);
-    records[it.id] = waarde;
+    const oud = records[it.id];  // een tussenstand houdt de status (zoals de server)
+    records[it.id] = !waarde.status && oud && oud.status ? {...waarde, status: oud.status} : waarde;
+    if (fout && fout.id === it.id) fout = null;
     melding.className = "";
-    melding.textContent = waarde.status ? `Opgeslagen (${waarde.status}).` : "Keuze opgeslagen.";
+    melding.textContent = (waarde.status ? `Opgeslagen (${waarde.status}).` : "Keuze opgeslagen.") + ander();
+    if (items[idx] && items[idx].id === it.id) toonStatus();
     await haalStand();
   } catch (e) {
+    const tekst = "Opslaan mislukt (" + e.message + "); je invoer staat nog in deze pagina.";
+    fout = {id: it.id, tekst: tekst + ` (etiket ${it.id})`};
     melding.className = "fout";
-    melding.textContent = "Opslaan mislukt (" + e.message + "); je invoer staat nog in deze pagina.";
+    melding.textContent = tekst + ander();
   }
 }
 
@@ -263,8 +497,25 @@ function slaHuidigeOp(status) {
   return true;
 }
 
+function bevestigEnVolgende() {  // = sneltoets b; op het laatste etiket: opslaan en blijven staan
+  if (slaHuidigeOp("bevestigd")) ga(1);
+}
+
 function isTekstveld(t) {
   return t instanceof HTMLTextAreaElement || (t instanceof HTMLInputElement && !["radio", "checkbox"].includes(t.type)) || t.isContentEditable;
+}
+
+function cijfer(toets) {  // 1/2/3 in een van de 8 rijen, 1–5/0 in de Nutri-Score-rij; zelfde weg als een klik
+  let input;
+  if (actief < LOS.length) {
+    const w = KEUZES["123".indexOf(toets)];
+    if (!w) return;
+    input = document.querySelector(`input[name="k-${LOS[actief]}"][value="${w}"]`);
+  } else if (toets === "0") input = tid("ns-onleesbaar");
+  else if ("12345".includes(toets)) input = tid("ns-" + LETTERS[Number(toets) - 1]);
+  if (!input) return;
+  input.click();  // change → concept + tussenstand, zoals een klik; geen focus()
+  if (actief < LOS.length - 1) zetActief(actief + 1);  // nooit automatisch naar Nutri-Score
 }
 
 function koppel() {
@@ -273,31 +524,66 @@ function koppel() {
   form.addEventListener("change", (e) => {
     if (e.target.type !== "radio" && e.target.type !== "checkbox") return;
     if (e.target.type === "checkbox") nsGekozen = true;
+    const onl = tid("ns-onleesbaar");  // Nutri-Score: letters óf onleesbaar; een letter kiezen zet onleesbaar uit
+    if (e.target.type === "checkbox" && e.target !== onl && onl.checked) onl.checked = false;
     bewaarConcept();
+    toonGewijzigd();
     slaHuidigeOp(null);  // elke keuze direct naar uitslag.json, als tussenstand
   });
+  const rijVan = (e) => rijen().indexOf(e.target.closest && e.target.closest(".rij"));
+  const standen = $("#standen");
+  standen.addEventListener("click", (e) => { const i = rijVan(e); if (i >= 0) zetActief(i); });
+  standen.addEventListener("focusin", (e) => { const i = rijVan(e); if (i >= 0) zetActief(i); });
+  $("#volgende").addEventListener("click", bevestigEnVolgende);
   $("#opslaan").addEventListener("click", () => slaHuidigeOp("bevestigd"));
   $("#onleesbaar").addEventListener("click", () => slaHuidigeOp("onleesbaar"));
+
+  tid("volledig").addEventListener("click", (e) => {
+    if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey) return;  // Cmd/Ctrl/Shift/middenklik: gewone link
+    e.preventDefault();
+    if (!beeld) return;
+    if (stand === "in") return beginstand();
+    if (e.detail === 0) return zoomIn(0.5, 0.5);  // Enter op de link: geen muispositie
+    const r = tid("overzicht").getBoundingClientRect();
+    const fx = (e.clientX - r.left) / r.width, fy = (e.clientY - r.top) / r.height;
+    if (fx < 0 || fx > 1 || fy < 0 || fy > 1) return;  // klik naast het etiket (witte rand): niets
+    zoomIn(fx, fy);
+  });
+  tid("uitsneden").addEventListener("click", (e) => {
+    const u = uitsneden.find((x) => x.fig.contains(e.target));
+    if (!u || !u.img.hasAttribute("data-code") || !beeld) return;
+    const i = KEURMERKEN.indexOf(u.code);
+    if (i >= 0) zetActief(i);
+    const [x0, y0, x1, y1] = beeld.tegels[u.tegel];
+    zoomIn((x0 + x1) / 2 / beeld.w, (y0 + y1) / 2 / beeld.h);
+  });
+  window.addEventListener("resize", () => { if (stand === "passend") beginstand(); });
+
   document.addEventListener("keydown", (e) => {
     if (!items.length || e.ctrlKey || e.metaKey || e.altKey || isTekstveld(e.target)) return;
-    const radio = e.target instanceof HTMLInputElement && e.target.type === "radio";
-    if (e.key === "ArrowLeft" && !radio) { e.preventDefault(); ga(-1); }
-    else if (e.key === "ArrowRight" && !radio) { e.preventDefault(); ga(1); }
-    else if (e.key === "b") { e.preventDefault(); if (slaHuidigeOp("bevestigd")) ga(1); }
+    const pijl = {ArrowLeft: () => ga(-1), ArrowRight: () => ga(1),
+                  ArrowUp: () => zetActief(actief - 1), ArrowDown: () => zetActief(actief + 1)}[e.key];
+    if (pijl) { e.preventDefault(); pijl(); return; }  // ook op een keuze met focus: de keuze verandert niet
+    if (e.repeat) return;  // ingedrukt gehouden: alleen de pijlen herhalen
+    if (e.key === "b") { e.preventDefault(); bevestigEnVolgende(); }
+    else if (e.key === "Escape") { if (stand === "in") beginstand(); }
+    else if (/^[0-9]$/.test(e.key)) { e.preventDefault(); cijfer(e.key); }
   });
 }
 
 // Klaar-teken (toetsset §6): #keuzes blijft inert tot het eerste toon() en koppel(); bij een laadfout of lege lijst blijft het zo.
 async function start() {
   bouwFormulier();
-  let stand;
+  tid("overzicht").addEventListener("load", beeldGeladen);
+  tid("overzicht").addEventListener("error", beeldFout);
+  let serverstand;
   try {
     const [ri, rs] = await Promise.all([fetch("items.json", {cache: "no-store"}), fetch("stand", {cache: "no-store"})]);
     if (!ri.ok || !rs.ok) throw new Error("status");
-    [items, stand] = await Promise.all([ri.json(), rs.json()]);
+    [items, serverstand] = await Promise.all([ri.json(), rs.json()]);
     if (!Array.isArray(items)) throw new Error("items.json is geen lijst");
     if (!items.length) { $("#voortgang").textContent = "geen etiketten in items.json"; return; }
-    zetStand(stand);
+    zetStand(serverstand);
     const open = items.findIndex((it) => !(records[it.id] && ["bevestigd", "onleesbaar"].includes(records[it.id].status)));
     idx = open < 0 ? 0 : open;
     toon();

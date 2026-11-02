@@ -2,10 +2,13 @@
 stepsCompleted: ['step-01-load-context', 'step-02-discover-tests', 'step-03-map-criteria', 'step-04-analyze-gaps', 'step-05-gate-decision']
 lastStep: 'step-05-gate-decision'
 lastSaved: '2026-11-02'
-run: 8
-head: 'a338c1e + testuitbreiding R6-CAP-17j/17l'
+run: 11
+head: 'a7a729b + ronde 8 (tak spike/proef-invulpagina-ux-r8, push naar spike/proef-invulpagina-ux)'
 gate: 'PASS'
 vorige_runs:
+  - {run: 10, head: 'a7a729b (8bc97a7 + ronde 7)', gate: 'PASS', reden: 'ronde 7 volledig gedekt'}
+  - {run: 9, head: '8bc97a7 + ronde 7', gate: 'FAIL', reden: 'P1 77%: reviewgedrag R7-6b, R7-17b, R7-24 zonder test'}
+  - {run: 8, head: 'a338c1e + testuitbreiding R6-CAP-17j/17l (8bc97a7)', gate: 'PASS', reden: 'ronde 6 volledig gedekt'}
   - {run: 7, head: 'a338c1e', gate: 'FAIL', reden: 'P0-gaten R6-CAP-17j en R6-CAP-17l'}
   - {run: 6, head: '08d2cf7 + ronde 5 (gecommit als 953ca95)', gate: 'PASS', reden: 'ronde 5 volledig gedekt'}
   - {run: 5, head: '039b14f + ronde 4 (gecommit als 08d2cf7 e.e.)', gate: 'PASS', reden: 'ronde 4 volledig gedekt'}
@@ -16,6 +19,15 @@ vorige_runs:
 ---
 
 # Traceability — spike proef getrainde detector
+
+> [!note] Gatebesluit run 11: PASS
+> Ronde 8 (Friso 02-11-2026: "Het etiket is te groot, deze moet inzoomen tot 100% breedte of hoogte."): 12 criteria, alle FULL; P0 6/6, P1 5/5, P2 1/1. Twee ronde-7-criteria vervallen volgens het contract (R7-6b, R7-27: beginstand `breedte`), vervangen door ronde-8-tests. Volledige suite twee keer 837 passed, 2 skipped, 0 failed. Cumulatief: 153 criteria, FULL 151 (99%); P0 95/95, P1 45/45; alleen CAP-6a en AC-2 (P2) gedeeltelijk.
+
+> [!note] Gatebesluit run 10: PASS
+> Ronde 7 (invulpagina op één scherm): 31 criteria, alle FULL; P0 10/10, P1 13/13, P2 7/7. De gaten van run 9 zijn met 9 tests gedicht, elk met een gerichte breuk van de pagina rood gemaakt (`automation-summary-spike-getrainde-detector.md`, run 3). Volledige suite 809 passed, 2 skipped, 0 failed. Cumulatief met run 8: 143 criteria, FULL 141 (99%); P0 89/89, P1 41/41; alleen CAP-6a en AC-2 (P2) blijven gedeeltelijk.
+
+> [!warning] Gatebesluit run 9: FAIL
+> Ronde 7 (verzoek Friso 02-11-2026: invulpagina op één scherm). P0 10/10 (100%), P1 10/13 (77%; vereist ≥ 80%), totaal 23/31 (74%) voor ronde 7. Alle tests groen (800 passed, 2 skipped, twee runs). De gaten zijn gedrag dat de codereview toevoegde zonder test: een opslagfout van een ander etiket blijft staan na de volgende wissel (R7-17b), de stand staat altijd volledig in de rij (R7-24), en de breedte-beginstand kiest het bovenste kader, terwijl de fixtures het bovenste kader al vooraan in `hint` hebben (R7-6b). Volgende stap: tests toevoegen (`bmad-testarch-automate`) en trace opnieuw (run 10).
 
 > [!note] Gatebesluit run 8: PASS
 > P0-dekking 79/79 (100%), P1 28/28 (100%), totaal 110/112 (98%); alle tests groen (771/771, `zwaar or lokaal` 4/4) en de licentiecontrole op de echte omgeving schoon (93 pakketten, 0 overtredingen). Nieuw sinds run 6: ronde 6 (besluit Friso 02-11-2026: Open Food Facts-uitsneden als logobron van de generator) met 30 criteria, alle FULL; de twee P0-gaten van run 7 zijn met een test gedicht. Blijft gedeeltelijk, zonder blokkade: CAP-6a en AC-2 (P2, MPS niet beweerd).
@@ -299,6 +311,64 @@ Testnamen voluit in de fase-1-matrix `/tmp/tea-trace-coverage-matrix-2026-11-02T
 
 (Telling: 30 criteria; P0 22, P1 7, P2 1.)
 
+### Ronde 8 — SPEC CAP-3 (hele etiket passend), toetsset §6, `invul-ux/EXPERIENCE.md` *Etiketbeeld* en buildspec 8 `spec-spike-getrainde-detector-ronde8.md` (nieuw, run 11)
+
+`R8:` = `tests/test_ronde8_browser_20261102.py` (namen zonder `test_r8_`).
+
+| # | criterium | prio | tests | dekking | uitslag |
+|---|---|---|---|---|---|
+| R8-AC-1 | volledige suite 0 failed (ook de 23 rode van ATDD ronde 8) | P0 | hele suite | FULL | 837 passed, 2 skipped (2×) |
+| R8-1 | passend: hele etiket, één kant = binnenmaat ±2, andere past, geen scroll, gecentreerd; 200×3920 en 4096×780 in 1440×800, 1920×970, 1280×700 | P0 | R8: `passend_hele_etiket_in_beeld` (6) | FULL | groen |
+| R8-2 | klein etiket vergroot | P0 | R8: `klein_etiket_wordt_vergroot` (2) | FULL | groen |
+| R8-3 | geen automatisch inzoomen (laden, ↑/↓, cijfer, klik/Tab in rij, wissel) | P0 | R8: `geen_automatisch_inzoomen` | FULL | groen |
+| R8-4 | concept in ronde-7-vorm gaat vóór (Friso's open tabblad) | P0 | R8: `concept_van_ronde_7_gaat_voor_op_serverstand` | FULL | groen |
+| R8-5 | alle kaders van de actieve rij gemarkeerd (rand, vulling, bovenop; gedeelde tegel), volgt ↑/↓ ook ingezoomd | P1 | R8: `markering_alle_kaders_van_actieve_rij` | FULL | groen |
+| R8-6 | klik op beeld → in (max(ware, 3× passend)); klik op ingezoomd beeld / Esc → passend | P1 | R8: `klik_op_beeld_zoomt_in_en_terug_naar_passend` (3) | FULL | groen |
+| R8-7 | klik in de witte rand doet niets; zoomcursor alleen op het etiket | P1 | R8: `klik_in_witte_rand_doet_niets` (3), `zoomcursor_alleen_op_het_etiket` | FULL | groen, mutatie rood |
+| R8-8 | uitsnede → in op haar kader, ook vanuit in, zo veel mogelijk in het midden | P1 | R8: `uitsnede_zoomt_in_op_haar_kader_ook_vanuit_in` (3), `uitsnede_zet_haar_kader_zo_veel_mogelijk_in_het_midden` (2) | FULL | groen |
+| R8-9 | maatwijziging: passend blijft passend; ingezoomd houdt zoom en scroll | P2 | R8: `maatwijziging_*` (4) | FULL | groen |
+| R8-10 | met echte scrollbalken: terug naar passend klopt, tweede uitsnede houdt de zoombreedte (review) | P1 | R8: `met_scrollbalken_*` (3) | FULL | groen, mutatie rood |
+| R8-11 | ronde-7-tests herschreven naar `passend` (beginstand, klik/Esc/wissel) | P0 | R7: `beginstand_passend_of_breedte`, `klik_zoomt_in_en_esc_en_wissel_terug` | FULL | groen |
+
+### Ronde 7 — SPEC CAP-3 (één scherm), toetsset §6, UX-spines `invul-ux/` en buildspec 7 `spec-spike-getrainde-detector-invulpagina-ux.md` (nieuw, run 9)
+
+`R7:` = `tests/test_ronde7_browser_20261102.py` (namen zonder `test_r7_`); `C3:` = `test_cap03_invulpagina_browser.py`; `R3B:`/`R5B:` = de browsertests van ronde 3/5; `RV:` = `test_review_20261101.py`.
+
+| # | criterium | prio | tests | dekking | uitslag |
+|---|---|---|---|---|---|
+| R7-AC-1 | volledige suite 0 failed (ook de 30 rode van ATDD ronde 7) | P0 | hele suite | FULL | run 9: 800 passed (2×); run 10: 809 passed, 2 skipped |
+| R7-1 | één scherm: geen paginascroll, alle vlakken binnen 1440×800 en 1920×970, rij ≤ 44 px, meldingen zichtbaar | P0 | R7: `alles_op_een_scherm_zonder_paginascroll` (4) | FULL | groen |
+| R7-2 | kopregel één regel ≤ 48 px, `nowrap`; opbouw rijen in `#standen`, knoppen in `#keuzes`, `inert` in de HTML | P0 | R7: `opbouw_kopregel_rijen_en_knoppen`, `alles_op_een_scherm…` | FULL | groen |
+| R7-3 | bestaande selectors en gedrag eerdere rondes (radiogroepen, ns-*, stand-*, `#opslaan` blijft staan, klaar-teken, concepten) | P0 | C3 (12), R3B, R5B, RV (pagina-delen) | FULL | groen |
+| R7-4 | kaders op `herken.tegels` (`data-vak`, positie ±1,5 px, laatste tegel, rijvolgorde) | P1 | R7: `kaders_volgen_herken_tegels` (3) | FULL | groen |
+| R7-5 | onleesbare naam / tegel buiten bereik zonder kader; geen uitsneden → kolom verborgen (ook visueel) | P1 | R7: `uitsneden_zonder_leesbare_naam…` | FULL | groen |
+| R7-6a | beginstand (sinds ronde 8 altijd `passend`) | P1 | R7: `beginstand_passend_of_breedte` (5, herschreven in ronde 8) | FULL | groen |
+| R7-6b | ~~breedte scrollt naar het bovenste kader~~ — vervallen in ronde 8 (geen beginstand `breedte` meer) | — | vervangen door R8-1/R8-3 | n.v.t. | test verwijderd (run 11) |
+| R7-7 | klik zoomt in (max(ware, 3× begin)), geen navigatie; Cmd-klik blijft link; Esc/tweede klik/wissel terug | P1 | R7: `klik_zoomt_in_en_esc_en_wissel_terug` (2) | FULL | groen |
+| R7-8 | klik op uitsnede: inzoomen, rij actief, kader in beeld | P1 | R7: `klik_op_uitsnede…` | FULL | groen |
+| R7-9 | beeld niet te laden: melding zichtbaar, keuzes bruikbaar | P1 | R7: `beeld_niet_te_laden` | FULL | groen |
+| R7-10 | kaders altijd van het getoonde etiket | P1 | R7: `kaders_horen_altijd_bij_het_getoonde_etiket` | FULL | groen |
+| R7-11 | 1/2/3 en ↑/↓ per rij, tussenstand-POST, stop bij V-label, nooit naar Nutri-Score, geen vreemde focus | P0 | R7: `toetsen_123_en_pijlen_per_rij` | FULL | groen |
+| R7-12 | Nutri-Score 1–5/0; 4/5/0 elders niets; letter zet "onleesbaar" uit | P0 | R7: `nutriscore_toetsen_en_456_0_elders_niets`, `nutriscore_letter_zet_onleesbaar_uit` | FULL | groen |
+| R7-13 | toetsherhaling (cijfers, `b`, Esc) doet niets | P0 | R7: `ingedrukt_gehouden_cijfer_doet_niets` | FULL | groen |
+| R7-14 | sneltoetsen doen niets in `#opmerking` | P0 | R7: `sneltoetsen_doen_niets_in_opmerking`; C3: `p0_sneltoetsen_doen_niets_in_het_tekstveld` | FULL | groen |
+| R7-15 | ←/→/↑/↓ op een keuze met focus: navigeren, keuze gelijk, geen POST | P0 | R7: `pijlen_op_keuze_met_focus…` | FULL | groen |
+| R7-16 | `#volgende` = `b`; onvolledig geweigerd; laatste blijft; focus weg na wissel; `#opslaan` blijft | P0 | R7: `volgende_en_b_bevestigen_en_door` | FULL | groen |
+| R7-17a | opslagfout van een ander etiket noemt de etiketcode; geslaagde melding ook | P1 | R7: `opslagfout_van_ander_etiket…`, `volgende_en_b…` | FULL | groen |
+| R7-17b | die opslagfout blijft staan na de volgende wissel, tot dat etiket opslaat (review BH3) | P1 | R7: `opslagfout_blijft_staan_tot_dat_etiket_opslaat` (run 10) | FULL | groen, 2 mutaties rood |
+| R7-18 | statusmerkje bevestigd/onleesbaar | P1 | R7: `statusmerkje_in_de_kopregel` | FULL | groen |
+| R7-19 | AI-merkjes (attribuut én zichtbare tekst "AI"), "AI: —", "AI: geen letter", rijmarkering | P1 | R7: `ai_merkjes_en_rijmarkering` | FULL | groen |
+| R7-20 | "gewijzigd" ⇔ `veranderd` | P1 | R7: `gewijzigd_volgt_veranderd` | FULL | groen |
+| R7-21 | rij actief bij klik en Tab | P2 | R7: `rij_actief_bij_klik_en_bij_tab` | FULL | groen |
+| R7-22 | alleen eigen origine | P1 | R7: `kaders_volgen_herken_tegels` | FULL | groen |
+| R7-23 | typen raakt nooit kwijt (geen vreemde focus, geen veld vervangen, concept vóór) | P0 | C3: `p0_*` (6), R5B, R7: `toetsen_123…` (spion) | FULL | groen |
+| R7-24 | stand altijd volledig zichtbaar, ook met "gewijzigd"/"AI: …" (review BH4; CAP-3 "toont de stand") | P1 | R7: `stand_volledig_zichtbaar_naast_gewijzigd_en_ai_tekst` (run 10) | FULL | groen, mutatie rood |
+| R7-25 | uitsnedenamen al vóór het laden van het beeld (review BH2) | P2 | R7: `uitsnedenamen_voor_het_laden_van_het_beeld` (run 10) | FULL | groen, mutatie rood |
+| R7-26 | Enter op de beeldlink zoomt op het midden (review BH11) | P2 | R7: `enter_op_beeldlink_zoomt_op_het_midden` (run 10) | FULL | groen, mutatie rood |
+| R7-27 | ~~resize in breedte houdt de scrollpositie~~ — vervallen in ronde 8 | — | vervangen door R8-9 | n.v.t. | test verwijderd (run 11) |
+| R7-28 | paneel scrollt intern in een te laag venster (review BH5); titel krimpt vóór de etiketcode (BH8) | P2 | R7: `paneel_scrollt_in_laag_venster`, `titel_krimpt_voor_de_etiketcode` (run 10) | FULL | groen, mutaties rood |
+| R7-29 | letters gedempt zolang "letter onleesbaar" aan staat (review BH12) | P2 | R7: `letters_gedempt_zolang_onleesbaar_aan_staat` (run 10) | FULL | groen, mutatie rood |
+
 ### Controle op de dekkingslogica
 
 - **Run 8:** P0 22/22 FULL, P1 7/7, P2 1/1 voor ronde 6; de twee gaten van run 7 zijn met een test gedicht en elk met een mutatie gecontroleerd (automatiseringssamenvatting run 2).
@@ -338,6 +408,28 @@ Testnamen voluit in de fase-1-matrix `/tmp/tea-trace-coverage-matrix-2026-11-02T
 - **Gaten:** geen criterium zonder test; geen P0- of P1-criterium gedeeltelijk. Gedeeltelijk: CAP-6a en AC-2 (P2).
 - **Heuristieken:** endpoints zonder test 0; toegangsregels zonder negatief pad 0; alleen geluksscenario 0.
 
+### Run 11 (ronde 8, fase 1, sequentieel)
+
+- **Ronde 8:** 12 criteria, FULL 12; P0 6/6, P1 5/5, P2 1/1. Vervallen: R7-6b, R7-27 (contract ronde 8).
+- **Cumulatief:** 153 criteria, FULL 151 (99%); P0 95/95, P1 45/45, P2 11/13 (CAP-6a, AC-2).
+- **Gaten:** geen P0/P1. Heuristieken leeg (server ongewijzigd; foutpaden: beeld 404, witte rand, scrollbalken).
+- **Fase-1-matrix:** `/tmp/tea-trace-coverage-matrix-2026-11-02T-run11.json`.
+
+### Run 10 (ronde 7, fase 1, sequentieel)
+
+- **Ronde 7:** 31 criteria, FULL 31 (100%); P0 10/10, P1 13/13, P2 7/7.
+- **Cumulatief (run 8 + ronde 7):** 143 criteria, FULL 141 (99%); P0 89/89 (100%), P1 41/41 (100%), P2 11/13 (CAP-6a, AC-2 ongewijzigd PARTIAL).
+- **Gaten:** P0 0, P1 0. Heuristieken leeg.
+- **Fase-1-matrix:** `/tmp/tea-trace-coverage-matrix-2026-11-02T-run10.json`.
+
+### Run 9 (ronde 7, fase 1, sequentieel: één testbestand)
+
+- **Ronde 7:** 31 criteria; FULL 23 (74%); PARTIAL 1; NONE 7. P0 10/10 (100%), P1 10/13 (77%), P2 1/7.
+- **Gaten:** P1 R7-6b (PARTIAL), R7-17b, R7-24 (NONE); P2 R7-25 t/m R7-29 (NONE). Alle gaten zijn gedrag uit de reviewpatches van de bouw.
+- **Heuristieken:** `endpoints_without_tests: []` (server ongewijzigd), `auth_missing_negative_paths: []` (n.v.t.), `criteria_happy_path_only: []` (foutpaden: opslagfout, beeld 404, onvolledig bevestigen gedekt).
+- **Aanbevelingen:** (HIGH) R7-17b, R7-24 en R7-6b met een test dichten (fixture waarin het bovenste kader niet het eerste in `hint` is); (MEDIUM) P2-gaten R7-25 t/m R7-29 meenemen in dezelfde ronde.
+- **Fase-1-matrix:** `/tmp/tea-trace-coverage-matrix-2026-11-02T-run9.json`.
+
 ### Run 8 (fase 1, sequentieel)
 
 - **Ronde 6:** 30 criteria, FULL 30 (100%); P0 22/22, P1 7/7, P2 1/1.
@@ -363,6 +455,26 @@ Testnamen voluit in de fase-1-matrix `/tmp/tea-trace-coverage-matrix-2026-11-02T
 2. **LOW** — `bmad-testarch-test-review` voor de testkwaliteit (omvang van `test_review_20261101.py` en `test_besluiten_20261101.py`).
 
 ## Stap 5 — Gatebesluit (fase 2)
+
+### Bewijs run 11 (VERIFIED, 02-11-2026, HEAD `a7a729b` + ronde 8)
+
+- `uv run --group dev pytest -q -p no:cacheprovider` (specmap, worktree `proef-invulpagina-r8`): **837 passed, 2 skipped, 0 failed**, twee runs na elkaar (281,0 s en 187,4 s).
+- Rode run ATDD ronde 8: 23 failed, 807 passed, 2 skipped.
+- Mutaties: zonder krimpen vóór meten → 2 scrollbalktests rood; zoomcursor op de hele link → cursortest rood.
+- Gate: regel 1 (P0 100%), 2 (99%), 4 (P1 100%) → **PASS**.
+
+### Bewijs run 10 (VERIFIED, 02-11-2026, HEAD `8bc97a7` + ronde 7 + testuitbreiding run 3)
+
+- `uv run --group dev pytest -q -p no:cacheprovider` (specmap): **809 passed, 2 skipped, 0 failed** (104,1 s).
+- Nieuwe tests: ronde-7-bestand 2× 40 passed; elke nieuwe test rood onder een gerichte breuk (kopieën buiten de repo); `invul/index.html` sha256 vóór = na = `a95a9830…dabc28`.
+- `licenties.py` niet opnieuw gedraaid: geen afhankelijkheid gewijzigd sinds run 8 (alleen HTML en tests).
+- Gate: regel 1 (P0 100%), 2 (totaal 99% ≥ 80%), 4 (P1 100% ≥ 90%) → **PASS**.
+
+### Bewijs run 9 (VERIFIED, 02-11-2026, HEAD `8bc97a7` + ronde 7)
+
+- `uv run --group dev pytest -q -p no:cacheprovider` (specmap): **800 passed, 2 skipped, 0 failed**, twee volledige runs na elkaar (122,9 s en 157,6 s).
+- Rode run ATDD ronde 7 (11:19): 30 failed, 769 passed, 2 skipped.
+- Gate: regel 1 (P0 100%) gehaald; regel 3: P1 77% < 80% → **FAIL**.
 
 ### Bewijs run 8 (VERIFIED, 02-11-2026, HEAD `a338c1e` + testuitbreiding)
 
@@ -472,7 +584,7 @@ exit 0 · "pakketten": 93 · "overtredingen": [] · 8 onder "ruim" (zelfde lijst
 
 Regel 4 van de beslisboom (P0 100%, P1 ≥ 90%, totaal ≥ 80%) geeft **PASS**.
 
-### GATE DECISION: PASS
+### GATE DECISION: PASS (run 11)
 
 **Reden (run 8):** elk P0- en P1-criterium, ook de 30 van ronde 6 (Open Food Facts: ophalen, lekregel, beleefd en hervatbaar, schijfgrens, generator alleen in train, OFF-grens en NutriGreen-aandeel in fase 2, herkomst), is volledig gedekt en elke test slaagt. Run 7 viel op twee P0-criteria die alleen uit de bouw of met de hand waren aangetoond; die hebben nu een test die door een gerichte mutatie rood wordt. De gedeeltelijke criteria CAP-6a en AC-2 blijven P2 (zie run 6).
 

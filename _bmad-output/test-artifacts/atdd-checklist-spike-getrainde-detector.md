@@ -9,6 +9,8 @@ inputDocuments:
   - _bmad-output/planning-artifacts/spike-getrainde-detector/toetsset.md
   - _bmad-output/planning-artifacts/spike-getrainde-detector/trainingsset-en-herkenning.md
   - _bmad-output/planning-artifacts/spike-getrainde-detector/randvoorwaarden.md
+  - _bmad-output/planning-artifacts/spike-getrainde-detector/invul-ux/DESIGN.md
+  - _bmad-output/planning-artifacts/spike-getrainde-detector/invul-ux/EXPERIENCE.md
   - _bmad-output/planning-artifacts/spike-architectuurkeuze-logoherkenning/fase-b/tel.py
   - _bmad-output/planning-artifacts/spike-architectuurkeuze-logoherkenning/fase-b/test_tel.py
   - apps/ml-service/app/services/k4aa.py
@@ -704,3 +706,183 @@ cd _bmad-output/planning-artifacts/spike-getrainde-detector && uv run --group de
 ### Na de bouw (bmad-build ronde 6, reviewpatches)
 
 Bouw zonder testwijziging groen (761 passed). Op verzoek van de codereview (drie lagen, 29 bevindingen; 16 doorgevoerd in 11 groepen, 1 uitgesteld, 12 verworpen) kwamen er 6 testfuncties bij in `tests/test_ronde6_20261102.py`, alle groen: bijna gelijk aan een toetsbeeld bij hervatten, gelijkende keurmerken via `generator.py tegels`, NutriGreen ≤ 20% als de OFF-grens nagemaakte tegels weigert (faalt met de oude regel), kapot zoekantwoord of uitsnede die geen beeld is, ophalen met een deel van de klassen houdt index en rapport van de andere (en geen index na een noodstop), `Retry-After` negatief/`nan` en afgebroken `read()`. Aanvullingen op het contract (bindend): `ophalen` verwijdert `bronnen.json` aan het begin en houdt indexregels en `rapport.klassen` van klassen buiten de run; een zoekantwoord moet een JSON-object met een lijst `logos` zijn en een uitsnede moet als beeld te openen zijn, anders `Tijdelijk`; `Retry-After` begrensd op [0, 300], niet-eindig → vaste wachttijd; `ConnectionError` en `http.client.HTTPException` zijn tijdelijk; een OFF-object in het manifest draagt `uitsnede` (pad) als de invoer een pad was; `echt.py dataset` geeft `kies_nutrigreen` als `nagemaakt` het aantal nagemaakte tegels binnen de OFF-grens. Geen bestaande test gewijzigd. Suite: **767 passed, 0 failed**. Buildspec: `_bmad-output/implementation-artifacts/spec-spike-getrainde-detector-ronde6.md`.
+
+## Ronde 7 (invulpagina op één scherm; verzoek Friso 02-11-2026)
+
+Bron: de niet-gecommitte spec-update op HEAD `8bc97a7` (`bmad-ux` → `invul-ux/DESIGN.md` + `EXPERIENCE.md`; `bmad-spec` → SPEC CAP-3, toetsset §6; `bmad-review` adversarial/edge-case/verification-gap: 20 bevindingen + 5 verificatiegaten, alle doorgevoerd; `bmad-review` structure/prose op de spines: 17 bevindingen, alle doorgevoerd). De rest van deze checklist blijft bindend, behalve waar dit contract hem vervangt.
+
+### Stap 1 — preflight en context
+
+- **Werkwijze:** `bmad-testarch-atdd`, Create-modus, headless (staande toestemming van de eigenaar om tot review te bouwen op een schone tak `spike/proef-invulpagina-ux`).
+- **Stack:** `fullstack` voor deze ronde: Python-server + één HTML-pagina, browsertests met Playwright voor Python (`playwright` in de dev-groep, `pytest.mark.browser`, helpers `laad_klaar`/`wacht_klaar` in `tests/conftest.py`). Geen `playwright.config.ts`: de bestaande browsertests (`test_cap03_invulpagina_browser`, `test_ronde3_browser_20261101`, `test_ronde5_browser_20261101`, `test_review_20261101`) zijn het patroon. Uitgangstoestand: **769 passed, 2 skipped, 0 failed** (`uv run --group dev pytest -q -p no:cacheprovider`, HEAD `8bc97a7` met de spec-update).
+- **Gelezen:** SPEC CAP-3, toetsset §6, `invul-ux/DESIGN.md`, `invul-ux/EXPERIENCE.md`, `invul/index.html`, `invul/server.py`, `uitslag.py`, `herken.py` (`tegels`, `_starts`), `toets.py` (hinttegels: hoogstens 2 per code, bestandsnaam `<id>-<CODE>-<i>.png`), de vier browsertestbestanden hierboven. Kennis: `fixture-architecture`, `network-first`, `selector-resilience`, `test-quality`, `timing-debugging`.
+- **Gemeten als invoer (02-11-2026, alleen aantallen, geen klantbeelden in de repo):** 352 etiketten; beeld 428–4096 px breed, 354–37.541 px hoog (h/b 0,19–19,6); 0–6 uitsneden per etiket (118 zonder), 400×400; alle 528 bestandsnamen ontleden van rechts tot een code en een tegelnummer binnen `herken.tegels`.
+
+### Stap 2 — generatiemodus
+
+AI-generatie (browser; geen opname). Selectors komen uit dit contract, niet uit een snapshot: de pagina bestaat nog niet in deze vorm.
+
+### Stap 3 — teststrategie
+
+| criterium | niveau | prio |
+|---|---|---|
+| Alles in beeld zonder paginascroll in vensters 1440×800 en 1920×970 met het zwaarste etiket; kopregel één regel; rijen breken niet af | E2E (browser) | P0 (kern van het verzoek) |
+| Sneltoetsen per rij (1/2/3, ↑/↓, 1–5/0 in Nutri-Score), dezelfde opslagweg als een klik, nooit automatisch naar Nutri-Score, 4/5/0 elders niets, toetsherhaling genegeerd | E2E | P0 (antwoorden) |
+| Sneltoetsen doen niets in `#opmerking` (ook cijfers, ↑/↓, Esc) | E2E | P0 (typen raakt nooit kwijt) |
+| ←/→ op een segmentknop met focus: navigeren, keuze ongewijzigd, geen POST | E2E | P0 (antwoorden) |
+| "Bevestigen en volgende" = `b`; onvolledig weigert; laatste etiket blijft; focus na wissel niet op een knop of keuze; `#opslaan` blijft staan | E2E | P0 |
+| AI-merkje per keuze; "AI: —"; "AI: geen letter"; rij teal bij AI-aanwezig; "gewijzigd" = `veranderd` | E2E | P1 |
+| Tegelkaders op `herken.tegels` (ook laatste tegel, rij-volgorde), onleesbare bestandsnaam zonder kader, geen uitsneden → kolom weg, kaders alleen van het getoonde etiket | E2E (+ vergelijking met Python) | P1 |
+| Beeld: beginstand passend (h/b ≤ 3) of breedte met scroll naar het eerste kader; klik = inzoomen (breedte = max(ware, 3× passend)); Esc en etiketwissel terug; klik op uitsnede = inzoomen + rij actief; Cmd/Ctrl-klik blijft een link | E2E | P1 |
+| Rij actief bij klik en bij focus (Tab) | E2E | P2 |
+| Beeld niet te laden; opslagfout van een ander etiket noemt de etiketcode; statusmerkje; alleen eigen origine (geen externe bron) | E2E | P1 |
+
+Uitvoeringsmodus: `tea_execution_mode = auto`, subagents beschikbaar → **subagent**, alleen worker B (browser; geen nieuwe server- of rekenlogica, de server verandert niet). Afwijking van de stapbestanden zoals in rondes 2–6: geen `test.skip()`; de tests draaien echt rood.
+
+### Interfacecontract ronde 7 (bindend voor tests én bouw)
+
+**Ongewijzigd en bindend (eerdere rondes):** `#keuzes` met `inert` in de HTML tot klaar; radiogroepen `data-testid="keuze-<CODE>"` met `role="radiogroup"` en `aria-label` = naam, in de volgorde van `KEURMERKEN_LOS`, geen andere radiogroepen in `#keuzes`; radio-inputs `value` aanwezig/afwezig/onzeker; checkboxes `ns-A`…`ns-E`, `ns-onleesbaar`; `stand-<CODE>` (9) met `data-met`, `data-zonder` en zichtbare tekst met 16 en 50, alle 9 binnen `#standen`; `etiket-id`; `overzicht` binnen de link `volledig` (`href` = beeld); `#opmerking`, `#voortgang` (tekst "`<n>` van `<m>` etiketten afgehandeld"), `#opslaan` (bevestigen, blijft staan), `#onleesbaar`, `#melding` (`role="status"`, bestaande teksten), `#notitie`; conceptsleutel `concept:<id>`; server-API en `uitslag.json` ongewijzigd. Inputs en checkboxes zijn met Playwright `check()`/`click()` bedienbaar (niet `display:none`, echte afmeting).
+
+**Nieuwe elementen**
+- Kopregel `header` (`data-testid="kopregel"`): `#voortgang`, `#positie` ("`<i>` / `<m>`"), `data-testid="etiket-status"` (tekst `bevestigd` of `onleesbaar`, of leeg en `hidden`), `etiket-id`. Hoogte ≤ 48 px; geen afbreking (`white-space: nowrap`).
+- `data-testid="beeldvak"`: het scrollende vak om de link `volledig`; attribuut `data-stand` = `passend` | `breedte` | `in`. Binnen de link een omhullend element met `overzicht` en de kaders.
+- Kaders: `data-testid="kader"` per uitsnede met leesbare naam, met `data-code`, `data-tegel` (index) en `data-vak="x0,y0,x1,y1"` (ware pixels uit `herken.tegels(ware breedte, ware hoogte)` met 1024/256); positie en maat in procenten van de ware maat; `data-actief="true"` bij de kaders van de actieve rij (anders geen attribuut of `"false"`). Kaders staan er pas als het beeld van het getoonde etiket geladen is, en horen altijd bij het getoonde etiket.
+- `data-testid="uitsneden"`: kolom met per uitsnede een `img` `data-testid="uitsnede"` (`src` = het pad uit `hint`), met `data-code` en `data-tegel` als de bestandsnaam van rechts te lezen is (`-<CODE>-<i>.png`, `CODE` hoofdletters/underscore, en `i` < aantal tegels); anders zonder die attributen. Geen uitsneden → de kolom heeft `hidden`.
+- `data-testid="beeld-fout"`: `hidden`, tenzij het beeld niet laadt; dan zichtbaar met de tekst "Beeld niet te laden".
+- Rijen: binnen `#standen` per keurmerk (8 + `NUTRISCORE`) een element `data-testid="rij-<CODE>"` dat de radiogroep (of de Nutri-Score-checkboxes), `stand-<CODE>`, `data-testid="gewijzigd-<CODE>"` en `data-testid="ai-<CODE>"` bevat. `rij-<CODE>` draagt `data-actief="true"` op precies één rij tegelijk, en `data-ai-aanwezig="true"` als de AI-voorinvulling het keurmerk aanwezig noemt (Nutri-Score: minstens één letter).
+- AI-merkje: het `label` om een radio-input of checkbox draagt `data-ai="true"` als die waarde of letter de AI-voorinvulling is; anders niet. Zonder AI-voorinvulling nergens `data-ai`.
+- `ai-<CODE>`: tekst `AI: —` als de AI-voorinvulling bestaat maar geen oordeel voor deze code heeft; voor `NUTRISCORE` `AI: geen letter` als de AI een lege lijst gaf; anders leeg.
+- `gewijzigd-<CODE>`: tekst `gewijzigd`, `hidden` tenzij de code in `veranderd(etiket, formulier)` zit (dezelfde functie als bij opslaan).
+- Knoppen binnen `#keuzes`: `#volgende` ("Bevestigen en volgende"), `#opslaan` ("Bevestigen"), `#onleesbaar` ("Etiket onleesbaar"). `data-testid="sneltoetsen"`: regel met de sneltoetsen, onder in het paneel.
+
+**Gedrag**
+- *Eén scherm:* in vensters 1440×800 en 1920×970 is `document.documentElement.scrollHeight ≤ innerHeight` en `scrollWidth ≤ innerWidth`, en liggen kopregel, beeldvak, uitsnedekolom (als zichtbaar), elke `rij-<CODE>`, `#notitie` (als gevuld), `#opmerking`, `#volgende`, `#opslaan`, `#onleesbaar`, `#melding` en `sneltoetsen` volledig binnen het venster; elke rij is ≤ 44 px hoog; de uitsnedekolom mag intern scrollen, de pagina niet.
+- *Beeld:* beginstand bij het tonen van een etiket: `passend` als ware hoogte ≤ 3 × ware breedte (beeld past geheel in het vak, geen scroll in het vak), anders `breedte` (beeldbreedte = binnenbreedte van het vak ± 2 px, het vak scrollt verticaal; `scrollTop` zo dat het eerste kader in beeld is, of 0 zonder kaders). Klik (zonder Cmd/Ctrl/Shift, linkerknop) op het beeld: geen navigatie, `data-stand="in"`, beeldbreedte = max(ware breedte, 3 × breedte in de beginstand) ± 2 px, het aangeklikte punt zo goed als het kan in het midden. Nogmaals klikken of Esc (niet in een tekstveld): terug naar de beginstand. Een ander etiket begint altijd in de beginstand. Klik op een uitsnede met `data-code`: `data-stand="in"`, de rij van die code wordt actief en het kader van die tegel ligt binnen het zichtbare deel van het beeldvak.
+- *Actieve rij:* bij elk getoond etiket de eerste rij (`EU_ORGANIC_FARMING`). Klik ergens in een rij, of `focusin` in een rij, maakt hem actief (zonder `focus()`-aanroep).
+- *Toetsen* (niet in een tekstveld, niet met Ctrl/Cmd/Alt): ↑/↓ vorige/volgende rij (blijft op de eerste/laatste). `1`/`2`/`3` met een van de 8 rijen actief: die rij aanwezig/afwezig/onzeker, `change`-weg zoals een klik (concept + tussenstand-POST), daarna de volgende rij actief, behalve vanaf `EUROPEAN_V_LABEL_VEGAN` (blijft actief; nooit automatisch naar `NUTRISCORE`). Met `NUTRISCORE` actief: `1`–`5` zet letter A–E aan/uit, `0` zet "letter onleesbaar" aan/uit, zelfde weg als een klik, geen rijwissel. `4`/`5`/`0` met een andere rij actief: niets (geen POST, geen wijziging). Een cijfer-`keydown` met `repeat === true` doet niets. ←/→ vorig/volgend etiket, ook als een radio-input of checkbox de focus heeft; de keuze van die input verandert dan niet en er gaat geen POST. `b` = wat `#volgende` doet. Esc = beeld terug naar de beginstand.
+- *In `#opmerking`* doen `1`–`5`, `0`, ↑/↓, ←/→, Esc en `b` niets behalve hun gewone werking in het tekstveld: geen POST, geen andere keuze, geen andere actieve rij, geen ander etiket.
+- *`#volgende` en `b`:* als niet alles gekozen is: de bestaande "Kies eerst …"-melding, geen POST, geen wissel. Anders: POST met `status: "bevestigd"` (zelfde waarde als `#opslaan`) en direct naar het volgende nummer; op het laatste etiket opslaan en blijven staan. Na elke etiketwissel heeft geen knop, radio-input of checkbox in `#keuzes` de focus (`blur()` mag; `focus()` op iets anders niet).
+- *Opslagfout:* mislukt een opslag van een ander etiket dan het getoonde, dan bevat `#melding` de etiketcode van dat etiket (naast de bestaande tekst "Opslaan mislukt").
+- *Status:* `etiket-status` toont `bevestigd`/`onleesbaar` van het getoonde etiket (uit de serverstand of een gelukte opslag).
+- *Geen externe bron:* alle verzoeken van de pagina gaan naar de eigen origine.
+
+**Verduidelijkingen bij het schrijven van de tests (bindend):** "het eerste kader in beeld" = het bovenste kader (kleinste y0; na de codereview, want `hint` staat op code gesorteerd, niet op plek) overlapt het zichtbare deel van het beeldvak met minstens 8 px (een geschaalde tegel van 1024 px kan hoger zijn dan het vak); kaderpositie wordt gemeten tegen de inhoudsbox van `overzicht` en een kaderrand ligt binnen het kader (`box-sizing: border-box`); `white-space: nowrap` staat op de `header` zelf; het aangeklikte punt in het midden wordt alleen horizontaal getoetst (±10 px, passend breed beeld). Niet getoetst: middenklik opent de volledige resolutie.
+
+### Stap 4 — falende tests (worker B, subagent)
+
+| criterium | tests (`R7:` = `tests/test_ronde7_browser_20261102.py`) | functies (gevallen) | prio |
+|---|---|---:|---|
+| Eén scherm in 1440×800 en 1920×970, kopregel ≤ 48 px en `nowrap`, rijen ≤ 44 px, meldingen zichtbaar | R7: `test_r7_alles_op_een_scherm_zonder_paginascroll` | 1 (4) | P0 |
+| Opbouw kopregel, rijen binnen `#standen`, knoppen, `sneltoetsen`, `inert` in de HTML | R7: `test_r7_opbouw_kopregel_rijen_en_knoppen` | 1 (1) | P0 |
+| Kaders op `herken.tegels` (`data-vak`, positie ±1,5 px, laatste tegel, rijvolgorde), eigen origine, `uitsnede`-`src` | R7: `test_r7_kaders_volgen_herken_tegels` | 1 (3) | P1 |
+| Onleesbare naam / tegel buiten bereik zonder kader; geen uitsneden → kolom `hidden` | R7: `test_r7_uitsneden_zonder_leesbare_naam_en_zonder_uitsneden` | 1 (1) | P1 |
+| Beginstand passend/breedte, scroll naar het eerste kader | R7: `test_r7_beginstand_passend_of_breedte` | 1 (5) | P1 |
+| Klik = inzoomen, Cmd/Ctrl-klik blijft link, Esc/tweede klik/etiketwissel terug | R7: `test_r7_klik_zoomt_in_en_esc_en_wissel_terug` | 1 (2) | P1 |
+| Klik op uitsnede = inzoomen + rij actief + kader in beeld | R7: `test_r7_klik_op_uitsnede_zoomt_in_en_maakt_rij_actief` | 1 (1) | P1 |
+| Beeld niet te laden | R7: `test_r7_beeld_niet_te_laden` | 1 (1) | P1 |
+| Geen verouderde kaders | R7: `test_r7_kaders_horen_altijd_bij_het_getoonde_etiket` | 1 (1) | P1 |
+| 1/2/3 en ↑/↓, stop bij V-label, nooit naar Nutri-Score; geen vreemde focus | R7: `test_r7_toetsen_123_en_pijlen_per_rij` | 1 (1) | P0 |
+| Nutri-Score 1–5/0; 4/5/0 elders niets | R7: `test_r7_nutriscore_toetsen_en_456_0_elders_niets` | 1 (1) | P0 |
+| Toetsherhaling doet niets | R7: `test_r7_ingedrukt_gehouden_cijfer_doet_niets` | 1 (1) | P0 |
+| Niets in `#opmerking` | R7: `test_r7_sneltoetsen_doen_niets_in_opmerking` | 1 (1) | P0 |
+| ←/→ op een keuze met focus navigeert zonder POST en zonder wijziging | R7: `test_r7_pijlen_op_keuze_met_focus_navigeren_zonder_keuze_te_wijzigen` | 1 (1) | P0 |
+| `#volgende` = `b`, onvolledig geweigerd, laatste blijft, focus weg na wissel, `#opslaan` blijft | R7: `test_r7_volgende_en_b_bevestigen_en_door` | 1 (1) | P0 |
+| Opslagfout van ander etiket noemt de etiketcode | R7: `test_r7_opslagfout_van_ander_etiket_noemt_etiketcode` | 1 (1) | P1 |
+| Statusmerkje | R7: `test_r7_statusmerkje_in_de_kopregel` | 1 (1) | P1 |
+| AI-merkjes, "AI: —", "AI: geen letter", `data-ai-aanwezig`, zonder voorinvulling | R7: `test_r7_ai_merkjes_en_rijmarkering` | 1 (1) | P1 |
+| `gewijzigd-*` ⇔ `veranderd` | R7: `test_r7_gewijzigd_volgt_veranderd` | 1 (1) | P1 |
+| Rij actief bij klik en Tab | R7: `test_r7_rij_actief_bij_klik_en_bij_tab` | 1 (1) | P2 |
+
+Totaal: 20 testfuncties, 30 gevallen. **Bestaande tests aangepast:** geen.
+
+**Aggregatie (step-04c):** worker B `success`. Elke rode test faalt op ontbrekend gedrag of een ontbrekend element (`kader`, `kopregel`, `uitsneden`, `data-stand`, `rij-*`, `beeld-fout`, `#volgende`, `etiket-status`, `data-ai`, `gewijzigd-*`; bij de pijltoetsen: de pijl verandert nu de radio; bij de opslagfout: etiketcode ontbreekt), niet op een fixture- of importfout. Alleen verzonnen ids en met Pillow gemaakte beelden in `tmp_path`. Geen `test.skip()` (zoals rondes 2–6): de tests draaien echt rood.
+
+### Rode run (02-11-2026, 11:19)
+
+```
+cd _bmad-output/planning-artifacts/spike-getrainde-detector && uv run --group dev pytest -q -p no:cacheprovider
+30 failed, 769 passed, 2 skipped in 468.33s (0:07:48)
+```
+
+801 tests (771 + 30). Rood: `test_ronde7_browser_20261102.py` 30 (van 30). Alle andere bestaande tests groen.
+
+### Stap 5 — validatie en volgende stap
+
+- Voorwaarden: spec-update gereviewd (`bmad-review`, 20 + 5 bevindingen, alle doorgevoerd); framework aanwezig (Playwright voor Python, dev-groep). Elk contractpunt van ronde 7 heeft minstens één test; geen placeholders; geen `test.skip()`; geen externe verzoeken; alles in `tmp_path`; `~/logo-meetset-20261018/` niet aangeraakt; browsers sluiten via de modulefixture.
+- Niet gedekt (bewust): middenklik op het beeld; schermafbeeldingen op de echte toetsset (na de bouw, buiten de repo, met een eigen server op een kopie).
+- **Volgende stap:** `bmad-build` op dit interfacecontract; groen maken zonder tests te wijzigen, behalve bij een aantoonbare testfout (met reden in het buildverslag).
+
+### Na de bouw (bmad-build ronde 7, reviewpatches)
+
+Bouw groen na twee testfouten (reden in de buildspec): Ctrl-klik is op macOS een rechterklik (test gebruikt daar alleen Cmd), en het concept werd ná de bevestigde opslag gelezen (test bespiedt nu `Storage.setItem`). Codereview (drie lagen, 26 bevindingen; 20 doorgevoerd, 6 verworpen) maakte de tests strenger (zichtbaarheid uitsnedekolom en `beeld-fout`, ↑/↓ op een keuze met focus, herhaalde `b`/Esc, zichtbare tekst "AI", geslaagde-opslagmelding) en voegde `test_r7_nutriscore_letter_zet_onleesbaar_uit` toe; de wankele bestaande test `test_cap03…::test_p0_gewijzigde_keuze_gaat_mee_met_opslaan` wacht nu elke tussenstand af (asserts ongewijzigd). Aanvullingen op het contract (bindend): breedte-beginstand scrollt naar het bovenste kader (kleinste y0); een opslagfout van een ander etiket blijft in `#melding` tot dat etiket opslaat; "gewijzigd" en "AI: …" staan naast de naam, de stand staat alleen en volledig op regel 2; een letter wijzigen zet "letter onleesbaar" uit en "letter onleesbaar" dempt de letters; `#keuzes` scrollt intern in een te laag venster; de titel krimpt vóór de etiketcode; Enter op de beeldlink zoomt op het midden; resize herberekent alleen `passend`. Trace run 9 FAIL (P1 77%) → `bmad-testarch-automate` run 3 (9 tests, mutatiegecontroleerd) → trace run 10 PASS. Suite: **809 passed, 2 skipped, 0 failed**. Buildspec: `_bmad-output/implementation-artifacts/spec-spike-getrainde-detector-invulpagina-ux.md`.
+
+## Ronde 8 (hele etiket passend in beeld, inzoomen op verzoek; besluit Friso 02-11-2026)
+
+Bron: de niet-gecommitte spec-update op HEAD `a7a729b` in worktree `.claude/worktrees/proef-invulpagina-r8` (`bmad-ux` Update → `invul-ux/EXPERIENCE.md` paragraaf *Etiketbeeld*, `DESIGN.md`; `bmad-spec` → SPEC CAP-3, toetsset §6; `bmad-review` twee keer, 5 lenzen: de eerste op een vervallen tussenversie, de tweede op de aangescherpte tekst, alle bevindingen doorgevoerd of hier opgenomen). Friso letterlijk: "Het etiket is te groot, deze moet inzoomen tot 100% breedte of hoogte." De rest van deze checklist blijft bindend, behalve waar dit contract hem vervangt.
+
+### Stap 1 — preflight en context
+
+- **Werkwijze:** `bmad-testarch-atdd`, Create-modus, headless. Eigen worktree, omdat de live pagina (:8767) `invul/index.html` uit worktree `proef-invulpagina` bij elke aanvraag opnieuw leest.
+- **Stack:** `fullstack` (zoals ronde 7). Uitgangstoestand: **809 passed, 2 skipped, 0 failed** (HEAD `a7a729b`).
+- **Gelezen:** SPEC CAP-3, toetsset §6, `invul-ux/EXPERIENCE.md` (*Etiketbeeld*), `DESIGN.md`, `invul/index.html`, `tests/test_ronde7_browser_20261102.py`, contract ronde 7 hierboven.
+
+### Stap 2 — generatiemodus
+
+AI-generatie (browser).
+
+### Stap 3 — teststrategie
+
+| criterium | niveau | prio |
+|---|---|---|
+| Passend: hele etiket, één kant = binnenmaat vak ±2 px, andere past, geen scroll in het vak, in beide richtingen gecentreerd; 200×3920 en 4096×780 in 1440×800, 1920×970, 1280×700; klein etiket vergroot | E2E | P0 (het besluit) |
+| Geen automatisch inzoomen: na laden, na ↑/↓, na cijfertoets, na etiketwissel: `passend`, scroll 0,0 | E2E | P0 |
+| Alle AI-kaders van de actieve rij gemarkeerd (rand 3 px navy, niet-transparante vulling, boven de andere); inactieve zonder vulling; markering volgt ↑/↓, ook ingezoomd zonder beeldbeweging | E2E | P1 |
+| Inzoomen op verzoek: klik op beeld → `in`; klik in de witte rand → niets; klik op ingezoomd beeld of Esc → `passend`; klik op uitsnede → `in` met dat kader in beeld, ook vanuit `in` | E2E | P1 |
+| Beeldvak verandert van maat: passend blijft passend; ingezoomd houdt zoom en scroll | E2E | P2 |
+| Concept in de vorm van ronde 7 in `sessionStorage` wordt na laden getoond (Friso's open tabblad) | E2E | P0 |
+| Ronde-7-tests die `breedte` vastleggen herschrijven naar ronde 8 | E2E | P0 |
+
+Uitvoeringsmodus: subagent, alleen worker B (browser). Geen `test.skip()`; echt rood.
+
+### Interfacecontract ronde 8 (bindend voor tests én bouw)
+
+**Vervalt uit ronde 7:** `data-stand="breedte"` (regel "`data-stand` = `passend` | `breedte` | `in`" wordt `passend` | `in`); de beginstand "passend als ware hoogte ≤ 3 × ware breedte, anders `breedte` … `scrollTop` zo dat het eerste/bovenste kader in beeld is"; "Esc: terug naar de beginstand" wordt "terug naar `passend`"; "resize herberekent alleen `passend`" wordt de regel hieronder. Tests R7-6b (`test_r7_breedte_scrollt_naar_bovenste_kader_niet_eerste_in_hint`) en R7-27 (`test_r7_resize_in_breedte_houdt_de_scrollpositie`) vervallen en worden vervangen; `test_r7_beginstand_passend_of_breedte` en `test_r7_klik_zoomt_in_en_esc_en_wissel_terug` verwachten overal `passend`.
+
+**Gedrag**
+- *Passend (beginstand bij elk getoond etiket):* schaal = min(`clientWidth` vak / ware breedte, `clientHeight` vak / ware hoogte) van `beeldvak`; de beeldbox van `overzicht` ligt binnen de binnenbox van het vak; één kant gelijk aan de binnenmaat (±2 px), de andere ≤ binnenmaat; `beeldvak` heeft `scrollWidth ≤ clientWidth + 1` en `scrollHeight ≤ clientHeight + 1`; het midden van de beeldbox ligt in het midden van de binnenbox (±2 px, beide richtingen). Een etiket kleiner dan het vak wordt vergroot. `data-stand="passend"`.
+- *Geen automatisch inzoomen:* na laden, na ↑/↓, na een cijfertoets die de rij doorschuift, na klik/Tab in een rij en na een etiketwissel blijft (of wordt) `data-stand="passend"` met `scrollTop = scrollLeft = 0`.
+- *Markering:* alle `kader`-elementen met `data-code` = de code van de actieve rij hebben `data-actief="true"`, een berekende rand van 3 px in navy (`rgb(47, 90, 122)`), een niet-transparante achtergrond en een berekende `z-index` hoger dan die van de andere kaders; inactieve kaders hebben een transparante achtergrond. Bij een rijwissel gaat de markering mee; in stand `in` blijven zoom en scroll gelijk.
+- *Inzoomen op verzoek:* klik (linkerknop, zonder Cmd/Ctrl/Shift) binnen de beeldbox van `overzicht` in stand `passend` → `in`, breedte = max(ware breedte, 3 × passende breedte) ±2 px, geen navigatie. Klik in het beeldvak búíten de beeldbox → niets (blijft `passend`, geen navigatie). Klik op het beeld in stand `in` → `passend`. Esc (niet in een tekstveld) → `passend`. Klik op een `uitsnede` met `data-code` → `in`, het kader van die tegel overlapt het zichtbare deel van het vak (≥ 8 px), ook als de stand al `in` was; de rij van die code wordt actief.
+- *Maatwijziging:* verandert de maat van het vak (venster), dan voldoet `passend` daarna weer aan de passend-regel; in stand `in` blijven breedte (±2 px) en `scrollTop`/`scrollLeft` (±2 px) gelijk.
+- *Concept ronde 7:* een concept onder `concept:<id>` met de vorm `{keurmerken, nutriscore, opmerking, nsGekozen}` dat al in `sessionStorage` staat vóór het laden, wordt na het klaar-teken getoond (keuzes en opmerking) en gaat vóór op de serverstand.
+
+### Stap 4 — falende tests (worker B, subagent)
+
+| criterium | tests (`R8:` = `tests/test_ronde8_browser_20261102.py`) | functies (gevallen) | prio |
+|---|---|---:|---|
+| Passend: één kant ±2 px, andere past, geen scroll, gecentreerd; 200×3920 en 4096×780 × 1440×800 / 1920×970 / 1280×700 | R8: `test_r8_passend_hele_etiket_in_beeld` | 1 (6) | P0 |
+| Klein etiket vergroot | R8: `test_r8_klein_etiket_wordt_vergroot` | 1 (2) | P0 |
+| Geen automatisch inzoomen | R8: `test_r8_geen_automatisch_inzoomen` | 1 (1) | P0 |
+| Markering alle kaders van de actieve rij (ook gedeelde tegel), volgt ↑/↓ ook ingezoomd | R8: `test_r8_markering_alle_kaders_van_actieve_rij` | 1 (1) | P1 |
+| Klik op beeld → `in`; klik op ingezoomd beeld / Esc → `passend` | R8: `test_r8_klik_op_beeld_zoomt_in_en_terug_naar_passend` | 1 (3) | P1 |
+| Klik in de witte rand doet niets | R8: `test_r8_klik_in_witte_rand_doet_niets` | 1 (3) | P1 |
+| Uitsnede → `in` op haar kader, ook vanuit `in` | R8: `test_r8_uitsnede_zoomt_in_op_haar_kader_ook_vanuit_in` | 1 (2) | P1 |
+| Maatwijziging passend / ingezoomd | R8: `test_r8_maatwijziging_passend_blijft_passend`, `…ingezoomd_houdt_zoom_en_scroll` | 2 (4) | P2 |
+| Concept in ronde-7-vorm gaat vóór | R8: `test_r8_concept_van_ronde_7_gaat_voor_op_serverstand` | 1 (1) | P0 |
+
+Totaal ronde 8: 10 functies, 23 gevallen. **Ronde-7-tests aangepast aan het nieuwe contract:** `test_r7_beginstand_passend_of_breedte` (overal `passend`; `breedte`-tak weg, passend-asserts behouden), `test_r7_klik_zoomt_in_en_esc_en_wissel_terug` (begin en na wissel `passend`; middenpunt-controle alleen op het brede etiket, zoals de verduidelijking van ronde 7); `test_r7_breedte_scrollt_naar_bovenste_kader_niet_eerste_in_hint` en `test_r7_resize_in_breedte_houdt_de_scrollpositie` vervallen (vervangen door de uitsnede- en maatwijzigingtests van ronde 8; de fixture `OMGEKEERD` verhuisde als `HOOG`). Namen van ronde-7-tests blijven voor de trace.
+
+Al groen vóór de bouw (gedrag dat ronde 7 al had en het contract houdt): `klein…[hoogte-raakt]`, `witte_rand…[breed-rand-boven-onder]`, `uitsnede…[breed]`, `ingezoomd…[breed]`, `concept…`.
+
+### Rode run (02-11-2026)
+
+```
+cd _bmad-output/planning-artifacts/spike-getrainde-detector && uv run --group dev pytest -q -p no:cacheprovider
+23 failed, 807 passed, 2 skipped
+```
+
+Rood: ronde 8 18 van 23, ronde 7 5 (alle op `breedte` waar nu `passend` hoort). Geen `test.skip()`. **Volgende stap:** `bmad-build`.
+
+### Na de bouw (bmad-build ronde 8, route oneshot, reviewpatches)
+
+Bouw zonder testwijziging groen (830 passed). Blind Hunter (12 bevindingen; 10 doorgevoerd, 2 verworpen) voegde toe (bindend): de passende maat wordt gemeten nadat het beeld eerst gekrompen is (scrollbalken van een ingezoomd beeld tellen niet mee); de zoomcursor staat alleen op het etiket. Tests erbij in `tests/test_ronde8_browser_20261102.py`: `met_scrollbalken_terug_naar_passend` (2), `met_scrollbalken_tweede_uitsnede_houdt_de_zoombreedte` (eigen Chromium zonder `--hide-scrollbars`, via dezelfde Playwright-instantie), `uitsnede_zet_haar_kader_zo_veel_mogelijk_in_het_midden` (2), `zoomcursor_alleen_op_het_etiket`, en een klein etiket met twee uitsneden (`KLEIN2`) in de uitsnedetest. Totaal ronde 8: 14 functies, 30 gevallen. Trace run 11: PASS. Suite: **837 passed, 2 skipped, 0 failed** (2×). Buildspec: `_bmad-output/implementation-artifacts/spec-spike-getrainde-detector-ronde8.md`.
