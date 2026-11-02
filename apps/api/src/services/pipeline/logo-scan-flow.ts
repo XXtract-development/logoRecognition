@@ -240,7 +240,8 @@ export function submitLogoScan(input: {
 
 /**
  * Commit of the running code: LOGO_IMAGE_TAG (the pinned image), SOURCE_COMMIT only when that is absent or empty
- * (SOURCE_COMMIT follows the compose checkout, not the image). Only a full 40-hex commit counts; anything else is unknown.
+ * (on ACC the compose blanks LOGO_IMAGE_TAG and picks the image by SOURCE_COMMIT, so both name the same commit).
+ * Only a full 40-hex commit counts; anything else is unknown.
  */
 const SHA = /^[0-9a-f]{40}$/;
 let warnedNoCodeVersion = false;

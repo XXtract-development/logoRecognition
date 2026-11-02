@@ -75,3 +75,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-logo-scan-k4aa-2.md`
   summary: De ml-service-limiet op ACC staat op 12G voor de K4-aa-proeven; herzien of terugzetten naar 8G zodra de proeven klaar zijn of de route weer uit blijft.
   evidence: review F11 (31-10-2026); besluit Friso noemt geen einddatum; ACC-host 30 GB, 11 GB vrij.
+- source_spec: `_bmad-output/implementation-artifacts/spec-ci-acc-deploy-branch.md`
+  summary: `.github/workflows/deploy-coolify.yml` (main/staging) roept Coolify-webhook-URLs aan vanaf GitHub-runners; door firewall-2 kan dat niet meer werken — opruimen of omzetten naar de uitroltak-route.
+  evidence: review edge-case #17 (02-11-2026); laatste runs 2025-11-03 en 2026-04-01 al `failure`, dus bestaand probleem buiten de ACC-route.
+- source_spec: `_bmad-output/implementation-artifacts/spec-ci-acc-deploy-branch.md`
+  summary: Bewaking die meldt wanneer ACC achterloopt op `acc-deploy` (revision-label van app/ml-service vergelijken met de kop van de tak).
+  evidence: spec-review v3 bevinding 9: een uitgebleven webhook is stil (groene workflow, geen uitrol); nu alleen de handmatige controle uit de stapsamenvatting.

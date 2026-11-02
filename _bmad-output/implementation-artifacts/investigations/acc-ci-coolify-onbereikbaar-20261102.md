@@ -141,4 +141,18 @@ Besluit Friso (via coördinator): firewall blijft bewust dicht; los het op zoals
 - VERIFIED: de spec-review (`bmad-review`, bevinding 1, hoog) wijst erop dat op een openbare repository een pull request uit een fork zijn eigen workflowbestand meebrengt en daarmee code op de eigen runner kan laten draaien zodra een beheerder op "goedkeuren" klikt. De afdoende bescherming (runnergroep alleen voor `build-push.yml@refs/heads/acc`) bestaat niet op het Free-plan (E29, E30).
 - VERIFIED: dqs-service is privé (E28); daar speelt dit niet. Het dqs-patroon is voor logoRecognition dus niet één-op-één veilig over te nemen.
 - INFERENCE: een tweede route zonder eigen runner kan wel: de workflow zet na de twee builds de commit op een aparte uitroltak; de GitHub-webhook (die de firewall doorlaat, E15) laat Coolify die tak uitrollen; de compose gebruikt de door Coolify gezette `SOURCE_COMMIT` (E31) als image-tag. Niet bewezen: dat GitHub de webhook ook verstuurt bij een push met het workflow-token (de documentatie sluit alleen nieuwe workflowruns uit).
-- Status: keuze teruggelegd bij Friso; spec staat op v2, nog geen codewijziging.
+- Status (toen): keuze teruggelegd bij Friso; spec v2, nog geen codewijziging. Vervangen door sectie (3).
+
+## Vervolg 2026-11-02 (3) — gekozen route: uitroltak + Coolify-webhook (besluit Friso)
+
+| # | Bron | Commando / query | Uitkomst |
+|---|---|---|---|
+| E32 | GitHub | `gh api repos/XXtract-development/logoRecognition/rulesets`; `.../rules/branches/acc-deploy`; `.../branches/acc/protection` | `[]`, `[]`, 404 "Branch not protected": niets houdt een push van het workflow-token naar `acc-deploy` tegen. |
+| E33 | Coolify-DB | `select uuid,name,git_branch,coalesce(watch_paths,'<null>') from applications where deleted_at is null and (git_branch='acc-deploy' or uuid='qsookwow8koko0kwg00g0cwk');` | Alleen de logo-app (`acc`, watch_paths `<null>`); geen app volgt `acc-deploy`. Tweede query: `select count(*) from environment_variables where resourceable_id=(select id from applications where uuid='qsookwow8koko0kwg00g0cwk') and resourceable_type ilike '%Application' and key='SOURCE_COMMIT';` → `0` (van 72 variabelerijen); `LOGO_IMAGE_TAG` bestaat wel (gewoon + preview). |
+| E34 | Coolify-broncode (container `coolify`, beta.463) | `ApplicationDeploymentJob.php` r.2389-2397; `bootstrap/helpers/parsers.php` r.420-470 en 960-1050 | `SOURCE_COMMIT` = uitgecheckte commit, alleen als er geen gebruikersvariabele `SOURCE_COMMIT` is. De compose-parser registreert variabelen alleen uit `environment:` en `build.args`; `image:` gaat ongewijzigd naar docker compose (ook zichtbaar in de gerenderde compose op Vanilla: `${LOGO_IMAGE_TAG:-acc}` staat er letterlijk). |
+
+- VERIFIED (broncode, E34): Coolify vult `SOURCE_COMMIT` zolang er geen gebruikersvariabele met die naam is (E33: 0), en registreert geen variabelen uit `image:`.
+- INFERENCE: een image-tag `${SOURCE_COMMIT:?…}` wordt daardoor uit de `.env` gevuld; niemand heeft dat op Vanilla al zien gebeuren. Te bewijzen bij de eerste echte run.
+- INFERENCE: GitHub stuurt de push-webhook naar de Coolify-GitHub-App ook bij een ref-wijziging met het workflow-token (de documentatie sluit alleen nieuwe workflowruns uit). Te bewijzen bij de eerste echte run.
+
+- Status: route 1 gebouwd op tak `fix/ci-coolify-pin` (spec v3.3, bmad-build-spec `spec-ci-acc-deploy-branch.md`); eerste echte run nog te bewijzen.
