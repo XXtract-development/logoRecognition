@@ -2,10 +2,12 @@
 stepsCompleted: ['step-01-load-context', 'step-02-discover-tests', 'step-03-map-criteria', 'step-04-analyze-gaps', 'step-05-gate-decision']
 lastStep: 'step-05-gate-decision'
 lastSaved: '2026-11-02'
-run: 6
-head: '08d2cf7 + niet-gecommitte ronde 5 (spec, ATDD, bouw)'
+run: 8
+head: 'a338c1e + testuitbreiding R6-CAP-17j/17l'
 gate: 'PASS'
 vorige_runs:
+  - {run: 7, head: 'a338c1e', gate: 'FAIL', reden: 'P0-gaten R6-CAP-17j en R6-CAP-17l'}
+  - {run: 6, head: '08d2cf7 + ronde 5 (gecommit als 953ca95)', gate: 'PASS', reden: 'ronde 5 volledig gedekt'}
   - {run: 5, head: '039b14f + ronde 4 (gecommit als 08d2cf7 e.e.)', gate: 'PASS', reden: 'ronde 4 volledig gedekt'}
   - {run: 4, head: '89887f2 + ronde 3 (gecommit als 039b14f e.e.)', gate: 'PASS', reden: 'ronde 3 volledig gedekt'}
   - {run: 3, head: 'c6c2a23 + testuitbreiding B-IO-1 (gecommit als 89887f2)', gate: 'PASS', reden: 'B-IO-1 gedicht'}
@@ -14,6 +16,12 @@ vorige_runs:
 ---
 
 # Traceability — spike proef getrainde detector
+
+> [!note] Gatebesluit run 8: PASS
+> P0-dekking 79/79 (100%), P1 28/28 (100%), totaal 110/112 (98%); alle tests groen (771/771, `zwaar or lokaal` 4/4) en de licentiecontrole op de echte omgeving schoon (93 pakketten, 0 overtredingen). Nieuw sinds run 6: ronde 6 (besluit Friso 02-11-2026: Open Food Facts-uitsneden als logobron van de generator) met 30 criteria, alle FULL; de twee P0-gaten van run 7 zijn met een test gedicht. Blijft gedeeltelijk, zonder blokkade: CAP-6a en AC-2 (P2, MPS niet beweerd).
+
+> [!warning] Gatebesluit run 7: FAIL
+> P0-dekking 77/79 (97%; vereist 100%), P1 28/28, totaal 108/112 (96%); alle 767 tests groen, licentiecontrole schoon. Twee P0-criteria van ronde 6 zijn alleen uit de bouw of met de hand aangetoond, niet met een test: R6-CAP-17j (de klassenverhouding verandert niet door OFF) en R6-CAP-17l (zonder OFF byte-gelijk aan de uitvoer van vóór ronde 6). Volgende stap: beide met een test dichten en de trace opnieuw draaien (run 8).
 
 > [!note] Gatebesluit run 6: PASS
 > P0-dekking 57/57 (100%), P1 21/21 (100%), totaal 80/82 (98%); alle tests groen (664/664 in twee volledige runs na de reviewpatches, `zwaar or lokaal` 4/4) en de licentiecontrole op de echte omgeving schoon (93 pakketten, 0 overtredingen). Nieuw in run 6: ronde 5 (besluiten Friso 01-11-2026: Nutri-Score A–E, V-label als 9e keurmerk met vegetarisch als variant, V-label geen gelijkend van Vegan Society, NutriGreen in de training) met 27 criteria uit SPEC (CAP-1/2/3/4/5/6/7/8/9/10/12/16) en `spec-spike-getrainde-detector-ronde5.md`, alle FULL. Blijft gedeeltelijk, zonder blokkade: CAP-6a en AC-2 (P2, MPS niet beweerd).
@@ -30,6 +38,8 @@ vorige_runs:
 | 4 | 01-11-2026 | `89887f2` + ronde 3 | 543/543 / 4/4 | 45/47 (96%), P0 34/34, P1 10/10 | PASS | ronde 3 volledig gedekt; alleen P2 gedeeltelijk (CAP-6a, AC-2). |
 | 5 | 01-11-2026 | `039b14f` + ronde 4 | 569/569 / 4/4 | 53/55 (96%), P0 41/41, P1 11/11 | PASS | ronde 4 volledig gedekt; alleen P2 gedeeltelijk (CAP-6a, AC-2). |
 | 6 | 02-11-2026 | `08d2cf7` + ronde 5 | 664/664 / 4/4 | 80/82 (98%), P0 57/57, P1 21/21 | **PASS** | ronde 5 volledig gedekt; alleen P2 gedeeltelijk (CAP-6a, AC-2). |
+| 7 | 02-11-2026 | `a338c1e` (ronde 6) | 767/767 / — | 108/112 (96%), P0 77/79, P1 28/28 | **FAIL** | P0-gaten R6-CAP-17j (klassenverhouding met en zonder OFF niet getoetst) en R6-CAP-17l (byte-gelijk aan vóór ronde 6 alleen met de hand vergeleken). Geen rode test. |
+| 8 | 02-11-2026 | `a338c1e` + testuitbreiding | 771/771 / 4/4 | 110/112 (98%), P0 79/79, P1 28/28 | **PASS** | R6-CAP-17j en R6-CAP-17l met een test gedicht (`bmad-testarch-automate` run 2); alleen P2 gedeeltelijk (CAP-6a, AC-2). |
 
 Wat in run 5 veranderde: ronde 4 (niet gecommit op `039b14f`). Spec-update via `bmad-spec` (SPEC CAP-2/14/15, Constraints uitgaven, stoppunt 2 en 5; randvoorwaarden §3; toetsset §3–§4; trainingsset §4), getoetst met `bmad-review` (15 bevindingen, alle doorgevoerd). ATDD ronde 4: 19 tests in `tests/test_ronde4_20261101.py`, rode run 17 failed / 543 passed; twee ronde-3-tests vervielen door het besluit van Friso (`test_r3_echt_projectie_per_aanroep_tegen_standaardgrens_15`, `test_r3_draaiplan_stap_9_voorlabels_pas_na_besluit_over_hun_grens`). Bouw via `bmad-build` (route dispatch, 3 reviewlagen; 13 patchgroepen doorgevoerd, waarvan 9 extra testgevallen; 1 uitgesteld, 9 verworpen). Productiecode: `toets.py` (`kandidaten` met `bestaand`/`maxima`/`voorkeur`, opdrachtregel `--alle`, `--naam`, `--print-laag-eerst`, herhaalbare `--alleen`/`--bestaand`, weigeringen, JSON-melding), `beelden.py` (`pdftekst` vult atomisch aan), `echt.py` (`GRENS_VOORLABELS = 50.0`, `--raming` weg); `DRAAIPLAN.md` stap 4/6/9 en kostennotitie.
 
@@ -77,6 +87,19 @@ Volledige tekst van run 1: `git show 55a22a9:_bmad-output/test-artifacts/traceab
 - **Vervallen door besluit:** de deelregel "D/E = zonder" van CAP-9 (run 1–5) is vervangen door R5-CAP-9 en R5-IO-1..3; de bestaande test is hernoemd (`…_d_en_e_zijn_met`) en groen.
 - **Klantdata:** deze trace las `~/logo-meetset-20261018/` niet; de `lokaal`-tests lezen hun invoer zelf.
 
+## Stap 1 — Context, aanvulling run 7
+
+- **Werkboom:** HEAD `a338c1e` (ronde 6 gecommit: spec-update, onderzoeksbestand, ATDD-tests, bouw met reviewpatches); `git status --porcelain` leeg vóór deze trace.
+- **Kennis:** `test-priorities-matrix`, `risk-governance`, `probability-impact`, `test-quality`, `selective-testing`.
+- **Nieuwe criteria:** de drie delen van de `success`-regel van het nieuwe CAP-17 (ophalen, generator, herkomst en mengen), de bijgewerkte regels van CAP-4 (OFF als aparte invoer), CAP-6 (OFF-gereedschap deelt de klassenlijst), CAP-10 (draaiplan stap 10 en "Snelheid") en CAP-16 (NutriGreen toets-GTIN, herkomst als lijst), stoppunt 9 (schijf); trainingsset §11, randvoorwaarden §4; de 2 AC's, de verificatieregel en de 7 I/O-rijen van `spec-spike-getrainde-detector-ronde6.md` (status `done`); het interfacecontract ronde 6 met de aanvullingen na de review in de ATDD-checklist.
+- **Prioriteiten:** P0 = lekregel en recordredenen, trekking en grens, beleefd ophalen, hervatten, noodstop, schijfgrens, werkboom, generator alleen in train en byte-gelijk zonder OFF, mengen (OFF ≤ eigen vakjes, NutriGreen ≤ 20%), herkomst en attributie, suite; P1 = klassetabel, constanten en licentie, opdrachtregels, licentiecontrole, paden; P2 = draaiplan.
+- **Klantdata:** deze trace las `~/logo-meetset-20261018/` niet.
+
+## Stap 1 — Context, aanvulling run 8
+
+- **Werkboom:** HEAD `a338c1e` plus de testuitbreiding van `bmad-testarch-automate` run 2 (`tests/test_ronde6_20261102.py`: 2 functies, 4 gevallen), de automatiseringssamenvatting en deze tracebestanden; geen productiecode gewijzigd.
+- **Criteria:** ongewijzigd t.o.v. run 7 (30 van ronde 6, 82 eerder); kennis als run 7.
+
 ## Stap 2 — Tests gevonden en ingedeeld
 
 **Run 5:** 23 testbestanden, **569 tests** (`pytest --collect-only`): 543 − 2 vervallen + 28 in `test_ronde4_20261101.py` (`R4:`; 23 P0, 1 P1, 4 P2).
@@ -109,8 +132,13 @@ Map `_bmad-output/planning-artifacts/spike-getrainde-detector/tests/`, 21 testbe
 | `test_ronde3_20261101.py` (nieuw, run 4) | 40 | unit + opdrachtregel (nagebootste client en transport) + documenttest | 2, 5, 14 (36), 10 (4) | P0/P2 |
 | `test_ronde3_browser_20261101.py` (nieuw, run 4) | 9 | browser (Playwright, Chromium) | 3 | P0 |
 
+| `test_ronde6_20261102.py` (nieuw, run 7; uitgebreid run 8) | 49 functies, 107 gevallen | unit (nagebootste OFF-aanbieder, opener, klok en slaap) + opdrachtregel + documenttest | 17 (43), 4/16 (via 17), 10 (2) | P0/P1/P2 |
+
+Run 8: 771 tests verzameld (767 + 4 uit `bmad-testarch-automate` run 2). Run 7: 767 tests verzameld (664 + 103 nieuw in ronde 6: 97 uit ATDD en 6 uit de codereview); geen browsertest nieuw (de invulpagina verandert niet).
+
 ### Dekkingsheuristieken (`coverage_heuristics`)
 
+- **Foutpaden (nieuw in ronde 6):** HTTP 429/500/503, `URLError`, tijd op, afgebroken `read()`/`ConnectionResetError` (tijdelijk, opnieuw na 2–32 s), `Retry-After` 7/1000/negatief/`nan`, andere 4xx (blijvend, één verzoek), zoekantwoord geen JSON-object of zonder `logos`, uitsnede die geen beeld is, mislukte pool (stoppen, exit 3), 20 tijdelijk mislukte uitsneden op rij (noodstop, exit 3), bytegrens en < 5 GB vrij (exit 3, niets erboven geschreven), git-werkboom (geweigerd, niets geschreven), onbekende of afgewezen klasse (exit 2), `--off` bij valid/test (exit 2, niets geschreven), onbekende klasse of vegetarische variant in `off` (`ValueError`), toets-GTIN die later bijkomt (uitsnede weg), bijna gelijk bij hervatten (uitsnede weg). Endpoints: Robotoff `logos/search` en `images/crop`, beide nagebootst en direct getest; geen ander endpoint aangeroepen (bewering per URL in de test). `endpoints_without_tests: []`, `auth_missing_negative_paths: []` (geen sleutel), `criteria_happy_path_only: []`.
 - **Endpoints:** ongewijzigd; de invulserver (`GET /`, `GET /items.json`, `GET /stand`, `POST /opslaan`) en OpenRouter `POST /api/v1/chat/completions` (nagebootst) zijn direct getest. De nieuwe onderdelen hebben geen endpoint. `endpoints_without_tests: []`.
 - **Toegang:** ongewijzigd (alleen 127.0.0.1, vreemde Host/Origin → 403, OpenRouter 401/402/403 stopt, sleutel alleen uit de omgeving). `auth_missing_negative_paths: []`.
 - **Foutpaden (nieuw in ronde 4):** aanvullingslijst of parenbestand bestaat al, `--naam` met een map of `..`, `--bestaand` zonder `--alleen`/`--alle`, `--alleen`/`--alle` zonder `--bestaand`, onbekende code, dezelfde code bij beide, mislukte `pdftotext` (→ `null`), voorlabelprojectie boven $50 (49,93). `criteria_happy_path_only: []`.
@@ -232,7 +260,49 @@ Testnamen voluit in de fase-1-matrix `/tmp/tea-trace-coverage-matrix-2026-11-02T
 
 (Telling: R5-IO-1..3 zijn 3 criteria en R5-CAP-4/4b en R5-CAP-7/8/12 elk apart, samen 27.)
 
+### Ronde 6 — SPEC CAP-17 (+ CAP-4/6/10/16, stoppunt 9) en buildspec 6 `spec-spike-getrainde-detector-ronde6.md` (nieuw, run 7)
+
+`R6:` = `tests/test_ronde6_20261102.py` (namen zonder het voorvoegsel `test_r6_`).
+
+| # | criterium | prio | tests | dekking | uitslag |
+|---|---|---|---|---|---|
+| R6-AC-1 | volledige suite 0 failed (ook de 98 rode van ATDD ronde 6) | P0 | hele suite | FULL | 767 passed |
+| R6-AC-2 | licentiecontrole 0 overtredingen (geen nieuwe afhankelijkheid) | P1 | `licenties.py` echte omgeving | FULL | exit 0, 93 pakketten |
+| R6-VER-1 | `git status --porcelain` alleen toegestane paden | P1 | het commando | FULL | gehaald (leeg na `a338c1e`) |
+| R6-IO-1 | lekregel: toets-GTIN, GTIN van een toetsleverancier, cijfers 2–8 = toets-GLN-voorvoegsel → afgevallen en geteld | P0 | R6: `record_reden_*` (24), `ophalen_grens_per_klasse…`, `cli_ophalen_leest_toetsset…` | FULL | groen |
+| R6-IO-2 | hervatten: geen nieuwe zoekopdracht of uitsnede, alleen tijdelijke fouten opnieuw | P0 | R6: `ophalen_hervat_zonder_nieuwe_verzoeken…` | FULL | groen |
+| R6-IO-3 | nieuwe toets-GTIN of nieuw toetsbeeld: uitsnede weg, volgende in de volgorde | P0 | R6: `ophalen_hervat_met_een_nieuwe_toets_gtin…`, `ophalen_hervat_met_een_bijna_gelijk_toetsbeeld…` | FULL | groen |
+| R6-IO-4 | 20 tijdelijk mislukt op rij → `Noodstop`, exit 3 | P0 | R6: `ophalen_noodstop…`, `cli_ophalen_noodstop_schijfvol_of_mislukte_pool_exit_3` | FULL | groen |
+| R6-IO-5 | > 3 GB of < 5 GB vrij → `Schijfvol`, exit 3, niets erboven | P0 | R6: `ophalen_stopt_bij_de_bytegrens…`, `ophalen_stopt_bij_minder_dan_5_gb_vrij` (2), `cli_…exit_3` | FULL | groen |
+| R6-IO-6 | `--off` bij valid/test → `ValueError`/exit 2, niets geschreven | P0 | R6: `generator_off_alleen_in_train…`, `cli_tegels_met_off_buiten_train…` (2) | FULL | groen |
+| R6-IO-7 | fase 2: stoppen vóór de tegel die de OFF-vakjes boven de eigen vakjes brengt | P0 | R6: `dataset_meng_off_vakjes…` (2), `dataset_meng_met_tegels_van_de_generator…` | FULL | groen |
+| R6-CAP-17a | alleen uitsneden (alleen zoek- en crop-endpoint), alleen buiten een git-werkboom | P0 | R6: `ophalen_grens_per_klasse…` (bewering per URL), `uitsnede_url…`, `ophalen_schrijft_nooit_in_een_git_werkboom` | FULL | groen |
+| R6-CAP-17b | klassetabel: alleen `train.KLASSEN`, V-label drie id's, geen Recyclebaar | P1 | R6: `off_klassetabel…`, `cli_ophalen_onbekende_klasse_exit_2` (2) | FULL | groen |
+| R6-CAP-17c | barcode → GTIN-14 (8, 12, 13, 14 cijfers), anders afgevallen | P0 | R6: `gtin14_*` (15), `record_reden_*` (geen-gtin) | FULL | groen |
+| R6-CAP-17d | afvallers per reden apart geteld (9 redenen) | P0 | R6: `record_reden_*`, `ophalen_grens_per_klasse…`, `ophalen_dubbel_bijna_gelijk_en_blijvend…` | FULL | groen |
+| R6-CAP-17e | trekking op sha256(seed + logo-id) tot de grens per klasse; V-label drie pools ontdubbeld | P0 | R6: `volgorde…`, `ophalen_grens_per_klasse…`, `ophalen_v_label_drie_pools…`, `off_constanten…` | FULL | groen |
+| R6-CAP-17f | beleefd: User-Agent, ≥ 0,6 s, 2/4/8/16/32 s, `Retry-After` (plafond 300, negatief/`nan`), 4xx direct, afgebroken `read()` tijdelijk | P0 | R6: `haler_*` (6 functies, 15 gevallen), `off_haler_standaard…` | FULL | groen |
+| R6-CAP-17g | rapport per klasse en index met GTIN-14; andere klassen blijven bij een deelrun; geen index na een afgebroken run | P0 | R6: `ophalen_grens_per_klasse…`, `ophalen_met_een_deel_van_de_klassen…`, `cli_ophalen_leest…` | FULL | groen |
+| R6-CAP-17h | kapot zoekantwoord of uitsnede die geen beeld is: tijdelijk, niets bewaard; mislukte pool stopt | P1 | R6: `ophalen_kapot_zoekantwoord…`, `ophalen_pool_niet_op_te_halen…` (2) | FULL | groen |
+| R6-CAP-17i | generator: kans 0,5 per geplakt logo van een klasse met uitsneden, zelfde klasse, alleen die klassen | P0 | R6: `generator_off_aandeel_half…`, `generator_off_uitsnede_geplakt_zoals_hij_is…` | FULL | groen |
+| R6-CAP-17j | generator: **klassenverhouding ongewijzigd** door OFF | P0 | R6: `generator_off_laat_de_klassenverhouding_ongewijzigd` (run 8; run 7: PARTIAL) | FULL | groen; mutatie "OFF als extra bron" maakt hem rood |
+| R6-CAP-17k | generator: geen afgeleide varianten, gewone vorming | P0 | R6: `generator_off_uitsnede_geplakt_zoals_hij_is…` | FULL | groen |
+| R6-CAP-17l | generator: zonder OFF **byte-gelijk aan vóór ronde 6** | P0 | R6: `generator_zonder_off_train_gelijk_aan_de_uitvoer_van_953ca95` (3; vastgelegde sha256 gemeten op 953ca95, run 8), `generator_zonder_off_byte_gelijk…` (run 7: PARTIAL) | FULL | groen; mutatie "extra trekking" maakt hem rood |
+| R6-CAP-17m | generator: vaste seed identiek; pad of beeld gelijk; manifest telt OFF per klasse en markeert `variant: off` (+ `uitsnede`) | P0 | R6: `generator_off_vaste_seed…`, `generator_off_aandeel_half…`, `cli_tegels_met_off_index…`, `cli_tegels_neemt_gelijkende…` | FULL | groen |
+| R6-CAP-17n | herkomst: lijst; generator schrijft hem bij OFF (overschreven, nooit weg); mengen neemt hem mee; `train.py` één keer per bron | P0 | R6: `generator_herkomst…`, `dataset_herkomst_is_een_lijst…` (5), `dataset_meng_met_tegels_van_de_generator…`, `train_data_herkomst…` | FULL | groen |
+| R6-CAP-16 | NutriGreen: toets-GTIN vóór mengen weg en geteld; ≤ 20% ook als de OFF-grens bijt | P0 | R6: `dataset_nutrigreen_foto_met_toets_gtin…`, `dataset_nutrigreen_hoogstens_20_procent…`; R5: `dataset_nutrigreen_alleen_in_train…` (aangepast) | FULL | groen |
+| R6-CAP-6 | OFF-gereedschap deelt de klassenlijst | P1 | R6: `off_klassetabel…` | FULL | groen |
+| R6-CAP-10 | draaiplan stap 10 (ophalen vóór de tegels, `--off` alleen bij train, stoppunt 9) en "Snelheid" (33, > 8 uur, hoogstens 7 epochs) | P2 | R6: `draaiplan_*` (2) | FULL | groen |
+| R6-SP-9 | stoppunt 9 (schijf) in gereedschap en draaiplan | P0 | R6: zie R6-IO-5, `draaiplan_stap_10…` | FULL | groen |
+| R6-CAP-4 | generator-bron met GTIN alleen van trainingsleveranciers; OFF apart onder de lekregel | P1 | `test_cap04_generator` (ongewijzigd groen), R6-IO-1 | FULL | groen |
+| R6-CAP-3/2 | invulpagina en toetsset ongewijzigd door ronde 6 | P1 | bestaande suites groen; geen wijziging in `invul/`, `toets.py` | FULL | groen |
+
+(Telling: 30 criteria; P0 22, P1 7, P2 1.)
+
 ### Controle op de dekkingslogica
+
+- **Run 8:** P0 22/22 FULL, P1 7/7, P2 1/1 voor ronde 6; de twee gaten van run 7 zijn met een test gedicht en elk met een mutatie gecontroleerd (automatiseringssamenvatting run 2).
+- **Run 7:** P0 20/22 FULL, 2 PARTIAL (R6-CAP-17j klassenverhouding, R6-CAP-17l byte-gelijk aan vóór ronde 6: beide alleen uit de bouw of met de hand aangetoond, niet met een test); P1 7/7, P2 1/1. Elk nieuw foutpad van ronde 6 heeft een negatieve test die ook controleert dat er niets geschreven, opgehaald of gemengd is; geen criterium alleen op het geluksscenario. Dubbele dekking bewust: lekregel op `record_reden`, op `ophalen` en via de opdrachtregel.
 
 - **Run 6:** P0 57/57 FULL, P1 21/21, P2 2/4 (CAP-6a, AC-2 ongewijzigd PARTIAL). Elk nieuw foutpad van ronde 5 (vegetarische code, andere md5, andere categorieën of klassen, bestaande lijst, NS bij beide vlaggen, oude `herkomst.json`) heeft een negatieve test die ook controleert dat er niets geschreven of gemengd is; de geluksscenario's hebben een positieve. De buildreview liet drie toetsgaten zien (VG1–VG3); die zijn met tests gedicht, en de grens van 20% is ook getoetst zonder genoeg nagemaakte tegels.
 
@@ -268,12 +338,47 @@ Testnamen voluit in de fase-1-matrix `/tmp/tea-trace-coverage-matrix-2026-11-02T
 - **Gaten:** geen criterium zonder test; geen P0- of P1-criterium gedeeltelijk. Gedeeltelijk: CAP-6a en AC-2 (P2).
 - **Heuristieken:** endpoints zonder test 0; toegangsregels zonder negatief pad 0; alleen geluksscenario 0.
 
+### Run 8 (fase 1, sequentieel)
+
+- **Ronde 6:** 30 criteria, FULL 30 (100%); P0 22/22, P1 7/7, P2 1/1.
+- **Cumulatief:** 112 criteria, FULL 110 (98%); P0 79/79 (100%), P1 28/28 (100%), P2 3/5 (CAP-6a, AC-2 ongewijzigd PARTIAL).
+- **Gaten:** P0 0, P1 0; PARTIAL alleen P2 (CAP-6a, AC-2). Heuristieken leeg.
+- **Aanbevelingen:** geen nieuwe; (LOW) testkwaliteit als run 7.
+- **Fase-1-matrix:** `/tmp/tea-trace-coverage-matrix-2026-11-02T-run8.json`.
+
+### Run 7 (ronde 6, fase 1, uitvoeringsmodus sequentieel: één testbestand)
+
+- **Ronde 6:** 30 criteria; FULL 28 (93%); PARTIAL 2; NONE 0. P0 20/22 (91%), P1 7/7, P2 1/1.
+- **Cumulatief (run 6 + ronde 6):** 112 criteria; FULL 108 (96%); P0 77/79 (97%), P1 28/28, P2 3/5 (CAP-6a, AC-2 ongewijzigd PARTIAL).
+- **Gaten (P0, PARTIAL):**
+  - R6-CAP-17j "klassenverhouding ongewijzigd": de klasse wordt in de code vóór de OFF-trekking gekozen, maar geen test vergelijkt de verdeling van de klassen met en zonder OFF. Een wijziging die OFF-klassen vaker kiest, blijft groen.
+  - R6-CAP-17l "zonder OFF byte-gelijk aan vóór ronde 6": de test vergelijkt de nieuwe code met zichzelf; de vergelijking met de uitvoer van 953ca95 is alleen in de review met de hand gedaan. Een wijziging die beide paden gelijk verandert, blijft groen.
+- **Heuristieken:** `endpoints_without_tests: []`, `auth_missing_negative_paths: []`, `criteria_happy_path_only: []`.
+- **Aanbevelingen:** (MEDIUM) beide P0-gaten dichten met een test: een statistische vergelijking van de klassenverdeling met en zonder OFF op vaste seeds, en een vastgelegde sha256 van `train/` van de bestaande fixture (gemeten op 953ca95: `d5f84b86730b3147382b3bab64c857689ebc6cd7c069f882d27825d2d10a6009`). (LOW) testkwaliteit: geen vaste wachttijden, geen netwerk, alles in `tmp_path`.
+- **Fase-1-matrix:** `/tmp/tea-trace-coverage-matrix-2026-11-02T-run7.json`.
+
 ### Aanbevelingen
 
 1. **MEDIUM** — CAP-6a/AC-2 volledig maken: `train-resultaat.json` en `snelheid.json` bevatten al het veld `apparaat`; één bewering `== "mps"` in elk van de twee `zwaar`-tests volstaat.
 2. **LOW** — `bmad-testarch-test-review` voor de testkwaliteit (omvang van `test_review_20261101.py` en `test_besluiten_20261101.py`).
 
 ## Stap 5 — Gatebesluit (fase 2)
+
+### Bewijs run 8 (VERIFIED, 02-11-2026, HEAD `a338c1e` + testuitbreiding)
+
+- `uv run --group dev pytest -q -p no:cacheprovider` (specmap): **771 passed, 0 failed** (90,9 s).
+- `uv run --group dev --group detector pytest -q -p no:cacheprovider -m "zwaar or lokaal"`: 4 passed (41,4 s; op `a338c1e`, de testuitbreiding raakt deze tests niet).
+- `licenties.py` (detectoromgeving): exitcode 0, 93 pakketten, `overtredingen: []` (geen afhankelijkheid gewijzigd sinds run 7).
+- Nieuwe tests 4× na elkaar groen; mutaties: extra trekking → 3 bytetests rood; OFF als extra bron → verhoudingstest rood.
+- Gate: regel 1 (P0 100%), 2 (totaal 98% ≥ 80%), 4 (P1 100% ≥ 90%) → **PASS**.
+
+### Bewijs run 7 (VERIFIED, 02-11-2026, HEAD `a338c1e`)
+
+- `uv run --group dev pytest -q -p no:cacheprovider` (specmap): 767 passed, 0 failed (na de reviewpatches, vóór de commit).
+- `uv run --group dev --group detector python licenties.py`: exitcode 0, 93 pakketten, `overtredingen: []`.
+- `uv run --group dev pytest -q -p no:cacheprovider --collect-only tests/test_ronde6_20261102.py`: 103 gevallen.
+- Handmatige vergelijking (review BH8): `train/` van `genereer` op 953ca95 en op de nieuwe code (fixture `test_cap04_generator`, 12 tegels, seed 5): beide sha256 `d5f84b86730b3147382b3bab64c857689ebc6cd7c069f882d27825d2d10a6009` — geen test, telt niet als dekking.
+- Gate: regel 1 (P0 100%) niet gehaald → **FAIL**.
 
 ### Bewijs run 6 (VERIFIED, 02-11-2026, HEAD `08d2cf7` + ronde 5)
 
@@ -368,6 +473,11 @@ exit 0 · "pakketten": 93 · "overtredingen": [] · 8 onder "ruim" (zelfde lijst
 Regel 4 van de beslisboom (P0 100%, P1 ≥ 90%, totaal ≥ 80%) geeft **PASS**.
 
 ### GATE DECISION: PASS
+
+**Reden (run 8):** elk P0- en P1-criterium, ook de 30 van ronde 6 (Open Food Facts: ophalen, lekregel, beleefd en hervatbaar, schijfgrens, generator alleen in train, OFF-grens en NutriGreen-aandeel in fase 2, herkomst), is volledig gedekt en elke test slaagt. Run 7 viel op twee P0-criteria die alleen uit de bouw of met de hand waren aangetoond; die hebben nu een test die door een gerichte mutatie rood wordt. De gedeeltelijke criteria CAP-6a en AC-2 blijven P2 (zie run 6).
+
+**Risico (probability × impact, INFERENCE):** het echte ophalen tegen Robotoff is geen test (nagebootste aanbieder); kans 2 (onbekende antwoordvormen), impact 2 (stopt met exit 3 en is hervatbaar, schrijft niets buiten `PROEF_MAP/off`) → score 4, MONITOR: de echte run en de contactbladen per klasse na de keten.
+
 
 **Reden (run 6):** elk P0- en P1-criterium, ook de 27 nieuwe van ronde 5 (Nutri-Score A–E, V-label als 9e keurmerk, NutriGreen omzetten en mengen), is volledig gedekt en elke test slaagt, ook de `lokaal`-tests op de echte invoer en de echte omgeving. De twee gedeeltelijke criteria (CAP-6a, AC-2) zijn P2 en betreffen alleen dat geen test beweert dat de training op MPS liep; het pytest-log en `snelheid.json` tonen het wel.
 

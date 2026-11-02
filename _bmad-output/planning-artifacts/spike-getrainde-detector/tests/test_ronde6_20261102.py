@@ -772,6 +772,42 @@ def test_r6_generator_zonder_off_byte_gelijk_aan_voor_ronde_6(tmp_path):  # P0, 
     assert gen_off(gen, tmp_path / "none2", None)["off"] == {}
 
 
+# sha256 over naam + bytes van train/ voor de fixture van test_cap04_generator (12 tegels, seed 5, tegel 256), gemeten op
+# 953ca95 (vóór ronde 6) met dezelfde Pillow uit uv.lock; verandert Pillow, dan opnieuw meten op 953ca95.
+TRAIN_VOOR_RONDE_6 = "d5f84b86730b3147382b3bab64c857689ebc6cd7c069f882d27825d2d10a6009"
+
+
+def sha_train(map_):
+    h = hashlib.sha256()
+    for p in sorted(map_.rglob("*")):
+        h.update(p.name.encode())
+        h.update(p.read_bytes())
+    return h.hexdigest()
+
+
+@pytest.mark.parametrize("off", ["weggelaten", None, {}], ids=["zonder-argument", "none", "leeg"])
+def test_r6_generator_zonder_off_train_gelijk_aan_de_uitvoer_van_953ca95(tmp_path, off):  # P0, CAP-17 (trace run 7)
+    gen = mod("generator")
+    kw = {} if off == "weggelaten" else {"off": off}
+    gen.genereer([achtergrond()], logos(), [], TRAIN_GTINS, n_tegels=12, seed=5, uit=tmp_path / "g", tegel=TEGEL, **kw)
+    assert sha_train(tmp_path / "g" / "train") == TRAIN_VOOR_RONDE_6
+
+
+def test_r6_generator_off_laat_de_klassenverhouding_ongewijzigd(tmp_path):  # P0, CAP-17 (trace run 7)
+    """OFF vervangt de bron, niet de klasse: met en zonder OFF voor GREEN_DOT hetzelfde aandeel GREEN_DOT onder de geplakte
+    logo's (3 × 100 tegels, vaste seeds). Gemeten 02-11-2026: 0,53 zonder, 0,50 met; telde OFF als extra bron, dan ±0,67."""
+    gen = mod("generator")
+
+    def aandeel(off):
+        obj = [o for s in (1, 2, 3) for o in objecten(gen_off(gen, tmp_path / f"{bool(off)}-{s}", off, n=100, seed=s))]
+        return sum(o["klasse"] == GD for o in obj) / len(obj), obj
+
+    zonder, _ = aandeel(None)
+    met, obj = aandeel({GD: [magenta()]})
+    assert any(o["variant"] == "off" for o in obj)  # voorwaarde: OFF is echt geplakt
+    assert abs(met - zonder) <= 0.10, (zonder, met)
+
+
 def test_r6_generator_off_vaste_seed_en_pad_of_beeld_gelijk(tmp_path):  # P0, CAP-17/CAP-4
     gen = mod("generator")
     pad = tmp_path / "magenta.png"

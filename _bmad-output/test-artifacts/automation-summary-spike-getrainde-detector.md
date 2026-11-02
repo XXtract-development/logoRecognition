@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03-generate-tests', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
-lastSaved: '2026-11-01'
+lastSaved: '2026-11-02'
 inputDocuments:
   - _bmad/tea/config.yaml
   - _bmad-output/test-artifacts/traceability/spike-getrainde-detector-trace.md
@@ -100,3 +100,36 @@ De ene fout in run 1 is de bekende wankele browsertest uit `deferred-work.md` (v
 ### Volgende stap
 
 `bmad-testarch-trace` opnieuw draaien (run 3): B-IO-1 hoort van PARTIAL naar FULL te gaan, P0 dan 25/25.
+
+## Run 2 (02-11-2026): P0-gaten uit trace run 7 (ronde 6)
+
+### Stap 1 — preflight en context
+
+- **Stack:** `backend` (Python 3.12, pytest via `uv`, `tests/conftest.py`); BMad-geïntegreerd (SPEC CAP-17, buildspec `spec-spike-getrainde-detector-ronde6.md`, ATDD-checklist ronde 6, trace run 7). Playwright Utils en Pact niet van toepassing: geen browsertest en geen contract in scope.
+- **Kennis:** `test-levels-framework`, `test-priorities-matrix`, `data-factories`, `selective-testing`, `ci-burn-in`, `test-quality`, `fixture-architecture`.
+- **Context:** trace run 7 (FAIL op P0 77/79): R6-CAP-17j en R6-CAP-17l; `tests/test_ronde6_20261102.py` (fixtures uit `test_cap04_generator`: `achtergrond`, `logos`, `TRAIN_GTINS`, `TEGEL`; helpers `gen_off`, `objecten`, `magenta`, `inhoud`); `generator.genereer`.
+
+### Stap 2 — doelen en dekkingsplan
+
+| doel | niveau | prio | scenario |
+|---|---|---|---|
+| R6-CAP-17j klassenverhouding ongewijzigd door OFF | unit (`genereer`) | P0 | zelfde seeds (3 × 100 tegels), met en zonder OFF voor GREEN_DOT: aandeel GREEN_DOT onder de geplakte logo's verschilt hoogstens 0,10 (gemeten 02-11: 0,53 tegen 0,50 en 0,48 tegen 0,45; een fout die OFF als extra bron telt geeft ±0,67) |
+| R6-CAP-17l zonder OFF byte-gelijk aan vóór ronde 6 | unit (`genereer`) | P0 | fixture van `test_cap04_generator` (12 tegels, seed 5, tegel 256): sha256 over naam + bytes van `train/` gelijk aan de waarde gemeten op 953ca95 (`d5f84b86…a6009`); zonder `off`, met `off=None` en met `off={}` |
+
+Geen browser- of API-doel; geen duplicaat van ATDD (die vergelijkt de nieuwe code met zichzelf).
+
+### Stap 3 — generatie (uitvoermodus)
+
+Gevraagd `auto`, subagent beschikbaar; **gekozen sequentieel** (zelfde reden als run 1: twee tests in één bestand). Werker A (API): `success`, 0 tests (geen HTTP-endpoint in scope; `/tmp/tea-automate-api-tests-2026-11-02T-run2.json`). Werker B (E2E): overgeslagen (stack `backend`). Werker B-backend: `success`, 2 functies (4 gevallen, P0), geen fixtures nodig (`/tmp/tea-automate-backend-tests-2026-11-02T-run2.json`).
+
+### Stap 3C — samenvoegen
+
+Beide werkers `success`. Geschreven in `tests/test_ronde6_20261102.py`: `test_r6_generator_zonder_off_train_gelijk_aan_de_uitvoer_van_953ca95` (3 gevallen: zonder argument, `None`, `{}`; constante `TRAIN_VOOR_RONDE_6`, hulpfunctie `sha_train`) en `test_r6_generator_off_laat_de_klassenverhouding_ongewijzigd`. Hergebruikte fixtures en helpers: `achtergrond`, `logos`, `TRAIN_GTINS`, `TEGEL` (`test_cap04_generator`), `gen_off`, `objecten`, `magenta`. Geen nieuwe fixture-infrastructuur.
+
+### Stap 4 — validatie en samenvatting
+
+- **Uitvoering:** de 4 nieuwe gevallen 4× na elkaar groen (1,9–3,3 s); volledige suite **771 passed, 0 failed** (`uv run --group dev pytest -q -p no:cacheprovider`, 02-11-2026).
+- **Mutaties (kopie buiten de repository, daarna verwijderd):** (1) altijd een extra `rng.random()` per geplakt logo → de 3 bytetests falen, de verhoudingstest niet; (2) OFF-uitsneden als extra bron van hun klasse → de verhoudingstest faalt. Elke test vangt de fout waarvoor hij bedoeld is.
+- **Kwaliteit:** geen vaste wachttijd, geen netwerk, alles in `tmp_path`, deterministisch (vaste seeds), < 4 s.
+- **Aanname en risico:** de vastgelegde sha256 hangt af van Pillow/libjpeg uit `uv.lock`; na een upgrade opnieuw meten op 953ca95 (staat bij de constante).
+- **Volgende stap:** `bmad-testarch-trace` (run 8).

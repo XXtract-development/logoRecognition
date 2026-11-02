@@ -1,24 +1,26 @@
 {
  "decision": "PASS",
- "rationale": "P0 coverage 100% (57/57), P1 100% (21/21), overall 98% (80/82); all tests pass (664/664 dev in two full runs after the review patches, 4/4 zwaar-or-lokaal) and the real-environment licence check is clean (93 packages, 0 violations). Run 6 adds round 5 (owner decisions Friso 01-11-2026: Nutri-Score A-E with the letter required, V-label as 9th measured mark with vegetarian as variant, V-label no longer a Vegan Society look-alike, NutriGreen in phase-2 training within the mix budget) with 27 criteria from SPEC and spec-spike-getrainde-detector-ronde5.md, all FULL. Only P2 partial (CAP-6a, AC-2: MPS not asserted).",
+ "rationale": "P0 coverage 100% (79/79), P1 100% (28/28), overall 98% (110/112); all tests pass (771/771 dev, 4/4 zwaar-or-lokaal) and the real-environment licence check is clean (93 packages, 0 violations). Run 8 adds round 6 (owner decision Friso 02-11-2026: Open Food Facts logo crops as generator source) with 30 criteria, all FULL; the two P0 gaps of run 7 are closed with tests that a targeted mutation turns red. Only P2 partial (CAP-6a, AC-2).",
  "decision_date": "2026-11-02",
- "run": 6,
+ "run": 8,
  "subject": "spike-getrainde-detector",
- "head": "08d2cf7 + uncommitted round 5 (spec update, ATDD tests, build, trace)",
+ "head": "a338c1e + test extension R6-CAP-17j/17l",
  "branch": "spike/proef-getrainde-detector",
  "specs": [
   "_bmad-output/implementation-artifacts/spec-spike-getrainde-detector-besluiten.md",
   "_bmad-output/implementation-artifacts/spec-spike-getrainde-detector-ronde3.md",
   "_bmad-output/implementation-artifacts/spec-spike-getrainde-detector-ronde4.md",
+  "_bmad-output/implementation-artifacts/spec-spike-getrainde-detector-ronde5.md",
+  "_bmad-output/implementation-artifacts/spec-spike-getrainde-detector-ronde6.md",
   "_bmad-output/implementation-artifacts/spec-spike-getrainde-detector.md"
  ],
  "contract": "_bmad-output/planning-artifacts/spike-getrainde-detector/SPEC.md",
  "atdd_checklist": "_bmad-output/test-artifacts/atdd-checklist-spike-getrainde-detector.md",
- "phase1_matrix": "/tmp/tea-trace-coverage-matrix-2026-11-02T01-30-00.json",
+ "phase1_matrix": "/tmp/tea-trace-coverage-matrix-2026-11-02T-run8.json",
  "tests": {
-  "dev": "664/664",
+  "dev": "771/771",
   "zwaar_or_lokaal": "4/4",
-  "collected": 664,
+  "collected": 771,
   "licence_check": {
    "packages": 93,
    "violations": 0
@@ -33,15 +35,15 @@
   "ledger": "_bmad-output/implementation-artifacts/deferred-work.md (resolution line)"
  },
  "gate_criteria": {
-  "p0_coverage_actual": "100% (41/41)",
+  "p0_coverage_actual": "100% (79/79)",
   "p0_status": "MET",
-  "p0_test_pass_rate_actual": "100% (305/305)",
+  "p0_test_pass_rate_actual": "100%",
   "p0_test_pass_status": "MET",
-  "p1_coverage_actual": "100% (11/11)",
+  "p1_coverage_actual": "100% (28/28)",
   "p1_status": "MET",
-  "overall_coverage_actual": "96% (53/55)",
+  "overall_coverage_actual": "98% (110/112)",
   "overall_status": "MET",
-  "overall_test_pass_rate": "100% (569/569)"
+  "overall_test_pass_rate": "100% (771/771)"
  },
  "coverage": {
   "FULL": [
@@ -135,7 +137,8 @@
   "p1": "21/21",
   "p2": "2/4",
   "overall": "80/82",
-  "overall_pct": 97.6
+  "overall_pct": 97.6,
+  "ronde6": "30/30 FULL (R6-AC-1..2, R6-VER-1, R6-IO-1..7, R6-CAP-17a..n, R6-CAP-4/6/10/16, R6-SP-9, R6-CAP-3/2)"
  },
  "partial_reasons": {
   "CAP-6a": "P2: no test asserts the device is mps (unchanged since run 1)",
@@ -228,6 +231,16 @@
    "decision_date": "2026-11-01",
    "coverage": "53/55",
    "tests": "569/569"
+  },
+  {
+   "run": 6,
+   "decision": "PASS",
+   "head": "08d2cf7 + uncommitted round 5 (spec update, ATDD tests, build, trace)"
+  },
+  {
+   "run": 7,
+   "decision": "FAIL",
+   "head": "a338c1e (round 6 committed)"
   }
  ],
  "atdd_red_run_round3": {
