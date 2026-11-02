@@ -103,7 +103,7 @@ def test_cap07_te_weinig_validatie_etiketten_valt_terug_op_gezamenlijke_drempels
     ("NL-BIO-01 Landbouw EU", {"EU_ORGANIC_FARMING"}),
     ("DE-ÖKO-006", {"EU_ORGANIC_FARMING"}),
     ("BE BIO 02 en MSC C 10293", {"EU_ORGANIC_FARMING", MSC}),
-    ("FSC® C123456", set()),       # FSC hoort niet bij de 8
+    ("FSC® C123456", {"FOREST_STEWARDSHIP_COUNCIL_LABEL"}),  # ronde 9: FSC is een keurmerk met certificaatnummer (trainingsset §8)
     ("MSC-C-1234", set()),         # vier cijfers
     ("XNL-BIO-01", set()),         # geen woordgrens
     ("", set()),

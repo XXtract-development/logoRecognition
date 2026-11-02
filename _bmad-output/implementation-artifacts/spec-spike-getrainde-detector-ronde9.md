@@ -2,7 +2,7 @@
 title: 'Proef getrainde detector ronde 9: vier extra keurmerken, nalopen op de invulpagina, nachttraining met hervatten'
 type: 'feature'
 created: '2026-11-02'
-status: 'in-review'
+status: 'done'
 baseline_commit: '47edcb190b9da6b9fe4db0b7dd568cb7c4fed042'
 route: 'dispatch'
 review_loop_iteration: 0
@@ -81,15 +81,46 @@ context:
 
 ## Implementation Notes
 
-Route-poort (step-02, 02-11-2026): **intent gaps 0** voor de bouw (de enige open keuze, de grens van de voorinvulling ronde 9, raakt alleen het uitvoeren, niet wat gebouwd wordt); **onomkeerbaar 0** (geen migratie, geen extern verkeer tijdens de bouw; scheiding opnieuw schrijven, OFF ophalen en de voorinvulling zijn uitvoerstappen na de keten); **omvang groot** (±15 bestanden, nieuwe module `nacht.py` die het draaiplan aanroept) → route **dispatch**. Meer-doelencheck: A (vier keurmerken), B (nachttraining) en C (correctie) zijn in één besluit van Friso als ronde 9 gebundeld; aangehouden als één spec. Tokenomvang ±1.500 (contract staat in de ATDD-checklist).
+Route-poort (step-02, 02-11-2026): **intent gaps 0** voor de bouw (de enige open keuze, de grens van de voorinvulling ronde 9, raakt alleen het uitvoeren, niet wat gebouwd wordt); **onomkeerbaar 0** (geen migratie, geen extern verkeer tijdens de bouw; scheiding opnieuw schrijven, OFF ophalen en de voorinvulling zijn uitvoerstappen na de keten); **omvang groot** (±15 bestanden, nieuwe module `nacht.py` die het draaiplan aanroept) → route **dispatch**. Meer-doelencheck: A (vier keurmerken), B (nachttraining) en C (correctie) zijn in één besluit van Friso als ronde 9 gebundeld; aangehouden als één spec.
 
-Volledig venster = duur ≥ 0,9 × 9,5 u; marge van 10% bewust; met R10 maakt elke run zonder checkpoint een stoppunt, dus de marge kan geen lus veroorzaken.
+Bouwgeschiedenis (lokale tussenpunten, niet gepusht): `cc4c6e7` (wip: spec, ATDD-tests, deel van de bouw), `cdebb15` (review-patches). De bouwsubagent is na het tussenpunt niet als afgerond gerapporteerd; de code en tests stonden op `cc4c6e7` al groen (483 backend, 114 browser); de rest is door de reviewpatches gedaan.
 
-Categorieën 14–17 zijn vastgepind in test_r9_klassen_17; de sha van ronde 6 dekt 1–13 omdat de generatoroutput die gebruikt.
+Roodcontrole (ATDD-tests tegen de oorspronkelijke bronnen `47edcb1`, 02-11-2026): backend `tests/test_ronde9_20261102.py` + aangepaste sets 135 failed / 348 passed (nieuw: 79 failed, 5 passed; de 79 falen op ontbrekend gedrag: `ModuleNotFoundError: nacht`, ontbrekende functies/constanten/argumenten); browser 33 failed / 81 passed (nieuw: 20 failed). Gelijk aan de ATDD-logging.
+
+Review (review-loop 0, drie lagen: blind-hunter, edge-case-hunter, verification-gap): zie Review Triage Log. 28 patches doorgevoerd, 1 verworpen met refutatie (R12), 1 open vraag voor Friso (R16). Geen loopback naar intent of bad_spec.
+
+Wijzigingen aan bestaande tests, met reden per geval (aantoonbare contractwijziging):
+- `test_cap03_invulpagina.py`, `test_review_20261101.py`, `test_cap09_telling.py`: voorinvulling en bevestigd record vragen 12 keuzes (contract: bevestigen vraagt alle 12 losse keurmerken).
+- `test_cap01_scheiding.py`: extra rijen (7 i.p.v. 3) met FSC, Triman, kunststofcode, PlanetProof.
+- `test_cap02_kandidaten.py`: rapport telt 13 keurmerken.
+- `test_cap04_generator.py`, `test_cap05_echt.py`: 17 klassen; gelijkend-voorbeeld TRIMAN → PEFC (Triman is nu klasse).
+- `test_cap12_k4aa_runner.py`: code buiten de klassen FSC_MIX → PEFC (FSC Mix telt nu als FSC).
+- `test_ronde5_20261101.py`, `test_ronde5_browser_20261101.py`, `test_ronde6_20261102.py`, `test_ronde7_browser_20261102.py`: 17 categorieën, 12 keuzes; OFF-tabel = de negen oude exact + de vier nieuwe; byte-gelijk-controle van de generator over categorieën 1–13; LOS/NEGEN 12/13 rijen.
+- `test_cap03_invulpagina_browser.py`: voorinvulling en bevestigde POST met de vier codes.
+- `test_cap06_training.py`: categorieën 17; `resume`-argument.
+- `test_cap07_herkenning.py`: FSC® C123456 geeft nu FSC (certificaatpatroon van ronde 9; het oude "FSC hoort niet bij de 8" was een verouderde verwachting, die in de ATDD-ronde niet was aangepast).
+- `test_ronde9_*`: de rooktest-assert kijkt naar het nieuwste checkpoint op het moment van hervatten (de pauze kan na epoch 0 of 1 vallen).
+
+Afwijkingen en keuzes (gedocumenteerd, geen spec-wijziging):
+- "Volledig venster" = duur ≥ 0,9 × 9,5 uur (10% marge). Met R10 zet elke run zonder nieuw checkpoint een stoppunt, dus de marge kan geen lus veroorzaken.
+- Categorieën 14–17 zijn vastgepind in `test_r9_klassen_17`; de sha van ronde 6 dekt 1–13 omdat de generatoroutput die gebruikt.
+- `vrijgeven` schrijft `nacht-status.json` (expliciet commando); `draai` blijft de enige writer tijdens een run.
+- Het slot bevat het pid van het trainingsproces (niet van `draai`), zodat `ps` op `train.py` kan controleren.
+- Starten vóór bevestiging Friso is een proces-poort (laden van de launchd-agent na bevestiging), geen codepoort (R12).
+
+Rooktest hervatten (CAP-6/CAP-18, 02-11-2026, `nacht.py` met echte rfdetr-fase, N, kleine verzonnen set, scratchmap buiten de repo): `nacht.py draai` → checkpoint_0 en checkpoint_1 → `nacht.py stop` → `gepauzeerd` → `nacht.py draai` → `afgerond`, hervat vanaf `checkpoint_1.ckpt`, `checkpoint_2.ckpt` en `train-resultaat.json`. Geautomatiseerd als `zwaar`-test `test_r9_zwaar_rooktest_pauzeren_en_hervatten_met_rfdetr`: 1 passed (46 s).
+
+Volle suite op `cdebb15` plus de twee wijzigingen hieronder: `960 passed, 0 failed` (4 min 18 s; `uv run --group dev pytest -q -p no:cacheprovider`). Eerste run 958 passed, 1 failed: `test_cap07_certificaatnummers[FSC]` (verouderde verwachting, aangepast).
+
+OFF-ophalen ronde 9 (vier klassen, gestart 22:04 op 02-11-2026): zie resultaatblok.
+
+Voorinvulling ronde 9: **niet gedraaid**. Raming ±$28,9 (660 aanroepen, zonder lege tegels), restant $28,61; stoppunt 5. Geen betaalde aanroep verstuurd.
+
+Training: **niet gestart**, behalve de rooktest op de kleine scratchset. Startcommando staat in DRAAIPLAN stap 10.
 
 ## Spec Change Log
 
-- 02-11-2026 (review-loop 0, geen loopback): de drie reviewlagen (blind-hunter, edge-case-hunter, verification-gap) op de diff `47edcb1..cc4c6e7` leverden ±45 bevindingen; ontdubbeld tot de tabel hieronder. Geen intent_gap en geen bad_spec (de code volgt de spec; de spec-tekst is op enkele punten te vaag of verouderd, dat is doc-werk). Patches worden alleen in code/tests/documenten van de worktree doorgevoerd, niet in het frozen intent.
+- 02-11-2026 (review-loop 0, geen loopback): de drie reviewlagen op de diff `47edcb1..cc4c6e7` leverden ±45 bevindingen; ontdubbeld tot de Review Triage Log. Geen intent_gap en geen bad_spec: de code volgt de spec; de spec-tekst was op enkele punten vaag of verouderd (doc-werk, zie R1–R19).
 
 ## Review Triage Log
 

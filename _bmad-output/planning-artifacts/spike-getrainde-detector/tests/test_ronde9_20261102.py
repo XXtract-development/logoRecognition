@@ -1377,3 +1377,55 @@ def test_r9_draaiplan_nachttraining_voorinvulling_r9_scheiding_met_reden_en_wiss
     assert wissel and any("items-r9.json" in b and "uitslag.json" in b for b in wissel)
     stoppunt = [r for r in tekst.splitlines() if r.strip().startswith("Stoppunt:") and re.search(r"\b1\b", r)]
     assert stoppunt and not any(re.search(r"\b8 uur\b", r) for r in stoppunt)
+
+
+@pytest.mark.zwaar
+def test_r9_zwaar_rooktest_pauzeren_en_hervatten_met_rfdetr(tmp_path):
+    """Rooktest CAP-6/CAP-18 (SPEC): `nacht.draai` start een echte rfdetr-fase op een kleine verzonnen set, `nacht.stop`
+    pauzeert na het eerste checkpoint, en een nieuwe `draai` hervat vanaf het nieuwste checkpoint tot `train-resultaat.json`.
+    Vereist de detector-omgeving (rfdetr, voorgetrainde gewichten in de cache); het venster is vastgezet op 23:00."""
+    import sys
+    import threading
+    import time
+    from datetime import datetime
+
+    pytest.importorskip("rfdetr")
+    from PIL import Image, ImageDraw
+
+    import nacht
+    import train
+
+    ds = tmp_path / "dataset"
+    cats = train.CATEGORIEEN
+    for split, n in (("train", 6), ("valid", 2), ("test", 2)):
+        d = ds / split
+        d.mkdir(parents=True)
+        imgs, anns = [], []
+        for i in range(n):
+            im = Image.new("RGB", (320, 320), (240, 240, 240))
+            ImageDraw.Draw(im).rectangle([40, 40, 120, 120], fill=(60, 140, 80))
+            im.save(d / f"{i}.png")
+            imgs.append({"id": i + 1, "file_name": f"{i}.png", "width": 320, "height": 320})
+            anns.append({"id": i + 1, "image_id": i + 1, "category_id": cats[i % len(cats)]["id"],
+                         "bbox": [40, 40, 80, 80], "area": 6400, "iscrowd": 0})
+        (d / "_annotations.coco.json").write_text(json.dumps({"images": imgs, "annotations": anns, "categories": cats}))
+    uit = tmp_path / "uit"
+    opdracht = [sys.executable, str(Path(train.__file__)), "train", "--fase", "nagemaakt", "--maat", "N",
+                "--dataset", str(ds), "--uit", str(uit), "--epochs", "3"]
+    nacht.plan(uit, opdracht, 3, "nagemaakt")
+    nu = lambda: datetime(2026, 11, 2, 23, 0)  # binnen het venster, ongeacht het uur van de test
+    uitkomst = {}
+    thread = threading.Thread(target=lambda: uitkomst.setdefault("eerste", nacht.draai(uit, nu=nu, poll_s=1)))
+    thread.start()
+    t0 = time.time()
+    while not (uit / "checkpoint_0.ckpt").exists():
+        assert time.time() - t0 < 900, "geen eerste checkpoint binnen 15 minuten"
+        time.sleep(1)
+    assert nacht.stop(uit) is not None
+    thread.join(900)
+    assert uitkomst.get("eerste") == "gepauzeerd", uitkomst
+    # hervatten begint bij het nieuwste checkpoint op dat moment (de pauze kan na epoch 0 of 1 vallen)
+    nieuwste = max(uit.glob("checkpoint_*.ckpt"), key=lambda q: int(q.stem.split("_")[1]))
+    assert nacht.draai(uit, nu=nu, poll_s=1) == "afgerond"
+    assert (uit / "train-resultaat.json").exists()
+    assert Path(nacht.status(uit, nu())["hervat"]).name == nieuwste.name
