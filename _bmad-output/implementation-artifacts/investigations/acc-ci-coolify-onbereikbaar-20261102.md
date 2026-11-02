@@ -3,7 +3,7 @@ case: acc-ci-coolify-onbereikbaar-20261102
 status: confirmed
 created: 2026-11-02T09:55:00+00:00
 owner_repo: logoRecognition
-affected_repos: [logoRecognition, HR-portal]
+affected_repos: [logoRecognition]
 environment: ACC
 trigger: "Sinds 30-10-2026 faalt bij elke push naar acc de workflow 'Build and Push Docker Images', job deploy-acc, stap 'Pin image tag in Coolify': curl: (28) Failed to connect to coolify.xxtract.com port 443 after 133165 ms"
 severity: medium
@@ -58,7 +58,7 @@ infrastructuurkeuze; die keuze ligt bij Friso.
 | E18 | Vanilla / coolify-host | `curl http://10.100.0.3:8000/api/health` | 200 vanaf beide: Coolify-API is via het privénetwerk bereikbaar. |
 | E19 | GitHub | `gh repo view XXtract-development/logoRecognition --json visibility` | `PUBLIC`. |
 | E21 | Internet | check-host.net `check-tcp?host=78.47.244.169:22&max_nodes=4` | 4/4 (at, hk, jp, nl) verbonden: SSH op Vanilla is van buiten bereikbaar (premisse optie A). |
-| E20 | Lokaal | `grep -l -E "api/v1/(deploy\|applications)" ~/Documents/projects/*/.github/workflows/*.y*ml` | Ook `HR-portal/.github/workflows/build-push.yml` roept de Coolify-API aan (laatste run 15-09, dus nog niet geraakt). |
+| E20 | Lokaal | `grep -l -E "api/v1/(deploy\|applications)" ~/Documents/projects/*/.github/workflows/*.y*ml` | Treffer in `HR-portal/.github/workflows/build-push.yml` — bij nalezing (E27) is dat de **ArgoCD**-API, niet Coolify. Valse treffer. |
 
 ## Confirmed Findings
 
@@ -76,7 +76,7 @@ infrastructuurkeuze; die keuze ligt bij Friso.
 - INFERENCE: op 21-10-2026 rond 15:33Z is een Hetzner Cloud Firewall aan de Coolify-host gekoppeld (of aangescherpt) met een allowlist. Basis: stilte in plaats van weigering (E7, E8 vs. E17), host-firewall open (E10), abrupte overgang (E13). Niet zelf in de Hetzner Console gecontroleerd — geen `hcloud`-context op deze machine.
 - INFERENCE: de allowlist bevat de webhook-bereiken van GitHub (E15), maar niet de Actions-runners. Actions-runners draaien op Azure met duizenden wisselende adresblokken; die passen niet zinvol in een firewall-allowlist.
 - INFERENCE: dit valt samen met het Coolify-beveiligingswerk in die week (Coolify 4.0.0-beta.463 met 38 bekende advisories, waarvan 4 kritiek; onderzoek 25-10 in het coolify-project). Dichtzetten is dan een bewuste keuze, niet iets om terug te draaien.
-- INFERENCE: elke andere workflow die vanaf GitHub-runners de Coolify-API aanroept faalt bij de volgende run ook (HR-portal, E20).
+- INFERENCE: elke andere workflow die vanaf GitHub-runners de Coolify-API aanroept faalt bij de volgende run ook. HR-portal valt daar níet onder (E20, E27).
 
 ## Hypothesized Paths
 
@@ -94,7 +94,7 @@ infrastructuurkeuze; die keuze ligt bij Friso.
 
 1. **Besluit Friso (infrastructuur, geen code):** kies hoe de uitrol de Coolify-API voortaan bereikt. Opties staan hieronder. — *besluit*, hoog.
 2. Bevestig in de Hetzner Console welke firewall aan de Coolify-host hangt en noteer de allowlist in `~/.claude/ssh-registry.md`. — *read-only, door Friso*, middel.
-3. Pas HR-portal mee aan zodra de keuze vastligt. — *codewijziging via BMAD*, laag.
+3. ~~HR-portal meenemen~~ — vervallen: HR-portal rolt uit via ArgoCD, niet via Coolify (E27).
 
 ### Opties (voor de keuze)
 
@@ -109,3 +109,36 @@ infrastructuurkeuze; die keuze ligt bij Friso.
 
 - Het beveiligingsniveau van Coolify zelf (beta.463): zie `~/Documents/projects/coolify/_bmad-output/planning-artifacts/research/technical-claude-security-skills-coolify-hetzner-2026-10-25/research.md`.
 - Gelijkaartig netwerkonderzoek ACC: [acc-serverbereikbaarheid-20261002.md](acc-serverbereikbaarheid-20261002.md).
+
+## Vervolg 2026-11-02 — hoe andere repo's het na 21-10 doen
+
+Besluit Friso (via coördinator): firewall blijft bewust dicht; los het op zoals andere repo's.
+
+| # | Bron | Commando / query | Uitkomst |
+|---|---|---|---|
+| E22 | Coolify-DB | `select a.uuid,a.name,a.build_pack,a.git_repository,a.git_branch,coalesce(a.docker_registry_image_name,''),s.is_auto_deploy_enabled,(select count(*) from application_deployment_queues q where q.application_id=a.id::text and q.created_at>'2026-10-21 15:33' and q.status='finished') from applications a join application_settings s on s.application_id=a.id where a.deleted_at is null order by 8 desc;` | ~40 apps rollen na 21-10 groen uit; vrijwel allemaal laat Coolify zelf uit git bouwen (`build:` in compose of Dockerfile-buildpack, push naar `registry.acc.xxtract.com`), aangestuurd door de GitHub-App-webhook (`is_webhook=t`) of de API. Bv. StageLegacy acc 39, UploadPortal acc 23, MyXXtract acc 20. |
+| E23 | Coolify-DB | `select uuid,name,git_repository,git_branch from applications where deleted_at is null and (docker_compose_raw ilike '%ghcr.io%' or docker_compose ilike '%ghcr.io%' or docker_registry_image_name ilike '%ghcr%');` | Alleen de twee logoRecognition-apps (`qsookwow8koko0kwg00g0cwk`, `f048gs04scoksggw0okw4oo0`). **Geen andere repo combineert ghcr-images met Coolify.** De `build-push.yml` met ghcr in AI-Service, UploadPortal, MyXXtractFrontEnd e.a. bouwt voor K8s (`kustomization.yaml`), niet voor Coolify. |
+| E24 | dqs-service | `.github/workflows/deploy.yml` r.189-222; PR #218 (gemerged 26-10 21:35Z) | Job `deploy-acc` draait `runs-on: [self-hosted, hetzner-acc]` en roept vandaar de Coolify-API aan. PR-tekst: "firewall-2 … laat op poort 443 alleen Hetzner-servers en GitHub-webhook-bereiken door (geverifieerd in de Hetzner-console)". |
+| E25 | dqs-service | `gh run list -R XXtract-development/dqs-service --workflow deploy.yml --branch acc --event push --limit 6` | 6/6 success (01-11 14:18Z t/m 02-11 09:18Z); job "Deploy to acceptance" success 02-11 09:48Z. |
+| E26 | coolify-build | `ssh root@188.245.95.88` → `.runner`, `systemctl list-units \| grep runner`, curl | Eén runner `coolify-build-acc`, service `actions.runner.XXtract-development-dqs-service.coolify-build-acc`, **repo-gebonden aan dqs-service** (aangemaakt 26-10 21:14Z), gebruiker `gh-runner` (niet in docker-groep). Vanaf deze host: `https://coolify.xxtract.com/api/health` 200, `http://10.100.0.3:8000/api/health` 200. |
+| E27 | HR-portal | `grep -n -E "runs-on\|curl\|COOLIFY\|api/v1" HR-portal/.github/workflows/build-push.yml`; Coolify-DB `applications where git_repository ilike '%HR-portal%'` | Workflow roept ArgoCD aan (`https://${ARGOCD_SERVER}/api/v1/applications/...`); geen Coolify-app voor HR-portal. |
+| E28 | GitHub | `gh repo view … --json visibility`; `gh api repos/XXtract-development/logoRecognition/actions/permissions/fork-pr-contributor-approval` | logoRecognition is PUBLIC (dqs-service PRIVATE); fork-PR-goedkeuring staat op `first_time_contributors`. |
+
+- VERIFIED: de firewall heet `firewall-2` en laat op 443 alleen Hetzner-servers en GitHub-webhooks door (E24, bevestigd in de Hetzner-console door de auteur van PR #218).
+- VERIFIED: het enige patroon waarmee een GitHub-workflow na 21-10 de Coolify-API bereikt is de eigen runner op coolify-build (E24, E25, E26). Het tweede patroon — Coolify bouwt zelf op de webhook — draaide logoRecognition tot juni; CI-1 verliet het om 16 minuten bouwtijd en de race tussen webhook en Actions-build.
+- VERIFIED: de bestaande runner kan logoRecognition niet bedienen: hij is aan dqs-service gebonden (E26).
+- INFERENCE: een eigen runner op een **openbare** repository is uitvoerbaar voor code uit vreemde pull requests zodra die goedgekeurd worden. Met goedkeuring voor álle externe bijdragers en een job die alleen op een push naar `acc` draait is dat afgedekt; de goedkeuringsinstelling staat nu ruimer (E28).
+- Gekozen: het dqs-patroon (E24). De SHA-pin blijft ongewijzigd: dezelfde twee API-aanroepen, alleen vanaf een andere machine.
+
+## Vervolg 2026-11-02 (2) — blokkade bij de spec-review
+
+| # | Bron | Commando / query | Uitkomst |
+|---|---|---|---|
+| E29 | GitHub | `gh api orgs/XXtract-development --jq .plan.name` | `free`. |
+| E30 | GitHub-docs | https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/manage-access | "Organization owners using the GitHub Team plan can create additional organization-level runner groups." · "By default, only private repositories can access runners in a runner group" · "We recommend that you only use self-hosted runners with private repositories." Een runnergroep beperkt tot één workflow is op het Free-plan dus niet beschikbaar. |
+| E31 | Coolify-DB + Vanilla | `select s.include_source_commit_in_build, s.is_auto_deploy_enabled, a.git_branch from application_settings s join applications a on a.id=s.application_id where a.uuid='qsookwow8koko0kwg00g0cwk';` · `grep -E "^(SOURCE_COMMIT\|LOGO_IMAGE_TAG)=" /data/coolify/applications/qsookwow8koko0kwg00g0cwk/.env` | `f\|f\|acc`; toch schrijft Coolify `SOURCE_COMMIT=<uitgecheckte commit>` in de compose-`.env` (nu `8c9373d2…`, gelijk aan `LOGO_IMAGE_TAG`). |
+
+- VERIFIED: de spec-review (`bmad-review`, bevinding 1, hoog) wijst erop dat op een openbare repository een pull request uit een fork zijn eigen workflowbestand meebrengt en daarmee code op de eigen runner kan laten draaien zodra een beheerder op "goedkeuren" klikt. De afdoende bescherming (runnergroep alleen voor `build-push.yml@refs/heads/acc`) bestaat niet op het Free-plan (E29, E30).
+- VERIFIED: dqs-service is privé (E28); daar speelt dit niet. Het dqs-patroon is voor logoRecognition dus niet één-op-één veilig over te nemen.
+- INFERENCE: een tweede route zonder eigen runner kan wel: de workflow zet na de twee builds de commit op een aparte uitroltak; de GitHub-webhook (die de firewall doorlaat, E15) laat Coolify die tak uitrollen; de compose gebruikt de door Coolify gezette `SOURCE_COMMIT` (E31) als image-tag. Niet bewezen: dat GitHub de webhook ook verstuurt bij een push met het workflow-token (de documentatie sluit alleen nieuwe workflowruns uit).
+- Status: keuze teruggelegd bij Friso; spec staat op v2, nog geen codewijziging.
