@@ -196,6 +196,15 @@ RONDE = 5  # voorinvullingen met dit kenmerk vroegen het V-label zelf; zonder ke
 MAX_TEGELS = 16  # per aanroep, naast het hele etiket (grens van de aanbieder op beelden per verzoek)
 GRENS_VOORINVULLING = 73.0  # dollar, hard (besluit Friso 02-11-2026 22:20: verhoogd van $65 naar ±$73; randvoorwaarden §3)
 PER_AANROEP = 0.06  # verwachte kosten per aanroep (heel etiket + hoogstens 16 tegels; randvoorwaarden §3)
+SONNET = "anthropic/claude-sonnet-5.5"
+
+
+def bestandsnaam(basis, model):
+    """Uitvoernaam per model (besluit Friso 03-11-2026): Sonnet houdt de oude namen; elk ander model krijgt een eigen
+    bestand (`voorinvulling-claude-haiku-5-5.json`), zodat een run met een ander model het Sonnet-bestand niet raakt."""
+    if model == SONNET:
+        return f"{basis}.json"
+    return f"{basis}-{model.split('/')[-1].replace('.', '-')}.json"
 
 
 def voorinvulling(client, beeld, tegels):
@@ -411,7 +420,7 @@ def main(argv=None):
     v = sub.add_parser("voorinvulling")
     v.add_argument("--proef-map", required=True, type=Path)
     v.add_argument("--manifest", required=True, type=Path, help="manifest.json van beelden.py bouwen (doc_id → sha256, …)")
-    v.add_argument("--model", default="anthropic/claude-sonnet-5.5")
+    v.add_argument("--model", default="anthropic/claude-haiku-5.5")
     v.add_argument("--zdr-logo", type=Path, required=True, help="niet-klantbeeld (officieel logo) voor de zdr-proef")
     v.add_argument("--docs", type=Path, help="json-lijst doc_id's (uitvoer van ontdubbel); standaard alle in het manifest")
     v.add_argument("--grens", type=float, help=f"andere uitgavengrens dan ${GRENS_VOORINVULLING:.0f}; alleen met --besluit")
@@ -419,7 +428,7 @@ def main(argv=None):
     v9 = sub.add_parser("voorinvulling-r9")
     v9.add_argument("--proef-map", required=True, type=Path)
     v9.add_argument("--manifest", required=True, type=Path, help="manifest.json van beelden.py bouwen")
-    v9.add_argument("--model", default="anthropic/claude-sonnet-5.5")
+    v9.add_argument("--model", default="anthropic/claude-haiku-5.5")
     v9.add_argument("--zdr-logo", type=Path, required=True, help="niet-klantbeeld (officieel logo) voor de zdr-proef")
     v9.add_argument("--docs", type=Path, help="json-lijst doc_id's; standaard alle in het manifest")
     v9.add_argument("--grens", type=float, help=f"andere uitgavengrens dan ${GRENS_VOORINVULLING:.0f}; alleen met --besluit")
@@ -486,10 +495,10 @@ def main(argv=None):
         docs = sorted(d for d, m in manifest.items() if "sha256" in m)
         if a.docs:
             docs = [d for d in json.loads(a.docs.read_text()) if d in set(docs)]
-        uitvoer = toets_map / "voorinvulling.json"
+        uitvoer = toets_map / bestandsnaam("voorinvulling", a.model)
         klaar = json.loads(uitvoer.read_text()) if uitvoer.exists() else {}
         klaar = {d: v for d, v in klaar.items() if "fout" not in v}  # een mislukte voorinvulling wordt opnieuw geprobeerd
-        bewaker = kosten.Bewaker("voorinvulling toets", 42.0, grootboek=a.proef_map / "uitgaven.json", grens=grens)  # raming §3, informatief
+        bewaker =kosten.Bewaker("voorinvulling toets", 42.0, grootboek=a.proef_map / "uitgaven.json", grens=grens)  # raming §3, informatief
         print(f"grens voorinvulling ${grens:.2f}", f"(besluit: {besluit})" if besluit else "(standaard)")
         n = sum(aanroepen(a.manifest.parent / f"{d}.png") for d in docs if d not in klaar)  # open etiketten
         bewaker.controleer_start(n * PER_AANROEP)  # vóór de client en de zdr-proef
@@ -524,8 +533,8 @@ def main(argv=None):
                 shutil.copyfile(pad, volledig)
             items.append({"id": doc, "beeld": f"beelden/{doc}.png", "hint": hint,
                           "voorinvulling": met_v_label(klaar[doc])})  # voorinvulling.json blijft zoals hij is
-        (toets_map / "zdr-proef.json").write_text(json.dumps({**proef, "grens": grens, "besluit": besluit}) + "\n")
-        (toets_map / "items.json").write_text(json.dumps(items, indent=1) + "\n")
+        (toets_map / bestandsnaam("zdr-proef", a.model)).write_text(json.dumps({**proef, "grens": grens, "besluit": besluit}) + "\n")
+        (toets_map / bestandsnaam("items", a.model)).write_text(json.dumps(items, indent=1) + "\n")
         print(len(items), "etiketten, uitgegeven $%.2f" % bewaker.uitgegeven)
     elif a.stap == "voorinvulling-r9":
         return _voorinvulling_r9(a, toets_map, grens, besluit)
@@ -592,7 +601,7 @@ def _voorinvulling_r9(a, toets_map, grens, besluit):
     import herken
     import kosten
 
-    items_pad = a.items or toets_map / "items-r9.json"
+    items_pad = a.items or toets_map / bestandsnaam("items-r9", a.model)
     if items_pad.resolve() == (toets_map / "items.json").resolve():
         raise SystemExit("--items mag niet de live items.json zijn: die wisselt pas volgens het wisselplan")
     items_pad = beelden.veilig_doel(items_pad)
@@ -600,9 +609,9 @@ def _voorinvulling_r9(a, toets_map, grens, besluit):
     docs = sorted(d for d, m in manifest.items() if "sha256" in m)
     if a.docs:
         docs = [d for d in json.loads(a.docs.read_text()) if d in set(docs)]
-    uitvoer = toets_map / "voorinvulling-r9.json"
+    uitvoer = toets_map / bestandsnaam("voorinvulling-r9", a.model)
     r9 = json.loads(uitvoer.read_text()) if uitvoer.exists() else {}
-    open_ = [d for d in docs if d not in r9 or "fout" in r9[d]]  # klare etiketten worden niet opnieuw betaald
+    open_ =[d for d in docs if d not in r9 or "fout" in r9[d]]  # klare etiketten worden niet opnieuw betaald
 
     def niet_leeg(im):
         vakken = herken.tegels(*im.size)
@@ -625,7 +634,7 @@ def _voorinvulling_r9(a, toets_map, grens, besluit):
     client = openrouter.Client(a.model, "voorinvulling", bewaker=bewaker)
     proef = client.zdr_proef(a.zdr_logo.read_bytes())
     (toets_map / "beelden").mkdir(exist_ok=True)
-    vi_pad = toets_map / "voorinvulling.json"
+    vi_pad = toets_map / bestandsnaam("voorinvulling", a.model)
     vi = json.loads(vi_pad.read_text()) if vi_pad.exists() else {}
     items, geweigerd = [], 0
     for doc in docs:
@@ -648,7 +657,7 @@ def _voorinvulling_r9(a, toets_map, grens, besluit):
         items.append({"id": doc, "beeld": f"beelden/{doc}.png", "hint": _hints(im, vakken, doc, samen.get("hinttegels", {}),
                                                                                toets_map),
                       "voorinvulling": samen})
-    (toets_map / "zdr-proef-r9.json").write_text(json.dumps({**proef, "grens": grens, "besluit": besluit}) + "\n")
+    (toets_map / bestandsnaam("zdr-proef-r9", a.model)).write_text(json.dumps({**proef, "grens": grens, "besluit": besluit}) + "\n")
     items_pad.write_text(json.dumps(items, indent=1) + "\n")
     print(len(items), "etiketten →", items_pad, "; uitgegeven $%.2f" % bewaker.uitgegeven)
     return 0

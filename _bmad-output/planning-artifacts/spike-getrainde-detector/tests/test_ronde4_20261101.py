@@ -301,7 +301,7 @@ def test_r4_voorinvulling_na_aanvulling_alleen_nieuwe_docs_betaald(tmp_path, mon
     schrijf(t / "toets-docs.json", docs)  # oude plus de nieuwe docs uit de aanvulling
     client = vervang(monkeypatch, Opname(LEEG))
     argv = ["voorinvulling", "--proef-map", str(pm), "--manifest", str(mf / "manifest.json"), "--zdr-logo",
-            str(pm / "logo.png"), "--docs", str(t / "toets-docs.json")]
+            str(pm / "logo.png"), "--docs", str(t / "toets-docs.json"), "--model", "anthropic/claude-sonnet-5.5"]
     assert mod("toets").main(argv) == 0
     assert len(client.calls) == 2  # één aanroep per klein nieuw etiket
     vi = json.loads((t / "voorinvulling.json").read_text())

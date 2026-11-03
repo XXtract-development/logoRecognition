@@ -2,8 +2,8 @@
 
 Een post start niet als de verwachte uitgave boven de grens ligt (1,5× de raming, of de vaste grens die Friso besliste,
 §3); tijdens een post wordt een aanroep die de grens zou passeren niet verstuurd (de client vraagt `mag` vóór elke
-aanroep). Kosten komen uit `usage.cost`, anders uit tokens × tarief (OpenRouter-tarieven 30-10-2026, dollar per
-token). Met een grootboek (`PROEF_MAP/uitgaven.json`) telt
+aanroep). Kosten komen uit `usage.cost`, anders uit tokens × tarief (OpenRouter-tarieven 30-10-2026, Haiku 5.5
+op 03-11-2026, dollar per token). Met een grootboek (`PROEF_MAP/uitgaven.json`) telt
 de grens per post over alle processen en herstarts: de bewaker leest bij de start wat de post al uitgaf en schrijft na
 elke boeking de nieuwe stand weg."""
 import json
@@ -12,6 +12,9 @@ import os
 TARIEF = {
     "anthropic/claude-sonnet-5.5": (2e-6, 10e-6),
     "google/gemini-3.8-flash": (0.825e-6, 4.125e-6),
+    # standaardmodel voorinvulling vanaf 03-11-2026 (besluit Friso). Bron: OpenRouter-tarief van 03-11-2026 zoals
+    # doorgegeven bij het besluit; niet als pagina in de repo vastgelegd (INFERENCE op de bron)
+    "anthropic/claude-haiku-5.5": (1e-7, 5e-7),
 }
 
 

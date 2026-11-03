@@ -260,7 +260,7 @@ def toets_pm(tmp_path, n=6):
 def test_voorinvulling_stopt_na_5_weigeringen_en_herprobeert_fouten(tmp_path, monkeypatch):
     orq, ts = mod("openrouter"), mod("toets")
     pm, mf, docs = toets_pm(tmp_path)
-    argv = ["voorinvulling", "--proef-map", str(pm), "--manifest", str(mf / "manifest.json"), "--zdr-logo", str(pm / "logo.png")]
+    argv = ["voorinvulling", "--proef-map", str(pm), "--manifest", str(mf / "manifest.json"), "--zdr-logo", str(pm / "logo.png"), "--model", "anthropic/claude-sonnet-5.5"]
     weiger = NepClient(fout=orq.EtiketFout("geweigerd"))
     monkeypatch.setattr(orq, "Client", lambda *a, **k: weiger)
     with pytest.raises(SystemExit):

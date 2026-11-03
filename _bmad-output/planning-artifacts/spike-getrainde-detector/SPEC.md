@@ -3,7 +3,7 @@ id: SPEC-spike-getrainde-detector
 title: "Proef: herkent een getrainde detector onze keurmerken betrouwbaarder dan de huidige route?"
 type: spike (gereedschap + draaiplan; het experiment zelf draait daarna)
 datum: 2026-10-31
-bijgewerkt: 2026-11-02 (ronde 9: FSC, Triman, kunststofcode en PlanetProof als 10e–13e keurmerk; nachttraining 22:00–07:30 met hervatten; eerdere rondes 3–8 in .memlog.md)
+bijgewerkt: 2026-11-03 (standaardmodel voorinvulling `anthropic/claude-haiku-5.5`, besluit Friso 03-11-2026; ronde 9: FSC, Triman, kunststofcode en PlanetProof als 10e–13e keurmerk; nachttraining 22:00–07:30 met hervatten; eerdere rondes 3–8 in .memlog.md)
 peildatum_code: origin/acc 8c9373d
 companions:
   - meetregels.md
@@ -141,7 +141,10 @@ Met de gebouwde gereedschappen en het draaiplan levert één doorloop op een doo
 - Docs (productregistraties: één GTIN van één leverancier voor één doelmarkt) zonder print-laag (de drukversie die de pijplijn al naar een beeld heeft omgezet) mogen uit het origineel gebouwd worden; voor de vergelijking telt alleen dat beide routes dezelfde bytes krijgen.
 - De processor van deze Mac met 8 threads benadert de ACC-server (8 vCPU) goed genoeg voor tijd per etiket.
 - De huidige route is K4-aa (8c9373d), lokaal gedraaid met de referentiemomentopname van 30-10-2026.
-- `anthropic/claude-sonnet-5.5` heeft op OpenRouter een zdr-endpoint; zo niet, dan stoppunt 3.
+- `anthropic/claude-haiku-5.5` (standaardmodel voorinvulling vanaf 03-11-2026, besluit Friso) heeft een zdr-endpoint: de zdr-proef van 03-11-2026 slaagde (VERIFIED, memlog).
+- `anthropic/claude-sonnet-5.5` blijft kiesbaar via `--model`. Zijn zdr-routing werkte in de voorinvulling van ronde 9 (VERIFIED, memlog 03-11-2026). Ontbreekt het zdr-endpoint bij een latere run, dan stoppunt 3.
+- Voorbehoud op de keuze voor Haiku: de vergelijking van 03-11-2026 meet Haiku tegen de bevestigingen van Friso: 225 van 228 gelijk (VERIFIED, memlog 03-11-2026). Friso wijzigde geen keurmerk ten opzichte van de voorinvulling van Sonnet (VERIFIED, memlog). Daardoor zijn die bevestigingen niet onafhankelijk van Sonnet (INFERENCE). De keuze van Friso blijft staan.
+- Doorgevoerd in de build van 03-11-2026: `kosten.py` (Haiku-tarief), `toets.py` (standaardmodel), `randvoorwaarden.md` §1 en §3 (zdr-proef Haiku, raming Haiku INFERENCE), `DRAAIPLAN.md`, `toetsset.md` §5. Gemini is voor de voorinvulling niet kiesbaar (K4-aa-model, geweigerd door de client); de frozen intent van de spec noemt dat wel, dat is een open punt voor de hoofdsessie.
 - Trainingsvakjes van het taalmodel zijn goed genoeg zonder menselijke correctie; de validatieset laat zien hoeveel ruis er is.
 - Voor MSC, Weidemelk en Vegan Society bestaan mogelijk geen publieke vectorbestanden; dan dienen het GS1-gidsbeeld en schone uitsneden van trainingsleveranciers als generatorbron.
 - JPEG in plaats van PNG verandert de kosten van een aanroep niet: de aanbieder rekent beeldtokens op afmeting, niet op bestandsgrootte (INFERENCE; na de herhaalrun vergeleken).

@@ -368,7 +368,7 @@ def test_r5_items_dragen_het_afgeleide_v_label_voorinvulling_json_blijft_ongewij
     oud = {docs[0]: vi5({GD: True}, gelijkend=[VV]), docs[1]: vi5({}), docs[2]: vi5({V: False}, gelijkend=[V])}
     schrijf(t / "voorinvulling.json", oud)
     client = vervang(monkeypatch, Opname(LEEG))
-    argv = ["voorinvulling", "--proef-map", str(pm), "--manifest", str(mf / "manifest.json"), "--zdr-logo", str(pm / "logo.png")]
+    argv = ["voorinvulling", "--proef-map", str(pm), "--manifest", str(mf / "manifest.json"), "--zdr-logo", str(pm / "logo.png"), "--model", "anthropic/claude-sonnet-5.5"]
     assert mod("toets").main(argv) == 0
     assert len(client.calls) == 1  # alleen docs[3] is nieuw
     vi = json.loads((t / "voorinvulling.json").read_text())

@@ -88,3 +88,18 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-spike-getrainde-detector-ronde6.md`
   summary: De bronverwijzingen [D1]–[E3], [M1] en [K1] in `datasets-keurmerken-2026-11-01.md` wijzen naar `digests/datasets-2026-11-01/`, dat alleen ongecommit in de hoofdmap van de repository staat.
   evidence: Blind Hunter BH10 (review ronde 6); `ls` in de worktree: map ontbreekt; in de hoofdmap staat hij (172 KB, ongecommit, naast ±260 wijzigingen van ander werk). Meecommitten hoort bij het afronden van dat onderzoek, niet bij de proef.
+- source_spec: `_bmad-output/implementation-artifacts/spec-haiku-standaard-20261103.md`
+  summary: Een herstart met de default Haiku op een bestaande voorinvulling.json met Sonnet-resultaten mengt twee modellen in één bestand; de bestaande klare etiketten blijven staan. Friso moet kiezen: een nieuw bestand voor Haiku, een herstart met `--model anthropic/claude-sonnet-5.5`, of het bestand wissen. Een guard die dit tegenhoudt is niet gebouwd, omdat het bestaande ontwerp gemengde bestanden toestaat (tests r4/r5/r9).
+  evidence: De live voorinvulling.json bevat Sonnet-resultaten (301 etiketten, memlog 03-11). Review edge-case-hunter 03-11: een guard breekt drie bestaande tests die "oude entries blijven staan" vastleggen. Dit is een besluit over de werkwijze, geen code-fout.
+- source_spec: `_bmad-output/implementation-artifacts/spec-haiku-standaard-20261103.md`
+  summary: De grens van $73 voor de voorinvulling is gebaseerd op Sonnet. Met Haiku is de verwachte uitgave ±$3. Friso moet beslissen of de grens blijft of wordt herzien; de build heeft hem niet veranderd.
+  evidence: randvoorwaarden.md §3 (regel voorinvulling toets, $73 hard, besluit 02-11-2026). Blind Hunter-review 03-11, bevinding over de grens zonder nieuw besluit.
+- source_spec: `_bmad-output/implementation-artifacts/spec-haiku-standaard-20261103.md`
+  summary: Haiku herkent RECYCLABLE minder goed: aanwezige RECYCLABLE gemist op 8711363000003-08711363375859 en -08711363376139; V-label aangegeven op 8720600000041 terwijl Friso die afwezig bevestigde. Friso moet beslissen of dit een blokkade is voor het gebruik van Haiku.
+  evidence: memlog 03-11 (225 van 228 gelijk, drie afwijkingen); toetsset.md §5 in de proefmap. Het gaat om de bevestigingen van Sonnet, niet onafhankelijk (memlog).
+- source_spec: `_bmad-output/implementation-artifacts/spec-haiku-standaard-20261103.md`
+  summary: De startprojectie van de voorinvulling (toets.py PER_AANROEP 0,06 en raming_r9) is op Sonnet gemeten en houdt geen rekening met het model. Met Haiku is ze ruim te hoog. Conservatief, geen gevaar voor overschrijding van de grens.
+  evidence: Edge-case-hunter en Verification gap-review 03-11. Een modelafhankelijke projectie vraagt een ontwerpkeuze (tokenraming per model), dus geen snelle fix. De documenten zeggen nu dat de projectie op Sonnet blijft (DRAAIPLAN stap 3).
+- source_spec: `_bmad-output/implementation-artifacts/spec-haiku-standaard-20261103.md`
+  summary: Opgelost (besluit Friso 03-11-2026): de entry over gemengde voorinvulling-bestanden is afgehandeld met één bestand per model (`bestandsnaam()` in `toets.py`); het Sonnet-bestand blijft ongewijzigd en er is geen overschrijving van andere modellen in de code.
+  evidence: test_uitvoernamen_per_model_sonnet_houdt_oude_namen_haiku_krijgt_eigen_bestand in tests/test_haiku_standaard_20261103.py; DRAAIPLAN stap 3 en ronde 9 (uitvoer per model).

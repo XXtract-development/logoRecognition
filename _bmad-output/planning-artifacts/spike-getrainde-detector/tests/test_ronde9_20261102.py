@@ -491,7 +491,7 @@ def r9_pm(tmp_path, n=3):
 
 def argv_r9(pm, mf, *extra):
     return ["voorinvulling-r9", "--proef-map", str(pm), "--manifest", str(mf / "manifest.json"), "--zdr-logo",
-            str(pm / "logo.png"), *extra]
+            str(pm / "logo.png"), *extra, "--model", "anthropic/claude-sonnet-5.5"]
 
 
 def test_r9_cli_voorinvulling_r9_alleen_niet_lege_tegels_items_r9_en_klare_etiketten_niet_opnieuw(tmp_path, monkeypatch):  # P0

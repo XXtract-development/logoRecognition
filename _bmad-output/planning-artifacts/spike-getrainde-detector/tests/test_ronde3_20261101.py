@@ -104,7 +104,7 @@ def toets_r3(tmp_path, n, groot=(), boek=None):
     schrijf(mf / "manifest.json", manifest)
     if boek is not None:
         schrijf(pm / "uitgaven.json", {POST_VI: boek})
-    argv = ["voorinvulling", "--proef-map", str(pm), "--manifest", str(mf / "manifest.json"), "--zdr-logo", str(pm / "logo.png")]
+    argv = ["voorinvulling", "--proef-map", str(pm), "--manifest", str(mf / "manifest.json"), "--zdr-logo", str(pm / "logo.png"), "--model", "anthropic/claude-sonnet-5.5"]
     return argv, pm / "toets", docs
 
 
