@@ -1380,10 +1380,11 @@ def test_r9_draaiplan_nachttraining_voorinvulling_r9_scheiding_met_reden_en_wiss
 
 
 @pytest.mark.zwaar
-def test_r9_zwaar_rooktest_pauzeren_en_hervatten_met_rfdetr(tmp_path):
+def test_r9_zwaar_rooktest_pauzeren_en_hervatten_met_rfdetr(tmp_path, monkeypatch):
     """Rooktest CAP-6/CAP-18 (SPEC): `nacht.draai` start een echte rfdetr-fase op een kleine verzonnen set, `nacht.stop`
     pauzeert na het eerste checkpoint, en een nieuwe `draai` hervat vanaf het nieuwste checkpoint tot `train-resultaat.json`.
-    Vereist de detector-omgeving (rfdetr, voorgetrainde gewichten in de cache); het venster is vastgezet op 23:00."""
+    Vereist de detector-omgeving (rfdetr, voorgetrainde gewichten in de cache). De klok is de echte klok, dezelfde als de
+    bestandstijden (spec-rooktest-klok-20261103); het venster is altijd open en het einde ligt 9 uur na de start."""
     import sys
     import threading
     import time
@@ -1413,7 +1414,9 @@ def test_r9_zwaar_rooktest_pauzeren_en_hervatten_met_rfdetr(tmp_path):
     opdracht = [sys.executable, str(Path(train.__file__)), "train", "--fase", "nagemaakt", "--maat", "N",
                 "--dataset", str(ds), "--uit", str(uit), "--epochs", "3"]
     nacht.plan(uit, opdracht, 3, "nagemaakt")
-    nu = lambda: datetime(2026, 11, 2, 23, 0)  # binnen het venster, ongeacht het uur van de test
+    monkeypatch.setattr(nacht, "in_venster", lambda t: True)
+    monkeypatch.setattr(nacht, "einde", lambda t: t + timedelta(hours=9))
+    nu = datetime.now  # de echte klok, dezelfde als de bestandstijden van de checkpoints
     uitkomst = {}
     thread = threading.Thread(target=lambda: uitkomst.setdefault("eerste", nacht.draai(uit, nu=nu, poll_s=1)))
     thread.start()
