@@ -83,7 +83,7 @@ def tel(uitslag, meldingen, referenties=None):
         raise ValueError("zdr-weigering: de run stopt en telt niet")
     pk = us.per_keurmerk(uitslag)
     r = {}
-    for k in us.KEURMERKEN_LOS + tuple(NS):
+    for k in us.KEURMERKEN_LOS + us.NIEUW_R10 + tuple(NS):  # glutenvrij (ronde 10) telt mee als keurmerk
         met, zonder = pk[k]["met"], pk[k]["zonder"]
         r[k] = {"met": len(met), "gevonden": sum(k in _codes(meldingen.get(d)) for d in met),
                 "zonder": len(zonder), "vals": sum(k in _codes(meldingen.get(d)) for d in zonder)}
@@ -174,7 +174,7 @@ def verschil(a, b):
 
 def _per_keurmerk(record):
     c = _codes(record)
-    return {**{k: k in c for k in us.KEURMERKEN_LOS}, "NUTRISCORE": frozenset(_letters(c))}
+    return {**{k: k in c for k in us.KEURMERKEN_LOS + us.NIEUW_R10}, "NUTRISCORE": frozenset(_letters(c))}
 
 
 def verschil_etiketten(a, b):
@@ -192,7 +192,7 @@ def _trekking(uitslag, routes):
     pk = us.per_keurmerk(uitslag)
     verschil = set()
     for meld in routes.values():
-        for k in us.KEURMERKEN_LOS:
+        for k in us.KEURMERKEN_LOS + us.NIEUW_R10:
             verschil |= {(d, k) for d in pk[k]["met"] if k not in _codes(meld.get(d))}
             verschil |= {(d, k) for d in pk[k]["zonder"] if k in _codes(meld.get(d))}
         verschil |= {(d, "NUTRISCORE") for d in pk["NUTRISCORE"]["met"] if not _ns_goed(meld.get(d), uitslag[d]["nutriscore"])}
@@ -356,7 +356,7 @@ def corrigeer(uitslag, correcties):
                 if not (w == "onleesbaar" or (isinstance(w, list) and all(x in us.LETTERS for x in w))):
                     raise ValueError(f"{d}: Nutri-Score-correctie moet een lijst letters A-E of 'onleesbaar' zijn, niet {w!r}")
                 uit[d]["nutriscore"] = w if w == "onleesbaar" else sorted(set(w))
-            elif k in us.KEURMERKEN_LOS and w in us.KEUZES:
+            elif k in us.KEURMERKEN_LOS + us.NIEUW_R10 and w in us.KEUZES:
                 uit[d].setdefault("keurmerken", {})[k] = w
             else:
                 raise ValueError(f"{d}: ongeldige correctie {k!r}={w!r}")

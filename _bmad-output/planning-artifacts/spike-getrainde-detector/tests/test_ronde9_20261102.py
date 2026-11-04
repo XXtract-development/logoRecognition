@@ -43,9 +43,9 @@ NSA, NSB, NSC, NSD, NSE = NS5 = tuple(f"NUTRISCORE_{x}" for x in "ABCDE")
 NIEUW = (FSC, TRI, SPI, PP)
 R5 = (EU, GD, RC, PW, MSC, WM, VG, V)  # de 8 losse codes van ronde 5
 LOS12 = R5 + NIEUW
-DERTIEN = LOS12 + ("NUTRISCORE",)
+DERTIEN = LOS12 + ("DIET_FREE_FROM_GLUTEN", "NUTRISCORE")  # ronde 10: 14 keurmerken
 KLASSEN13 = (EU, GD, RC, NSA, NSB, NSC, PW, MSC, WM, VG, NSD, NSE, V)
-KLASSEN17 = KLASSEN13 + NIEUW
+KLASSEN17 = KLASSEN13 + NIEUW + ("DIET_FREE_FROM_GLUTEN",)  # ronde 10: 18 klassen
 GELIJKEND_R9 = sorted(["PEFC", "PEFC_CERTIFIED", "SEPARATE_COLLECTION", "RETURNABLE_CAN_NL", "RAINFOREST_ALLIANCE",
                        "RAINFOREST_ALLIANCE_PEOPLE_NATURE", "FAIR_TRADE_MARK", "FAIRTRADE_COCOA",
                        "CERTIFIED_B_CORPORATION"])
@@ -85,7 +85,7 @@ def test_r9_varianten_v_label_en_drie_fsc_varianten():  # P0, CAP-6 (meetregels 
 
 def test_r9_een_klassenlijst_van_17_voor_alle_gereedschappen():  # P0, CAP-6
     klassen = mod("train").KLASSEN
-    assert len(klassen) == 17
+    assert len(klassen) == 18  # ronde 10: 17 + glutenvrij
     for naam in ("echt", "generator", "herken", "k4aa_lokaal", "nutrigreen"):
         assert mod(naam).KLASSEN is klassen, naam
     assert mod("nutrigreen").CATEGORIEEN is mod("train").CATEGORIEEN
@@ -146,7 +146,7 @@ def test_r9_controleer_klassen_weigert_een_set_met_13_en_noemt_het_aantal_uit_kl
     tr = mod("train")
     oud = [{"id": i + 1, "name": k, "supercategory": "keurmerk"} for i, k in enumerate(KLASSEN13)]
     cfg = tr.config("nagemaakt", "N", coco_set(tmp_path / "ds", oud), tmp_path / "uit", 1, 1)
-    with pytest.raises(ValueError, match=r"\b17\b"):
+    with pytest.raises(ValueError, match=r"\b18\b"):
         tr.controleer_klassen(cfg)
 
 
@@ -556,7 +556,7 @@ def test_r9_bouw_rijen_fsc_varianten_tellen_in_de_fsc_rij():  # P1, CAP-1
         ("10000000000017", {FSC_MIX}), ("10000000000024", {FSC_REC}), ("10000000000031", {FSC_100}),
         ("10000000000048", {FSC}), ("10000000000055", {TRI, SPI}), ("10000000000062", {PP}))]
     rijen = mod("scheiding").bouw_rijen(decl, [])
-    assert set(rijen) == set(KLASSEN17)
+    assert set(rijen) == set(KLASSEN17) - {"DIET_FREE_FROM_GLUTEN"}  # ronde 10: glutenvrij heeft geen scheidingsrij (bevroren scheiding)
     assert dict(rijen[FSC]) == {gln: {"10000000000017", "10000000000024", "10000000000031", "10000000000048"}}
     assert dict(rijen[TRI]) == dict(rijen[SPI]) == {gln: {"10000000000055"}} and dict(rijen[PP]) == {gln: {"10000000000062"}}
 
@@ -1268,7 +1268,7 @@ def test_r23_echt_nutrigreen_melding_noemt_het_aantal_klassen_uit_de_code(tmp_pa
             "--uit", str(tmp_path / "ds"), "--nutrigreen", str(ng)]
     with pytest.raises(SystemExit) as e:
         ec.main(argv)
-    assert f"{len(mod('train').CATEGORIEEN)} klassen" in str(e.value.code) and "17 klassen" in str(e.value.code)
+    assert f"{len(mod('train').CATEGORIEEN)} klassen" in str(e.value.code) and "18 klassen" in str(e.value.code)
 
 
 def test_r24_caffeinate_mislukt_na_trainerstart_stopt_de_trainer_en_geeft_fout(tmp_path):  # R24

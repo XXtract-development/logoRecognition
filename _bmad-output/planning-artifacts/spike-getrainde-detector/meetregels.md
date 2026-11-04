@@ -2,7 +2,7 @@
 titel: Meetregels proef getrainde detector
 hoort-bij: SPEC.md (CAP-9, CAP-11, stopregel)
 datum: 2026-10-31
-bijgewerkt: 2026-11-02 (besluiten Friso: steekproef bij nakijken, akkoord ≥ 50 zonder; ronde 5: Nutri-Score A–E, V-label als 9e keurmerk; ronde 9 (02-11-2026): FSC, Triman, kunststofcode, PlanetProof)
+bijgewerkt: 2026-11-02 (besluiten Friso: steekproef bij nakijken, akkoord ≥ 50 zonder; ronde 5: Nutri-Score A–E, V-label als 9e keurmerk; ronde 9 (02-11-2026): FSC, Triman, kunststofcode, PlanetProof; ronde 10 (03-11-2026): glutenvrij als 14e keurmerk)
 ---
 
 # Meetregels
@@ -39,12 +39,15 @@ Een **gelijkend keurmerk** lijkt op een van de keurmerken, maar is het niet. In 
 | 11 | Triman | `TRIMAN` | kern (besluit Friso 02-11-2026) | `GREEN_DOT`, `RECYCLABLE_GENERAL_CLAIM`, `SEPARATE_COLLECTION`, `SOCIETY_PLASTICS_INDUSTRY`, `RETURNABLE_CAN_NL` |
 | 12 | Kunststofcode (harscode 1–7) | `SOCIETY_PLASTICS_INDUSTRY` | kern (besluit Friso 02-11-2026) | `RECYCLABLE_GENERAL_CLAIM`, `GREEN_DOT`, `TRIMAN`, `SEPARATE_COLLECTION`, `RETURNABLE_CAN_NL` |
 | 13 | On the way to PlanetProof | `ON_THE_WAY_TO_PLANETPROOF` | kern (besluit Friso 02-11-2026) | `RAINFOREST_ALLIANCE`, `RAINFOREST_ALLIANCE_PEOPLE_NATURE`, `FAIR_TRADE_MARK`, `FAIRTRADE_COCOA`, `CERTIFIED_B_CORPORATION` |
+| 14 | Glutenvrij (doorgekruiste aar) | `DIET_FREE_FROM_GLUTEN` (declaratie `FREE_FROM_GLUTEN`) | kern (besluit Friso 03-11-2026; licentierisico bekend, zie randvoorwaarden §4) | nog niet vastgesteld |
 
 IJkpunten zijn de drie keurmerken die ook in de vorige proef (fase B) gemeten zijn; ze maken de uitkomst vergelijkbaar met die proef. Ze krijgen dezelfde telling en hetzelfde besluit als de kern.
 
 **V-label** (besluit Friso 01-11-2026): eigen klasse en 9e keurmerk, niet langer gelijkend van Vegan Society; `VEGAN` (algemeen woord of logo) blijft gelijkend. Vegan en vegetarisch zijn hetzelfde V-label-ontwerp, alleen het woord eronder verschilt; ze tellen samen als één keurmerk **V-label aanwezig**. Overal (declaraties, referenties, AI-codes, K4-aa-detecties) telt `EUROPEAN_V_LABEL_VEGETARIAN` als `EUROPEAN_V_LABEL_VEGAN`. Reden: op de detectorschaal is het woord niet leesbaar, NutriGreen kent één klasse V-label voor beide, een ongelabelde vegetarische variant zou de detector een vrijwel gelijk logo leren negeren, en de vegetarische variant heeft 4 declaraties zonder één aan de trainingskant (gemeten 01-11-2026). Bron van de groepen: `_bmad-output/planning-artifacts/eindtest-logo-pijplijn/lookalike-groepen.md` in de hoofdmap (G2, G4, G6 voor de vier van ronde 9).
 
 **Ronde 9** (besluit Friso 02-11-2026): FSC, Triman, kunststofcode en PlanetProof zijn het 10e t/m 13e keurmerk, met dezelfde telling en hetzelfde besluit. **FSC** is één keurmerk: Mix, Recycled en 100% zijn hetzelfde ontwerp (boom met vinkje), alleen het woord eronder verschilt; overal telt een variantcode als `FOREST_STEWARDSHIP_COUNCIL_LABEL` (54 van de 56 toets-declaraties zijn Mix). **Kunststofcode** is één keurmerk zonder cijfer: aanwezig = de driehoek van pijlen met een cijfer 1–7; de GS1-declaratie kent geen cijfer en per cijfer zouden er ±3 toetsetiketten zijn. Triman en kunststofcode zijn sindsdien geen gelijkend keurmerk van een ander meer in de training (eigen klasse). In de rijen van Groene Punt, Recyclebaar, Triman en kunststofcode hierboven staan ze alleen nog voor de kandidaatkeuze; ze tellen niet als "met gelijkend keurmerk" (§4).
+
+**Ronde 10** (besluit Friso 03-11-2026): glutenvrij (`DIET_FREE_FROM_GLUTEN`) is het 14e keurmerk, met dezelfde telling en hetzelfde besluit. Het krijgt geen gelijkende keurmerken in de telling zolang die lijst niet is vastgesteld. COELIAC telt niet mee zonder apart besluit van Friso (open vraag 2 in SPEC).
 
 ## 3. Nutri-Score als groep (A–E, besluit Friso 01-11-2026)
 
@@ -71,8 +74,9 @@ IJkpunten zijn de drie keurmerken die ook in de vorige proef (fase B) gemeten zi
 > [!warning] Correctie op het doel "30–50 zonder" (akkoord Friso 01-11-2026)
 > Met 30 tot 34 etiketten zonder keurmerk is "< 10% vals" nooit te bewijzen, ook niet met nul fouten. Doel daarom: **≥ 50 zonder per keurmerk**. Dat kost geen extra etiketten: elk etiket waarop Friso een keurmerk afwezig verklaart, telt als "zonder" voor dat keurmerk (**gedeelde negatieven**).
 
-**Doel per keurmerk (13):** ≥ 16 bevestigde etiketten mét het keurmerk (liefst ≥ 25) en ≥ 50 zonder, waarvan liefst ≥ 10 met een gelijkend keurmerk (§2; n.v.t. voor Nutri-Score, dat geen gelijkend met code meer heeft). Het aantal met een gelijkend keurmerk komt uit de voorinvulling en is niet door Friso bevestigd. Codes van V-label, Nutri-Score D/E, Triman en kunststofcode tellen niet meer als gelijkend; eerder als gelijkend gekozen etiketten blijven in de toetsset en tellen aan de mét-kant van hun eigen keurmerk.
+**Doel per keurmerk (14):** ≥ 16 bevestigde etiketten mét het keurmerk (liefst ≥ 25) en ≥ 50 zonder, waarvan liefst ≥ 10 met een gelijkend keurmerk (§2; n.v.t. voor Nutri-Score, dat geen gelijkend met code meer heeft). Het aantal met een gelijkend keurmerk komt uit de voorinvulling en is niet door Friso bevestigd. Codes van V-label, Nutri-Score D/E, Triman en kunststofcode tellen niet meer als gelijkend; eerder als gelijkend gekozen etiketten blijven in de toetsset en tellen aan de mét-kant van hun eigen keurmerk.
 **Te weinig voorbeelden:** minder dan 16 mét of minder dan 35 zonder → besluit "te weinig voorbeelden", niet "mens bevestigt".
+**Gate C voor glutenvrij (besluit Friso 03-11-2026):** de 16 en de 35 uit deze regels zijn in de code afgedwongen door `poort_glutenvrij` in `train.py`. De training weigert zolang er minder dan 16 bevestigde etiketten mét voor glutenvrij zijn, of minder dan 35 bevestigde etiketten zonder glutenvrij, of als `toets/uitslag.json` ontbreekt of onleesbaar is. Stoppunt 2 blijft een besluit van Friso (DRAAIPLAN stap 4 en stap 10).
 
 ## 5. Welke etiketten tellen
 

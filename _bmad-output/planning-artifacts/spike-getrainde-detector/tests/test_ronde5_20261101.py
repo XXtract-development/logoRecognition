@@ -39,8 +39,8 @@ KLASSEN13 = KLASSEN10 + (NSD, NSE, V)
 LOS = (EU, GD, RC, PW, MSC, WM, VG, V)
 NEGEN = LOS + ("NUTRISCORE",)
 NIEUW = ("FOREST_STEWARDSHIP_COUNCIL_LABEL", "TRIMAN", "SOCIETY_PLASTICS_INDUSTRY", "ON_THE_WAY_TO_PLANETPROOF")  # ronde 9
-KLASSEN17 = KLASSEN13 + NIEUW  # ronde 9: id 1–13 gelijk, de vier achteraan
-DERTIEN = LOS + NIEUW + ("NUTRISCORE",)  # ronde 9: 13 keurmerken
+KLASSEN17 = KLASSEN13 + NIEUW + ("DIET_FREE_FROM_GLUTEN",)  # ronde 9: id 1–13 gelijk, de vier achteraan; ronde 10: glutenvrij als 18e
+DERTIEN = LOS + NIEUW + ("DIET_FREE_FROM_GLUTEN", "NUTRISCORE")  # ronde 9: 13 keurmerken; ronde 10: 14 met glutenvrij
 CATEGORIEEN = [{"id": i + 1, "name": k, "supercategory": "keurmerk"} for i, k in enumerate(KLASSEN17)]  # zoals echt._coco
 G = {k: f"100000000000{i}" for i, k in enumerate("ABCDE", 1)}  # verzonnen leveranciers
 MD5_ECHT = "6836b94d5c065aee397fad8415396e5a"
@@ -235,7 +235,7 @@ def test_r5_bouw_rijen_13_vegetarisch_telt_in_de_v_label_rij():  # P0, CAP-1
     decl = [(f"{G['A']}-{g}-528", G["A"], g, frozenset(c)) for g, c in (
         ("10000000000017", {V}), ("10000000000024", {VV}), ("10000000000031", {NSD, NSE}), ("10000000000048", {VG}))]
     rijen = mod("scheiding").bouw_rijen(decl, [])
-    assert set(rijen) == set(KLASSEN17)
+    assert set(rijen) == set(KLASSEN17) - {"DIET_FREE_FROM_GLUTEN"}  # ronde 10: glutenvrij heeft geen scheidingsrij (bevroren scheiding)
     assert dict(rijen[V]) == {G["A"]: {"10000000000017", "10000000000024"}}
     assert dict(rijen[NSD]) == dict(rijen[NSE]) == {G["A"]: {"10000000000031"}}
     assert dict(rijen[VG]) == {G["A"]: {"10000000000048"}}
@@ -359,7 +359,7 @@ def test_r5_cli_rapport_per_letter_en_stoppunt_2_alleen_over_de_negen(tmp_path, 
     assert set(uit) == {"rapport", "nutriscore_per_letter", "stoppunt_2"}
     assert set(uit["rapport"]) == set(DERTIEN) and (uit["rapport"]["NUTRISCORE"], uit["rapport"][V]) == (16, 15)
     assert uit["nutriscore_per_letter"] == {"A": 0, "B": 0, "C": 0, "D": 0, "E": 16}
-    assert uit["stoppunt_2"] == [V, *NIEUW] and code == 2  # ronde 9: zonder voorinvulling-r9 staan de vier op 0  # letters A–D op 0 zijn geen stoppunt
+    assert uit["stoppunt_2"] == [V, *NIEUW, "DIET_FREE_FROM_GLUTEN"] and code == 2  # ronde 9: zonder voorinvulling-r9 staan de vier op 0; ronde 10: glutenvrij staat ook op 0 (stoppunt 2 geldt ook voor glutenvrij)  # letters A–D op 0 zijn geen stoppunt
 
 
 def test_r5_items_dragen_het_afgeleide_v_label_voorinvulling_json_blijft_ongewijzigd(tmp_path, monkeypatch):  # P0, CAP-2
@@ -534,7 +534,7 @@ def test_r5_logos_vegetarisch_is_v_label_bron_maar_nooit_het_referentieplaatje(t
 def test_r5_logos_zonder_vegan_referentie_ontbreekt_het_v_label(tmp_path, monkeypatch):  # P1, CAP-4 (stoppunt 7)
     bronnen, _, referenties, ontbreekt = mod("generator")._logos(logos_pm(tmp_path, monkeypatch, [REFS[0], REFS[-1]]))
     assert [b["klasse"] for b in bronnen if Path(b["pad"]).name == "v-label-vegetarisch.png"] == [V]
-    assert V not in referenties and V in ontbreekt and NSD in ontbreekt and NSE in ontbreekt and len(ontbreekt) == 16
+    assert V not in referenties and V in ontbreekt and NSD in ontbreekt and NSE in ontbreekt and len(ontbreekt) == 17
 
 
 # --- echt: 17 klassen, vegetarisch → V-label, validatie-uitslag (CAP-5) ---------------------------------------------------

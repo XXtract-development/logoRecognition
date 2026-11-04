@@ -192,7 +192,7 @@ def test_cap02_rapport_telt_per_keurmerk_nutriscore_als_groep(ts):
         "d3": vi({}, []),                         # mislukte voorinvulling
         "d4": vi({**alle_nee, EU: True}, ["B", "C"]),
     })
-    assert set(r) == set(K7) | {"EUROPEAN_V_LABEL_VEGAN", "NUTRISCORE"} | set(("FOREST_STEWARDSHIP_COUNCIL_LABEL", "TRIMAN", "SOCIETY_PLASTICS_INDUSTRY", "ON_THE_WAY_TO_PLANETPROOF"))  # ronde 5: 9, ronde 9: 13 keurmerken
+    assert set(r) == set(K7) | {"EUROPEAN_V_LABEL_VEGAN", "NUTRISCORE"} | set(("FOREST_STEWARDSHIP_COUNCIL_LABEL", "TRIMAN", "SOCIETY_PLASTICS_INDUSTRY", "ON_THE_WAY_TO_PLANETPROOF", "DIET_FREE_FROM_GLUTEN"))  # ronde 5: 9, ronde 9: 13, ronde 10: 14 keurmerken
     assert (r[GD], r[EU], r["NUTRISCORE"], r[WM]) == (2, 1, 3, 0)
 
 

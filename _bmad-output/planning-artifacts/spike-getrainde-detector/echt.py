@@ -41,7 +41,7 @@ import herken
 import openrouter
 import scheiding
 from toets import aanroepen, grens_uit, jpeg
-from train import CATEGORIEEN, KLASSEN, VARIANTEN
+from train import CATEGORIEEN, GLUTEN, KLASSEN, VARIANTEN, PoortGlutenvrij, poort_glutenvrij
 
 # meetregels §2; Triman en kunststofcode zijn sinds ronde 9 een eigen klasse, PEFC en de PlanetProof-groep erbij
 GELIJKEND = ("AGRICULTURE_BIOLOGIQUE", "BDIH_LOGO", "SEPARATE_COLLECTION", "RETURNABLE_CAN_NL",
@@ -412,6 +412,16 @@ def main(argv=None):
                    "codes": zeker, "dhash": dh, "meldingen": sorted({x["code"] for x in r["vakjes"]})})
     overgeslagen = []
     train, valid = valsplit(et, overgeslagen=overgeslagen)
+    gid = next(c["id"] for c in CATEGORIEEN if c["name"] == GLUTEN)
+    met_glutenvrij = (any(GLUTEN in e["codes"] for e in et if e["doc_id"] in train)
+                      or bool(ng and any(x["category_id"] == gid for x in ng["annotations"]))
+                      or bool(a.meng and any(x["category_id"] == gid for x in
+                                             json.loads((a.meng / "_annotations.coco.json").read_text())["annotations"])))
+    if met_glutenvrij:  # Gate C (ronde 10): de poort hoort bij de bouw, vóór er iets naar train/ of valid/ geschreven wordt
+        try:
+            poort_glutenvrij(a.proef_map / "toets" / "uitslag.json")
+        except PoortGlutenvrij as e:
+            raise SystemExit(f"Gate C: {e}") from None
     for kant, docs in (("train", train), ("valid", valid)):
         _coco(naar_tegels([e for e in et if e["doc_id"] in docs], train_glns, a.tegel, a.overlap), pad, uit / kant)
     rp_ng, rp_off, n_nep = None, None, 0

@@ -76,6 +76,16 @@ def lees_declaraties(pad):
     return uit
 
 
+# Verpakkingscodes die niet als keurmerk gemeten worden (spec ronde 10, scope). PLACEHOLDER-namen: de exacte bronnamen
+# voor glas en het verpakkingspictogram staan nog niet vast (spec open vraag 3); niet in de declaratiedata gevonden.
+UITGESLOTEN_CODES = {"VERPAKKING_GLAS", "VERPAKKING_PICTOGRAM"}
+
+
+def klasse_tabel(codes):
+    """Meetlijst uit de bronregels: `codes` zonder UITGESLOTEN_CODES, volgorde behouden."""
+    return [c for c in codes if c not in UITGESLOTEN_CODES]
+
+
 def lees_alcohol(pad):
     """[(gln, gtin)] uit de alcoholkandidaten (GLN, GTIN, brick, omschrijving)."""
     with open(pad, encoding="utf-8") as f:

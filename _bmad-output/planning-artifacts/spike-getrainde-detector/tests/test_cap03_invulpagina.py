@@ -65,7 +65,7 @@ def get(url, pad):
 # --- gedeelde uitslagfunctie ---------------------------------------------------------------------------------------
 
 def test_cap03_keurmerklijsten(us):
-    assert tuple(us.KEURMERKEN_LOS) == KL12 and tuple(us.KEURMERKEN) == KL12 + ("NUTRISCORE",)  # ronde 9: 12 + Nutri-Score
+    assert tuple(us.KEURMERKEN_LOS) == KL12 and tuple(us.KEURMERKEN) == KL12 + ("DIET_FREE_FROM_GLUTEN", "NUTRISCORE")  # ronde 10: 12 + glutenvrij + Nutri-Score
 
 
 def test_cap03_valideer_accepteert_volledig_bevestigd_en_onleesbaar(us):

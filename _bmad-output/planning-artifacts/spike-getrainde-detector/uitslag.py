@@ -5,7 +5,9 @@ KEURMERKEN_R5 = ("EU_ORGANIC_FARMING", "GREEN_DOT", "RECYCLABLE_GENERAL_CLAIM", 
                  "MARINE_STEWARDSHIP_COUNCIL_LABEL", "WEIDEMELK", "VEGAN_SOCIETY_VEGAN_LOGO", "EUROPEAN_V_LABEL_VEGAN")
 NIEUW_R9 = ("FOREST_STEWARDSHIP_COUNCIL_LABEL", "TRIMAN", "SOCIETY_PLASTICS_INDUSTRY", "ON_THE_WAY_TO_PLANETPROOF")
 KEURMERKEN_LOS = KEURMERKEN_R5 + NIEUW_R9  # 12 (ronde 9: besluit Friso 02-11-2026)
-KEURMERKEN = KEURMERKEN_LOS + ("NUTRISCORE",)  # de 13 (meetregels §2; V-label en NS A–E: besluit Friso 01-11-2026)
+# ronde 10 (besluit Friso 03-11-2026): glutenvrij is toegestaan als sleutel, niet verplicht; bestaande bevestigingen blijven geldig
+NIEUW_R10 = ("DIET_FREE_FROM_GLUTEN",)
+KEURMERKEN = KEURMERKEN_LOS + NIEUW_R10 + ("NUTRISCORE",)  # de 14 (13 + glutenvrij; meetregels §2; V-label en NS A–E: besluit Friso 01-11-2026)
 LETTERS = ("A", "B", "C", "D", "E")
 KEUZES = ("aanwezig", "afwezig", "onzeker")
 STATUSSEN = ("bevestigd", "onleesbaar")
@@ -27,7 +29,7 @@ def valideer(invoer, bekend, vereist=None):
     if "status" in w and w["status"] not in STATUSSEN:
         raise ValueError("onbekende status")
     k = w.get("keurmerken", {})
-    if not isinstance(k, dict) or set(k) - set(KEURMERKEN_LOS) or any(v not in KEUZES for v in k.values()):
+    if not isinstance(k, dict) or set(k) - set(KEURMERKEN_LOS + NIEUW_R10) or any(v not in KEUZES for v in k.values()):
         raise ValueError("ongeldige keurmerken")
     if "nutriscore" in w:
         ns = w["nutriscore"]
@@ -68,7 +70,7 @@ def per_keurmerk(uitslag):
             continue
         telt = bevestigde_codes(r)  # een losse keuze op een nieuwe rij telt pas na Bevestigen
         for code, keuze in r.get("keurmerken", {}).items():
-            if keuze in ("aanwezig", "afwezig") and code in KEURMERKEN_LOS and code in telt:
+            if keuze in ("aanwezig", "afwezig") and code in KEURMERKEN_LOS + NIEUW_R10 and code in telt:
                 uit[code]["met" if keuze == "aanwezig" else "zonder"].add(doc)
         ns = r.get("nutriscore")
         if not isinstance(ns, list):

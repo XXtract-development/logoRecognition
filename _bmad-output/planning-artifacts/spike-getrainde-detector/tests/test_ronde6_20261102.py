@@ -190,7 +190,7 @@ def test_r6_off_klassetabel_alleen_trainklassen_v_label_drie_ids_geen_recyclebaa
     off, klassen = mod("off"), mod("train").KLASSEN
     assert {k: tuple(tuple(p) for p in v) for k, v in off.ZOEK.items() if k in ZOEK} == ZOEK
     assert set(off.ZOEK) - set(ZOEK) == {"FOREST_STEWARDSHIP_COUNCIL_LABEL", "TRIMAN", "SOCIETY_PLASTICS_INDUSTRY",
-                                         "ON_THE_WAY_TO_PLANETPROOF"}  # ronde 9 (de vier staan in test_ronde9)
+                                         "ON_THE_WAY_TO_PLANETPROOF", "DIET_FREE_FROM_GLUTEN"}  # ronde 9 (de vier staan in test_ronde9); ronde 10: glutenvrij
     assert set(off.ZOEK) <= set(klassen) and RC not in off.ZOEK and VV not in off.ZOEK
     assert [w for _, w in off.ZOEK[V]] == ["en:european-vegetarian-union-vegan", "en:european-vegetarian-union-vegetarian",
                                           "en:european-vegetarian-union"]

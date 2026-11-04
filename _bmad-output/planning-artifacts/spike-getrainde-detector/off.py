@@ -76,6 +76,9 @@ ZOEK = {  # trainingsset §11; geen RECYCLABLE_GENERAL_CLAIM (steekproef afgewez
         ("packaging", w) for w in ("01-pet", "1-pet", "02-hdpe", "2-hdpe", "02-pe-hd", "03-pvc", "04-ldpe", "4-ldpe",
                                    "04-pe-ld", "05-pp", "5-pp", "06-ps", "07-other", "7-other", "07-o", "7-o")),
     "ON_THE_WAY_TO_PLANETPROOF": (("label", "en:planet-proof"),),
+    # ronde 10 (besluit Friso 03-11-2026): Crossed Grain-logo. Id gemeten in static.openfoodfacts.org/data/taxonomies/
+    # labels.json op 03-11-2026 ("Crossed Grain Trademark"); niet in de research gevonden. "en:no-gluten" is een claim, geen logo.
+    "DIET_FREE_FROM_GLUTEN": (("label", "en:crossed-grain-trademark"),),
 }
 assert set(ZOEK) <= set(KLASSEN)
 

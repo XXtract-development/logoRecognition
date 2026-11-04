@@ -17,6 +17,12 @@ gedeelde zdr-client.
                   [--docs <json>] [--grens <dollar> --besluit "<verwijzing>"] [--items <pad>]
                   (ronde 9: alleen FSC, Triman, kunststofcode, PlanetProof; lege tegels niet verstuurd; schrijft
                    <toets>/voorinvulling-r9.json en <toets>/items-r9.json; items.json blijft staan tot de wissel)
+  python toets.py voorinvulling-r10 --proef-map <PM> --manifest <gecombineerd/manifest.json> --zdr-logo <png>
+                  [--docs <json>] [--grens <dollar> --besluit "<verwijzing>"] [--model Haiku]
+                  (ronde 10, Gate B: alleen glutenvrij; eerst de 17 met glutenvrij-declaratie; de cap van $1 wordt per
+                   aanroep afgedwongen (stoppunt 5, exit 2); een grens boven $1 weigert de route; eigen post in
+                   uitgaven.json; schrijft <toets>/voorinvulling-r10-<model>.json, items-r10-<model>.json en
+                   zdr-proef-r10-<model>.json; leest en schrijft geen Sonnet-bestand)
   python toets.py rapport --proef-map <PM>   (leest ook <toets>/voorinvulling-r9.json als die bestaat)
   python toets.py lijst --proef-map <PM> --manifest <gecombineerd/manifest.json>   (bevestigde toetsetiketten voor de runs)
 """
@@ -40,10 +46,11 @@ import uitslag
 
 LOS = uitslag.KEURMERKEN_LOS  # de 12 losse keurmerken (V-label: besluit Friso 01-11-2026; de vier van ronde 9: 02-11-2026)
 NIEUW = uitslag.NIEUW_R9  # FSC, Triman, kunststofcode, PlanetProof
+NIEUW_R10 = uitslag.NIEUW_R10  # glutenvrij (besluit Friso 03-11-2026)
 NS = tuple(f"NUTRISCORE_{x}" for x in uitslag.LETTERS)  # A–E
 V, VV = "EUROPEAN_V_LABEL_VEGAN", "EUROPEAN_V_LABEL_VEGETARIAN"
 FSC, TRI, SPI, PP = NIEUW
-CODES = LOS + ("NUTRISCORE",)  # sleutels per keurmerk (rapport, melding)
+CODES = LOS + ("NUTRISCORE",) + NIEUW_R10  # sleutels per keurmerk (rapport, melding); ronde 10: glutenvrij erbij
 AANVUL_CODES = CODES + NS  # --alleen/--alle: ook één Nutri-Score-letter (toetsset §4)
 POOL = "pool-met-converted-laag-20261008.txt"  # docs met print-laag, in <PM>/invoer/
 GELIJKEND = {  # meetregels §2 (codes; "nationale bio-logo's" en "andere gekleurde schalen" hebben geen code)
@@ -124,6 +131,26 @@ PROMPT_R9 = (
     "\nFor the plastic resin code the number inside the triangle does not matter: any number 1-7 counts."
     "\nAlso list look-alike marks you see from: " + ", ".join(GELIJKEND_R9) + "."
 )
+GLUTEN = NIEUW_R10[0]  # DIET_FREE_FROM_GLUTEN
+PROMPT_R10 = (  # ronde 10: alleen het glutenvrij-logo, geen gelijkende codes (er zijn er niet vastgelegd)
+    "You check a product label for printed marks. Image 1 is the whole label; the next images are tiles of the same "
+    "label at full resolution, numbered 0, 1, 2, ... in the order given. Say whether this mark is printed on the label "
+    "as a logo or pictogram (text alone does not count) and list the tile numbers where you see it:\n"
+    f"- {GLUTEN}: gluten-free mark (Crossed Grain): a grain ear crossed out with a diagonal line, often with the words "
+    "'gluten free' or 'glutenvrij' near it"
+)
+SCHEMA_R10 = {
+    "type": "object",
+    "properties": {
+        "keurmerken": {"type": "array", "items": {
+            "type": "object",
+            "properties": {"code": {"type": "string", "enum": list(NIEUW_R10)}, "aanwezig": {"type": "boolean"},
+                           "tegels": {"type": "array", "items": {"type": "integer"}}},
+            "required": ["code", "aanwezig", "tegels"], "additionalProperties": False}},
+    },
+    "required": ["keurmerken"],
+    "additionalProperties": False,
+}
 
 
 def _sha(seed, gtin):
@@ -195,8 +222,14 @@ def ontdubbel(items):
 RONDE = 5  # voorinvullingen met dit kenmerk vroegen het V-label zelf; zonder kenmerk: van vóór ronde 5 (toetsset §5)
 MAX_TEGELS = 16  # per aanroep, naast het hele etiket (grens van de aanbieder op beelden per verzoek)
 GRENS_VOORINVULLING = 73.0  # dollar, hard (besluit Friso 02-11-2026 22:20: verhoogd van $65 naar ±$73; randvoorwaarden §3)
+GRENS_R10 = 1.0  # dollar, hard: de glutenvrij-voorinvulling (Gate B, besluit Friso 03-11-2026); hoger = nieuw besluit
+# Marge boven de kost van één Haiku-aanroep. De cap wordt per aanroep met deze reserve afgedwongen: een aanroep start
+# alleen als uitgegeven + RESERVE_R10 (of de kost van het vorige etiket, als die groter is) binnen de grens past. Zo kan
+# één aanroep de $1 niet passeren, zolang die aanroep minder dan de reserve kost. Effectief plafond per start: grens − reserve.
+RESERVE_R10 = 0.05
 PER_AANROEP = 0.06  # verwachte kosten per aanroep (heel etiket + hoogstens 16 tegels; randvoorwaarden §3)
 SONNET = "anthropic/claude-sonnet-5.5"
+HAIKU_R10 = "anthropic/claude-haiku-5.5"  # de enige route-modelpin van voorinvulling-r10 (besluit Friso 03-11-2026)
 
 
 def bestandsnaam(basis, model):
@@ -246,26 +279,28 @@ def leeg(im):
     return float(np.asarray(im.convert("L"), dtype=np.float64).std()) < 3
 
 
-def voorinvulling_r9(client, beeld, tegels, index):
+def voorinvulling_r9(client, beeld, tegels, index, codes=NIEUW, prompt=PROMPT_R9, schema=SCHEMA_R9, ronde=9,
+                     verwacht=PER_AANROEP):
     """Ronde 9 (toetsset §5): alleen de vier nieuwe keurmerken. `tegels` = de niet-lege tegels, `index` = hun
     etiketindex; verdeling en samenvoegen zoals `voorinvulling`, hinttegels op etiketindex. Mislukt → lege velden met
-    `fout`; RunStop gaat door."""
+    `fout`; RunStop gaat door. `codes`, `prompt`, `schema`, `ronde` en `verwacht` maken de route herbruikbaar voor
+    ronde 10 (glutenvrij); de standaardwaarden zijn die van ronde 9."""
     leeg_ = {"keurmerken": {}, "hinttegels": {}, "gelijkend": [], "model": client.model, "kosten": 0.0,
-             "tijd": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "ronde": 9}
+             "tijd": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "ronde": ronde}
     keurmerken, hint, gelijkend, prijs, ruw = {}, {}, set(), 0.0, []
     try:
         for r in openrouter.delen([len(t) for t in tegels], vast=len(beeld), max_aantal=MAX_TEGELS):
             deel = tegels[r.start:r.stop]
-            a, p = client.vraag(PROMPT_R9, [beeld, *deel], SCHEMA_R9, verwacht=PER_AANROEP)
+            a, p = client.vraag(prompt, [beeld, *deel], schema, verwacht=verwacht)
             prijs += p
             ruw.append(a)
             for k in a["keurmerken"]:
-                if k["code"] not in NIEUW:
+                if k["code"] not in codes:
                     continue
                 keurmerken[k["code"]] = keurmerken.get(k["code"], False) or bool(k["aanwezig"])
                 if k["aanwezig"]:
                     hint.setdefault(k["code"], set()).update(index[r.start + i] for i in k["tegels"] if 0 <= i < len(deel))
-            gelijkend |= set(a["gelijkend"])
+            gelijkend |= set(a.get("gelijkend", []))
     except openrouter.EtiketFout as e:
         return {**leeg_, "kosten": prijs + e.kosten, "fout": e.klasse}
     except (TypeError, AttributeError, KeyError, ValueError, IndexError):  # antwoord niet in de verwachte vorm
@@ -317,7 +352,7 @@ def rapport(voorinvullingen, r9=None):
     r = dict.fromkeys(CODES, 0)
     r9 = r9 or {}
     for v in (samenvoegen(v, r9.get(d)) for d, v in voorinvullingen.items()):
-        for c in LOS:
+        for c in LOS + NIEUW_R10:  # ronde 10: glutenvrij telt mee, anders blijft die sleutel altijd 0
             r[c] += bool(v.get("keurmerken", {}).get(c))
         r["NUTRISCORE"] += bool(set(v.get("nutriscore", [])) & set(uitslag.LETTERS))
     return r
@@ -434,6 +469,14 @@ def main(argv=None):
     v9.add_argument("--grens", type=float, help=f"andere uitgavengrens dan ${GRENS_VOORINVULLING:.0f}; alleen met --besluit")
     v9.add_argument("--besluit", help="verwijzing naar het besluit van Friso over --grens")
     v9.add_argument("--items", type=Path, help="nieuwe itemlijst (standaard <toets>/items-r9.json; nooit items.json)")
+    v10 = sub.add_parser("voorinvulling-r10")
+    v10.add_argument("--proef-map", required=True, type=Path)
+    v10.add_argument("--manifest", required=True, type=Path, help="manifest.json van beelden.py bouwen")
+    v10.add_argument("--model", default="anthropic/claude-haiku-5.5")
+    v10.add_argument("--zdr-logo", type=Path, required=True, help="niet-klantbeeld (officieel logo) voor de zdr-proef")
+    v10.add_argument("--docs", type=Path, help="json-lijst doc_id's; standaard alle in het manifest")
+    v10.add_argument("--grens", type=float, help=f"andere uitgavengrens dan ${GRENS_R10:.0f}; hoger weigert de route")
+    v10.add_argument("--besluit", help="verwijzing naar het besluit van Friso over --grens")
     r = sub.add_parser("rapport")
     r.add_argument("--proef-map", required=True, type=Path)
     a = ap.parse_args(argv)
@@ -448,8 +491,13 @@ def main(argv=None):
             ap.error("Nutri-Score (groep of letter) bij --alleen en --alle samen: de groep heeft één maximum")
         if a.naam is not None and (Path(a.naam).name != a.naam or a.naam in ("", ".", "..")):
             ap.error("--naam is een bestandsnaam zonder map (geen /, . of ..)")
-    if a.stap in ("voorinvulling", "voorinvulling-r9"):
-        grens, besluit = grens_uit(ap, a, GRENS_VOORINVULLING)
+    if a.stap == "voorinvulling-r10" and a.model != HAIKU_R10:
+        ap.error(f"voorinvulling-r10 gebruikt alleen {HAIKU_R10} (haiku); een ander model is geweigerd, niets gestart")
+    if a.stap == "voorinvulling-r10" and a.grens is not None and a.grens > GRENS_R10:
+        ap.error(f"--grens boven ${GRENS_R10:.2f} voor voorinvulling-r10 is geweigerd: die grens is een besluit van Friso "
+                 "(Gate B) en wordt niet met een opdrachtregelvlag verhoogd; niets gestart")
+    if a.stap in ("voorinvulling", "voorinvulling-r9", "voorinvulling-r10"):
+        grens, besluit = grens_uit(ap, a, GRENS_R10 if a.stap == "voorinvulling-r10" else GRENS_VOORINVULLING)
     toets_map = beelden.veilig_doel(a.proef_map / "toets")
     toets_map.mkdir(parents=True, exist_ok=True)
 
@@ -538,6 +586,8 @@ def main(argv=None):
         print(len(items), "etiketten, uitgegeven $%.2f" % bewaker.uitgegeven)
     elif a.stap == "voorinvulling-r9":
         return _voorinvulling_r9(a, toets_map, grens, besluit)
+    elif a.stap == "voorinvulling-r10":
+        return _voorinvulling_r10(a, toets_map, grens, besluit)
     elif a.stap == "ontdubbel":
         from PIL import Image
 
@@ -574,12 +624,12 @@ def main(argv=None):
     return 0
 
 
-def _hints(im, vakken, doc, hinttegels, map_):
+def _hints(im, vakken, doc, hinttegels, map_, codes=NIEUW):
     """Hintbeelden (PNG, hoogstens 400 px) van de eerste twee hinttegels per code; bestaande blijven staan. Alleen de
-    vier nieuwe codes van ronde 9; de oude acht krijgen geen hintbeeld."""
+    vier nieuwe codes van ronde 9 (`codes` voor ronde 10); de oude acht krijgen geen hintbeeld."""
     uit = []
     for c, idx in sorted(hinttegels.items()):
-        if c not in NIEUW:
+        if c not in codes:
             continue
         for i in idx[:2]:
             if 0 <= i < len(vakken):
@@ -658,6 +708,89 @@ def _voorinvulling_r9(a, toets_map, grens, besluit):
                                                                                toets_map),
                       "voorinvulling": samen})
     (toets_map / bestandsnaam("zdr-proef-r9", a.model)).write_text(json.dumps({**proef, "grens": grens, "besluit": besluit}) + "\n")
+    items_pad.write_text(json.dumps(items, indent=1) + "\n")
+    print(len(items), "etiketten →", items_pad, "; uitgegeven $%.2f" % bewaker.uitgegeven)
+    return 0
+
+
+def volgorde_r10(docs, declared):
+    """Volgorde van de glutenvrij-voorinvulling (Gate B): eerst de docs met glutenvrij-declaratie (`declared`), in de
+    volgorde van `docs`, daarna de rest. Zo dekt de cap van $1 de 17 met declaratie eerst."""
+    return [d for d in docs if d in declared] + [d for d in docs if d not in declared]
+
+
+def glutenvrij_declaraties(proef_map):
+    """doc_id's met glutenvrij-declaratie, uit de declaratiedata (scheiding.lees_declaraties; codes = t3777 ∪ dieet,
+    herkend aan FREE_FROM_GLUTEN)."""
+    decl = scheiding.lees_declaraties(proef_map / "invoer" / "declaraties-prod-basiseenheden-20261008.tsv")
+    return {doc for doc, _, _, codes in decl if "FREE_FROM_GLUTEN" in codes}
+
+
+def _voorinvulling_r10(a, toets_map, grens, besluit):
+    """Opdrachtregel `voorinvulling-r10` (spec ronde 10, Gate B; Haiku, eigen post "voorinvulling glutenvrij (gate B)").
+    Geen startprojectie over alle etiketten: de cap wordt per aanroep afgedwongen. Het effectieve plafond voor de start
+    van elke aanroep is grens − RESERVE_R10 ($0,95 bij $1): `Client.vraag` weigert een aanroep als uitgegeven +
+    max(kost van het vorige etiket, RESERVE_R10) boven de grens uitkomt (RunStop "budget") → stoppunt 5, exit 2, zonder
+    die aanroep. Zo kan één aanroep de $1 niet passeren zolang hij minder dan de reserve kost. De zdr-proef valt binnen
+    de post: zijn kost wordt na de aanroep op het grootboek geboekt. Leest en schrijft alleen de r10-bestanden."""
+    from PIL import Image
+
+    import herken
+    import kosten
+
+    manifest = json.loads(a.manifest.read_text())
+    docs = sorted(d for d, m in manifest.items() if "sha256" in m)
+    if a.docs:
+        docs = [d for d in json.loads(a.docs.read_text()) if d in set(docs)]
+    docs = volgorde_r10(docs, glutenvrij_declaraties(a.proef_map))
+    uitvoer = toets_map / bestandsnaam("voorinvulling-r10", a.model)
+    r10 = json.loads(uitvoer.read_text()) if uitvoer.exists() else {}
+    open_ = {d for d in docs if d not in r10 or "fout" in r10[d]}  # klare etiketten worden niet opnieuw betaald
+    bewaker = kosten.Bewaker("voorinvulling glutenvrij (gate B)", 0.0, grootboek=a.proef_map / "uitgaven.json", grens=grens)
+    print(f"grens voorinvulling glutenvrij ${grens:.2f}", f"(besluit: {besluit})" if besluit else "(standaard)",
+          f"; uitgegeven ${bewaker.uitgegeven:.2f}; {len(open_)} etiketten open")
+    client = openrouter.Client(a.model, "voorinvulling", bewaker=bewaker)
+    proef = client.zdr_proef(a.zdr_logo.read_bytes())  # openrouter.py boekt de proef niet; die kost boekt deze route
+    (toets_map / "beelden").mkdir(exist_ok=True)
+
+    def niet_leeg(im):
+        vakken = herken.tegels(*im.size)
+        return vakken, [i for i, t in enumerate(vakken) if not leeg(im.crop(t))]
+
+    items, geweigerd, laatst = [], 0, 0.0
+    try:
+        bewaker.boek(proef.get("kosten", 0.0))  # de zdr-proef valt binnen de post (F2); OSError hieronder meldt het
+        for doc in docs:
+            pad = a.manifest.parent / f"{doc}.png"
+            im = Image.open(pad).convert("RGB")
+            vakken, idx = niet_leeg(im)
+            if doc in open_:
+                overzicht = im.copy()
+                overzicht.thumbnail((1500, 1500))
+                r10[doc] = {**voorinvulling_r9(client, jpeg(overzicht), [jpeg(im.crop(vakken[i])) for i in idx], idx,
+                                               codes=NIEUW_R10, prompt=PROMPT_R10, schema=SCHEMA_R10, ronde=10,
+                                               verwacht=max(laatst, RESERVE_R10)), "beeldtype": "jpeg"}
+                laatst = r10[doc].get("kosten", 0.0)
+                uitvoer.write_text(json.dumps(r10, indent=1) + "\n")  # na elk etiket: een onderbreking verliest niets
+                geweigerd = geweigerd + 1 if r10[doc].get("fout") == "geweigerd" else 0
+                if geweigerd >= 5:
+                    raise SystemExit("5 etiketten op rij geweigerd door de aanbieder: run gestopt (zie randvoorwaarden §2)")
+            volledig = toets_map / "beelden" / f"{doc}.png"  # niet overschreven: zelfde beelden als ronde 9
+            if not volledig.exists():
+                shutil.copyfile(pad, volledig)
+            items.append({"id": doc, "beeld": f"beelden/{doc}.png",
+                          "hint": _hints(im, vakken, doc, r10[doc].get("hinttegels", {}), toets_map, codes=NIEUW_R10),
+                          "voorinvulling": r10[doc]})
+    except openrouter.RunStop as e:  # stoppunt 5 (budget) of een ander stopgeval van de aanbieder
+        print(f"stoppunt 5 ({e.reden}): run gestopt vóór de eerstvolgende betaalde aanroep; uitgegeven ${bewaker.uitgegeven:.4f} "
+              f"van grens ${grens:.2f}", file=sys.stderr)
+        return 2
+    except OSError as e:  # grootboek of uitvoer niet geschreven: het bedrag van de laatste aanroep staat in het geheugen
+        print(f"grootboek of uitvoer niet geschreven ({e}); uitgegeven in dit proces ${bewaker.uitgegeven:.4f}: "
+              "controleer uitgaven.json voordat je herstart", file=sys.stderr)
+        return 2
+    (toets_map / bestandsnaam("zdr-proef-r10", a.model)).write_text(json.dumps({**proef, "grens": grens, "besluit": besluit}) + "\n")
+    items_pad = toets_map / bestandsnaam("items-r10", a.model)
     items_pad.write_text(json.dumps(items, indent=1) + "\n")
     print(len(items), "etiketten →", items_pad, "; uitgegeven $%.2f" % bewaker.uitgegeven)
     return 0

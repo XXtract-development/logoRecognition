@@ -18,16 +18,21 @@ import sys
 import time
 from pathlib import Path
 
+import uitslag as uitslag_mod
 from beelden import veilig_doel
 
 MATEN = {"N": "RFDETRNano", "S": "RFDETRSmall", "M": "RFDETRMedium", "L": "RFDETRLarge"}
 FASEN = ("nagemaakt", "echt")
 # De enige klassenlijst (trainingsset §1): COCO-categorie-id = index + 1. De drie van ronde 5 (besluit Friso 01-11-2026)
 # staan achteraan, zodat id 1–10 gelijk blijven; de vier van ronde 9 (besluit Friso 02-11-2026) daarachter (id 1–13 gelijk).
+# Glutenvrij (ronde 10, besluit Friso 03-11-2026) is de 18e, achteraan (id 1–17 gelijk).
+GLUTEN = "DIET_FREE_FROM_GLUTEN"
 KLASSEN = ("EU_ORGANIC_FARMING", "GREEN_DOT", "RECYCLABLE_GENERAL_CLAIM", "NUTRISCORE_A", "NUTRISCORE_B", "NUTRISCORE_C",
            "PREGNANCY_WARNING", "MARINE_STEWARDSHIP_COUNCIL_LABEL", "WEIDEMELK", "VEGAN_SOCIETY_VEGAN_LOGO",
            "NUTRISCORE_D", "NUTRISCORE_E", "EUROPEAN_V_LABEL_VEGAN",
-           "FOREST_STEWARDSHIP_COUNCIL_LABEL", "TRIMAN", "SOCIETY_PLASTICS_INDUSTRY", "ON_THE_WAY_TO_PLANETPROOF")
+           "FOREST_STEWARDSHIP_COUNCIL_LABEL", "TRIMAN", "SOCIETY_PLASTICS_INDUSTRY", "ON_THE_WAY_TO_PLANETPROOF",
+           GLUTEN)
+MIN_GLUTEN_MET, MIN_ZONDER = 16, 35  # Gate C (stoppunt 2, meetregels §4 en §7)
 _FSC = "FOREST_STEWARDSHIP_COUNCIL_LABEL"
 VARIANTEN = {"EUROPEAN_V_LABEL_VEGETARIAN": "EUROPEAN_V_LABEL_VEGAN",  # variant → klasse (meetregels §2)
              "FOREST_STEWARDSHIP_COUNCIL_MIX": _FSC, "FOREST_STEWARDSHIP_COUNCIL_RECYCLED": _FSC,
@@ -206,6 +211,38 @@ def controleer_klassen(cfg):
         klassen = json.loads(vorige.read_text()).get("klassen") if vorige.exists() else None
         if klassen != list(KLASSEN):
             raise ValueError(f"startcheckpoint: {vorige} ontbreekt of heeft andere klassen ({klassen})")
+
+
+class PoortGlutenvrij(Exception):
+    """Gate C (besluit Friso 03-11-2026): te weinig bevestigde etiketten voor glutenvrij, of de toetsset is te klein."""
+
+
+def poort_glutenvrij(uitslag_pad):
+    """Gate C: weigert zolang de toetsset te klein is om glutenvrij te meten. Fail-closed: een ontbrekend of onleesbaar
+    `toets/uitslag.json` weigert ook. Telt bevestigde etiketten (status "bevestigd") waarvan GLUTEN in bevestigde_codes
+    staat (uitslag.bevestigde_codes), met keurmerken[GLUTEN] "aanwezig" (mét) of "afwezig" (zonder); minder dan
+    MIN_GLUTEN_MET mét of minder dan MIN_ZONDER zonder weigert met het aantal.
+
+    Geroepen door de dataset-bouwer (`echt.py dataset`) als de set glutenvrij-beelden bevat, níet door `train()`: de
+    rooktests (test_cap06, test_ronde9) bouwen hun eigen mini-set met alle klassen en mogen niet door deze poort vallen."""
+    try:
+        uitslag_gelezen = json.loads(Path(uitslag_pad).read_text(encoding="utf-8"))
+    except (OSError, ValueError) as e:
+        raise PoortGlutenvrij(f"{uitslag_pad} ontbreekt of is onleesbaar; training geweigerd") from e
+    if not isinstance(uitslag_gelezen, dict):
+        raise PoortGlutenvrij(f"{uitslag_pad} heeft niet het verwachte formaat; training geweigerd")
+    # Zelfde semantiek als de uitslag: alleen wat in bevestigde_codes staat telt (uitslag.bevestigde_codes, ook de telling
+    # op de pagina en in per_keurmerk), dus een losse keuze die nog niet bevestigd is telt niet mee.
+    telt = [r for r in uitslag_gelezen.values()
+            if isinstance(r, dict) and isinstance(r.get("keurmerken"), dict) and GLUTEN in uitslag_mod.bevestigde_codes(r)]
+    met = sum(1 for r in telt if r["keurmerken"].get(GLUTEN) == "aanwezig")
+    zonder = sum(1 for r in telt if r["keurmerken"].get(GLUTEN) == "afwezig")
+    if met < MIN_GLUTEN_MET:
+        raise PoortGlutenvrij(f"{met} bevestigde etiketten mét glutenvrij; minimaal {MIN_GLUTEN_MET} nodig (stoppunt 2), "
+                              "training geweigerd")
+    if zonder < MIN_ZONDER:
+        raise PoortGlutenvrij(f"{zonder} bevestigde etiketten zonder glutenvrij; minimaal {MIN_ZONDER} nodig "
+                              "(meetregels §4 en §7), training geweigerd")
 
 
 def train(cfg):
