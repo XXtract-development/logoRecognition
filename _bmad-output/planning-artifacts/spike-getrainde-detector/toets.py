@@ -223,6 +223,10 @@ RONDE = 5  # voorinvullingen met dit kenmerk vroegen het V-label zelf; zonder ke
 MAX_TEGELS = 16  # per aanroep, naast het hele etiket (grens van de aanbieder op beelden per verzoek)
 GRENS_VOORINVULLING = 73.0  # dollar, hard (besluit Friso 02-11-2026 22:20: verhoogd van $65 naar ±$73; randvoorwaarden §3)
 GRENS_R10 = 1.0  # dollar, hard: de glutenvrij-voorinvulling (Gate B, besluit Friso 03-11-2026); hoger = nieuw besluit
+# besluit Friso 04-11-2026: restant van de voorinvulling glutenvrij met een extra $0,60 bovenop het verbruik;
+# alleen met precies deze besluitverwijzing en niet boven het totaal (verbruik 0,95055 + 0,60)
+CAP_BESLUIT_0411 = "besluit Friso 04-11-2026: restant voorinvulling glutenvrij, extra $0,60 (wacht op Friso: 'Doe de restant voorinvulling')"
+CAP_TOTAAL_0411 = 1.55055
 # Marge boven de kost van één Haiku-aanroep. De cap wordt per aanroep met deze reserve afgedwongen: een aanroep start
 # alleen als uitgegeven + RESERVE_R10 (of de kost van het vorige etiket, als die groter is) binnen de grens past. Zo kan
 # één aanroep de $1 niet passeren, zolang die aanroep minder dan de reserve kost. Effectief plafond per start: grens − reserve.
@@ -493,7 +497,8 @@ def main(argv=None):
             ap.error("--naam is een bestandsnaam zonder map (geen /, . of ..)")
     if a.stap == "voorinvulling-r10" and a.model != HAIKU_R10:
         ap.error(f"voorinvulling-r10 gebruikt alleen {HAIKU_R10} (haiku); een ander model is geweigerd, niets gestart")
-    if a.stap == "voorinvulling-r10" and a.grens is not None and a.grens > GRENS_R10:
+    if a.stap == "voorinvulling-r10" and a.grens is not None and a.grens > GRENS_R10 and not (
+            (a.besluit or "").strip() == CAP_BESLUIT_0411 and a.grens <= CAP_TOTAAL_0411 + 1e-9):
         ap.error(f"--grens boven ${GRENS_R10:.2f} voor voorinvulling-r10 is geweigerd: die grens is een besluit van Friso "
                  "(Gate B) en wordt niet met een opdrachtregelvlag verhoogd; niets gestart")
     if a.stap in ("voorinvulling", "voorinvulling-r9", "voorinvulling-r10"):

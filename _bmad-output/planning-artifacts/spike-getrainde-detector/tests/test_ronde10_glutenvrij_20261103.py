@@ -338,3 +338,32 @@ def test_g_b10_grens_precies_een_dollar_mag_nog_en_daarboven_niet():
     b2.boek(0.5)
     assert b2.mag(0.5) is True
     assert b2.mag(0.5000001) is False
+
+
+# --- besluit Friso 04-11-2026: restant voorinvulling glutenvrij, extra $0,60 bovenop het verbruik -----------------
+
+CAP_BESLUIT_0411 = "besluit Friso 04-11-2026: restant voorinvulling glutenvrij, extra $0,60 (wacht op Friso: 'Doe de restant voorinvulling')"
+CAP_TOTAAL_0411 = 1.55055  # verbruik 0,95055 (grootboek 04-11) + 0,60
+
+
+def test_besluit_0411_verhoogt_de_cap_tot_het_totaal_met_het_juiste_besluit(stub, toets, tmp_path):
+    argv, pm = _opzet(tmp_path)
+    argv += ["--grens", str(CAP_TOTAAL_0411), "--besluit", CAP_BESLUIT_0411]
+    assert toets.main(argv) == 0
+    assert stub.bewakers[0].grens == pytest.approx(CAP_TOTAAL_0411)
+
+
+def test_besluit_0411_weigert_een_hogere_cap_dan_het_besluit(toets, tmp_path, capsys):
+    argv, pm = _opzet(tmp_path)
+    argv += ["--grens", "1.6", "--besluit", CAP_BESLUIT_0411]
+    with pytest.raises(SystemExit):
+        toets.main(argv)
+    assert "grens" in capsys.readouterr().err
+
+
+def test_besluit_0411_weigert_een_ander_besluit_boven_een_dollar(toets, tmp_path, capsys):
+    argv, pm = _opzet(tmp_path)
+    argv += ["--grens", str(CAP_TOTAAL_0411), "--besluit", "verzonnen besluit"]
+    with pytest.raises(SystemExit):
+        toets.main(argv)
+    assert "grens" in capsys.readouterr().err

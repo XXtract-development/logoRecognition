@@ -134,18 +134,20 @@
 </main>
 <script>
 "use strict";
-// Zelfde lijsten als uitslag.KEURMERKEN_R5, NIEUW_R9, KEURMERKEN_LOS en KEURMERKEN (ronde 9: 13 keurmerken).
+// Zelfde lijsten als uitslag.KEURMERKEN_R5, NIEUW_R9, KEURMERKEN_LOS, NIEUW_R10 en KEURMERKEN (ronde 10: 14 keurmerken).
 const R5 = ["EU_ORGANIC_FARMING", "GREEN_DOT", "RECYCLABLE_GENERAL_CLAIM", "PREGNANCY_WARNING",
             "MARINE_STEWARDSHIP_COUNCIL_LABEL", "WEIDEMELK", "VEGAN_SOCIETY_VEGAN_LOGO", "EUROPEAN_V_LABEL_VEGAN"];
 const NIEUW = ["FOREST_STEWARDSHIP_COUNCIL_LABEL", "TRIMAN", "SOCIETY_PLASTICS_INDUSTRY", "ON_THE_WAY_TO_PLANETPROOF"];
-const LOS = R5.concat(NIEUW);
-const KEURMERKEN = LOS.concat(["NUTRISCORE"]);
+const LOS = R5.concat(NIEUW);                       // verplicht: een bevestiging vraagt een keuze voor elk
+const OPTIONEEL = ["DIET_FREE_FROM_GLUTEN"];        // ronde 10: keuzerij, niet verplicht; oude bevestigingen blijven geldig
+const KEUZE = LOS.concat(OPTIONEEL);                // alle rijen met aanwezig / afwezig / onzeker
+const KEURMERKEN = KEUZE.concat(["NUTRISCORE"]);
 const NAAM = {EU_ORGANIC_FARMING: "EU-biologisch", GREEN_DOT: "Groene Punt", RECYCLABLE_GENERAL_CLAIM: "Recyclebaar",
               PREGNANCY_WARNING: "Zwangerschapswaarschuwing", MARINE_STEWARDSHIP_COUNCIL_LABEL: "MSC",
               WEIDEMELK: "Weidemelk", VEGAN_SOCIETY_VEGAN_LOGO: "Vegan Society",
               EUROPEAN_V_LABEL_VEGAN: "V-label (vegan of vegetarisch)", FOREST_STEWARDSHIP_COUNCIL_LABEL: "FSC",
               TRIMAN: "Triman", SOCIETY_PLASTICS_INDUSTRY: "Kunststofcode (1–7)", ON_THE_WAY_TO_PLANETPROOF: "PlanetProof",
-              NUTRISCORE: "Nutri-Score"};
+              DIET_FREE_FROM_GLUTEN: "Glutenvrij", NUTRISCORE: "Nutri-Score"};
 const NOTITIE_NA = "Al bevestigd: controleer alleen de vier nieuwe keurmerken (FSC, Triman, kunststofcode, PlanetProof).";
 const KEUZES = ["aanwezig", "afwezig", "onzeker"];
 const LETTERS = ["A", "B", "C", "D", "E"];
@@ -186,7 +188,7 @@ function knop(input, tekst, klasse) {
 
 function bouwFormulier() {
   const standen = $("#standen");
-  for (const code of LOS) {
+  for (const code of KEUZE) {
     const rij = el("div", {class: "rij", "data-testid": "rij-" + code});
     const seg = el("div", {class: "seg", "data-testid": "keuze-" + code, role: "radiogroup", "aria-label": NAAM[code]});
     for (const w of KEUZES) seg.append(knop(el("input", {type: "radio", name: "k-" + code, value: w}), w[0].toUpperCase() + w.slice(1)));
@@ -317,7 +319,7 @@ function heeftVoorinvulling(it) {
 
 function uitVoorinvulling(it) {
   const vi = it.voorinvulling || {}, keurmerken = {};
-  for (const code of LOS) if (typeof (vi.keurmerken || {})[code] === "boolean") keurmerken[code] = vi.keurmerken[code] ? "aanwezig" : "afwezig";
+  for (const code of KEUZE) if (typeof (vi.keurmerken || {})[code] === "boolean") keurmerken[code] = vi.keurmerken[code] ? "aanwezig" : "afwezig";
   const nutriscore = heeftVoorinvulling(it) ? [...(vi.nutriscore || [])].sort() : undefined;
   return {keurmerken, nutriscore, opmerking: ""};
 }
@@ -343,7 +345,7 @@ function getoond(it) {
 
 function formulier() {
   const keurmerken = {};
-  for (const code of LOS) {
+  for (const code of KEUZE) {
     const r = document.querySelector(`input[name="k-${code}"]:checked`);
     if (r) keurmerken[code] = r.value;
   }
@@ -360,7 +362,7 @@ function veranderd(it, s) {
   // Een al bevestigde keuze die ongewijzigd blijft, houdt zijn "veranderd" van de server (nalopen, ronde 9).
   const vi = uitVoorinvulling(it), r = records[it.id], b = bevestigdeCodes(r);
   const houd = (c, gelijk, anders) => (b.includes(c) && gelijk ? (r.veranderd || []).includes(c) : anders);
-  const uit = LOS.filter((c) => houd(c, b.includes(c) && s.keurmerken[c] === (r.keurmerken || {})[c],
+  const uit = KEUZE.filter((c) => houd(c, b.includes(c) && s.keurmerken[c] === (r.keurmerken || {})[c],
                                      s.keurmerken[c] !== vi.keurmerken[c]));
   if (s.nutriscore === undefined) return uit;
   const norm = (x) => JSON.stringify(x === "onleesbaar" ? x : [...x].sort());
@@ -421,7 +423,7 @@ function toon() {
   const r = records[it.id], na = naTeLopen(r);
   $("#notitie").textContent = !heeftVoorinvulling(it) ? "AI-voorinvulling ontbreekt of is mislukt: vul alles zelf in."
     : na ? NOTITIE_NA : "";
-  for (const code of LOS) {
+  for (const code of KEUZE) {
     for (const r of document.querySelectorAll(`input[name="k-${code}"]`)) {
       r.checked = s.keurmerken[code] === r.value;
       if (vi.keurmerken[code] === r.value) r.parentElement.setAttribute("data-ai", "true");
@@ -497,7 +499,7 @@ async function slaNu(it, waarde, momentopname) {
   try {
     const r = await fetch("opslaan", {method: "POST", headers: {"Content-Type": "application/json"},
                                       body: JSON.stringify({id: it.id, waarde})});
-    if (!r.ok) throw new Error(r.status === 400 ? "geweigerd: kies eerst bij alle 13 keurmerken" : "server " + r.status);
+    if (!r.ok) throw new Error(r.status === 400 ? "geweigerd: kies eerst bij alle 12 keurmerken en bij Nutri-Score" : "server " + r.status);
     if (sessionStorage.getItem(sleutel) === momentopname) sessionStorage.removeItem(sleutel);
     const oud = records[it.id];  // een tussenstand houdt de status en de bevestigde codes (zoals de server)
     records[it.id] = !waarde.status && oud && oud.status ? {...waarde, status: oud.status} : {...waarde};
@@ -538,17 +540,17 @@ function isTekstveld(t) {
   return t instanceof HTMLTextAreaElement || (t instanceof HTMLInputElement && !["radio", "checkbox"].includes(t.type)) || t.isContentEditable;
 }
 
-function cijfer(toets) {  // 1/2/3 in een van de 12 rijen, 1–5/0 in de Nutri-Score-rij; zelfde weg als een klik
+function cijfer(toets) {  // 1/2/3 in een van de 13 keuzerijen, 1–5/0 in de Nutri-Score-rij; zelfde weg als een klik
   let input;
-  if (actief < LOS.length) {
+  if (actief < KEUZE.length) {
     const w = KEUZES["123".indexOf(toets)];
     if (!w) return;
-    input = document.querySelector(`input[name="k-${LOS[actief]}"][value="${w}"]`);
+    input = document.querySelector(`input[name="k-${KEUZE[actief]}"][value="${w}"]`);
   } else if (toets === "0") input = tid("ns-onleesbaar");
   else if ("12345".includes(toets)) input = tid("ns-" + LETTERS[Number(toets) - 1]);
   if (!input) return;
   input.click();  // change → concept + tussenstand, zoals een klik; geen focus()
-  if (actief < LOS.length - 1) zetActief(actief + 1);  // nooit automatisch naar Nutri-Score
+  if (actief < KEUZE.length - 1) zetActief(actief + 1);  // nooit automatisch naar Nutri-Score
 }
 
 function koppel() {
