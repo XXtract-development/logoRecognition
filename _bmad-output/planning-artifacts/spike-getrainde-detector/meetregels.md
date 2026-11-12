@@ -2,7 +2,7 @@
 titel: Meetregels proef getrainde detector
 hoort-bij: SPEC.md (CAP-9, CAP-11, stopregel)
 datum: 2026-10-31
-bijgewerkt: 2026-11-12 (ronde 11b: glutenvrij-uitzondering in §1, besluit Friso 12-11-2026; besluiten Friso: steekproef bij nakijken, akkoord ≥ 50 zonder; ronde 5: Nutri-Score A–E, V-label als 9e keurmerk; ronde 9 (02-11-2026): FSC, Triman, kunststofcode, PlanetProof; ronde 10 (03-11-2026): glutenvrij als 14e keurmerk)
+bijgewerkt: 2026-11-12 (ronde 11b: glutenvrij-uitzondering in §1 en gate C, besluiten Friso 12-11-2026; besluiten Friso: steekproef bij nakijken, akkoord ≥ 50 zonder; ronde 5: Nutri-Score A–E, V-label als 9e keurmerk; ronde 9 (02-11-2026): FSC, Triman, kunststofcode, PlanetProof; ronde 10 (03-11-2026): glutenvrij als 14e keurmerk)
 ---
 
 # Meetregels
@@ -16,7 +16,7 @@ Alles telt **per etiket**, op aanwezigheid. Een vakje of positie telt niet mee. 
 - **Melding:** het systeem zegt dat keurmerk X op het etiket staat.
 - **Gevonden (keurmerk X):** noemer = etiketten waarop Friso X als aanwezig heeft bevestigd; teller = die etiketten met een melding X. Eis: Wilson-95%-**ondergrens ≥ 80%**.
 - **Vals (keurmerk X):** noemer = etiketten waarop Friso X als afwezig heeft bevestigd; teller = die etiketten met een melding X. Eis: Wilson-95%-**bovengrens < 10%**.
-- **Glutenvrij, uitzondering (besluit Friso 12-11-2026, "35, rest volgt de AI"):** voor glutenvrij omvat "door Friso afwezig bevestigd" ook de etiketten waarop de AI-voorinvulling van ronde 10 glutenvrij afwezig gaf en geen beoordelaar glutenvrij bevestigde (samengevoegd met herkomst `ai-r10`, toetsset §6a). Ze tellen volgens de letterlijke lezing voor de vals-noemer en gate C (open vraag in SPEC: of gate C ze mag tellen); het rapport moet noemen hoeveel daarvan komen (telling nog niet gebouwd). Gevolg: een gemist glutenvrij-logo ontbreekt in de gevonden-noemer en kan als vals tellen.
+- **Glutenvrij, uitzondering (besluit Friso 12-11-2026, "35, rest volgt de AI"):** voor glutenvrij omvat "door Friso afwezig bevestigd" ook de etiketten waarop de AI-voorinvulling van ronde 10 glutenvrij afwezig gaf en geen beoordelaar glutenvrij bevestigde (samengevoegd met herkomst `ai-r10`, toetsset §6a). Een menselijk glutenvrij-oordeel gaat voor op de AI, en een getoond etiket zonder bevestigd glutenvrij-oordeel (van de 35) telt niet mee voor glutenvrij (afgeleid, door Friso 12-11-2026 zo gelaten). De AI-oordelen tellen voor de vals-noemer en voor gate C (≥ 35 bevestigd zonder; besluit Friso 12-11-2026, "Ja, AI telt mee"); het rapport moet noemen hoeveel daarvan komen (telling nog niet gebouwd). Risico: vals-telling en gate C voor glutenvrij rusten dan op niet-nagekeken AI-oordelen, en gate C kan zijn drempel alleen met AI-oordelen halen. Gevolg: een gemist glutenvrij-logo ontbreekt in de gevonden-noemer en kan als vals tellen.
 - **Stopregel per keurmerk:** beide eisen gehaald → **"automatisch"**; anders → **"mens bevestigt"** (het systeem doet een voorstel, een mens bevestigt).
 - De Wilson-ondergrens is het percentage dat je met 95% zekerheid minstens haalt, gegeven hoeveel etiketten zijn geteld; de bovengrens is wat je met 95% zekerheid hooguit haalt. Met weinig etiketten liggen ze ver van het gemeten percentage.
 - Berekening: `wilson` uit `_bmad-output/planning-artifacts/spike-architectuurkeuze-logoherkenning/fase-b/tel.py` (z = 1,96), hergebruikt.
@@ -77,7 +77,7 @@ IJkpunten zijn de drie keurmerken die ook in de vorige proef (fase B) gemeten zi
 
 **Doel per keurmerk (14):** ≥ 16 bevestigde etiketten mét het keurmerk (liefst ≥ 25) en ≥ 50 zonder, waarvan liefst ≥ 10 met een gelijkend keurmerk (§2; n.v.t. voor Nutri-Score, dat geen gelijkend met code meer heeft). Het aantal met een gelijkend keurmerk komt uit de voorinvulling en is niet door Friso bevestigd. Codes van V-label, Nutri-Score D/E, Triman en kunststofcode tellen niet meer als gelijkend; eerder als gelijkend gekozen etiketten blijven in de toetsset en tellen aan de mét-kant van hun eigen keurmerk.
 **Te weinig voorbeelden:** minder dan 16 mét of minder dan 35 zonder → besluit "te weinig voorbeelden", niet "mens bevestigt".
-**Gate C voor glutenvrij (besluit Friso 03-11-2026):** de 16 en de 35 uit deze regels zijn in de code afgedwongen door `poort_glutenvrij` in `train.py`. De training weigert zolang er minder dan 16 bevestigde etiketten mét voor glutenvrij zijn, of minder dan 35 bevestigde etiketten zonder glutenvrij, of als `toets/uitslag.json` ontbreekt of onleesbaar is. Stoppunt 2 blijft een besluit van Friso (DRAAIPLAN stap 4 en stap 10).
+**Gate C voor glutenvrij (besluit Friso 03-11-2026; sinds 12-11-2026 tellen de AI-oordelen afwezig mee, zie §1):** de 16 en de 35 uit deze regels zijn in de code afgedwongen door `poort_glutenvrij` in `train.py`. De training weigert zolang er minder dan 16 bevestigde etiketten mét voor glutenvrij zijn, of minder dan 35 bevestigde etiketten zonder glutenvrij, of als `toets/uitslag.json` ontbreekt of onleesbaar is. Stoppunt 2 blijft een besluit van Friso (DRAAIPLAN stap 4 en stap 10).
 
 ## 5. Welke etiketten tellen
 
