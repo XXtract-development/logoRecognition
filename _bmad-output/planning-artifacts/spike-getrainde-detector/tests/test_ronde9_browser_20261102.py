@@ -1,4 +1,4 @@
-"""CAP-3 ronde 9 (ATDD, rode fase): 13 rijen en nalopen op de invulpagina (SPEC CAP-3 "Ronde 9, browser", toetsset §6
+"""CAP-3 ronde 9 (ATDD, rode fase): 13 rijen (sinds ronde 10: 14, SPEC CAP-3 "Ronde 10, browser") en nalopen op de invulpagina (SPEC CAP-3 "Ronde 9, browser", toetsset §6
 "13 keurmerkrijen", "Nalopen", "Opslaan", invul-ux/EXPERIENCE.md *Nalopen*, invul-ux/DESIGN.md rij 32 px).
 
 Contract: atdd-checklist, "Ronde 9" → "Interfacecontract ronde 9", delen `uitslag.py`, `invul/server.py` en
@@ -45,7 +45,8 @@ FSC, TRIMAN, SPI, PP = ("FOREST_STEWARDSHIP_COUNCIL_LABEL", "TRIMAN", "SOCIETY_P
 NIEUW = (FSC, TRIMAN, SPI, PP)
 LOS12 = R5 + NIEUW
 NS = "NUTRISCORE"
-DERTIEN = LOS12 + (NS,)
+GV = "DIET_FREE_FROM_GLUTEN"
+VEERTIEN = LOS12 + (GV, NS)  # ronde 10: glutenvrij na PlanetProof, vóór Nutri-Score
 V = "EUROPEAN_V_LABEL_VEGAN"
 NAMEN = {FSC: "FSC", TRIMAN: "Triman", SPI: "Kunststofcode (1–7)", PP: "PlanetProof"}
 NOTITIE = "Al bevestigd: controleer alleen de vier nieuwe keurmerken (FSC, Triman, kunststofcode, PlanetProof)."
@@ -96,16 +97,16 @@ OUD = {"EU_ORGANIC_FARMING": "aanwezig", "GREEN_DOT": "onzeker", "RECYCLABLE_GEN
 VI_NIEUW = {FSC: "aanwezig", TRIMAN: "afwezig", SPI: "aanwezig", PP: "afwezig"}  # uit vi12({FSC, SPI}, ["A"])
 
 
-# --- 13 rijen ---------------------------------------------------------------------------------------------------------
+# --- rijen: 13 in ronde 9, sinds ronde 10 14 (VEERTIEN) --------------------------------------------------------------
 def test_r9b_vier_nieuwe_rijen_na_v_label_en_voor_nutriscore(page, start_server):
     laad_klaar(page, start_server([klein(901, vi12({FSC, SPI}, ["A"]))]))
     rijen = page.locator('#standen [data-testid^="rij-"]')
-    expect(rijen).to_have_count(13)
-    assert [r.get_attribute("data-testid") for r in rijen.all()] == [f"rij-{c}" for c in DERTIEN]
+    expect(rijen).to_have_count(14)  # ronde 10
+    assert [r.get_attribute("data-testid") for r in rijen.all()] == [f"rij-{c}" for c in VEERTIEN]
 
     groepen = page.locator('#keuzes [role="radiogroup"]')
-    expect(groepen).to_have_count(12)
-    assert [g.get_attribute("data-testid") for g in groepen.all()] == [f"keuze-{c}" for c in LOS12]
+    expect(groepen).to_have_count(13)  # ronde 10: plus glutenvrij
+    assert [g.get_attribute("data-testid") for g in groepen.all()] == [f"keuze-{c}" for c in LOS12 + (GV,)]
     for code, naam in NAMEN.items():
         rij = page.locator("#standen").get_by_test_id(f"rij-{code}")
         for deel in (f"keuze-{code}", f"stand-{code}", f"ai-{code}", f"gewijzigd-{code}"):
@@ -124,7 +125,7 @@ ZWAAR_NA = [{**e, "voor": vi12(codes=R5)} for e in ZWAAR]  # oude voorinvulling,
 @pytest.mark.parametrize("toestand", ["open", "na-te-lopen"])
 @pytest.mark.parametrize("venster", VENSTERS, ids=lambda v: f"{v[0]}x{v[1]}")
 @pytest.mark.parametrize("nr", [0, 1], ids=["breed-4096x780", "hoog-200x3920"])
-def test_r9b_dertien_rijen_op_een_scherm_zonder_paginascroll(page, start_server, tmp_path, venster, nr, toestand):
+def test_r9b_alle_rijen_op_een_scherm_zonder_paginascroll(page, start_server, tmp_path, venster, nr, toestand):
     page.set_viewport_size({"width": venster[0], "height": venster[1]})
     lijst = ZWAAR if toestand == "open" else ZWAAR_NA
     if toestand == "na-te-lopen":  # zwaarste paneel: notitie "Al bevestigd …" plus de lange weigermelding
@@ -136,7 +137,7 @@ def test_r9b_dertien_rijen_op_een_scherm_zonder_paginascroll(page, start_server,
     expect(tid(page, "etiket-id")).to_have_text(e["id"])
     wacht_beeld(page, e["maat"][0])
     expect(tid(page, "kader")).to_have_count(6)
-    expect(page.locator("#standen [data-testid^=\"rij-\"]")).to_have_count(13)
+    expect(page.locator("#standen [data-testid^=\"rij-\"]")).to_have_count(14)  # ronde 10
     page.keyboard.press("b")  # onvolledig (vier nieuwe zonder keuze) → lange weigermelding zichtbaar
     expect(page.locator("#melding")).to_have_text(WEIGER)
     if toestand == "na-te-lopen":
@@ -153,7 +154,7 @@ def test_r9b_dertien_rijen_op_een_scherm_zonder_paginascroll(page, start_server,
         binnen_venster(page, tid(page, naam), naam)
     for sel in ("#notitie", "#opmerking", "#volgende", "#opslaan", "#onleesbaar", "#melding"):
         binnen_venster(page, page.locator(sel), sel)
-    for code in DERTIEN:
+    for code in VEERTIEN:
         rij = binnen_venster(page, tid(page, f"rij-{code}"), code)
         assert rij["height"] <= 32.5, (code, rij)  # DESIGN: rij 32 px
 
@@ -366,8 +367,8 @@ def test_r9b_123_schuift_door_de_vier_nieuwe_rijen_maar_nooit_naar_nutriscore(pa
         assert tussenstand(page, "3")["waarde"]["keurmerken"][code] == "onzeker"
         verwacht_actief(page, volgende)
     assert tussenstand(page, "3")["waarde"]["keurmerken"][PP] == "onzeker"
-    verwacht_actief(page, PP)  # nooit automatisch naar Nutri-Score
-    assert tussenstand(page, "1")["waarde"]["keurmerken"][PP] == "aanwezig"
-    verwacht_actief(page, PP)
+    verwacht_actief(page, GV)  # ronde 10: PlanetProof schuift door naar glutenvrij
+    assert tussenstand(page, "1")["waarde"]["keurmerken"][GV] == "aanwezig"
+    verwacht_actief(page, GV)  # laatste keuzerij: nooit automatisch naar Nutri-Score
     page.keyboard.press("ArrowDown")
     verwacht_actief(page, NS)

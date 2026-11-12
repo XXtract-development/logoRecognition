@@ -60,7 +60,7 @@ def test_r5_browser_v_label_keuze_bestaat_en_is_voorgevuld(page, start_server):
     groep = page.get_by_role("radiogroup", name="V-label (vegan of vegetarisch)", exact=True)
     expect(groep).to_have_attribute("data-testid", f"keuze-{V}")
     groepen = page.locator('#keuzes [role="radiogroup"]')
-    expect(groepen).to_have_count(12)  # ronde 9: 12 losse keuzes; het V-label blijft de 8e
+    expect(groepen).to_have_count(13)  # ronde 10: 12 losse keuzes plus glutenvrij; het V-label blijft de 8e
     expect(groepen.nth(7)).to_have_attribute("data-testid", f"keuze-{V}")
     for w in KEUZES:
         expect(radio(page, V, w)).to_have_attribute("type", "radio")
@@ -81,8 +81,8 @@ def test_r5_browser_stand_toont_9_en_telt_bevestigd_v_label(page, start_server):
     expect(etiket(page)).to_have_text(E1)
 
     standen = page.locator('#standen [data-testid^="stand-"]')
-    expect(standen).to_have_count(13)  # ronde 9: 13 keurmerken
-    assert {s.get_attribute("data-testid") for s in standen.all()} == {f"stand-{c}" for c in K7 + (V,) + NIEUW_R9 + ("NUTRISCORE",)}
+    expect(standen).to_have_count(14)  # ronde 10: 13 keurmerken plus glutenvrij
+    assert {s.get_attribute("data-testid") for s in standen.all()} == {f"stand-{c}" for c in K7 + (V,) + NIEUW_R9 + ("DIET_FREE_FROM_GLUTEN", "NUTRISCORE")}
     stand_v = page.get_by_test_id(f"stand-{V}")
     expect(stand_v).to_contain_text("16")
     expect(stand_v).to_contain_text("50")

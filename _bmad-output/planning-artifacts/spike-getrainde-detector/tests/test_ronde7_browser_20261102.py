@@ -15,9 +15,13 @@ etiket begint `passend`. De beeldtests hieronder zijn daarop aangepast; de nieuw
 `test_ronde8_browser_20261102.py`.
 
 Ronde 9 (contract "Interfacecontract ronde 9"): 12 losse codes (de 8 van ronde 5, dan FSC, Triman, kunststofcode,
-PlanetProof) plus Nutri-Score. `LOS` en de voorinvulling (`vi`) kennen daarom alle 12; `NEGEN` heet uit gewoonte zo maar
-bevat nu de 13 rijen. Toetsentests die op "8 rijen tot Nutri-Score" leunden, tellen nu `len(LOS)`; de laatste losse rij
-is PlanetProof in plaats van het V-label. De nieuwe regels staan in `test_ronde9_browser_20261102.py`.
+PlanetProof) plus Nutri-Score. `LOS` en de voorinvulling (`vi`) kennen daarom alle 12; de laatste losse rij is
+PlanetProof in plaats van het V-label (ronde 10 voegt daar glutenvrij aan toe, zie hieronder). De nieuwe regels staan in `test_ronde9_browser_20261102.py`.
+
+Ronde 10 (vastgelegd in ronde 11d, SPEC CAP-3 "Ronde 10, browser"): glutenvrij is een optionele 13e keuzerij na
+PlanetProof, dus 14 rijen (`NEGEN`) en 13 keuzegroepen (`KEUZE13`). Glutenvrij is nu de laatste keuzerij (`LAATSTE`):
+1/2/3 op PlanetProof schuift door naar glutenvrij, en pas daar blijft de rij staan (nooit automatisch naar Nutri-Score);
+pijl-omlaag tot Nutri-Score is `len(KEUZE13)` keer.
 """
 import json
 import re
@@ -48,9 +52,12 @@ LOS_R5 = ("EU_ORGANIC_FARMING", "GREEN_DOT", "RECYCLABLE_GENERAL_CLAIM", "PREGNA
           "MARINE_STEWARDSHIP_COUNCIL_LABEL", "WEIDEMELK", "VEGAN_SOCIETY_VEGAN_LOGO", "EUROPEAN_V_LABEL_VEGAN")
 NIEUW_R9 = ("FOREST_STEWARDSHIP_COUNCIL_LABEL", "TRIMAN", "SOCIETY_PLASTICS_INDUSTRY", "ON_THE_WAY_TO_PLANETPROOF")
 LOS = LOS_R5 + NIEUW_R9  # ronde 9: 12 losse codes
-NEGEN = LOS + ("NUTRISCORE",)  # naam uit ronde 5; sinds ronde 9 de 13 rijen
+GV = "DIET_FREE_FROM_GLUTEN"
+KEUZE13 = LOS + (GV,)  # ronde 10: 13 keuzerijen, glutenvrij optioneel
+NEGEN = KEUZE13 + ("NUTRISCORE",)  # naam uit ronde 5; sinds ronde 10 de 14 rijen
 V = "EUROPEAN_V_LABEL_VEGAN"
-LAATSTE = LOS[-1]  # ronde 9: PlanetProof is de laatste losse rij vóór Nutri-Score
+PP = LOS[-1]  # PlanetProof: de laatste verplichte losse rij
+LAATSTE = GV  # ronde 10: glutenvrij is de laatste keuzerij vóór Nutri-Score
 NS = "NUTRISCORE"
 VENSTERS = [(1440, 800), (1920, 970)]
 
@@ -308,8 +315,8 @@ def test_r7_opbouw_kopregel_rijen_en_knoppen(page, start_server):
     expect(page.locator("#voortgang")).to_have_text(f"0 van {len(ALLE)} etiketten afgehandeld")
 
     groepen = page.locator('#keuzes [role="radiogroup"]')
-    expect(groepen).to_have_count(len(LOS))
-    assert [g.get_attribute("data-testid") for g in groepen.all()] == [f"keuze-{c}" for c in LOS]
+    expect(groepen).to_have_count(len(KEUZE13))
+    assert [g.get_attribute("data-testid") for g in groepen.all()] == [f"keuze-{c}" for c in KEUZE13]
     for code in NEGEN:
         rij = page.locator("#standen").get_by_test_id(f"rij-{code}")
         expect(rij).to_have_count(1)
@@ -569,10 +576,10 @@ def test_r7_toetsen_123_en_pijlen_per_rij(page, start_server):
     for code in NIEUW_R9[1:]:
         page.keyboard.press("ArrowDown")
         verwacht_actief(page, code)
-    body = tussenstand(page, "1")  # PlanetProof: afwezig → aanwezig, blijft actief
-    assert body["waarde"]["keurmerken"][LAATSTE] == "aanwezig"
+    body = tussenstand(page, "1")  # PlanetProof: afwezig → aanwezig; ronde 10: schuift door naar glutenvrij
+    assert body["waarde"]["keurmerken"][PP] == "aanwezig"
     verwacht_actief(page, LAATSTE)
-    body = tussenstand(page, "3")
+    body = tussenstand(page, "3")  # glutenvrij: laatste keuzerij, blijft actief
     assert body["waarde"]["keurmerken"][LAATSTE] == "onzeker"
     verwacht_actief(page, LAATSTE)  # nooit automatisch naar Nutri-Score
 
@@ -594,7 +601,7 @@ def test_r7_nutriscore_toetsen_en_456_0_elders_niets(page, start_server):
     posts = volg_posts(page)
     laad_klaar(page, start_server())
     expect(tid(page, "etiket-id")).to_have_text(E1)
-    for _ in range(len(LOS)):
+    for _ in range(len(KEUZE13)):
         page.keyboard.press("ArrowDown")
     verwacht_actief(page, NS)
 
@@ -896,7 +903,7 @@ def test_r7_nutriscore_letter_zet_onleesbaar_uit(page, start_server):
     posts = volg_posts(page)
     laad_klaar(page, start_server())
     expect(tid(page, "etiket-id")).to_have_text(E1)
-    for _ in range(len(LOS)):
+    for _ in range(len(KEUZE13)):
         page.keyboard.press("ArrowDown")
     verwacht_actief(page, NS)
     assert tussenstand(page, "0")["waarde"]["nutriscore"] == "onleesbaar"
@@ -1024,7 +1031,7 @@ def test_r7_letters_gedempt_zolang_onleesbaar_aan_staat(page, start_server):  # 
     letter = tid(page, "ns-C").locator("xpath=..")
     expect(tid(page, "ns-C")).to_be_checked()
     expect(letter).to_have_css("background-color", NAVY)
-    for _ in range(len(LOS)):
+    for _ in range(len(KEUZE13)):
         page.keyboard.press("ArrowDown")
     verwacht_actief(page, NS)
     assert tussenstand(page, "0")["waarde"]["nutriscore"] == "onleesbaar"

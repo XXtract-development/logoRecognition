@@ -109,3 +109,15 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-spike-getrainde-detector-ronde11b.md`
   summary: Samenvoeging van de artefactantwoorden in de proefmap (ronde 11b): herkomstveld `ai-r10` in `uitslag.json`, vertaling van artefactrecords naar het schema van toetsset §6, en een telling in rapport en `poort_glutenvrij` die AI-oordelen apart noemt, zijn niet gebouwd.
   evidence: Blind Hunter ronde 11b; `uitslag.json`-schema (toetsset §6) kent geen herkomst, `poort_glutenvrij` (train.py) telt alleen `bevestigde_codes`; DRAAIPLAN stap 5 legt het nu als hoofdsessiewerk vast; gate C hangt af van de open productvraag in SPEC.
+- source_spec: `_bmad-output/planning-artifacts/spike-getrainde-detector/SPEC.md` (CAP-3, ronde 11d)
+  summary: `invul-ux/DESIGN.md` en `invul-ux/EXPERIENCE.md` beschrijven de lokale invulpagina nog met 13 rijen; sinds ronde 10 zijn het er 14 (glutenvrij optioneel), en het paneel heeft in 1440×800 geen speling meer (730/730 px).
+  evidence: toetsset §6 "Glutenvrij op de pagina" legt het ronde-10-contract vast en wint bij strijd over het aantal rijen; de UX-documenten zijn eigendom van bmad-ux en zijn in ronde 10 niet bijgewerkt (spec-review ronde 11d, bevinding 8).
+- source_spec: `_bmad-output/implementation-artifacts/spec-spike-getrainde-detector-ronde11d.md`
+  summary: De lokale invulpagina toont voor glutenvrij hetzelfde doel "zonder 50" als voor elk keurmerk (`DOEL_ZONDER = 50`), terwijl gate C voor glutenvrij 35 bevestigde zonder vraagt.
+  evidence: `invul/index.html` (één `DOEL_ZONDER`), meetregels §4 en `train.MIN_ZONDER = 35`; welke doelwaarde de glutenvrij-rij moet tonen is een productkeuze; bestond al vóór ronde 11d (Blind Hunter ronde 11d).
+- source_spec: `_bmad-output/implementation-artifacts/spec-spike-getrainde-detector-ronde11d.md`
+  summary: `invul/index.html` en `invul/index-ronde10.html` zijn byte-gelijk; de ronde-10-paginatests lezen de kopie, de browsertests het echte bestand, en de docstring van `tests/test_ronde10_pagina_20261104.py` zegt nog dat `index.html` ongewijzigd blijft.
+  evidence: `cmp` op 12-11-2026 gelijk; sinds 1498c81 is de kopie overbodig; een latere wijziging aan één van beide splitst wat getest wordt (Blind Hunter ronde 11d).
+- source_spec: `_bmad-output/implementation-artifacts/spec-spike-getrainde-detector-ronde11d.md`
+  summary: De indelingstest van de lokale pagina (`test_r9b_alle_rijen_op_een_scherm_zonder_paginascroll`) heeft geen speling meer: het paneel meet 730/730 px in 1440×800; elke extra regel tekst of een andere letterweergave maakt alle 8 varianten rood.
+  evidence: meting 12-11-2026 (spec ronde 11d); uitweg vraagt een keuze (rijen kleiner, of het paneel intern laten scrollen) door de eigenaar van het ontwerp (bmad-ux).
