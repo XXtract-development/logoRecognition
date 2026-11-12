@@ -152,6 +152,7 @@ const NOTITIE_NA = "Al bevestigd: controleer alleen de vier nieuwe keurmerken (F
 const KEUZES = ["aanwezig", "afwezig", "onzeker"];
 const LETTERS = ["A", "B", "C", "D", "E"];
 const DOEL_MET = 16, DOEL_ZONDER = 50;
+const DOEL_ZONDER_PER = {DIET_FREE_FROM_GLUTEN: 35};  // besluit Friso 12-11-2026: glutenvrij toont gate C (35 zonder)
 const TEGEL = 1024, OVERLAP = 256;  // zelfde regel als herken.tegels
 
 let items = [], records = {}, idx = 0, nsGekozen = false, keten = Promise.resolve();
@@ -469,11 +470,12 @@ function zetStand(antwoord) {
   $("#voortgang").textContent = `${klaar} van ${items.length} etiketten afgehandeld` + (na ? ` · ${na} na te lopen` : "");
   for (const k of KEURMERKEN) {
     const st = (antwoord.stand || {})[k] || {met: 0, zonder: 0}, e = tid("stand-" + k);
-    const gehaald = st.met >= DOEL_MET && st.zonder >= DOEL_ZONDER;
+    const zonderDoel = DOEL_ZONDER_PER[k] ?? DOEL_ZONDER;
+    const gehaald = st.met >= DOEL_MET && st.zonder >= zonderDoel;
     e.setAttribute("data-met", String(st.met));
     e.setAttribute("data-zonder", String(st.zonder));
-    e.textContent = `mét ${st.met}/${DOEL_MET} · zonder ${st.zonder}/${DOEL_ZONDER}`;
-    e.title = `${NAAM[k]}: mét ${st.met}/${DOEL_MET} · zonder ${st.zonder}/${DOEL_ZONDER}` + (gehaald ? " (doel gehaald)" : "");
+    e.textContent = `mét ${st.met}/${DOEL_MET} · zonder ${st.zonder}/${zonderDoel}`;
+    e.title = `${NAAM[k]}: mét ${st.met}/${DOEL_MET} · zonder ${st.zonder}/${zonderDoel}` + (gehaald ? " (doel gehaald)" : "");
     e.classList.toggle("gehaald", gehaald);
   }
   if (items[idx]) toonStatus();

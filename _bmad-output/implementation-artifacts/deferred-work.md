@@ -121,3 +121,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-spike-getrainde-detector-ronde11d.md`
   summary: De indelingstest van de lokale pagina (`test_r9b_alle_rijen_op_een_scherm_zonder_paginascroll`) heeft geen speling meer: het paneel meet 730/730 px in 1440×800; elke extra regel tekst of een andere letterweergave maakt alle 8 varianten rood.
   evidence: meting 12-11-2026 (spec ronde 11d); uitweg vraagt een keuze (rijen kleiner, of het paneel intern laten scrollen) door de eigenaar van het ontwerp (bmad-ux).
+- source_spec: `_bmad-output/planning-artifacts/spike-getrainde-detector/SPEC.md` (CAP-3, ronde 11e)
+  summary: Opgelost in ronde 11e: het eerdere punt "de lokale invulpagina toont voor glutenvrij doel zonder 50 tegen gate C 35" (bron ronde 11d) is besloten door Friso 12-11-2026 ("35, gelijk aan de eis"); de artefactpagina houdt 50.
+  evidence: SPEC CAP-3 sub-bullet "Ronde 11e", toetsset §6; meetdoel ≥ 50 zonder in meetregels §4 blijft.
+- source_spec: `_bmad-output/implementation-artifacts/spec-spike-getrainde-detector-ronde11e.md`
+  summary: `invul-ux/DESIGN.md` en `invul-ux/EXPERIENCE.md` noemen voor elk keurmerk het doel "zonder 50"; sinds ronde 11e toont de glutenvrij-rij "zonder 35".
+  evidence: Blind Hunter ronde 11e; toetsset §6 heeft voorrang bij strijd over getoonde doelen; de UX-documenten zijn eigendom van bmad-ux (samen met het eerdere punt over 13 rijen).
