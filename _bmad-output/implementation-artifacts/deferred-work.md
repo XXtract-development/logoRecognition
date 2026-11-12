@@ -103,3 +103,6 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-haiku-standaard-20261103.md`
   summary: Opgelost (besluit Friso 03-11-2026): de entry over gemengde voorinvulling-bestanden is afgehandeld met één bestand per model (`bestandsnaam()` in `toets.py`); het Sonnet-bestand blijft ongewijzigd en er is geen overschrijving van andere modellen in de code.
   evidence: test_uitvoernamen_per_model_sonnet_houdt_oude_namen_haiku_krijgt_eigen_bestand in tests/test_haiku_standaard_20261103.py; DRAAIPLAN stap 3 en ronde 9 (uitvoer per model).
+- source_spec: `_bmad-output/implementation-artifacts/spec-spike-getrainde-detector-ronde11.md`
+  summary: 17 browsertests van de lokale invulpagina (ronde 5, 7 en 9) verwachten 13 keurmerkrijen; sinds 1498c81 (04-11-2026, glutenvrij-rij live) zijn het er 14.
+  evidence: volle suite 12-11-2026 (`uv run pytest -q -m "not zwaar"` in de proefmap) = 17 failed, 1017 passed; `invul/index.html`, `invul/server.py`, `uitslag.py` en die testbestanden zijn in ronde 11 niet gewijzigd; los herhaald faalt `test_r9b_vier_nieuwe_rijen_na_v_label_en_voor_nutriscore` deterministisch (count 13, actual 14). Ronde 10 heeft die tests niet bijgewerkt.
