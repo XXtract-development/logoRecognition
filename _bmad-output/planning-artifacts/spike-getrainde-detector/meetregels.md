@@ -2,7 +2,7 @@
 titel: Meetregels proef getrainde detector
 hoort-bij: SPEC.md (CAP-9, CAP-11, stopregel)
 datum: 2026-10-31
-bijgewerkt: 2026-11-12 (ronde 11b: glutenvrij-uitzondering in §1 en gate C, besluiten Friso 12-11-2026; besluiten Friso: steekproef bij nakijken, akkoord ≥ 50 zonder; ronde 5: Nutri-Score A–E, V-label als 9e keurmerk; ronde 9 (02-11-2026): FSC, Triman, kunststofcode, PlanetProof; ronde 10 (03-11-2026): glutenvrij als 14e keurmerk)
+bijgewerkt: 2026-11-12 (ronde 11f: AI-aandeel in het eindrapport, §7; ronde 11b: glutenvrij-uitzondering in §1 en gate C, besluiten Friso 12-11-2026; besluiten Friso: steekproef bij nakijken, akkoord ≥ 50 zonder; ronde 5: Nutri-Score A–E, V-label als 9e keurmerk; ronde 9 (02-11-2026): FSC, Triman, kunststofcode, PlanetProof; ronde 10 (03-11-2026): glutenvrij als 14e keurmerk)
 ---
 
 # Meetregels
@@ -16,7 +16,7 @@ Alles telt **per etiket**, op aanwezigheid. Een vakje of positie telt niet mee. 
 - **Melding:** het systeem zegt dat keurmerk X op het etiket staat.
 - **Gevonden (keurmerk X):** noemer = etiketten waarop Friso X als aanwezig heeft bevestigd; teller = die etiketten met een melding X. Eis: Wilson-95%-**ondergrens ≥ 80%**.
 - **Vals (keurmerk X):** noemer = etiketten waarop Friso X als afwezig heeft bevestigd; teller = die etiketten met een melding X. Eis: Wilson-95%-**bovengrens < 10%**.
-- **Glutenvrij, uitzondering (besluit Friso 12-11-2026, "35, rest volgt de AI"):** voor glutenvrij omvat "door Friso afwezig bevestigd" ook de etiketten waarop de AI-voorinvulling van ronde 10 glutenvrij afwezig gaf en geen beoordelaar glutenvrij bevestigde (samengevoegd met markering `herkomst_codes` bron `ai-r10`, toetsset §6b). Een menselijk glutenvrij-oordeel gaat voor op de AI (ook "onzeker"), en een latere export met open of onleesbaar haalt een bevestigd oordeel niet weg (besluit Friso 12-11-2026, "Akkoord met beide"; toetsset §6b); een getoond etiket zonder bevestigd glutenvrij-oordeel (van de 35) telt niet mee voor glutenvrij (afgeleid, door Friso 12-11-2026 zo gelaten). De AI-oordelen tellen voor de vals-noemer en voor gate C (≥ 35 bevestigd zonder; besluit Friso 12-11-2026, "Ja, AI telt mee"); het samenvoegcommando noemt hoeveel daarvan komen (toetsset §6b); in het eindrapport van `tel_proef` is die telling nog niet gebouwd. Risico: vals-telling en gate C voor glutenvrij rusten dan op niet-nagekeken AI-oordelen, en gate C kan zijn drempel alleen met AI-oordelen halen. Gevolg: een gemist glutenvrij-logo ontbreekt in de gevonden-noemer en kan als vals tellen.
+- **Glutenvrij, uitzondering (besluit Friso 12-11-2026, "35, rest volgt de AI"):** voor glutenvrij omvat "door Friso afwezig bevestigd" ook de etiketten waarop de AI-voorinvulling van ronde 10 glutenvrij afwezig gaf en geen beoordelaar glutenvrij bevestigde (samengevoegd met markering `herkomst_codes` bron `ai-r10`, toetsset §6b). Een menselijk glutenvrij-oordeel gaat voor op de AI (ook "onzeker"), en een latere export met open of onleesbaar haalt een bevestigd oordeel niet weg (besluit Friso 12-11-2026, "Akkoord met beide"; toetsset §6b); een getoond etiket zonder bevestigd glutenvrij-oordeel (van de 35) telt niet mee voor glutenvrij (afgeleid, door Friso 12-11-2026 zo gelaten). De AI-oordelen tellen voor de vals-noemer en voor gate C (≥ 35 bevestigd zonder; besluit Friso 12-11-2026, "Ja, AI telt mee"); het samenvoegcommando en het eindrapport van `tel_proef` (§7, "(AI n)", ronde 11f) noemen hoeveel daarvan komen. Een latere opslag via de lokale invulpagina wist de markering (toetsset §6b); wijzig samengevoegde records daar niet. Risico: vals-telling en gate C voor glutenvrij rusten dan op niet-nagekeken AI-oordelen, en gate C kan zijn drempel alleen met AI-oordelen halen. Gevolg: een gemist glutenvrij-logo ontbreekt in de gevonden-noemer en kan als vals tellen.
 - **Stopregel per keurmerk:** beide eisen gehaald → **"automatisch"**; anders → **"mens bevestigt"** (het systeem doet een voorstel, een mens bevestigt).
 - De Wilson-ondergrens is het percentage dat je met 95% zekerheid minstens haalt, gegeven hoeveel etiketten zijn geteld; de bovengrens is wat je met 95% zekerheid hooguit haalt. Met weinig etiketten liggen ze ver van het gemeten percentage.
 - Berekening: `wilson` uit `_bmad-output/planning-artifacts/spike-architectuurkeuze-logoherkenning/fase-b/tel.py` (z = 1,96), hergebruikt.
@@ -118,7 +118,7 @@ Eén getoetst script maakt uit de bevroren uitvoer drie tabellen: **D+A** (detec
 | kolom | inhoud |
 |---|---|
 | mét | gevonden / aanwezig, Wilson-ondergrens |
-| zonder | vals / afwezig, Wilson-bovengrens |
+| zonder | vals / afwezig, Wilson-bovengrens; "(AI n)" alleen bij n > 0: n van de afwezig-etiketten hebben hun oordeel alleen van de AI (`herkomst_codes` exact bron `ai-r10`; besluit Friso 12-11-2026, ronde 11f); per route een toelichting onder de tabel als er ergens n > 0 is; een nakijkoordeel op dat etiket en keurmerk maakt het menselijk |
 | verkeerde letter | alleen Nutri-Score |
 | spreiding per leverancier | 95%-interval als je de leveranciers opnieuw trekt (GLN-bootstrap, `trekkingen`/`bootstrap` uit `tel.py`; informatief) |
 | leveranciers | aantal leveranciers (GLN's) aan de mét-kant |

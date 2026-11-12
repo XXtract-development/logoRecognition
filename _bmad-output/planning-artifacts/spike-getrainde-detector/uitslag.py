@@ -11,6 +11,7 @@ KEURMERKEN = KEURMERKEN_LOS + NIEUW_R10 + ("NUTRISCORE",)  # de 14 (13 + glutenv
 LETTERS = ("A", "B", "C", "D", "E")
 KEUZES = ("aanwezig", "afwezig", "onzeker")
 STATUSSEN = ("bevestigd", "onleesbaar")
+AI_R10 = {"bron": "ai-r10"}  # markering van een AI-oordeel in herkomst_codes (toetsset §6b; samenvoeg_glutenvrij, tel_proef)
 
 
 def valideer(invoer, bekend, vereist=None):

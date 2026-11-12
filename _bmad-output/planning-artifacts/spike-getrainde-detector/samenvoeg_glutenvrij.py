@@ -18,7 +18,7 @@ import uitslag as uitslag_mod
 from train import MIN_GLUTEN_MET, MIN_ZONDER
 
 GV = "DIET_FREE_FROM_GLUTEN"
-AI = {"bron": "ai-r10"}
+AI = uitslag_mod.AI_R10
 STATUSSEN = uitslag_mod.STATUSSEN + ("open",)
 CATEGORIEEN = ("mens_toegepast", "mens_ouder", "ai_toegepast", "ai_aanwezig_zonder_mens", "al_gelijk",
                "niet_bevestigd", "export_ingetrokken")

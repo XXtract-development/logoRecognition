@@ -127,3 +127,6 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-spike-getrainde-detector-ronde11e.md`
   summary: `invul-ux/DESIGN.md` en `invul-ux/EXPERIENCE.md` noemen voor elk keurmerk het doel "zonder 50"; sinds ronde 11e toont de glutenvrij-rij "zonder 35".
   evidence: Blind Hunter ronde 11e; toetsset §6 heeft voorrang bij strijd over getoonde doelen; de UX-documenten zijn eigendom van bmad-ux (samen met het eerdere punt over 13 rijen).
+- source_spec: `_bmad-output/implementation-artifacts/spec-spike-getrainde-detector-ronde11f.md`
+  summary: De steekproef van het blind nakijken telt fouten per kant zonder onderscheid naar herkomst; voor glutenvrij zou `nagekeken_ai`/`fouten_ai` per kant laten zien hoe vaak de AI-voorinvulling zelf fout zat.
+  evidence: Blind Hunter ronde 11f; `tel_proef.na_nakijken` telt `nagekeken`/`fouten` per (keurmerk, kant); intern houden, niet in de nakijklijst (blind blijft blind); nieuwe meting, buiten het besluit van 12-11-2026.

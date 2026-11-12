@@ -97,6 +97,7 @@ def tel(uitslag, meldingen, referenties=None):
                        "vals": sum(bool(_letters(_codes(meldingen.get(d)))) for d in zonder), "verkeerde_letter": verkeerd}
     for k, v in r.items():
         v.setdefault("verkeerde_letter", None)
+        v["zonder_ai"] = sum((uitslag[d].get("herkomst_codes") or {}).get(k) == us.AI_R10 for d in pk[k]["zonder"])
         v["ondergrens"] = wilson(v["gevonden"], v["met"])[0] if v["met"] else None
         v["bovengrens"] = wilson(v["vals"], v["zonder"])[1] if v["zonder"] else None
         v["besluit"] = besluit(v["gevonden"], v["met"], v["vals"], v["zonder"])
@@ -306,13 +307,18 @@ def _md(tabellen):
         for k in us.KEURMERKEN:
             v = t[k]
             sp = v["spreiding"]["gevonden"]
-            regels.append(f"| {k} | {v['gevonden']}/{v['met']} | {_pct(v['ondergrens'])} | {v['vals']}/{v['zonder']} | "
+            ai = f" (AI {v['zonder_ai']})" if v.get("zonder_ai") else ""
+            regels.append(f"| {k} | {v['gevonden']}/{v['met']} | {_pct(v['ondergrens'])} | {v['vals']}/{v['zonder']}{ai} | "
                           f"{_pct(v['bovengrens'])} | {'' if v['verkeerde_letter'] is None else v['verkeerde_letter']} | "
                           f"{'–' if sp is None else f'{_pct(sp[0])}–{_pct(sp[1])}'} | {v['leveranciers']} | {v['besluit']} |"
                           + (f" {_steek_md(v['steekproef']['met'])} | {_steek_md(v['steekproef']['zonder'])} | "
                              f"{v['gevoeligheid']} |" if na else ""))
+        if any(t[k].get("zonder_ai") for k in us.KEURMERKEN):
+            regels += ["", "AI n: n van de afwezig-etiketten hebben hun oordeel alleen van de AI-voorinvulling (herkomst ai-r10, "
+                       "besluit Friso 12-11-2026), niet door een mens nagekeken; vals en bovengrens rusten deels op die oordelen."]
         if na:
-            regels += ["", "Steekproef: per kant de nagekeken overeenkomende paren, de fouten in Friso's eerdere oordeel en de "
+            regels += ["", "Steekproef: per kant de nagekeken overeenkomende paren, de fouten in het eerdere oordeel (van Friso, "
+                       "de beoordelaar of de AI) en de "
                        "Wilson-bovengrens van die foutkans (voor alle routes gelijk). Gevoeligheid (informatief): het besluit "
                        "als die bovengrens in het nadeel van de route op de niet-nagekeken overeenkomende paren wordt "
                        "toegepast."]
@@ -360,6 +366,11 @@ def corrigeer(uitslag, correcties):
                 uit[d].setdefault("keurmerken", {})[k] = w
             else:
                 raise ValueError(f"{d}: ongeldige correctie {k!r}={w!r}")
+            herkomst = uit[d].get("herkomst_codes")
+            if isinstance(herkomst, dict) and herkomst.get(k) == us.AI_R10:  # nagekeken door een mens (ronde 11f)
+                del herkomst[k]
+                if not herkomst:
+                    del uit[d]["herkomst_codes"]
     return uit
 
 

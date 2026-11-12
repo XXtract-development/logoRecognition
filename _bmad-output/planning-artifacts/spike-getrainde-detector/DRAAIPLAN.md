@@ -351,6 +351,8 @@ Kosten: $0
 Tijd: < 1 minuut
 Stoppunt: geen (foutpercentage boven 2% maakt de run ongeldig; dat staat in de tabel).
 
+Ronde 11f: `tabellen.json` heeft per keurmerk `zonder_ai` en `tabellen.md` "(AI n)" achter vals/afwezig: zoveel afwezig-etiketten hebben hun oordeel alleen van de AI (glutenvrij, besluit Friso 12-11-2026); ook in `tabellen-na-nakijken`, waar een nakijkoordeel het menselijk maakt. Lees een besluit voor glutenvrij met een groot "(AI n)" als steunend op niet-nagekeken AI-oordelen (besluit Friso: ze tellen mee); een latere opslag via de lokale invulpagina wist de markering (stap 5, toetsset §6b).
+
 ### Stap 15 — blind nakijken
 
 Commando: Friso kijkt `$PM/uitvoer/telling/nakijklijst.json` na (per regel nummer, etiket, keurmerk en zijn eerdere oordeel; niet de map `niet-voor-nakijker/`) en legt voor elke regel een oordeel vast in `$PM/uitvoer/nakijken.json` als `{"<nummer>": oordeel}`: Nutri-Score als lijst zichtbare letters `["A".."E"]` of `"onleesbaar"`, de andere keurmerken `"aanwezig"`, `"afwezig"` of `"onzeker"`. Daarna:
