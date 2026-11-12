@@ -49,7 +49,7 @@ def test_zet_glutenvrij_in_items_en_laat_de_rest_gelijk(tmp_path, basis):
     bron, r10 = schrijf(tmp_path, items, oordelen)
     uit = tmp_path / "nieuw" / "pagina.html"
     telling = bouw_mod().bouw(bron, r10, uit)
-    assert telling == {"etiketten": 4, "aanwezig": 2, "afwezig": 2}
+    assert telling == {"etiketten": 4, "aanwezig": 2, "afwezig": 2, "totaal": 4}
     nieuw = items_uit(uit.read_text(encoding="utf-8"))
     verwacht = json.loads(json.dumps(items))
     for it in verwacht:
@@ -161,3 +161,62 @@ def test_sjabloon_en_map_bevatten_geen_klantdata():
             assert not re.search(r"/_blob/[0-9a-f]", inhoud), pad
             assert not re.search(r"\d{13,}", inhoud), pad
 
+
+
+# --- Ronde 11b (besluit Friso 12-11-2026, "35, rest volgt de AI"): --alleen-ai-glutenvrij -------------------------------
+def test_11b_filter_houdt_precies_de_ai_glutenvrij_etiketten_in_bronvolgorde(tmp_path, basis):
+    items, oordelen = basis  # IDS[0] en IDS[3] true, IDS[1] en IDS[2] false
+    bron, r10 = schrijf(tmp_path, items, oordelen)
+    uit = tmp_path / "pagina.html"
+    telling = bouw_mod().bouw(bron, r10, uit, alleen_ai_glutenvrij=True)
+    assert telling == {"etiketten": 2, "aanwezig": 2, "afwezig": 0, "totaal": 4}
+    nieuw = items_uit(uit.read_text(encoding="utf-8"))
+    verwacht = [json.loads(json.dumps(it)) for it in items if oordelen[it["id"]]]
+    for it in verwacht:
+        it["voorinvulling"]["keurmerken"][GV] = True
+    assert nieuw == verwacht
+    assert [it["id"] for it in nieuw] == [IDS[0], IDS[3]]
+
+
+@pytest.mark.parametrize("geval", ["geen_bool", "zonder_voorinvulling", "afwijkend_bestaand"])
+def test_11b_weigeringen_gelden_over_de_hele_bron_voor_het_filter(tmp_path, basis, geval):
+    items, oordelen = basis  # IDS[1] is false: het filter zou dit etiket weglaten
+    items = json.loads(json.dumps(items))
+    if geval == "geen_bool":
+        oordelen[IDS[1]] = "nee"
+    elif geval == "zonder_voorinvulling":
+        items[1]["voorinvulling"] = {}
+    else:
+        items[1]["voorinvulling"]["keurmerken"][GV] = True
+    bron, r10 = schrijf(tmp_path, items, oordelen)
+    uit = tmp_path / "pagina.html"
+    with pytest.raises(ValueError, match=IDS[1]):
+        bouw_mod().bouw(bron, r10, uit, alleen_ai_glutenvrij=True)
+    assert not uit.exists()
+
+
+def test_11b_nul_getoonde_etiketten_wordt_geweigerd(tmp_path, basis):
+    items, oordelen = basis
+    bron, r10 = schrijf(tmp_path, items, {i: False for i in oordelen})
+    uit = tmp_path / "pagina.html"
+    with pytest.raises(ValueError, match="geen enkel etiket"):
+        bouw_mod().bouw(bron, r10, uit, alleen_ai_glutenvrij=True)
+    assert not uit.exists()
+
+
+def test_11b_verwacht_aantal_wijkt_af_wordt_geweigerd(tmp_path, basis, capsys):
+    bron, r10 = schrijf(tmp_path, *basis)
+    uit = tmp_path / "pagina.html"
+    args = ["--bron", str(bron), "--voorinvulling", str(r10), "--uit", str(uit), "--alleen-ai-glutenvrij"]
+    assert bouw_mod().main(args + ["--verwacht", "3"]) == 1
+    assert "getoond 2 van 4, verwacht 3" in capsys.readouterr().err and not uit.exists()
+    assert bouw_mod().main(args + ["--verwacht", "2"]) == 0 and uit.exists()
+
+
+def test_11b_main_met_optie_drukt_getoond_x_van_y_af(tmp_path, basis, capsys):
+    bron, r10 = schrijf(tmp_path, *basis)
+    uit = tmp_path / "pagina.html"
+    args = ["--bron", str(bron), "--voorinvulling", str(r10), "--uit", str(uit), "--alleen-ai-glutenvrij"]
+    assert bouw_mod().main(args) == 0
+    assert capsys.readouterr().out.startswith("getoond 2 van 4 etiketten (alleen AI-glutenvrij);")
+    assert len(items_uit(uit.read_text(encoding="utf-8"))) == 2

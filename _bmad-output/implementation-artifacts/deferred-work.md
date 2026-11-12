@@ -95,7 +95,7 @@
   summary: De grens van $73 voor de voorinvulling is gebaseerd op Sonnet. Met Haiku is de verwachte uitgave ±$3. Friso moet beslissen of de grens blijft of wordt herzien; de build heeft hem niet veranderd.
   evidence: randvoorwaarden.md §3 (regel voorinvulling toets, $73 hard, besluit 02-11-2026). Blind Hunter-review 03-11, bevinding over de grens zonder nieuw besluit.
 - source_spec: `_bmad-output/implementation-artifacts/spec-haiku-standaard-20261103.md`
-  summary: Haiku herkent RECYCLABLE minder goed: aanwezige RECYCLABLE gemist op 8711363000003-08711363375859 en -08711363376139; V-label aangegeven op 8720600000041 terwijl Friso die afwezig bevestigde. Friso moet beslissen of dit een blokkade is voor het gebruik van Haiku.
+  summary: Haiku herkent RECYCLABLE minder goed: aanwezige RECYCLABLE gemist op twee etiketten van één leverancier; V-label aangegeven op één etiket terwijl Friso die afwezig bevestigde. Friso moet beslissen of dit een blokkade is voor het gebruik van Haiku.
   evidence: memlog 03-11 (225 van 228 gelijk, drie afwijkingen); toetsset.md §5 in de proefmap. Het gaat om de bevestigingen van Sonnet, niet onafhankelijk (memlog).
 - source_spec: `_bmad-output/implementation-artifacts/spec-haiku-standaard-20261103.md`
   summary: De startprojectie van de voorinvulling (toets.py PER_AANROEP 0,06 en raming_r9) is op Sonnet gemeten en houdt geen rekening met het model. Met Haiku is ze ruim te hoog. Conservatief, geen gevaar voor overschrijding van de grens.
@@ -106,3 +106,6 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-spike-getrainde-detector-ronde11.md`
   summary: 17 browsertests van de lokale invulpagina (ronde 5, 7 en 9) verwachten 13 keurmerkrijen; sinds 1498c81 (04-11-2026, glutenvrij-rij live) zijn het er 14.
   evidence: volle suite 12-11-2026 (`uv run pytest -q -m "not zwaar"` in de proefmap) = 17 failed, 1017 passed; `invul/index.html`, `invul/server.py`, `uitslag.py` en die testbestanden zijn in ronde 11 niet gewijzigd; los herhaald faalt `test_r9b_vier_nieuwe_rijen_na_v_label_en_voor_nutriscore` deterministisch (count 13, actual 14). Ronde 10 heeft die tests niet bijgewerkt.
+- source_spec: `_bmad-output/implementation-artifacts/spec-spike-getrainde-detector-ronde11b.md`
+  summary: Samenvoeging van de artefactantwoorden in de proefmap (ronde 11b): herkomstveld `ai-r10` in `uitslag.json`, vertaling van artefactrecords naar het schema van toetsset §6, en een telling in rapport en `poort_glutenvrij` die AI-oordelen apart noemt, zijn niet gebouwd.
+  evidence: Blind Hunter ronde 11b; `uitslag.json`-schema (toetsset §6) kent geen herkomst, `poort_glutenvrij` (train.py) telt alleen `bevestigde_codes`; DRAAIPLAN stap 5 legt het nu als hoofdsessiewerk vast; gate C hangt af van de open productvraag in SPEC.

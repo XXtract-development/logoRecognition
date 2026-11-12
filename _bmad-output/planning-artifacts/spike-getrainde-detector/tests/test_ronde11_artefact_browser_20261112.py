@@ -203,3 +203,62 @@ def test_opent_op_eerste_open_etiket_in_items_volgorde(browser, tmp_path):  # no
         expect(page.locator("#voortgang")).to_have_text("1 van 3 etiketten afgehandeld · 1 na te lopen")
     finally:
         page.context.close()
+
+
+# --- Ronde 11b (besluit Friso 12-11-2026, "35, rest volgt de AI"): gefilterde bouw -----------------------------------
+# Getoond: X1 (na te lopen) en X2 (nog niets). Niet getoond: H1 (afgehandeld, glutenvrij bevestigd afwezig) en
+# H2 (na te lopen). Hun records blijven in de opslag.
+X1, X2, H1, H2 = eid(11), eid(12), eid(13), eid(14)
+VOOR_11B = {X1: True, H1: False, H2: False, X2: True}  # bronvolgorde X1, H1, H2, X2
+RECORDS_11B = {
+    X1: bevestigd(keuzes12(), opmerking="x1"),
+    H1: bevestigd({**keuzes12(), GV: "afwezig"}),
+    H2: bevestigd(keuzes12(GREEN_DOT="aanwezig")),
+}
+
+
+@pytest.fixture
+def gefilterd(browser, tmp_path):  # noqa: F811
+    from invul.artefact import bouw
+
+    bron = tmp_path / "bron.html"
+    bron.write_text(vul([item(i, vi()) for i in VOOR_11B]), encoding="utf-8")
+    r10 = tmp_path / "voorinvulling-r10.json"
+    r10.write_text(json.dumps({i: {"keurmerken": {GV: v}} for i, v in VOOR_11B.items()}), encoding="utf-8")
+    uit = tmp_path / "uit" / "pagina.html"
+    assert bouw.bouw(bron, r10, uit, alleen_ai_glutenvrij=True)["etiketten"] == 2
+    page = open_pagina(browser, tmp_path, uit.read_text(encoding="utf-8"), RECORDS_11B)
+    yield page
+    page.context.close()
+
+
+def test_11b_teller_en_nalopen_over_de_getoonde_etiketten(gefilterd):
+    expect(gefilterd.locator("#voortgang")).to_have_text("0 van 2 etiketten afgehandeld · 1 na te lopen")
+    expect(tid(gefilterd, "etiket-id")).to_have_text(X1)
+    expect(gefilterd.locator("#positie")).to_have_text("1 / 2")
+    expect(gefilterd.locator("#notitie")).to_have_text(NOTITIE)
+
+
+def test_11b_stand_telt_bevestigde_records_van_niet_getoonde_etiketten(gefilterd):
+    expect(tid(gefilterd, "stand-" + GV)).to_have_attribute("data-zonder", "1")  # H1
+
+
+def test_11b_download_exporteert_alle_records_ook_niet_getoonde(gefilterd):
+    gefilterd.locator("#download").click()
+    data = json.loads(gefilterd.locator("#exportvak").input_value())
+    assert data["aantal"] == 3 and set(data["beoordelingen"]) == {X1, H1, H2}
+    assert gefilterd.evaluate("window.__opslag.writes.length") == 0
+
+
+def test_11b_late_opslag_raakt_niet_getoonde_records_en_het_volgende_etiket_niet(gefilterd):
+    gefilterd.evaluate("(i) => { window.__houd[i] = []; }", X1)
+    gefilterd.locator("#volgende").click()
+    expect(tid(gefilterd, "etiket-id")).to_have_text(X2)
+    gefilterd.locator("#opmerking").click()
+    gefilterd.keyboard.type("typt op X2")
+    gefilterd.evaluate("(i) => window.__laatLos(i)", X1)
+    expect(gefilterd.locator("#melding")).to_have_text(f"Opgeslagen (bevestigd). (etiket {X1})")
+    expect(gefilterd.locator("#voortgang")).to_have_text("1 van 2 etiketten afgehandeld")
+    expect(gefilterd.locator("#opmerking")).to_have_value("typt op X2")
+    assert [w["id"] for w in gefilterd.evaluate("window.__opslag.writes")] == [X1]
+    assert opslag(gefilterd, H1) == RECORDS_11B[H1] and opslag(gefilterd, H2) == RECORDS_11B[H2]
