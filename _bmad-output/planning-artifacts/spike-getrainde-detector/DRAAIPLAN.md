@@ -159,6 +159,27 @@ uv run python toets.py rapport --proef-map $PM                                  
 ```
 De melding op het scherm noemt per gekozen code (`EUROPEAN_V_LABEL_VEGAN`, `NUTRISCORE_E`) toegevoegd en over. Nieuwe voorinvullingen vragen het V-label als keurmerk, met tegels; de oudere krijgen het afgeleide V-label (stap 3). Daarna stap 5.
 
+**Aanvulling 3, glutenvrij (ronde 12, besluiten Friso 13-11-2026: "Eerst aanvullen", "60 etiketten", "Alle keurmerken").** 60 glutenvrij-gedeclareerde toetskantproducten met print-laag; volledige voorinvulling met Haiku (12 losse keurmerken, glutenvrij, Nutri-Score) uit de post voorinvulling toets met een stop bij 1,5 × de raming; daarna een pagina met alleen de nieuwe etiketten (toetsset §6a).
+```sh
+T=$PM/toets
+N=kandidaten-aanvulling-3
+uv run python toets.py kandidaten --proef-map $PM --alleen DIET_FREE_FROM_GLUTEN --max-per 60 --print-laag-eerst --bestaand $T/kandidaten.json --bestaand $T/kandidaten-aanvulling-1.json --bestaand $T/kandidaten-aanvulling-2.json --naam $N
+uv run python beelden.py ophaallijst --paren $T/$N-paren.tsv --uit $T/$N                 # ssh replica-db, alleen SELECT
+uv run python beelden.py ophalen --lijst $T/$N/ophaal-paden.txt --doel $T/bron-raw        # rsync banana, nice -n 19, alleen lezen
+uv run python beelden.py bouwen --ophaallijst $T/$N/ophaallijst.tsv --bron $T/bron-raw --uit $T/gecombineerd
+uv run python beelden.py origineel-paden --paren $T/$N-paren.tsv --manifest $T/gecombineerd/manifest.json --uit $T/$N
+uv run python beelden.py ophalen --lijst $T/$N/originelen-paden.txt --doel $T/bron-raw
+uv run python beelden.py bouwen-origineel --originelen $T/$N/originelen.tsv --bron $T/bron-raw --uit $T/gecombineerd
+uv run python toets.py ontdubbel --proef-map $PM --manifest $T/gecombineerd/manifest.json --kandidaten $T/$N.json
+# grens = huidig verbruik van "voorinvulling toets" (uitgaven.json) + 1,5 × raming; bij verbruik $63,38 is dat 64.04
+uv run python toets.py voorinvulling --proef-map $PM --manifest $T/gecombineerd/manifest.json --docs $T/$N-nieuw.json --zdr-logo $PM/logos/zdr-proef.png --model anthropic/claude-haiku-5.5 --met-glutenvrij --grens 64.04 --besluit 'besluit Friso 13-11-2026: 60 etiketten, alle keurmerken, raming 0,44 dollar, stop bij 1,5x (verbruik 63,38)'
+S=<map buiten de repo, bijvoorbeeld de scratchpad van de hoofdsessie>
+uv run python invul/artefact/bouw.py --items $T/items-r12-claude-haiku-5-5.json --lijst $S/upload-lijst.txt   # te uploaden beelden
+# de hoofdsessie uploadt elk bestand uit upload-lijst.txt als asset en schrijft $S/koppeltabel.json = {bestandsnaam: asset-url}
+uv run python invul/artefact/bouw.py --items $T/items-r12-claude-haiku-5-5.json --assets $S/koppeltabel.json --uit $S/beoordeling-aanvulling-glutenvrij.html
+```
+Kosten aanvulling 3: ±$0,44 (±49 etiketten × $0,009, Haiku; gemeten 03-11 op een vergelijking van 19 etiketten, de prompt van ronde 12 is groter: eerst 3 etiketten draaien en de raming daarop herberekenen; post voorinvulling toets, restant $9,62). Herbereken de grens vlak vóór de run uit het huidige verbruik. De bewaker stopt vóór een aanroep die volgens de reservering ($0,005 per aanroep) boven de grens komt; de werkelijke laatste aanroep kan de grens daardoor met hoogstens één aanroep overschrijden. Tijd: ophalen en bouwen ±30 minuten, beoordelen ±25 minuten (INFERENCE). Stoppunt: 5 als de bewaker 1,5 × de raming bereikt (grens $64,04); stoppunt 2 (gate C mét onder 16) pas na de samenvoeging van de nieuwe etiketten (volgende ronde). De OFF-lektelling is een eenmalige meting (geen gereedschap). De antwoorden van de nieuwe etiketten in `uitslag.json` zetten is een volgende ronde. ongetest: het ophalen en bouwen tegen productie (netwerk); kandidaten, voorinvulling en bouwscript zijn getest.
+
 **Latere aanvullingen** (na de bevestiging, voor een keurmerk dat onder het doel blijft): hetzelfde, met een nieuwe naam en elke eerdere lijst als `--bestaand`:
 ```sh
 T=$PM/toets
