@@ -40,4 +40,4 @@ inputDocuments:
 ## Gaps en risico's
 
 - Geen dekkingsgat. Niet getest (bewust): de echte samenvoeging op `$PM/toets/uitslag.json` (draait de hoofdsessie met de echte download) en de omzetting van een onverwacht genest type naar een weigering (alleen nog onbereikbare vormen na de veldcontrole).
-- AANNAME in §6c: "ingetrokken haalt niets weg" volgt het besluit van Friso van 12-11-2026 voor glutenvrij.
+- Besluit Friso 15-11-2026 ("Bevestigd blijft staan"): een later onleesbaar of open over een samengevoegd bevestigd etiket laat het bevestigde oordeel staan en wordt gemeld als ingetrokken; gedekt door `test_ouder_en_ingetrokken_laten_staan`. Was tot dan een aanname.

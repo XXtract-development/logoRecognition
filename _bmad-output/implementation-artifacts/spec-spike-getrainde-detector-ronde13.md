@@ -60,11 +60,13 @@ context:
 
 ## Implementation Notes
 
-- **Route-poort (step-02), 15-11-2026:** intent gaps 0 (besluit Friso 15-11-2026 en de regels in toetsset §6c na de spec-review; de keuze "ingetrokken haalt niets weg" volgt het besluit van 12-11-2026 en staat als AANNAME in §6c). Irreversibles 0 in de build (alleen bestanden in `tmp_path`; de echte samenvoeging draait de hoofdsessie later). Footprint niet klein (nieuwe module plus een gedeelde functie in een bestaand script). Route: dispatch. Checkpoint 1: goedkeuring volgt uit de opdracht van de orchestrator (15-11-2026, volledige keten).
+- **Route-poort (step-02), 15-11-2026:** intent gaps 0 (besluit Friso 15-11-2026 en de regels in toetsset §6c na de spec-review; de keuze "ingetrokken haalt niets weg" volgde het besluit van 12-11-2026 als aanname; bevestigd door Friso 15-11-2026, "Bevestigd blijft staan", via de orchestrator). Irreversibles 0 in de build (alleen bestanden in `tmp_path`; de echte samenvoeging draait de hoofdsessie later). Footprint niet klein (nieuwe module plus een gedeelde functie in een bestaand script). Route: dispatch. Checkpoint 1: goedkeuring volgt uit de opdracht van de orchestrator (15-11-2026, volledige keten).
 - ATDD vooraf: `uv run pytest tests/test_ronde13_samenvoeg_r12_20261115.py -q` = 41 failed, 1 passed.
 - Implementatie door een verse subagent (alleen de spec als bron): 42/42 groen. Na review: 10 tests door mij toegevoegd (52 in het bestand), twee codepatches door dezelfde subagent, documentpunten door mij. `uv run pytest tests/test_ronde13_samenvoeg_r12_20261115.py tests/test_ronde11c_samenvoeg_20261112.py tests/test_cap10_draaiplan.py -q` = 97 passed; volle suite `-m "not zwaar"` = 1195 passed, 4 deselected.
 
 ## Spec Change Log
+
+- 15-11-2026, na de build: besluit Friso "Bevestigd blijft staan" (bron: orchestrator, keuzemenu op open punt 1 van ronde 13) bevestigt het gebouwde gedrag: een later onleesbaar of open over een eerder samengevoegd bevestigd ronde-12-etiket laat het bevestigde oordeel staan en wordt gemeld als ingetrokken. Geen code- of testwijziging; het commentaar in `samenvoeg_r12.py` ("AANNAME §6c") blijft staan tot de volgende codewijziging.
 
 ## Review Triage Log
 
