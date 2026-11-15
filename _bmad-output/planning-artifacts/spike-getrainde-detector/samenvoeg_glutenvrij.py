@@ -78,6 +78,33 @@ def _gemarkeerd(u):
     return sum(1 for r in u.values() if r.get("herkomst_codes", {}).get(GV) == AI)
 
 
+def schrijf(uitslag, origineel, tekst, achtervoegsel):
+    """Schrijft `tekst` over de uitslag (toetsset §6b, gedeeld met §6c): herlezen, bytekopie
+    `<uitslag>.<achtervoegsel>-<JJJJMMDDTHHMMSS>.json` (bestaat die al: weigeren), tijdelijk bestand in dezelfde map,
+    vlak vóór het vervangen opnieuw herlezen, atomisch vervangen. Geeft het pad van de reservekopie."""
+    if _herlees(uitslag) != origineel:
+        raise ValueError(f"uitslag {uitslag} is veranderd sinds het lezen; geweigerd")
+    kopie = uitslag.with_name(f"{uitslag.name}.{achtervoegsel}-{datetime.now():%Y%m%dT%H%M%S}.json")
+    try:
+        with open(kopie, "xb") as f:
+            f.write(origineel)
+    except FileExistsError as fout:
+        raise ValueError(f"reservekopie {kopie} bestaat al; geweigerd") from fout
+    fd, tmp = tempfile.mkstemp(dir=uitslag.parent, prefix=".uitslag-", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(tekst)
+        os.chmod(tmp, uitslag.stat().st_mode & 0o777)
+        if _herlees(uitslag) != origineel:  # vlak vóór het vervangen (toetsset §6b)
+            raise ValueError(f"uitslag {uitslag} is veranderd vlak vóór het vervangen; geweigerd")
+        os.replace(tmp, uitslag)
+    except BaseException:
+        if os.path.exists(tmp):
+            os.unlink(tmp)
+        raise
+    return kopie
+
+
 def samenvoeg(uitslag, export, voorinvulling, droog=False):
     """Voegt de glutenvrij-oordelen samen volgens toetsset §6b; geeft het rapport terug."""
     uitslag = Path(uitslag).resolve()  # een symbolische koppeling blijft staan; het doel wordt bijgewerkt
@@ -92,26 +119,8 @@ def samenvoeg(uitslag, export, voorinvulling, droog=False):
     if droog or na is u:
         return rapport
 
-    if _herlees(uitslag) != origineel:
-        raise ValueError(f"uitslag {uitslag} is veranderd sinds het lezen; geweigerd")
-    kopie = uitslag.with_name(f"{uitslag.name}.voor-glutenvrij-{datetime.now():%Y%m%dT%H%M%S}.json")
-    try:
-        with open(kopie, "xb") as f:
-            f.write(origineel)
-    except FileExistsError as fout:
-        raise ValueError(f"reservekopie {kopie} bestaat al; geweigerd") from fout
-    fd, tmp = tempfile.mkstemp(dir=uitslag.parent, prefix=".uitslag-", suffix=".tmp")
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            f.write(json.dumps(na, **fmt))
-        os.chmod(tmp, uitslag.stat().st_mode & 0o777)
-        if _herlees(uitslag) != origineel:  # vlak vóór het vervangen (toetsset §6b)
-            raise ValueError(f"uitslag {uitslag} is veranderd vlak vóór het vervangen; geweigerd")
-        os.replace(tmp, uitslag)
-    except BaseException:
-        if os.path.exists(tmp):
-            os.unlink(tmp)
-        raise
+    # reservekopie <uitslag>.voor-glutenvrij-<JJJJMMDDTHHMMSS>.json
+    kopie = schrijf(uitslag, origineel, json.dumps(na, **fmt), "voor-glutenvrij")
     geschreven = json.loads(uitslag.read_bytes())  # tellingen uit het bestand zelf, niet uit het geheugen
     rapport["gate_c"]["na"] = _gate(geschreven)
     rapport.update(geschreven=True, reservekopie=str(kopie), ai_gemarkeerd=_gemarkeerd(geschreven))
