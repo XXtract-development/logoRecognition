@@ -1,5 +1,12 @@
 # Versiegeschiedenis
 
+## 24 november 2026
+
+**Logoherkenning: Nutri-Score op de testomgeving te meten**
+- Er kan een aparte toegangssleutel voor een test worden toegevoegd zonder de bestaande koppelingen aan te raken.
+- Er is een meetscript dat de bevestigde etiketten door de testomgeving haalt en per Nutri-Score-letter (A tot en met E) laat zien hoeveel er gevonden worden en hoeveel meldingen fout zijn.
+- Voor gewone gebruikers verandert er niets.
+
 ## 31 oktober 2026
 
 **Logoherkenning: nieuwe herkenningsroute die per omgeving aan te zetten is**
