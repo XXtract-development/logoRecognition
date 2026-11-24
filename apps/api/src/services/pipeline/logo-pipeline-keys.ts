@@ -3,7 +3,8 @@
  *
  * LOGO_PIPELINE_KEYS = "naam:sleutel,naam2:sleutel2" (split on the FIRST colon, so a key may
  * contain ':'; names and keys are trimmed). Missing/empty variable = no consumers = every
- * request is rejected (fail closed). Never reads the shared API_KEY or PIPELINE_SERVICE_KEY.
+ * request is rejected (fail closed). LOGO_PIPELINE_KEYS_EXTRA (same format) is read as well: lets a
+ * consumer be added without rewriting the main list (whose value Coolify does not return). Never reads the shared API_KEY or PIPELINE_SERVICE_KEY.
  */
 import crypto from 'crypto';
 import { logger } from '../../core/logger';
@@ -30,7 +31,10 @@ const digest = (s: string) => crypto.createHash('sha256').update(s, 'utf8').dige
 /** Returns the consumer name for an exactly matching key, else null. Constant-time; checks every entry. */
 export function resolveLogoPipelineConsumer(provided: string | undefined): string | null {
   // Parsed per request on purpose: cheap, and lets the environment change without a restart.
-  const entries = parseLogoPipelineKeys(process.env.LOGO_PIPELINE_KEYS);
+  const entries = [
+    ...parseLogoPipelineKeys(process.env.LOGO_PIPELINE_KEYS),
+    ...parseLogoPipelineKeys(process.env.LOGO_PIPELINE_KEYS_EXTRA),
+  ];
   if (!provided || typeof provided !== 'string') return null;
   const p = digest(provided); // equal-length digests: no length leak, no timingSafeEqual throw
   let match: string | null = null;
