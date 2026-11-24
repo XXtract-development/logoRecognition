@@ -71,6 +71,21 @@ def _usable(lr):
     return lr if isinstance(lr, dict) and lr.get("status") in ("ok", "partial", None) else None
 
 
+MAX_BYTES = 9_500_000  # endpoint-limiet is 10 MB
+
+
+def shrink(path, out):
+    """Groter dan de limiet: JPEG q90 op volle resolutie (zelfde pixels), anders ongewijzigd."""
+    if os.path.getsize(path) <= MAX_BYTES:
+        return path
+    from PIL import Image
+    dst = os.path.join(out, "_jpeg", os.path.basename(path)[:-4] + ".jpg")
+    if not os.path.exists(dst):
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        Image.open(path).convert("RGB").save(dst, "JPEG", quality=90)
+    return dst
+
+
 def run(truth_path, images, out, key, post, get, poll_s=3, max_wait_s=300, workers=2):
     os.makedirs(out, exist_ok=True)
     ids = list(json.load(open(truth_path)))
@@ -81,7 +96,7 @@ def run(truth_path, images, out, key, post, get, poll_s=3, max_wait_s=300, worke
             prev = json.load(open(p))
             if prev.get("status") == "done":
                 return eid, _usable(prev.get("logoResults"))
-        st, body = post(SCANS, {"rescan": "true"}, os.path.join(images, eid + ".png"), key)
+        st, body = post(SCANS, {"rescan": "true"}, shrink(os.path.join(images, eid + ".png"), out), key)
         if st != 202 or not isinstance(body, dict) or "scanId" not in body:
             return eid, None
         deadline = time.time() + max_wait_s
@@ -116,8 +131,9 @@ def _http(method, path, key, data=None, headers=None):
 def http_post(path, fields, image_path, key):
     b = uuid.uuid4().hex
     parts = [f'--{b}\r\nContent-Disposition: form-data; name="{k}"\r\n\r\n{v}\r\n'.encode() for k, v in fields.items()]
-    parts.append(f'--{b}\r\nContent-Disposition: form-data; name="file"; filename="x.png"\r\n'
-                 'Content-Type: image/png\r\n\r\n'.encode() + open(image_path, "rb").read() + b"\r\n")
+    ct = "image/jpeg" if image_path.endswith(".jpg") else "image/png"
+    parts.append(f'--{b}\r\nContent-Disposition: form-data; name="file"; filename="x"\r\n'
+                 f'Content-Type: {ct}\r\n\r\n'.encode() + open(image_path, "rb").read() + b"\r\n")
     parts.append(f"--{b}--\r\n".encode())
     return _http("POST", path, key, b"".join(parts), {"Content-Type": f"multipart/form-data; boundary={b}"})
 
