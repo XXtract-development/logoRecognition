@@ -111,3 +111,15 @@ def test_done_scan_with_failed_logoresults_is_no_answer(tmp_path):
 
     ans = m.run(truth, img, out, SECRET, Fake().post, get, poll_s=0, max_wait_s=1)
     assert ans == {"1": None, "2": None}
+
+
+def test_shrink_big_image_to_jpeg_under_limit(tmp_path):
+    from PIL import Image
+    big = tmp_path / "big.png"
+    Image.frombytes("RGB", (1900, 1900), os.urandom(1900 * 1900 * 3)).save(big)  # ruis: ~10,8 MB
+    assert os.path.getsize(big) > m.MAX_BYTES
+    out = m.shrink(str(big), str(tmp_path / "out"))
+    assert out.endswith(".jpg") and os.path.getsize(out) <= 10_000_000
+    small = tmp_path / "s.png"
+    small.write_bytes(b"x")
+    assert m.shrink(str(small), str(tmp_path)) == str(small)
