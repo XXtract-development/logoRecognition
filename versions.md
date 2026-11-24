@@ -2,6 +2,10 @@
 
 ## 24 november 2026
 
+**Logoherkenning: Nutri-Score-letters worden niet meer ten onrechte weggegooid**
+- De nieuwe herkenningsroute gooide veel juiste Nutri-Score-meldingen weg omdat de controle de vijf letters niet van elkaar kon onderscheiden. Nu bepaalt de controle alleen nog of het een Nutri-Score is; de letter komt van de herkenning zelf.
+- De route staat standaard uit; voor gewone gebruikers verandert er niets.
+
 **Logoherkenning: nieuwe route kent Nutri-Score D en E**
 - De nieuwe herkenningsroute kon van het Nutri-Score-label alleen A, B en C melden; D en E werden gemist. Nu herkent hij alle vijf de letters.
 - Per balk wordt nog maar één letter gemeld, zodat twee letters niet meer naast elkaar op hetzelfde label staan.
