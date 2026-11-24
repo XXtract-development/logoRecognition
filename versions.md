@@ -2,6 +2,11 @@
 
 ## 24 november 2026
 
+**Logoherkenning: testsleutel veiliger afgeschermd**
+- Een extra testsleutel die dezelfde naam of dezelfde waarde heeft als een bestaande koppeling wordt nu genegeerd. Zo kan een test nooit de scans van een bestaande koppeling inzien.
+- Een lege of onvolledige testinstelling geeft geen stroom aan meldingen meer; een fout in de instelling wordt één keer gemeld.
+- Het meetscript gaat beter om met haperingen van de testomgeving: het probeert opnieuw, legt mislukte etiketten vast en kan na een onderbreking veilig verder.
+
 **Logoherkenning: Nutri-Score op de testomgeving te meten**
 - Er kan een aparte toegangssleutel voor een test worden toegevoegd zonder de bestaande koppelingen aan te raken.
 - Er is een meetscript dat de bevestigde etiketten door de testomgeving haalt en per Nutri-Score-letter (A tot en met E) laat zien hoeveel er gevonden worden en hoeveel meldingen fout zijn.
