@@ -150,22 +150,24 @@ run = asyncio.run
 # --- CAP-2: K1a exact ---------------------------------------------------------
 
 
+# Bewust gewijzigd, SPEC-nutriscore-k4aa-de: INSTRUCTIE, SCHEMA en referentieblad bevatten nu Nutri-Score D/E.
+# De drie hashes worden bij de bouw vastgelegd; model, temperatuur, vensters en JPEG-regels blijven gelijk aan de spike.
 def test_cap2_instruction_schema_sheet_and_model_equal_the_frozen_spike(k4):
     assert (
         hashlib.sha256((k4.INSTRUCTIE + "||" + k4.DEEL).encode()).hexdigest()
-        == "6d06a8081cf93c7e163891b33a5ca3393afb75f9a04e7b19ace2792e385b5539"
+        == "7d029a41afdbb337b38b6b9a91a0929d15f81afcaceab910a4419fda30d11e72"
     )
     assert (
         hashlib.sha256(json.dumps(k4.SCHEMA, sort_keys=True).encode()).hexdigest()
-        == "a44b588b8a940b0b9588580f9033b659e79289d6c72b90433276a9374b19166a"
+        == "f4dbb752a04fb3f81207f712a8b37290fa4be4424abc6225a2012bb017baf035"
     )
     assert (
         hashlib.sha256(k4.referentieblad_bytes()).hexdigest()
-        == "d39f1905cdaaf4f4998c76c29ae0324707975ca9961f9214b1f6c45c74ab9ad3"
+        == "37a11b996f617130a8cf65ed8f5ab3973d42fa1dfa8e3eb128fc72065995708e"
     )
     assert k4.MODEL == "google/gemini-3.8-flash"
     assert set(k4.BRUIKBAAR) == BRUIKBAAR
-    assert len(k4.TOP15) == 15 and set(BRUIKBAAR) <= set(k4.TOP15)
+    assert len(k4.TOP15) == 17 and set(BRUIKBAAR) <= set(k4.TOP15)
 
 
 def test_cap2_windows_are_whole_label_plus_tile_windows_6(k4):

@@ -50,6 +50,8 @@ TOP15 = sorted(
         "GREEN_DOT",
         "VEGAN",
         "NUTRISCORE_A",
+        "NUTRISCORE_D",
+        "NUTRISCORE_E",
         "EUROPEAN_V_LABEL_VEGAN",
         "FOREST_STEWARDSHIP_COUNCIL_MIX",
         "MARINE_STEWARDSHIP_COUNCIL_LABEL",
@@ -81,7 +83,9 @@ OMSCHRIJVING = {
     "MARINE_STEWARDSHIP_COUNCIL_LABEL": "MSC blue ecolabel: a fish shape with a tick, 'MSC'.",  # noqa: E501
     "NUTRISCORE_A": "Nutri-Score bar with the letter A highlighted (enlarged).",
     "NUTRISCORE_B": "Nutri-Score bar with the letter B highlighted (enlarged).",
-    "NUTRISCORE_C": 'Nutri-Score bar with the letter C highlighted (enlarged). Highlighted D or E: use "ander".',  # noqa: E501
+    "NUTRISCORE_C": "Nutri-Score bar with the letter C highlighted (enlarged).",
+    "NUTRISCORE_D": "Nutri-Score bar with the letter D highlighted (enlarged).",
+    "NUTRISCORE_E": "Nutri-Score bar with the letter E highlighted (enlarged).",
     "PREGNANCY_WARNING": "Alcohol warning pictogram: silhouette of a pregnant woman (often drinking) inside a circle with a diagonal strike-through. Not on the reference sheet.",  # noqa: E501
     "RAINFOREST_ALLIANCE_PEOPLE_NATURE": "Rainforest Alliance seal: a round seal with a frog and the text 'Rainforest Alliance' and 'people & nature'.",  # noqa: E501
     "RECYCLABLE_GENERAL_CLAIM": "Generic recycling symbol: a Moebius loop of three chasing arrows WITHOUT a material number or material name (numbered resin codes, sorting/bin pictograms, Triman and 'recycled content' seals: use \"ander\").",  # noqa: E501
@@ -95,6 +99,7 @@ INSTRUCTIE = (
     'Return only JSON {"logos":[{"code":"<CODE>","box_2d":[ymin,xmin,ymax,xmax]}]} with coordinates normalized 0..1000 '  # noqa: E501
     "relative to IMAGE 2. Report every visible occurrence separately with a tight box around the complete mark.\n"  # noqa: E501
     "Allowed codes:\n" + "\n".join(f"- {c}: {OMSCHRIJVING[c]}" for c in TOP15) + "\n"
+    'For Nutri-Score, use the code of the one enlarged letter and box the whole bar; a bar without an enlarged letter is "ander".\n'  # noqa: E501
     'Use "ander" for any other certification, recycling, nutrition or claim mark, or leave it out. '  # noqa: E501
     "Only report marks that are visibly printed; never infer a mark from text, ingredient lists or declarations. "  # noqa: E501
     'Ignore brand logos, barcodes and ordinary text. A label without any of these marks returns {"logos":[]}. At most 40 entries.'  # noqa: E501
@@ -124,6 +129,7 @@ MAX_REPORTS = 64
 MAX_INLINE_EMBEDDINGS = 8
 EMBED_BATCH = 8
 GATE_TOP = 3
+NUTRISCORE_PREFIX = "NUTRISCORE_"
 MERGE_IOU = 0.5
 RESERVE_S = (
     40.0  # kept free for the SigLIP step (<= 64 crops, 1 thread) after the calls
@@ -232,14 +238,45 @@ def top_codes(E, R, codes, k=GATE_TOP):
     return out
 
 
+def _letters_ok(code, score, top):
+    """Nutri-Score letters: no other Nutri-Score code may score higher in the same top
+    (equal keeps both). Other codes are not affected."""
+    if not code.startswith(NUTRISCORE_PREFIX):
+        return True
+    return all(s <= score for c, s in top if c.startswith(NUTRISCORE_PREFIX))
+
+
 def gate(meldingen, tops):
-    """K4-xy rule: a report stays when its code is among its crop's top distinct codes."""
+    """K4-xy rule: a report stays when its code is among its crop's top distinct codes;
+    a Nutri-Score letter also has to lead the other letters in that top."""
     kept = []
     for m, top in zip(meldingen, tops):
         score = dict(top).get(m["code"])
-        if score is not None:
+        if score is not None and _letters_ok(m["code"], score, top):
             kept.append({**m, "confidence": min(1.0, max(0.0, score))})
     return kept
+
+
+def one_letter(meldingen):
+    """One bar, one letter: go through the Nutri-Score reports by gate score (ties: the
+    lowest ``orde``) and keep one only when no kept report of another letter overlaps it
+    (IoU >= 0.5). Other codes pass untouched."""
+    ns = sorted(
+        (m for m in meldingen if m["code"].startswith(NUTRISCORE_PREFIX)),
+        key=lambda m: (-m["confidence"], m["orde"]),
+    )
+    kept = []
+    for m in ns:
+        if all(
+            k["code"] == m["code"] or _iou(k["vak"], m["vak"]) < MERGE_IOU for k in kept
+        ):
+            kept.append(m)
+    keep_ids = {id(m) for m in kept}
+    return [
+        m
+        for m in meldingen
+        if not m["code"].startswith(NUTRISCORE_PREFIX) or id(m) in keep_ids
+    ]
 
 
 def _iou(a, b):
@@ -613,7 +650,9 @@ async def scan(data, remaining):
             E.append(await strict_blocking(embedder.embed, crops[b : b + EMBED_BATCH]))
         for n, top in zip(valid, top_codes(np.concatenate(E), R, codes)):
             tops[n] = top
-    kept = merge(gate(reports, tops))
+    gated = gate(reports, tops)
+    one = one_letter(gated)
+    kept = merge(one)
 
     stats = {
         "calls": len(wins),
@@ -621,6 +660,7 @@ async def scan(data, remaining):
         "providers": [provider for _, provider in answers],
         "k1_meldingen": found,
         "na_poort": len(kept),
+        "letter_dropped": len(gated) - len(one),
         "dropped": found - len(reports),
         "referenties": len(codes),
         "inline_embedded": inline,

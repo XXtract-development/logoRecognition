@@ -2,6 +2,11 @@
 
 ## 24 november 2026
 
+**Logoherkenning: nieuwe route kent Nutri-Score D en E**
+- De nieuwe herkenningsroute kon van het Nutri-Score-label alleen A, B en C melden; D en E werden gemist. Nu herkent hij alle vijf de letters.
+- Per balk wordt nog maar één letter gemeld, zodat twee letters niet meer naast elkaar op hetzelfde label staan.
+- De route staat standaard uit; voor gewone gebruikers verandert er niets.
+
 **Logoherkenning: testsleutel veiliger afgeschermd**
 - Een extra testsleutel die dezelfde naam of dezelfde waarde heeft als een bestaande koppeling wordt nu genegeerd. Zo kan een test nooit de scans van een bestaande koppeling inzien.
 - Een lege of onvolledige testinstelling geeft geen stroom aan meldingen meer; een fout in de instelling wordt één keer gemeld.
