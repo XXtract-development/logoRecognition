@@ -1,9 +1,12 @@
 """K4-aa scan route: Gemini 3.8 Flash finds and names top-15 marks (spike variant K1a),
 a SigLIP 2 top-3 gate keeps a report only when the crop's three best distinct reference
-codes include it. Contract: _bmad-output/specs/spec-logo-scan-k4aa/{SPEC,ontwerp}.md.
+codes include it (a Nutri-Score report: any Nutri-Score code among them).
+Contract: _bmad-output/specs/spec-logo-scan-k4aa/{SPEC,ontwerp}.md and
+_bmad-output/specs/spec-nutriscore-k4aa-de/SPEC.md.
 
-Prompt, schema, reference sheet and windows are byte-equal to the spike
-(fase-b/fb_k1.py, fb_common.py); the hashes are pinned in tests/test_k4aa_atdd.py.
+Windows and model settings are byte-equal to the spike (fase-b/fb_k1.py, fb_common.py);
+prompt, schema and reference sheet deviate on purpose (Nutri-Score D/E); all are pinned in
+tests/test_k4aa_atdd.py.
 Logs carry error classes and counts only: never the key, an image, the prompt or an answer.
 """
 
@@ -238,33 +241,38 @@ def top_codes(E, R, codes, k=GATE_TOP):
     return out
 
 
-def _letters_ok(code, score, top):
-    """Nutri-Score letters: no other Nutri-Score code may score higher in the same top
-    (equal keeps both). Other codes are not affected."""
-    if not code.startswith(NUTRISCORE_PREFIX):
-        return True
-    return all(s <= score for c, s in top if c.startswith(NUTRISCORE_PREFIX))
-
-
 def gate(meldingen, tops):
-    """K4-xy rule: a report stays when its code is among its crop's top distinct codes;
-    a Nutri-Score letter also has to lead the other letters in that top."""
+    """K4-xy rule: a report stays when its code is among its crop's top distinct codes.
+    A Nutri-Score report stays when any Nutri-Score code is in that top (its own letter
+    need not be); its confidence is the best Nutri-Score score in the top."""
     kept = []
     for m, top in zip(meldingen, tops):
-        score = dict(top).get(m["code"])
-        if score is not None and _letters_ok(m["code"], score, top):
-            kept.append({**m, "confidence": min(1.0, max(0.0, score))})
+        if m["code"].startswith(NUTRISCORE_PREFIX):
+            scores = [s for c, s in top if c.startswith(NUTRISCORE_PREFIX)]
+            if not scores:
+                continue
+            score = max(scores)
+        else:
+            score = dict(top).get(m["code"])
+            if score is None:
+                continue
+        kept.append({**m, "confidence": min(1.0, max(0.0, score))})
     return kept
 
 
 def one_letter(meldingen):
-    """One bar, one letter: go through the Nutri-Score reports by gate score (ties: the
-    lowest ``orde``) and keep one only when no kept report of another letter overlaps it
+    """One bar, one letter. A Nutri-Score report's votes are the reports of the same code
+    with IoU >= 0.5 (itself included). Go through them by most votes (ties: the lowest
+    ``orde``) and keep one only when no kept report of another letter overlaps it
     (IoU >= 0.5). Other codes pass untouched."""
-    ns = sorted(
-        (m for m in meldingen if m["code"].startswith(NUTRISCORE_PREFIX)),
-        key=lambda m: (-m["confidence"], m["orde"]),
-    )
+    ns = [m for m in meldingen if m["code"].startswith(NUTRISCORE_PREFIX)]
+    votes = {
+        id(m): sum(
+            k["code"] == m["code"] and _iou(k["vak"], m["vak"]) >= MERGE_IOU for k in ns
+        )
+        for m in ns
+    }
+    ns.sort(key=lambda m: (-votes[id(m)], m["orde"]))
     kept = []
     for m in ns:
         if all(

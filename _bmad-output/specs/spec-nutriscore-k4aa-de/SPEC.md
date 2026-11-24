@@ -11,6 +11,8 @@ sources:
 
 # Nutri-Score A t/m E in de K4-aa-route
 
+> Ronde 2 (24 november 2026): CAP-2 vervangen (familiepoort), CAP-3 vervallen, CAP-5 aangepast. Bronnen ronde 2: `../../implementation-artifacts/investigations/nutriscore-k4aa-ronde2-oorzaak-20261124.md`.
+
 ## Why
 
 Meting 24-11 op 352 etiketten (ACC, acc@869dfa1): A 92% gevonden / 21% vals, B 45%/44%, C 79%/26%, D 0/32, E 0/21. D en E zijn per ontwerp onmogelijk (codelijst kent alleen A/B/C; C-omschrijving zegt "D or E: ander"). Besluit Friso 24-11 (item 62): uitbreiden met D en E. Eis per letter: ≥80% gevonden en ≤10% vals.
@@ -20,24 +22,27 @@ Meting 24-11 op 352 etiketten (ACC, acc@869dfa1): A 92% gevonden / 21% vals, B 4
 - **CAP-1**
   - **intent:** K4-aa kan NUTRISCORE_D en NUTRISCORE_E melden naast A/B/C.
   - **success:** Toetsen: `TOP15` bevat 17 codes met beide nieuwe; prompt-omschrijving en schema-enum bevatten ze (schema leidt uit de lijst af); de C-omschrijving bevat geen "D or E: ander" meer; de instructie krijgt één regel: "For Nutri-Score, use the code of the one enlarged letter and box the whole bar; a bar without an enlarged letter is \"ander\""; elke omschrijving van A–E noemt dat precies die letter uitvergroot is; `parse` laat D/E door. Referentieblad bevat tegels NUTRISCORE_D en NUTRISCORE_E uit de synthetische seeds (`reference-logos/NUTRISCORE_D|E`), zelfde stijl als A/B/C, 15 tegels in 4 rijen, 1440×1176 (tegels na NUTRISCORE_C schuiven één plek op, alfabetisch). Herbouwbaar: bouwer = `referentieblad()` in de spike-map (`fase-b/fb_k1.py`, Arial op macOS); het bouwscript komt in de repo naast het blad.
-- **CAP-2**
-  - **intent:** De poort onderscheidt Nutri-Score-letters in plaats van de hele familie door te laten.
-  - **success:** Toetsen met vaste embeddings: een melding NUTRISCORE_X blijft alleen als X de hoogst scorende Nutri-Score-code is onder alle actieve referenties van het uitsnede én (bestaande regel) in de top-3 verschillende soorten staat; andere codes blijven op de bestaande regel; regel: behoud als score(X) ≥ de score van elke andere `NUTRISCORE_*` in dezelfde top-3 (gelijke score houdt beide). Vijf tests: X achter Y valt weg; X vóór Y blijft; gelijke score blijft; X op plek 4 valt weg; niet-Nutri-Score-codes ongewijzigd. Hypothese (te toetsen op de deelset, niet aannemen): top-3 laat elke letter door omdat de letters in SigLIP-ruimte dicht bij elkaar liggen.
+- **CAP-2** (ronde 2, vervangt de letterregel)
+  - **intent:** De poort controleert of een uitsnede een Nutri-Score is; de letter komt van Gemini, niet van SigLIP.
+  - **success:** Toetsen met vaste embeddings: een melding NUTRISCORE_X blijft als een `NUTRISCORE_*`-code in de top-3 verschillende soorten van het uitsnede staat (ook als X zelf achter een andere letter staat); `confidence` = hoogste Nutri-Score-score in die top; Nutri-Score op plek 4+ valt weg; niet-Nutri-Score-codes ongewijzigd. Bewijs: investigations/nutriscore-k4aa-ronde2-oorzaak-20261124.md (SigLIP-letters liggen binnen 0,03 en ranken scheef (D hoogst in 30/58 vakken, juiste letter op plek 1 in 8/50): geen bruikbaar onderscheid. Letterregel hield 8/50 juiste meldingen vast, de oude top-3-regel 49/50, de familieregel 50/50 — en ook 8/8 foute letters: letterfouten blijven Gemini-kant. Verwacht na de fix op de 24-11-cijfers: A ≈14%, B ≈22%, C ≈40% vals, deels D/E-balken die nu hun eigen code krijgen.) `confidence` zegt niets over de letter. Voor `NUTRISCORE_*` geldt dus niet langer de K4-xy-regel van SPEC-logo-scan-k4aa CAP-3 (eigen code in de top-3). Stemmen in CAP-2b tellen meldingen, niet vensters; bij gelijkstand wint de laagste `orde` (venster 0 = heel etiket): de deelmeting telt hoe vaak dat beslist en hoe vaak er twee letters op een etiket blijven.
+
 - **CAP-2b**
   - **intent:** Eén balk geeft één letter.
-  - **success:** Na de poort worden Nutri-Score-meldingen met IoU ≥ 0,5 maar verschillende letter teruggebracht tot één: die met de hoogste poortscore (toets met vaste meldingen); meldingen van dezelfde letter blijven via `merge`.
+  - **success:** Na de poort worden Nutri-Score-meldingen met IoU ≥ 0,5 maar verschillende letter teruggebracht tot één: die met de meeste overlappende meldingen van dezelfde letter (stemmen van de vensters, IoU ≥ 0,5), bij gelijkstand de laagste `orde` (toets met vaste meldingen); de familiescore speelt geen rol. Meldingen van dezelfde letter blijven via `merge`.
 - **CAP-2c**
   - **intent:** Statistiek toont wat de letterstap wegneemt.
   - **success:** `stats.letter_dropped` = aantal meldingen dat `one_letter` weghaalt (toets); `na_poort` blijft het aantal na poort, letterstap en samenvoegen.
-- **CAP-3**
-  - **intent:** De gate heeft actieve SigLIP-referenties voor D en E.
-  - **success:** Volgens manifest 12-07 had ACC 3 D- en 10 E-referenties; 17 van de 42 Nutri-Score-referenties toonden een andere letter dan geregistreerd (4 A = E-balk, beide echte D = B/C-balk, 3 E = Beter Leven/Halal). Gemeten op de actuele set: per letter aantal referenties, aantal met SigLIP-embedding, en een steekproef-oordeel op zuiverheid (SQL/commando in het rapport). Opschonen of embedding-sync op ACC is een schrijfactie: niet zelf doen, melden aan de orchestrator met het effect op de meting. Ontbreken er > 8 embeddings, dan faalt elke scan (`siglip_references_incomplete`): dat is een blokkade. Niets op productie.
+- **CAP-3** (vervallen in ronde 2)
+  - **intent:** (vervallen) Letter-referenties tellen niet meer mee in de poort; opschonen van D/E-referenties op ACC is niet nodig.
+  - **success:** Geen ACC-schrijfactie. Blokkade blijft: ontbreken > 8 embeddings dan faalt de scan (`siglip_references_incomplete`). Niets op productie.
+
 - **CAP-4**
   - **intent:** De bewuste afwijking van de spike-pins is vastgelegd en getoetst.
   - **success:** `tests/test_k4aa_atdd.py`: pins voor `INSTRUCTIE`+`DEEL`, `SCHEMA` en `referentieblad` hebben de nieuwe sha256-waarden met een commentaarregel "bewust gewijzigd, SPEC-nutriscore-k4aa-de"; `len(TOP15) == 17`; `scripts/k4aa_vergelijk.py` volgt `TOP15`; alle overige pins (model, temperatuur, vensters, JPEG-regels, ZDR) ongewijzigd en groen. De spike-gelijkheid uit SPEC-logo-scan-k4aa CAP-2 vervalt alleen voor deze drie pins; CAP-8 (spike-vergelijking) vervalt voor deze wijziging.
 - **CAP-5**
   - **intent:** Het resultaat wordt gemeten in twee stappen op ACC, zonder lek van de toetsset.
-  - **success:** (a) Deelset = per letter A/B/C 15 etiketten (vaste seed 20261124) + alle D (32) en E (22) + 20 etiketten zonder Nutri-Score (213 van de 352 hebben er geen; zij meten valse meldingen); gefilterd waarheidsbestand; verse lege `--out`-map (het script hergebruikt anders oude antwoorden zonder D/E); alle antwoorden dragen modelVersion `…/k4aa`. Rapport per letter gevonden/vals met noemer, origineel en herschaald apart, plus per melding pre-poort/post-poort telling uit `stats` waar beschikbaar. (b) Volledige 352 alleen als elke letter met n ≥ 10 op de deelset ≥ 70% gevonden en ≤ 15% vals haalt; een letter met n < 10 is "te klein om te beoordelen", geen stop; anders stoppen en de oorzaak per letter benoemen met meetbewijs. (c) Prompt en codelijst zijn niet bijgesteld op basis van individuele toetsetetiketten; GTIN-overlap tussen actuele referenties en de 352 wordt gemeten en gerapporteerd (12-07: 0 van 29).
+  - **success:** (a) Zelfde deelset als ronde 1 (119: seed 20261124, A/B/C 15, alle D/E, 20 zonder Nutri-Score), verse lege `--out`-map, alle antwoorden modelVersion `…/k4aa`; rapport per letter gevonden/vals met noemer, origineel en herschaald apart. (b) Volledige 352 alleen als elke letter met n ≥ 10 antwoorden ≥ 70% gevonden en ≤ 15% vals haalt voor A, B en C, en D en E niet slechter zijn dan ronde 1 (D 84%/7%, E 14%/0% gevonden/vals); een letter met n < 10 antwoorden is te klein om te beoordelen; anders stoppen met onderbouwde conclusie en opties (max twee iteraties in ronde 2). (c) Prompt, codelijst en referentieblad zijn niet bijgesteld op basis van individuele toetsetetiketten. De poortregel is bepaald met de 24-11-meting op dezelfde etiketten (diagnoserapport; grens van het bewijs: alleen vakken die de oude poort al doorliet, niets over meldingen buiten Nutri-Score-balken). GTIN-overlap tussen actuele referenties en de 352 wordt gemeten (12-07: 0 van 29). `stats` staan niet in het API-antwoord: of E bij Gemini of bij de poort sneuvelt wordt indirect afgeleid (de familiepoort weigert vrijwel geen Nutri-Score-uitsnede).
+
 - **CAP-6**
   - **intent:** ACC is na afloop weer in de uitgangstoestand.
   - **success:** `LOGO_SCAN_ROUTE` weer verwijderd (ook preview-kopie), redeploy afgerond, `/health` 200, testscan geeft modelVersion zonder `/k4aa`; testsleutel (indien gemaakt) ingetrokken en Coolify opnieuw uitgelezen zonder de variabele; productie onaangeroerd.
@@ -62,7 +67,7 @@ Werk afgerond: gebouwd, getest, gemeten (deelset, en volledig indien toegestaan)
 ## Assumptions
 
 - Synthetische seeds zijn representatief genoeg voor de referentietegels.
-- Zonder zuivere D/E-referenties in de poort valt een D/E-melding weg of wordt verkeerd gelabeld (CAP-3 meet).
+- Elke `NUTRISCORE_*`-referentie stemt mee als familie; of er onzuivere (Beter Leven/Halal) bij zitten is niet gemeten (UNVERIFIED; read-only telling op ACC mogelijk, geen schrijfactie).
 
 ## Open questions
 

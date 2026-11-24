@@ -75,13 +75,20 @@ def _g(code, score_by_code, k4):
     return k4.gate([{"code": code, "vak": [0, 0, 10, 10], "orde": (0, 0)}], [top])
 
 
-def test_cap2_letter_behind_another_letter_is_dropped(k4):
-    assert _g("NUTRISCORE_C", {"NUTRISCORE_B": 0.9, "NUTRISCORE_C": 0.8, "WEIDEMELK": 0.5}, k4) == []
+def test_cap2_letter_behind_another_letter_stays_when_a_letter_is_in_the_top(k4):
+    # Ronde 2: SigLIP kan de letters niet scheiden (spreiding < 0,03); de letter komt van Gemini.
+    kept = _g("NUTRISCORE_C", {"NUTRISCORE_B": 0.9, "NUTRISCORE_C": 0.8, "WEIDEMELK": 0.5}, k4)
+    assert [m["code"] for m in kept] == ["NUTRISCORE_C"]
 
 
-def test_cap2_letter_ahead_of_other_letters_stays(k4):
-    kept = _g("NUTRISCORE_B", {"NUTRISCORE_B": 0.9, "NUTRISCORE_C": 0.8, "WEIDEMELK": 0.5}, k4)
-    assert [m["code"] for m in kept] == ["NUTRISCORE_B"]
+def test_cap2_letter_missing_from_top3_stays_when_another_letter_is_in_it(k4):
+    # E staat niet in de top-3 (alleen D, C, A), maar het uitsnede is wel een Nutri-Score.
+    top = {"NUTRISCORE_D": 0.9, "NUTRISCORE_C": 0.89, "NUTRISCORE_A": 0.88}
+    assert [m["code"] for m in _g("NUTRISCORE_E", top, k4)] == ["NUTRISCORE_E"]
+
+
+def test_cap2_confidence_is_the_best_nutriscore_score_in_the_top(k4):
+    kept = _g("NUTRISCORE_C", {"NUTRISCORE_B": 0.9, "NUTRISCORE_C": 0.8, "WEIDEMELK": 0.5}, k4)
     assert kept[0]["confidence"] == pytest.approx(0.9)
 
 
@@ -91,9 +98,10 @@ def test_cap2_equal_scores_keep_both_letters(k4):
     assert [m["code"] for m in k4.gate(ms, [top, top])] == ["NUTRISCORE_B", "NUTRISCORE_C"]
 
 
-def test_cap2_letter_on_rank_4_is_dropped_as_before(k4):
+def test_cap2_nutriscore_without_any_letter_in_the_top3_is_dropped(k4):
     top = [("WEIDEMELK", 0.9), ("EU_ORGANIC_FARMING", 0.8), ("GREEN_DOT", 0.7)]
     assert _g("NUTRISCORE_A", dict(top), k4) == []
+
 
 
 def test_cap2_other_codes_are_unchanged_by_nutriscore_neighbours(k4):
@@ -104,7 +112,7 @@ def test_cap2_other_codes_are_unchanged_by_nutriscore_neighbours(k4):
 # --- CAP-2b: één balk, één letter -------------------------------------------------
 
 
-def test_cap2b_overlapping_different_letters_keep_the_highest_gate_score(k4):
+def test_cap2b_overlapping_different_letters_keep_the_lowest_orde_on_equal_votes(k4):
     ms = [
         {"code": "NUTRISCORE_B", "vak": [0, 0, 100, 100], "orde": (0, 0), "confidence": 0.7},
         {"code": "NUTRISCORE_C", "vak": [5, 5, 105, 105], "orde": (1, 0), "confidence": 0.9},
@@ -114,9 +122,55 @@ def test_cap2b_overlapping_different_letters_keep_the_highest_gate_score(k4):
     out = k4.one_letter(ms)
     assert sorted((m["code"], m["orde"]) for m in out) == [
         ("NUTRISCORE_A", (0, 1)),
-        ("NUTRISCORE_C", (1, 0)),
+        ("NUTRISCORE_B", (0, 0)),
         ("WEIDEMELK", (0, 2)),
     ]
+
+
+def test_cap2b_letter_with_most_overlapping_reports_wins_whatever_the_gate_score(k4):
+    ms = [
+        {"code": "NUTRISCORE_C", "vak": [0, 0, 100, 100], "orde": (0, 0), "confidence": 0.95},
+        {"code": "NUTRISCORE_B", "vak": [0, 0, 100, 100], "orde": (1, 0), "confidence": 0.90},
+        {"code": "NUTRISCORE_B", "vak": [2, 2, 98, 98], "orde": (2, 0), "confidence": 0.90},
+    ]
+    assert {m["code"] for m in k4.one_letter(ms)} == {"NUTRISCORE_B"}
+
+
+def test_cap2_nutriscore_on_rank_2_or_3_of_the_top_stays_with_its_own_score(k4):
+    top = {"WEIDEMELK": 0.9, "GREEN_DOT": 0.8, "NUTRISCORE_D": 0.7}  # letter op plek 3, andere letter gemeld
+    kept = _g("NUTRISCORE_A", top, k4)
+    assert [m["code"] for m in kept] == ["NUTRISCORE_A"] and kept[0]["confidence"] == pytest.approx(0.7)
+    top = {"WEIDEMELK": 0.9, "NUTRISCORE_D": 0.8, "GREEN_DOT": 0.7}  # plek 2
+    assert [m["code"] for m in _g("NUTRISCORE_A", top, k4)] == ["NUTRISCORE_A"]
+
+
+def test_cap2b_votes_need_overlap_a_far_away_same_letter_gives_no_vote(k4):
+    ms = [
+        {"code": "NUTRISCORE_B", "vak": [0, 0, 100, 100], "orde": (0, 0), "confidence": 0.9},
+        {"code": "NUTRISCORE_C", "vak": [0, 0, 100, 100], "orde": (1, 0), "confidence": 0.9},
+        {"code": "NUTRISCORE_C", "vak": [900, 900, 1000, 1000], "orde": (2, 0), "confidence": 0.9},
+    ]
+    assert sorted(m["code"] for m in k4.one_letter(ms)) == ["NUTRISCORE_B", "NUTRISCORE_C"]
+    assert [m["orde"] for m in k4.one_letter(ms) if m["vak"][0] == 0] == [(0, 0)]
+
+
+def test_cap2b_vote_overlap_of_exactly_half_counts(k4):
+    # IoU precies 0,5: [0,0,100,100] en [0,0,100,50]; moet meetellen als stem (>=, zoals merge).
+    ms = [
+        {"code": "NUTRISCORE_C", "vak": [0, 0, 100, 100], "orde": (0, 0), "confidence": 0.9},
+        {"code": "NUTRISCORE_B", "vak": [0, 0, 100, 100], "orde": (1, 0), "confidence": 0.9},
+        {"code": "NUTRISCORE_B", "vak": [0, 0, 100, 50], "orde": (2, 0), "confidence": 0.9},
+    ]
+    assert {m["code"] for m in k4.one_letter(ms)} == {"NUTRISCORE_B"}
+
+
+def test_cap2_rank_4_nutriscore_via_top_codes_is_dropped(k4):
+    R = np.array([[1, 0, 0, 0], [0.9, 0.1, 0, 0], [0.8, 0.2, 0, 0], [0.7, 0.3, 0, 0]], np.float32)
+    codes = ["WEIDEMELK", "EU_ORGANIC_FARMING", "GREEN_DOT", "NUTRISCORE_A"]
+    top = k4.top_codes(np.array([[1, 0, 0, 0]], np.float32), R, codes)
+    assert [c for c, _ in top[0]] == ["WEIDEMELK", "EU_ORGANIC_FARMING", "GREEN_DOT"]
+    m = {"code": "NUTRISCORE_A", "vak": [0, 0, 10, 10], "orde": (0, 0)}
+    assert k4.gate([m], top) == []
 
 
 def test_cap2b_same_letter_and_distant_boxes_are_untouched(k4):
@@ -149,7 +203,8 @@ def test_cap2_cap2b_scan_end_to_end_one_balk_one_letter(monkeypatch, k4):
         ),
     )
     out = run(k4.scan(png_bytes(1000, 800), lambda: 120.0))
-    assert [d["t3777_code"] for d in out["detections"]] == ["NUTRISCORE_B"]
+    # Gelijke stemmen, en de familiescore zegt niets over de letter: eerst gemelde (C) blijft.
+    assert [d["t3777_code"] for d in out["detections"]] == ["NUTRISCORE_C"]
     assert out["detections"][0]["uncertain"] is True
 
 
