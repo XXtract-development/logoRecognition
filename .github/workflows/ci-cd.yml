@@ -248,6 +248,9 @@ jobs:
           python scripts/deployment/production/test-owned-production-backup.py
           python scripts/deployment/production/test-owned-production-observer.py
 
+      - name: Run Nutri-Score measurement script tests
+        run: python -m pytest scripts/test_nutriscore_measure.py -q
+
       - name: Run CI environment contracts
         run: python -m unittest discover -s .github/tests -v
 
