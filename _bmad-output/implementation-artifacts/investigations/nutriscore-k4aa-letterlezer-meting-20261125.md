@@ -56,3 +56,25 @@ VERIFIED: `ml-scanlog.txt`, regels "K4-aa scan done".
 | CAP-6 herstel ACC | nog uit te voeren na akkoord | open |
 
 Poortuitkomst: CONCERNS — code gehaald, meetdoel voor B niet gehaald op de deelset.
+
+# Volledige 352 op ACC (aanvulling, goedgekeurd door Sanne, opdracht msg_bf8cb2a36c65)
+
+VERIFIED: `scripts/nutriscore_measure.py --truth proef-detector/toets/uitslag.json --images proef-detector/toets/beelden`, start 09:16 UTC; uitvoer `volledig/run.log`, tellers `volledig/ml-scanlog.txt` (map `~/logo-meetset-20261018/nutriscore-k4aa-letterlezer-20261125/`). 335 antwoorden, allemaal `acc-20261006/k4aa`. 17 zonder antwoord (11× HTTP 400 bij versturen, 6× scan `failed`).
+
+| letter | gevonden | fout (aandeel meldingen) | eis |
+|---|---|---|---|
+| A | 100% (24/24) | 4% (1/25) | gehaald |
+| B | 100% (23/23) | 4% (1/24) | gehaald |
+| C | 100% (31/31) | 0% (0/31) | gehaald |
+| D | 100% (31/31) | 3% (1/32) | gehaald |
+| E | 100% (21/21) | 0% (0/21) | gehaald |
+
+Verwarring (waarheid → gemeld): A: 24×A · B: 23×B · C: 31×C, 1×B, 1×A · D: 31×D · E: 21×E, 1×D. C→B: 1 van 33 (ronde 2: 10 van 15). Origineel (191 etiketten): alle letters 100% gevonden, 0% fout. Herschaald (161): A fout 1/14, B fout 1/22, D fout 1/29, rest 0.
+
+Tellers alleen de volle run (totaal in log minus deelrun): 268 letterlezer-aanroepen, 74 letters gewijzigd, 2 "ander", 6 mislukt, 0 budget-terugval; kleurlezer 46 akkoord, 3 niet akkoord, 211 geen lezing. Gemiddelde scantijd 24 s, langste 148,5 s. Kosten: ≈ $4,87 volle run, ≈ $6,65 samen met de deelmeting (uit `cost=` in de ml-service-log).
+
+Opmerking: B-fout op de deelset was 3/14, op de volle set 1/24 voor dezelfde route en code. INFERENCE: verschil door ruis van het model tussen runs en de kleine noemer (n=14); niet apart gemeten (commando: dezelfde 119 etiketten nogmaals draaien en matrices vergelijken).
+
+Noot: de 233 etiketten buiten de deelset zijn niet apart doorgerekend; de volle-set-getallen omvatten de 119. Commando: `load_truth`-set filteren op sleutels buiten `truth-deelset.json` en de antwoordenmap opnieuw scoren.
+
+Conclusie: A–E halen elk ≥80% gevonden en ≤10% fout op de 352 (route k4aa, 335 van 352 beantwoord). De 17 etiketten zonder antwoord tellen in de dekking niet mee; de vraag naar de oorzaak (400/failed) staat open.
