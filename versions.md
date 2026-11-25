@@ -1,5 +1,12 @@
 # Versiegeschiedenis
 
+## 25 november 2026
+
+**Logoherkenning: Nutri-Score-letter wordt apart van het uitgesneden label gelezen**
+- De nieuwe herkenningsroute verwarde B en C regelmatig. Nu wordt de gevonden Nutri-Score-balk uitgesneden en krijgt een tweede, aparte aanroep alleen die uitsnede om de uitvergrote letter te bepalen. Lukt die aanroep niet, dan geldt het oude resultaat.
+- Een bestaande kleurlezer leest dezelfde uitsnede mee, maar alleen om te tellen of hij het eens is; hij verandert de letter niet.
+- De route staat standaard uit; voor gewone gebruikers verandert er niets.
+
 ## 24 november 2026
 
 **Logoherkenning: Nutri-Score-letters worden niet meer ten onrechte weggegooid**
