@@ -127,6 +127,29 @@ SCHEMA = {
     },
 }
 DEEL = " Image 2 is one section of a larger label; include marks cut off at the section edge."  # noqa: E501
+# bewust nieuw, SPEC-nutriscore-k4aa-letterlezer: one letter per bar, from the bar crop only.
+LETTER_INSTRUCTIE = (
+    "You read one Nutri-Score bar from a product label. The image is a crop of that bar.\n"
+    'Which letter A, B, C, D or E of the bar is enlarged (highlighted)? If no letter is enlarged, answer "ander".\n'  # noqa: E501
+    'Return only JSON {"letter": "<A|B|C|D|E|ander>"}.'
+)
+LETTER_SCHEMA = {  # bewust nieuw, SPEC-nutriscore-k4aa-letterlezer
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["letter"],
+    "properties": {
+        "letter": {"type": "string", "enum": ["A", "B", "C", "D", "E", "ander"]}
+    },
+}
+LETTER_MARGIN = 0.15  # bewust nieuw, SPEC-nutriscore-k4aa-letterlezer
+MAX_LETTER_BARS = 8  # bewust nieuw, SPEC-nutriscore-k4aa-letterlezer
+LETTER_MIN_S = 10.0  # bewust nieuw, SPEC-nutriscore-k4aa-letterlezer
+LETTER_MAX_S = 30.0  # bewust nieuw, SPEC-nutriscore-k4aa-letterlezer
+MIN_LETTER_CROP_PX = 16  # bewust nieuw, SPEC-nutriscore-k4aa-letterlezer
+READER_MIN_RATIO = 1.18  # bewust nieuw, SPEC-nutriscore-k4aa-letterlezer
+READER_OVERRIDES = (
+    False  # bewust nieuw, SPEC-nutriscore-k4aa-letterlezer: reader only counts
+)
 
 MAX_REPORTS = 64
 MAX_INLINE_EMBEDDINGS = 8
@@ -296,9 +319,8 @@ def _iou(a, b):
     return i / u if u > 0 else 0.0
 
 
-def merge(meldingen):
-    """Spike ``tel.samenvoegen`` with score 0: same code and IoU >= 0.5 chain into one
-    group; the member with the lowest ``orde`` stays (confidence plays no part)."""
+def _chains(meldingen, linked):
+    """Union-find: reports for which ``linked(a, b)`` chain into one group."""
     parent = list(range(len(meldingen)))
 
     def root(i):
@@ -309,14 +331,79 @@ def merge(meldingen):
 
     for i, a in enumerate(meldingen):
         for j in range(i):
-            b = meldingen[j]
-            if a["code"] == b["code"] and _iou(a["vak"], b["vak"]) >= MERGE_IOU:
+            if linked(a, meldingen[j]):
                 parent[root(i)] = root(j)
     groups = {}
     for i, m in enumerate(meldingen):
         groups.setdefault(root(i), []).append(m)
-    return sorted((min(g, key=lambda m: m["orde"]) for g in groups.values()),
-                  key=lambda m: m["orde"])  # fmt: skip
+    return list(groups.values())
+
+
+def merge(meldingen):
+    """Spike ``tel.samenvoegen`` with score 0: same code and IoU >= 0.5 chain into one
+    group; the member with the lowest ``orde`` stays (confidence plays no part)."""
+    groups = _chains(
+        meldingen,
+        lambda a, b: a["code"] == b["code"] and _iou(a["vak"], b["vak"]) >= MERGE_IOU,
+    )
+    return sorted(
+        (min(g, key=lambda m: m["orde"]) for g in groups), key=lambda m: m["orde"]
+    )
+
+
+def bars(meldingen):
+    """Nutri-Score reports as bars (SPEC-nutriscore-k4aa-letterlezer CAP-1): chains of
+    overlapping reports (IoU >= 0.5, any letter), ordered by the lowest ``orde`` of a chain.
+    """
+    ns = [m for m in meldingen if m["code"].startswith(NUTRISCORE_PREFIX)]
+    groups = _chains(ns, lambda a, b: _iou(a["vak"], b["vak"]) >= MERGE_IOU)
+    return sorted(groups, key=lambda g: min(m["orde"] for m in g))
+
+
+def letter_box(bar, W, H):
+    """Crop for the letter reader: the box of the lowest-``orde`` member plus LETTER_MARGIN
+    of its width/height on each side, clamped to the image. None when a side is too small.
+    """
+    x0, y0, x1, y1 = min(bar, key=lambda m: m["orde"])["vak"]
+    mx, my = LETTER_MARGIN * (x1 - x0), LETTER_MARGIN * (y1 - y0)
+    box = (
+        max(0, round(x0 - mx)),
+        max(0, round(y0 - my)),
+        min(W, round(x1 + mx)),
+        min(H, round(y1 + my)),
+    )
+    if box[2] - box[0] < MIN_LETTER_CROP_PX or box[3] - box[1] < MIN_LETTER_CROP_PX:
+        return None
+    return box
+
+
+def apply_letters(meldingen, letters):
+    """``letters``: bar index (as in ``bars``) -> 'A'..'E' or 'ander'. A bar with a letter
+    becomes one report: that code, the box and ``orde`` of its lowest-``orde`` member, and
+    the highest confidence of the group. 'ander' drops the bar; unanswered bars stay."""
+    bs = bars(meldingen)
+    pos = {id(m): i for i, m in enumerate(meldingen)}
+    repl, drop = {}, set()
+    for idx, bar in enumerate(bs):
+        if idx not in letters:
+            continue
+        drop.update(id(m) for m in bar)
+        if letters[idx] == "ander":
+            continue
+        low = min(bar, key=lambda m: m["orde"])
+        first = min(bar, key=lambda m: pos[id(m)])
+        repl[id(first)] = {
+            **low,
+            "code": NUTRISCORE_PREFIX + letters[idx],
+            "confidence": max(m["confidence"] for m in bar),
+        }
+    out = []
+    for m in meldingen:
+        if id(m) in repl:
+            out.append(repl[id(m)])
+        elif id(m) not in drop:
+            out.append(m)
+    return out
 
 
 def to_bbox(vak, width, height):
@@ -577,6 +664,186 @@ async def _call_all(base, key, encoded, remaining, totals):
     return [t.result() for t in tasks]
 
 
+def read_letter(crop_bgr):
+    """Colour reader on one bar crop (SPEC-nutriscore-k4aa-letterlezer CAP-2): A-E or None."""
+    try:
+        from app.services import nutriscore_reader
+
+        letter, _ = nutriscore_reader.read_nutriscore(
+            crop_bgr, full_page=False, min_ratio=READER_MIN_RATIO
+        )
+    except Exception:
+        return None
+    return letter if letter in ("A", "B", "C", "D", "E") else None
+
+
+async def _letter_call(client, base, key, crop_b64, remaining, totals):
+    """One attempt for one bar, no retry (CAP-3). Returns 'A'..'E' or 'ander'."""
+    body = {
+        "model": MODEL,
+        "temperature": 0,
+        "max_tokens": 4096,
+        "response_format": {
+            "type": "json_schema",
+            "json_schema": {"name": "letter", "strict": True, "schema": LETTER_SCHEMA},
+        },
+        "usage": {"include": True},
+        "messages": [
+            {"role": "system", "content": LETTER_INSTRUCTIE},
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": "data:image/jpeg;base64," + crop_b64,
+                            "detail": "high",
+                        },
+                    }
+                ],
+            },
+        ],
+        "reasoning": {"effort": "minimal"},
+        "provider": PROVIDER,
+    }
+    try:
+        async with _CALLS:
+            timeout = min(LETTER_MAX_S, _left(remaining) - 1.0)
+            if timeout < LETTER_MIN_S:
+                raise K4aaError("letter_budget")  # no request is sent
+            totals["letter_calls"] += 1
+            response = await client.post(
+                base + "/chat/completions",
+                json=body,
+                headers={"Authorization": "Bearer " + key},
+                timeout=httpx.Timeout(timeout),
+            )
+    except _PASS:
+        raise
+    except K4aaError:
+        raise
+    except Exception:
+        raise K4aaError("letter_request") from None
+    if response.status_code != 200:
+        raise K4aaError("letter_rejected")
+    try:
+        envelope = response.json()
+        choice = envelope["choices"][0]
+    except Exception:
+        raise K4aaError("letter_malformed") from None
+    _add_usage(totals, envelope)
+    if not isinstance(choice, dict) or choice.get("finish_reason") not in (
+        "stop",
+        "STOP",
+    ):
+        raise K4aaError("letter_unfinished")
+    try:
+        letter = json.loads(choice["message"]["content"])["letter"]
+    except Exception:
+        raise K4aaError("letter_invalid") from None
+    if letter not in LETTER_SCHEMA["properties"]["letter"]["enum"]:
+        raise K4aaError("letter_invalid")
+    return letter
+
+
+async def _letter_stage(meldingen, pil, base, key, remaining, totals):
+    """One letter per Nutri-Score bar (the first MAX_LETTER_BARS, lowest ``orde`` first), all
+    in parallel. A failed or late call leaves its bar to the votes of one_letter.
+    Returns (bar index -> letter, counters)."""
+    from app.api.artwork import strict_blocking
+
+    counts = {
+        "letter_ander": 0,
+        "letter_failed": 0,
+        "letter_budget_fallback": 0,
+        "letter_changed": 0,
+        "letter_reader_agree": 0,
+        "letter_reader_disagree": 0,
+        "letter_reader_none": 0,
+    }
+    letters = {}
+    bs = bars(meldingen)
+    W, H = pil.size
+    crops = {}
+    for idx, bar in enumerate(bs):
+        if len(crops) >= MAX_LETTER_BARS:
+            break
+        box = letter_box(bar, W, H)  # a bar too small to read takes no place
+        if box is not None:
+            crops[idx] = cv2.cvtColor(np.asarray(pil.crop(box)), cv2.COLOR_RGB2BGR)
+    if not crops:
+        return letters, counts
+
+    async def one(idx, bgr):
+        try:
+            b64 = (await strict_blocking(encode_window, bgr))[0]
+            return idx, await _letter_call(client, base, key, b64, remaining, totals)
+        except _PASS:
+            raise
+        except K4aaError as exc:
+            return idx, exc
+        except Exception:
+            return idx, K4aaError("letter_request")
+
+    async with httpx.AsyncClient(follow_redirects=False) as client:
+        tasks = {asyncio.ensure_future(one(i, bgr)): i for i, bgr in crops.items()}
+        try:
+            # One overall limit: httpx timeouts are per phase and _CALLS waits are unbounded.
+            _, pending = await asyncio.wait(
+                tasks, timeout=max(0.0, _left(remaining) - 1.0)
+            )
+            results = [
+                (i, K4aaError("letter_budget")) if t in pending else t.result()
+                for t, i in tasks.items()
+            ]
+            for t in pending:
+                t.cancel()
+        finally:
+            # Deadline/disconnect signals pass through; nothing keeps running after the stage.
+            for t in tasks:
+                t.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+
+    for idx, res in results:
+        if isinstance(res, K4aaError):
+            key_name = (
+                "letter_budget_fallback"
+                if res.klasse == "letter_budget"
+                else "letter_failed"
+            )
+            counts[key_name] += 1
+            continue
+        letters[idx] = res
+        if res == "ander":
+            counts["letter_ander"] += 1
+
+    for idx, letter in list(letters.items()):
+        voted = {
+            m["code"]
+            for m in one_letter(bs[idx])
+            if m["code"].startswith(NUTRISCORE_PREFIX)
+        }
+        if letter == "ander":
+            continue
+        if voted != {NUTRISCORE_PREFIX + letter}:
+            counts["letter_changed"] += 1
+        # The reader only gets a look when there is time; it must never cost the scan.
+        read = (
+            await strict_blocking(read_letter, crops[idx])
+            if _left(remaining) >= 2.0
+            else None
+        )
+        if read is None:
+            counts["letter_reader_none"] += 1
+        elif read == letter:
+            counts["letter_reader_agree"] += 1
+        else:
+            counts["letter_reader_disagree"] += 1
+            if READER_OVERRIDES:
+                letters[idx] = read
+    return letters, counts
+
+
 # --- scan ---------------------------------------------------------------------------
 async def scan(data, remaining):
     """One label (PNG/JPEG bytes) → gated, merged top-15 detections plus cost stats.
@@ -611,7 +878,13 @@ async def scan(data, remaining):
         (await strict_blocking(encode_window, img[y0:y1, x0:x1]))[0]
         for (x0, y0, x1, y1) in wins
     ]
-    totals = {"attempts": 0, "tokens_in": 0, "tokens_out": 0, "cost_usd": 0.0}
+    totals = {
+        "attempts": 0,
+        "tokens_in": 0,
+        "tokens_out": 0,
+        "cost_usd": 0.0,
+        "letter_calls": 0,
+    }
     try:
         answers = await asyncio.wait_for(
             _call_all(base, key, encoded, remaining, totals),
@@ -659,26 +932,39 @@ async def scan(data, remaining):
         for n, top in zip(valid, top_codes(np.concatenate(E), R, codes)):
             tops[n] = top
     gated = gate(reports, tops)
+    pre_letter = len(gated)
+    letters, lcounts = await _letter_stage(gated, pil, base, key, remaining, totals)
+    gated = apply_letters(gated, letters)
     one = one_letter(gated)
     kept = merge(one)
 
     stats = {
         "calls": len(wins),
         **totals,
+        **lcounts,
         "providers": [provider for _, provider in answers],
         "k1_meldingen": found,
         "na_poort": len(kept),
-        "letter_dropped": len(gated) - len(one),
+        "letter_dropped": pre_letter - len(one),
         "dropped": found - len(reports),
         "referenties": len(codes),
         "inline_embedded": inline,
     }
     logger.info(
-        "K4-aa scan done: windows=%d reports=%d kept=%d dropped=%d s=%.1f",
+        "K4-aa scan done: windows=%d reports=%d kept=%d dropped=%d letter_calls=%d letter_changed=%d letter_ander=%d letter_failed=%d letter_budget_fallback=%d reader_agree=%d reader_disagree=%d reader_none=%d cost=%.4f s=%.1f",  # noqa: E501
         len(wins),
         found,
         len(kept),
         stats["dropped"],
+        stats["letter_calls"],
+        stats["letter_changed"],
+        stats["letter_ander"],
+        stats["letter_failed"],
+        stats["letter_budget_fallback"],
+        stats["letter_reader_agree"],
+        stats["letter_reader_disagree"],
+        stats["letter_reader_none"],
+        stats["cost_usd"] or 0.0,
         time.monotonic() - started,
     )
     detections = []
