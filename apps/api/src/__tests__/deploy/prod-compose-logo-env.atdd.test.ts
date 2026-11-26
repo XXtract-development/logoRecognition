@@ -60,4 +60,40 @@ describe('R1 prod compose passes the logo-scan variables', () => {
     const passed = new Set(app.map((l) => l.trim().split(':')[0]));
     expect([...read].filter((n) => !passed.has(n))).toEqual([]);
   });
+
+  // spec-k4aa-review-env: the K4-aa letter reader has its own provider settings; prod keeps GHS_REVIEW_* on Google.
+  it.each(['K4AA_REVIEW_BASE_URL', 'K4AA_REVIEW_API_KEY'])(
+    '[P0] ml-service passes %s without a value (unset stays unset, code default holds)',
+    (name) => {
+      expect(has(ml, name, valueless)).toBe(true);
+    },
+  );
+
+  it('[P1] drift: every K4AA_*/GHS_REVIEW_* env name the ml-service app code reads is in the prod ml-service environment', () => {
+    const read = new Set<string>();
+    const walk = (dir: string) => {
+      for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+        const p = path.join(dir, e.name);
+        if (e.isDirectory()) { if (e.name !== '__pycache__') walk(p); continue; }
+        if (!/\.py$/.test(e.name)) continue;
+        const src = fs.readFileSync(p, 'utf8');
+        const name = '((?:K4AA|GHS_REVIEW)_[A-Z0-9_]+)';
+        const re = new RegExp(
+          `settings\\.${name}|getattr\\(settings,\\s*["']${name}["']|os\\.environ(?:\\.get)?[\\[(]\\s*["']${name}["']|os\\.getenv\\(\\s*["']${name}["']`,
+          'g',
+        );
+        for (const m of src.matchAll(re)) read.add(m[1] ?? m[2] ?? m[3] ?? m[4]);
+      }
+    };
+    walk(path.resolve(repoRoot, 'apps/ml-service/app'));
+    // floor: a regex miss must not pass vacuously
+    expect([...read]).toEqual(expect.arrayContaining([
+      'K4AA_REVIEW_BASE_URL', 'K4AA_REVIEW_API_KEY', 'K4AA_SIGLIP_PATH', 'GHS_REVIEW_BASE_URL', 'GHS_REVIEW_API_KEY',
+    ]));
+    // set by the image itself (ml Dockerfile ENV); a value-less pass-through would blank it, so it is deliberately not passed
+    const imageDefault = new Set(['K4AA_SIGLIP_PATH']);
+    const passed = new Set(ml.map((l) => l.trim().split(':')[0]));
+    expect([...read].filter((n) => !passed.has(n) && !imageDefault.has(n))).toEqual([]);
+    expect(passed.has('K4AA_SIGLIP_PATH')).toBe(false);
+  });
 });

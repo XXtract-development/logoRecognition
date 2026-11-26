@@ -45,6 +45,11 @@ def k4(monkeypatch, tmp_path):
     monkeypatch.setattr(
         settings, "GHS_REVIEW_API_KEY", type(settings.GHS_REVIEW_API_KEY)(KEY)
     )
+    # An ambient K4AA_* (OS env or .env) must not change what the GHS_REVIEW_* tests prove.
+    monkeypatch.setattr(settings, "K4AA_REVIEW_BASE_URL", "")
+    monkeypatch.setattr(
+        settings, "K4AA_REVIEW_API_KEY", type(settings.K4AA_REVIEW_API_KEY)("")
+    )
     monkeypatch.setattr(k4aa, "_REF_CACHE", None, raising=False)
     return k4aa
 
@@ -649,3 +654,154 @@ def test_endpoint_unexpected_exception_is_503_internal_error(monkeypatch, k4, ap
     r = asyncio.run(_post(api, "/ml/artwork/scan-k4aa", body))
     assert r.status_code == 503
     assert r.json()["detail"] == "K4-aa recognition unavailable (internal_error)"
+
+
+# --- spec-k4aa-review-env: own provider settings, GHS fallback -----------------
+
+GOOGLE = "https://google.example/v1beta/openai"
+K1 = "FAKE_K4AA_OWN_KEY_K1_0123456789"
+G1 = "FAKE_GHS_GOOGLE_KEY_G1_0123456789"
+
+
+def _pairs(monkeypatch, own_base, own_key, ghs_base, ghs_key):
+    from app.core.config import settings
+
+    secret = type(settings.GHS_REVIEW_API_KEY)
+    monkeypatch.setattr(settings, "K4AA_REVIEW_BASE_URL", own_base)
+    monkeypatch.setattr(settings, "K4AA_REVIEW_API_KEY", secret(own_key))
+    monkeypatch.setattr(settings, "GHS_REVIEW_BASE_URL", ghs_base)
+    monkeypatch.setattr(settings, "GHS_REVIEW_API_KEY", secret(ghs_key))
+
+
+def _scan_ok(monkeypatch, k4):
+    seen = mock_http(monkeypatch, k4, lambda req, n: httpx.Response(200, json=answer([])))
+    run(k4.scan(png_bytes(800, 600), lambda: 120.0))
+    return seen
+
+
+def _scan_refused(monkeypatch, k4):
+    seen = mock_http(monkeypatch, k4, lambda req, n: httpx.Response(200, json=answer([])))
+    with pytest.raises(k4.K4aaError) as e:
+        run(k4.scan(png_bytes(800, 600), lambda: 120.0))
+    assert e.value.klasse == "provider_unavailable" and seen == []
+    return e.value
+
+
+def test_review_env_own_vars_win_over_ghs(monkeypatch, k4, world):
+    _pairs(monkeypatch, BASE, K1, GOOGLE, G1)
+    seen = _scan_ok(monkeypatch, k4)
+    assert seen and all(r.headers["authorization"] == "Bearer " + K1 for r in seen)
+    assert all(str(r.url).startswith(BASE) for r in seen)
+
+
+@pytest.mark.parametrize("blank", ["", "  ", "\t "])
+def test_review_env_empty_or_whitespace_own_vars_fall_back_to_ghs(monkeypatch, k4, world, blank):
+    _pairs(monkeypatch, blank, blank, BASE, G1)
+    seen = _scan_ok(monkeypatch, k4)
+    assert seen and all(r.headers["authorization"] == "Bearer " + G1 for r in seen)
+
+
+def test_review_env_own_non_openrouter_base_is_refused_without_a_request(monkeypatch, k4, world):
+    _pairs(monkeypatch, "https://provider.example/v1", K1, BASE, G1)
+    _scan_refused(monkeypatch, k4)
+
+
+def test_review_env_prod_shape_ghs_on_google_and_no_own_vars_is_refused(monkeypatch, k4, world):
+    _pairs(monkeypatch, "", "", GOOGLE, G1)
+    _scan_refused(monkeypatch, k4)
+
+
+def test_review_env_own_base_without_own_key_never_uses_the_ghs_key(monkeypatch, k4, world):
+    _pairs(monkeypatch, BASE, "  ", BASE, G1)
+    _scan_refused(monkeypatch, k4)
+
+
+def test_review_env_own_key_without_own_base_uses_the_ghs_base_when_it_is_openrouter(monkeypatch, k4, world):
+    _pairs(monkeypatch, "", K1, BASE, G1)
+    seen = _scan_ok(monkeypatch, k4)
+    assert seen and all(r.headers["authorization"] == "Bearer " + K1 for r in seen)
+
+
+def test_review_env_own_key_without_own_base_on_prod_shape_is_refused(monkeypatch, k4, world):
+    _pairs(monkeypatch, "", K1, GOOGLE, G1)
+    _scan_refused(monkeypatch, k4)
+
+
+def test_review_env_trailing_slash_on_own_base_is_accepted(monkeypatch, k4, world):
+    _pairs(monkeypatch, BASE + "/", K1, GOOGLE, G1)
+    seen = _scan_ok(monkeypatch, k4)
+    assert seen and str(seen[0].url) == BASE + "/chat/completions"
+
+
+@pytest.mark.parametrize(
+    "own_base,own_key,ghs_base,ghs_key,status",
+    [
+        (BASE, K1, GOOGLE, G1, 200),  # success
+        (BASE, K1, GOOGLE, G1, 401),  # provider rejects the key
+        ("https://provider.example/v1", K1, BASE, G1, 200),  # refused host
+        ("", K1, GOOGLE, G1, 200),  # refused: own key, GHS base is Google
+        (BASE, "", BASE, G1, 200),  # refused: own base, no own key
+    ],
+)
+def test_review_env_key_values_never_appear_in_logs_or_exception_text(
+    monkeypatch, caplog, k4, world, own_base, own_key, ghs_base, ghs_key, status
+):
+    _pairs(monkeypatch, own_base, own_key, ghs_base, ghs_key)
+    mock_http(
+        monkeypatch,
+        k4,
+        lambda req, n: httpx.Response(status, json=answer([]) if status == 200 else {"error": "no"}),
+    )
+    caplog.set_level(logging.DEBUG)
+    texts = []
+    try:
+        run(k4.scan(png_bytes(800, 600), lambda: 120.0))
+    except k4.K4aaError as exc:
+        texts += [str(exc), repr(exc), exc.klasse]
+    texts += [r.getMessage() for r in caplog.records] + [caplog.text]
+    blob = "\n".join(texts)
+    assert K1 not in blob and G1 not in blob
+
+
+def test_review_env_empty_siglip_path_falls_back_to_the_default(monkeypatch, k4):
+    seen = []
+    monkeypatch.setenv("K4AA_SIGLIP_PATH", "")
+    monkeypatch.setattr(k4, "_EMBEDDER", None)
+    monkeypatch.setattr(k4.os.path, "isdir", lambda p: seen.append(p) or p == "/opt/siglip2-vision")
+    monkeypatch.setattr(k4, "_SiglipEmbedder", lambda p: SimpleNamespace(path=p))
+    assert k4.get_embedder().path == "/opt/siglip2-vision" and seen == ["/opt/siglip2-vision"]
+
+
+def test_review_env_whitespace_own_base_falls_back_but_keeps_own_key_pairing(monkeypatch, k4, world):
+    _pairs(monkeypatch, "  ", K1, GOOGLE, G1)
+    _scan_refused(monkeypatch, k4)  # fallback base is Google: refused, own key never sent there
+
+
+def test_review_env_provider_error_body_echoing_the_key_stays_out_of_logs_and_errors(monkeypatch, caplog, k4, world):
+    _pairs(monkeypatch, BASE, K1, GOOGLE, G1)
+    mock_http(monkeypatch, k4, lambda req, n: httpx.Response(401, text="bad key " + K1 + " / " + G1))
+    caplog.set_level(logging.DEBUG)
+    with pytest.raises(k4.K4aaError) as e:
+        run(k4.scan(png_bytes(800, 600), lambda: 120.0))
+    blob = "\n".join([str(e.value), repr(e.value), caplog.text])
+    assert K1 not in blob and G1 not in blob
+
+
+@pytest.mark.parametrize(
+    "own_base,ghs_base,reason",
+    [("", GOOGLE, "base_not_openrouter"), (BASE, BASE, "key_missing")],
+)
+def test_review_env_refusal_logs_a_reason_code_without_values(monkeypatch, caplog, k4, world, own_base, ghs_base, reason):
+    _pairs(monkeypatch, own_base, "", ghs_base, "")
+    caplog.set_level(logging.WARNING)
+    _scan_refused(monkeypatch, k4)
+    assert reason in caplog.text and GOOGLE not in caplog.text and BASE not in caplog.text
+
+
+def test_review_env_whitespace_siglip_path_falls_back_to_the_default(monkeypatch, k4):
+    seen = []
+    monkeypatch.setenv("K4AA_SIGLIP_PATH", "   ")
+    monkeypatch.setattr(k4, "_EMBEDDER", None)
+    monkeypatch.setattr(k4.os.path, "isdir", lambda p: seen.append(p) or p == "/opt/siglip2-vision")
+    monkeypatch.setattr(k4, "_SiglipEmbedder", lambda p: SimpleNamespace(path=p))
+    assert k4.get_embedder().path == "/opt/siglip2-vision" and seen == ["/opt/siglip2-vision"]

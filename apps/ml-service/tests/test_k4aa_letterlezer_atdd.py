@@ -322,3 +322,12 @@ def test_cap3_the_8_bars_are_the_lowest_orde_and_tiny_bars_take_no_place(monkeyp
     assert sum(is_letter_call(r) for r in seen) == 8  # de piepkleine balk (orde 0) telt niet mee
     codes = [d["t3777_code"] for d in out["detections"]]
     assert codes.count("NUTRISCORE_C") == 8 and "NUTRISCORE_D" in codes
+
+
+def test_review_env_letter_stage_uses_the_own_key_not_the_ghs_key(monkeypatch, k4, nsworld):
+    from tests.test_k4aa_atdd import BASE, G1, GOOGLE, K1, _pairs
+
+    _pairs(monkeypatch, BASE, K1, GOOGLE, G1)
+    out, seen = scan_with(monkeypatch, k4, BAR, lambda req, n: httpx.Response(200, json=letter_answer("B")))
+    letters = [r for r in seen if is_letter_call(r)]
+    assert letters and all(r.headers["authorization"] == "Bearer " + K1 for r in seen)
