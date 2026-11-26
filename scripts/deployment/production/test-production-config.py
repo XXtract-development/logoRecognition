@@ -310,6 +310,23 @@ class ConfigurationTests(unittest.TestCase):
                 self.assertTrue(errors)
                 self.assertNotIn(value, "\n".join(errors))
 
+    def test_k4aa_provider_pair_is_optional_but_all_or_nothing_and_openrouter_only(self):
+        good = {"K4AA_REVIEW_BASE_URL": checker.K4AA_BASE, "K4AA_REVIEW_API_KEY": "k" * 40}
+        self.assertEqual([], checker.validate_env(fixture()))
+        self.assertEqual([], checker.validate_env({**fixture(), **good}))
+        for bad in ({"K4AA_REVIEW_BASE_URL": checker.K4AA_BASE},
+                    {"K4AA_REVIEW_API_KEY": "k" * 40},
+                    {**good, "K4AA_REVIEW_BASE_URL": "https://generativelanguage.googleapis.com/v1"},
+                    {**good, "K4AA_REVIEW_API_KEY": "change-me"}):
+            errors = checker.validate_env({**fixture(), **bad})
+            self.assertTrue(any("K4-aa" in e for e in errors), bad)
+            self.assertNotIn("k" * 40, "\n".join(errors))
+
+    def test_shell_k4aa_conflict_is_reported(self):
+        env = {**fixture(), "K4AA_REVIEW_BASE_URL": checker.K4AA_BASE}
+        with patch.dict(os.environ, {"K4AA_REVIEW_BASE_URL": "https://other.example.com"}, clear=True):
+            self.assertTrue(checker.validate_shell(env))
+
     def test_env_file_cannot_enable_profiles_or_project_overrides(self):
         for key in ("COMPOSE_PROFILES", "COMPOSE_PROJECT_NAME", "COMPOSE_FILE"):
             env = fixture()

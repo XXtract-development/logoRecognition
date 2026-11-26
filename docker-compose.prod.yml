@@ -186,6 +186,9 @@ services:
       HOLDOUT_MINIMUM: '25'
       # Nutri-Score reader threshold: value-less = passed through, unset keeps the code default.
       NUTRISCORE_READER_MIN_RATIO:
+      # K4-aa provider (OpenRouter; window and letter calls), separate from GHS_REVIEW_*: value-less = passed through, empty falls back to GHS_REVIEW_*.
+      K4AA_REVIEW_BASE_URL:
+      K4AA_REVIEW_API_KEY:
       PIPELINE_SERVICE_KEY: ${PIPELINE_SERVICE_KEY:?required production service key}
       GHS_REVIEW_INTERNAL_KEY: ${GHS_REVIEW_INTERNAL_KEY:?required production review key}
       GHS_REVIEW_BASE_URL: ${GHS_REVIEW_BASE_URL:?required approved provider URL}

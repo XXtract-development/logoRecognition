@@ -452,7 +452,7 @@ def get_embedder():
     if _EMBEDDER is None:
         with _EMBEDDER_LOCK:
             if _EMBEDDER is None:
-                path = os.environ.get("K4AA_SIGLIP_PATH", "/opt/siglip2-vision")
+                path = (os.environ.get("K4AA_SIGLIP_PATH") or "").strip() or "/opt/siglip2-vision"
                 if not os.path.isdir(path):
                     raise K4aaError("siglip_model_unavailable")
                 try:
@@ -528,9 +528,19 @@ async def _reference_matrix(run_blocking):
 
 # --- provider calls ----------------------------------------------------------------
 def _config():
-    base = settings.GHS_REVIEW_BASE_URL.strip().rstrip("/")
-    key = settings.GHS_REVIEW_API_KEY.get_secret_value().strip()
+    own_base = settings.K4AA_REVIEW_BASE_URL.strip()
+    own_key = settings.K4AA_REVIEW_API_KEY.get_secret_value().strip()
+    base = (own_base or settings.GHS_REVIEW_BASE_URL.strip()).rstrip("/")
+    # Mixed-pair guard: the GHS key is only a fallback together with the GHS base.
+    key = own_key or (
+        "" if own_base else settings.GHS_REVIEW_API_KEY.get_secret_value().strip()
+    )
     if base != OPENROUTER or not key:
+        # reason only, never a value: lets an operator tell the refusals apart in the log
+        logger.warning(
+            "K4-aa provider config refused: %s",
+            "base_not_openrouter" if base != OPENROUTER else "key_missing",
+        )
         raise K4aaError("provider_unavailable")
     return base, key
 

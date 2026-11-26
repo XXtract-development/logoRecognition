@@ -240,13 +240,20 @@ def route():
     from app.core.config import settings
     from app.services import k4aa
 
-    key = os.environ.get("GHS_REVIEW_API_KEY") or os.environ.get("OPENROUTER_KEY")
+    key = (
+        os.environ.get("K4AA_REVIEW_API_KEY")
+        or os.environ.get("GHS_REVIEW_API_KEY")
+        or os.environ.get("OPENROUTER_KEY")
+    )
     if not key:
         raise SystemExit(
-            "GHS_REVIEW_API_KEY or OPENROUTER_KEY must be set (environment only)"
+            "K4AA_REVIEW_API_KEY, GHS_REVIEW_API_KEY or OPENROUTER_KEY must be set (environment only)"
         )
     settings.GHS_REVIEW_BASE_URL = k4aa.OPENROUTER
     settings.GHS_REVIEW_API_KEY = type(settings.GHS_REVIEW_API_KEY)(key)
+    # both pairs are set so the measurement setup never depends on which one _config() prefers
+    settings.K4AA_REVIEW_BASE_URL = k4aa.OPENROUTER
+    settings.K4AA_REVIEW_API_KEY = type(settings.K4AA_REVIEW_API_KEY)(key)
     R, codes = snapshot()
 
     async def snapshot_matrix(_run):

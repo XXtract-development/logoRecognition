@@ -39,6 +39,15 @@ Van 352 etiketten gaven 17 geen antwoord; de oorzaak is invoer, niet de route:
 
 Een afnemer krijgt dus een duidelijke 400 of een mislukte scan met reden; er wordt niets verkeerds gemeld.
 
+## Provider-instellingen van de K4-aa-route
+
+De K4-aa-route (venster- en letterverzoeken) leest `K4AA_REVIEW_BASE_URL` en `K4AA_REVIEW_API_KEY`; zijn die leeg, dan geldt
+`GHS_REVIEW_BASE_URL` / `GHS_REVIEW_API_KEY` (ACC zet alleen die, dus ongewijzigd). De basis moet
+`https://openrouter.ai/api/v1` zijn, anders `provider_unavailable` zonder verzoek. Eigen basis zonder eigen
+sleutel weigert ook (de Google-sleutel gaat nooit naar OpenRouter). Op productie dus BEIDE zetten.
+`docker-compose.prod.yml` geeft ze waardeloos door: een geëxporteerde `K4AA_*` in de shell wint van het
+env-bestand en de offline controle ziet dat niet, dus uitrollen vanuit een schone shell.
+
 ## Productie: apart akkoord van Friso nodig
 
 Niets hiervan is uitgevoerd. Reden: kosten (±$0,02 per scan, lopend), een wijziging van het gedrag voor
@@ -50,6 +59,7 @@ goedkeuring en na elke stap wordt de bron teruggelezen.
 | # | wat | waar | letterlijk | terugdraaien |
 |---|---|---|---|---|
 | 0 | Voorwaarden controleren | prod-app Logorecognition | akkoord Friso op kosten (±$0,02 per scan × verwacht aantal scans per maand), prod draait dezelfde commit als ACC (≥ `550c1d9`), modelsleutel en budget voor de letterlezer zijn aanwezig in de prod-ml-service | n.v.t. (alleen lezen) |
+| 0b | K4-aa-provider zetten | Coolify, prod-ml-service, niet-preview, runtime | `K4AA_REVIEW_BASE_URL=https://openrouter.ai/api/v1` en `K4AA_REVIEW_API_KEY=<OpenRouter-sleutel>` (BEIDE; zonder eigen basis valt de route terug op `GHS_REVIEW_*`, dat op productie naar Google wijst, en weigert) | Beide variabelen verwijderen, opnieuw uitrollen |
 | 1 | Variabele zetten | Coolify, prod-app Logorecognition (uuid in te vullen door Sanne), niet-preview, runtime | `LOGO_SCAN_ROUTE=k4aa` | Variabele verwijderen (stap 3) |
 | 2 | Uitrollen | zelfde app, via de gewone uitrolroute (geen handmatige containeractie zonder akkoord) | redeploy van de bestaande commit | Zelfde uitrol na verwijderen van de variabele |
 | 3 | Terugdraaien (alleen indien nodig) | zelfde app | variabele `LOGO_SCAN_ROUTE` verwijderen, opnieuw uitrollen | n.v.t. |

@@ -33,6 +33,9 @@ REQUIRED = tuple(FROZEN) + (
     "GHS_REVIEW_INTERNAL_KEY", "GHS_REVIEW_BASE_URL", "GHS_REVIEW_API_KEY",
     "GHS_REVIEW_MODEL_A", "GHS_REVIEW_MODEL_B",
 )
+# Optional K4-aa provider pair: both or neither, OpenRouter only (see docs/04-deployment/logo-scan-route-k4aa.md).
+OPTIONAL = ("K4AA_REVIEW_BASE_URL", "K4AA_REVIEW_API_KEY")
+K4AA_BASE = "https://openrouter.ai/api/v1"
 SECRETS = ("POSTGRES_ADMIN_PASSWORD", "MINIO_ROOT_PASSWORD", "MINIO_APP_SECRET_KEY",
            "JWT_SECRET", "COOKIE_SECRET", "LEGACY_DETECTION_API_KEY", "PIPELINE_SERVICE_KEY", "GHS_REVIEW_INTERNAL_KEY")
 SUBSTITUTION = re.compile(r"\$\{([A-Z0-9_]+):\?[^}]*\}")
@@ -80,7 +83,7 @@ def production_host(host):
 def validate_shell(env, shell=None):
     shell = os.environ if shell is None else shell
     errors = [f"Shell input conflicts with validated env file: {key}"
-              for key in REQUIRED if key in shell and shell[key] != env.get(key)]
+              for key in REQUIRED + OPTIONAL if key in shell and shell[key] != env.get(key)]
     for key, value in shell.items():
         if key.startswith("COMPOSE_") and value:
             errors.append(f"Shell Compose override must be unset: {key}")
@@ -171,6 +174,10 @@ def validate_env(env):
             errors.append(f"Invalid service URL: {key}")
     if env["GHS_REVIEW_MODEL_A"] == env["GHS_REVIEW_MODEL_B"]:
         errors.append("Distinct visual review models required")
+    k4aa = [env.get(key, "") for key in OPTIONAL]
+    if any(k4aa) and (not all(k4aa) or k4aa[0] != K4AA_BASE or len(k4aa[1]) < 32
+                      or any(token in k4aa[1].lower() for token in ("change-me", "changeme", "replace_me", "<", ">"))):
+        errors.append("K4-aa provider needs both K4AA_REVIEW_BASE_URL (OpenRouter) and a real K4AA_REVIEW_API_KEY")
     return errors
 
 

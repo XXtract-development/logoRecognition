@@ -50,6 +50,9 @@ class Settings(BaseSettings):
     GHS_REVIEW_INTERNAL_KEY: SecretStr = SecretStr("")
     GHS_REVIEW_BASE_URL: str = ""
     GHS_REVIEW_API_KEY: SecretStr = SecretStr("")
+    # K4-aa letter reader provider; empty falls back to GHS_REVIEW_* (see k4aa._config).
+    K4AA_REVIEW_BASE_URL: str = ""
+    K4AA_REVIEW_API_KEY: SecretStr = SecretStr("")
     GHS_REVIEW_MODEL_A: str = ""
     GHS_REVIEW_MODEL_B: str = ""
 
