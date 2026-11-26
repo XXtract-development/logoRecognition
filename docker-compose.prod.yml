@@ -126,6 +126,14 @@ services:
       CATALOG_API_KEY: ${CATALOG_API_KEY:?required production catalog key}
       GHS_REVIEW_INTERNAL_KEY: ${GHS_REVIEW_INTERNAL_KEY:?required production review key}
       HOLDOUT_MINIMUM: '25'
+      # Logo-scan settings: value-less = passed through from the deploy environment, unset stays unset (code defaults hold). LOGO_IMAGE_TAG follows the frozen release image.
+      LOGO_PIPELINE_KEYS:
+      LOGO_PIPELINE_KEYS_EXTRA:
+      LOGO_SCAN_ROUTE:
+      LOGO_MODEL_VERSION:
+      LOGO_SCAN_MAX_QUEUED:
+      LOGO_SCAN_CONCURRENCY:
+      LOGO_IMAGE_TAG: ${RELEASE_SHA:?required frozen ACC release}
     networks: [private, proxy]
     depends_on:
       postgres: {condition: service_healthy}
@@ -176,6 +184,8 @@ services:
       OPENBLAS_NUM_THREADS: '1'
       MKL_NUM_THREADS: '1'
       HOLDOUT_MINIMUM: '25'
+      # Nutri-Score reader threshold: value-less = passed through, unset keeps the code default.
+      NUTRISCORE_READER_MIN_RATIO:
       PIPELINE_SERVICE_KEY: ${PIPELINE_SERVICE_KEY:?required production service key}
       GHS_REVIEW_INTERNAL_KEY: ${GHS_REVIEW_INTERNAL_KEY:?required production review key}
       GHS_REVIEW_BASE_URL: ${GHS_REVIEW_BASE_URL:?required approved provider URL}
